@@ -15,6 +15,8 @@ provide('design-system-key', {
 })
 import { playSound } from './lib/playSound.js'
 
+const videoPlaceholderImageUrl = import.meta.env.BASE_URL + 'course-cover-gotham.png'
+
 // Courses data (right panel – Courses view, Practice Filter node 1-10063)
 const courses = [
   { id: 1, title: "The Master's Hand: Capablanca's Endgame Technique", instructor: 'GM Alex Colovich', lines: 120, thumbnail: '/course-cover-gotham.png' },
@@ -1369,7 +1371,13 @@ onUnmounted(() => {
             <div
               class="video-placeholder-frame"
               :class="{ 'video-placeholder-frame--dragging': isResizingVideo }"
-              :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px' }"
+              :style="{
+                width: videoFrameWidth + 'px',
+                height: videoFrameHeight + 'px',
+                backgroundImage: 'url(' + videoPlaceholderImageUrl + ')',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }"
             >
               <Transition name="video-play-fade">
                 <button
@@ -2021,6 +2029,7 @@ body {
   background: #000;
   position: relative;
   transition: width 0.25s ease, height 0.25s ease;
+  background-repeat: no-repeat;
 }
 .video-placeholder-frame--dragging {
   transition: none;
