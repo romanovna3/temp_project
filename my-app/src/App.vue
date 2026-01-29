@@ -17,7 +17,6 @@ import { playSound } from './lib/playSound.js'
 
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
-const videoPlaceholderImageUrl = baseUrl + 'course-cover-gotham.png'
 
 // Courses data (right panel – Courses view, Practice Filter node 1-10063)
 const courses = [
@@ -56,8 +55,12 @@ const practiceAllBadgeCount = ref(32)
 
 // More button: show/hide additional mastery stats (8 Mastery Level items)
 const showMoreStats = ref(false)
+const lessButtonContainerRef = ref(null)
 function expandMoreStats() {
   showMoreStats.value = true
+  nextTick(() => {
+    lessButtonContainerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  })
 }
 // AdvancedStatsExpanded: L1–L6 active with counter, L7–L8 locked with lock icon
 const masteryLevelItems = [
@@ -1128,23 +1131,28 @@ function updateVideoSectionHeightPx() {
   }
 }
 
-const VIDEO_SIZE_TRANSITION_MS = 250
-let videoSectionHeightRafId = 0
-let videoSectionHeightRafEnd = 0
-
-function runVideoSectionHeightSync() {
-  if (Date.now() >= videoSectionHeightRafEnd) {
-    videoSectionHeightRafId = 0
-    return
-  }
-  updateVideoSectionHeightPx()
-  videoSectionHeightRafId = requestAnimationFrame(runVideoSectionHeightSync)
+// ResizeObserver: keep sticky chapter top in sync with video section height during drag and size transition
+let videoSectionResizeObserver = null
+let videoSectionObservedEl = null
+function setupVideoSectionResizeObserver() {
+  const el = videoSectionRef.value
+  if (!el || !showVideoSection.value) return
+  if (videoSectionObservedEl === el) return
+  teardownVideoSectionResizeObserver()
+  videoSectionResizeObserver = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      videoSectionHeightPx.value = entry.target.offsetHeight
+    }
+  })
+  videoSectionResizeObserver.observe(el)
+  videoSectionObservedEl = el
 }
-
-function startVideoSectionHeightSync() {
-  if (videoSectionHeightRafId) cancelAnimationFrame(videoSectionHeightRafId)
-  videoSectionHeightRafEnd = Date.now() + VIDEO_SIZE_TRANSITION_MS + 50
-  videoSectionHeightRafId = requestAnimationFrame(runVideoSectionHeightSync)
+function teardownVideoSectionResizeObserver() {
+  if (videoSectionResizeObserver && videoSectionObservedEl) {
+    videoSectionResizeObserver.unobserve(videoSectionObservedEl)
+  }
+  videoSectionResizeObserver = null
+  videoSectionObservedEl = null
 }
 
 const openVideo = () => {
@@ -1154,12 +1162,26 @@ const openVideo = () => {
 watch(showVideoSection, (visible) => {
   if (visible) {
     videoFormat.value = 'large'
-    nextTick(updateVideoSectionHeightPx)
+    nextTick(() => {
+      updateVideoSectionHeightPx()
+      setupVideoSectionResizeObserver()
+    })
+  } else {
+    teardownVideoSectionResizeObserver()
   }
 })
 watch([videoFormat], () => {
-  nextTick(updateVideoSectionHeightPx)
-  startVideoSectionHeightSync()
+  nextTick(() => {
+    updateVideoSectionHeightPx()
+    setupVideoSectionResizeObserver()
+  })
+})
+watch(videoSectionRef, (el) => {
+  if (showVideoSection.value && el) {
+    nextTick(() => setupVideoSectionResizeObserver())
+  } else if (!el) {
+    teardownVideoSectionResizeObserver()
+  }
 })
 
 const nextQuestion = () => {
@@ -1201,7 +1223,7 @@ document.addEventListener('touchmove', handleDragMove, { passive: false })
 document.addEventListener('touchend', handleDragEnd)
 
 onUnmounted(() => {
-  // Clean up event listeners
+  teardownVideoSectionResizeObserver()
   document.removeEventListener('mousemove', handleDragMove)
   document.removeEventListener('mouseup', handleDragEnd)
   document.removeEventListener('touchmove', handleDragMove)
@@ -1332,18 +1354,14 @@ onUnmounted(() => {
 
       <!-- Right: Panel (Courses view) -->
       <div class="review-panel">
-        <!-- Header: back, Courses + book icon, sound -->
-        <header class="panel-header">
-          <div class="header-icon-container">
-            <CcIcon :name="icons.back" :size="20" />
+        <!-- SidebarHeader: left placeholder | Title (book + Courses) | right placeholder -->
+        <header class="panel-header sidebar-header">
+          <div class="sidebar-header-left" aria-hidden="true" />
+          <div class="sidebar-header-title">
+            <img :src="baseUrl + 'icons/book-mark-aqua.png'" alt="" class="sidebar-header-icon" width="24" height="24" aria-hidden="true" />
+            <span class="sidebar-header-text">Courses</span>
           </div>
-          <div class="header-title">
-            <CcIcon name="document-book-blank" :size="24" class="panel-header-icon" />
-            <span>Courses</span>
-          </div>
-          <div class="header-icon-container">
-            <CcIcon :name="icons.sound" :size="20" />
-          </div>
+          <div class="sidebar-header-right" aria-hidden="true" />
         </header>
 
         <!-- Content: Course Cards (spec), then progress, lines, sections -->
@@ -1373,13 +1391,7 @@ onUnmounted(() => {
             <div
               class="video-placeholder-frame"
               :class="{ 'video-placeholder-frame--dragging': isResizingVideo }"
-              :style="{
-                width: videoFrameWidth + 'px',
-                height: videoFrameHeight + 'px',
-                backgroundImage: 'url(' + videoPlaceholderImageUrl + ')',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }"
+              :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px' }"
             >
               <Transition name="video-play-fade">
                 <button
@@ -1497,7 +1509,7 @@ onUnmounted(() => {
               </div>
             </div>
             <!-- Less button – under advanced stats (variations list) when expanded -->
-            <div v-show="showMoreStats" class="advanced-stats-expanded" data-name="AdvancedStatsExpanded">
+            <div ref="lessButtonContainerRef" v-show="showMoreStats" class="advanced-stats-expanded" data-name="AdvancedStatsExpanded">
               <div class="more-btn-wrap-bottom">
                 <button
                   type="button"
@@ -1851,34 +1863,60 @@ body {
   overflow: hidden;
 }
 
-.panel-header {
-  height: 4.8rem;
-  background: var(--color-bg-tertiary);
+/* SidebarHeader – three-column: left (48px) | title (flex) | right (48px); overlay bg; height 48px */
+.panel-header.sidebar-header {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
+  position: relative;
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  align-content: stretch;
+  background: var(--bg-header-overlay, rgba(0, 0, 0, 0.14));
 }
-
-.header-icon-container {
-  width: 4.8rem;
-  height: 4.8rem;
+.sidebar-header-left,
+.sidebar-header-right {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-icon-default);
-  cursor: pointer;
+  width: var(--size-12, 48px);
+  min-width: var(--size-12, 48px);
+  height: 100%;
+  padding: var(--space-3, 12px);
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
-
-.header-title {
-  flex: 1;
+.sidebar-header-title {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: var(--space-8);
+  gap: 8px;
+  flex: 1 0 0;
+  min-width: 1px;
+  min-height: 1px;
+  position: relative;
+}
+.sidebar-header-icon {
+  flex-shrink: 0;
+  width: var(--size-6, 24px);
+  height: var(--size-6, 24px);
+  display: block;
+  object-fit: contain;
+}
+.sidebar-header-text {
+  font-family: var(--font-chess-sans-bold, var(--font-family-system, system-ui, sans-serif));
+  font-size: var(--text-lg, 17px);
+  line-height: var(--leading-5, 20px);
   font-weight: 700;
-  font-size: 17px;
-  line-height: 20px;
-  color: var(--color-text-boldest);
+  color: var(--text-primary-white, #ffffff);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 20px;
+  flex-shrink: 0;
 }
 
 .lessons-icon {
@@ -1896,10 +1934,6 @@ body {
   gap: var(--space-16);
   position: relative;
   overflow: visible;
-}
-
-.panel-header-icon {
-  color: var(--color-icon-default);
 }
 
 /* Courses view – scrollable body (header and both footer sections stay fixed) */
@@ -2031,7 +2065,6 @@ body {
   background: #000;
   position: relative;
   transition: width 0.25s ease, height 0.25s ease;
-  background-repeat: no-repeat;
 }
 .video-placeholder-frame--dragging {
   transition: none;
@@ -2866,12 +2899,12 @@ body {
   background-color: unset;
 }
 
-/* Buttons container – column, 8px gap, align start */
+/* Buttons container – column, 12px gap, align start */
 .footer-buttons-container {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   min-width: 0;
   position: relative;
