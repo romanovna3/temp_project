@@ -15,11 +15,13 @@ provide('design-system-key', {
 })
 import { playSound } from './lib/playSound.js'
 
-const videoPlaceholderImageUrl = import.meta.env.BASE_URL + 'course-cover-gotham.png'
+// Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
+const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
+const videoPlaceholderImageUrl = baseUrl + 'course-cover-gotham.png'
 
 // Courses data (right panel – Courses view, Practice Filter node 1-10063)
 const courses = [
-  { id: 1, title: "The Master's Hand: Capablanca's Endgame Technique", instructor: 'GM Alex Colovich', lines: 120, thumbnail: '/course-cover-gotham.png' },
+  { id: 1, title: "The Master's Hand: Capablanca's Endgame Technique", instructor: 'GM Alex Colovich', lines: 120, thumbnail: 'course-cover-gotham.png' },
 ]
 
 // Lines filter options (label only the value – "Show " is separate)
@@ -1355,7 +1357,7 @@ onUnmounted(() => {
             <span class="course-cards-border" aria-hidden="true" />
             <div class="course-cover" data-name="Cover Image" aria-hidden="true">
               <div class="course-cover-wrapper" aria-hidden="true">
-                <img v-if="course.thumbnail" :src="course.thumbnail" class="course-cover-img" alt="" />
+                <img v-if="course.thumbnail" :src="baseUrl + course.thumbnail" class="course-cover-img" alt="" />
               </div>
             </div>
             <div class="course-title-author" data-name="Title + Author">
