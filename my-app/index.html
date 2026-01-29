@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-mode">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Juicy Learn | Chess Prototype</title>
+    <!-- CRITICAL: Initialize globals BEFORE any modules load (WEB-DS-PACKAGE-SETUP) -->
+    <script>
+      window.chesscom = window.chesscom || { features: [], settings: {} };
+      window.context = window.context || {};
+    </script>
+    <style>
+      html { box-sizing: border-box; font-size: 62.5%; }
+      *, *::before, *::after { box-sizing: inherit; }
+      body {
+        margin: 0;
+        background-color: var(--color-bg-primary, #312e2b);
+        color: var(--color-text-default, #fff);
+        font-family: var(--font-family-system, 'Chess Sans', system-ui, sans-serif);
+      }
+      h1, h2, h3, h4, h5, h6 { margin: 0; padding: 0; }
+      p { margin: 0; padding: 0; }
+      a { color: inherit; text-decoration: none; }
+      button, a { cursor: pointer; }
+      #app { min-height: 100vh; }
+    </style>
+  </head>
+  <!-- Dark mode by default: html + body have .dark-mode so DS tokens resolve to dark theme -->
+  <body class="dark-mode">
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
