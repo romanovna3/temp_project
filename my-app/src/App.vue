@@ -299,10 +299,13 @@ const lesson = {
   ],
 }
 
+// Standard chess starting position (board by default before first puzzle)
+const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+
 // ============================================
 // GAME STATE
 // ============================================
-const currentQuestionIndex = ref(0)
+const currentQuestionIndex = ref(-1) // -1 = show starting board; 0+ = puzzle index
 const questionState = ref('intro') // 'intro', 'wrong', 'hint', 'solution'
 const streak = ref(0)
 const selectedSquare = ref(null)
@@ -331,12 +334,17 @@ const progressBarRef = ref(null)      // Reference to progress bar element
 const explosionTop = ref(168)         // Y position for explosion, updated dynamically
 
 // Computed
-const currentQuestion = computed(() => lesson.questions[currentQuestionIndex.value])
+const currentQuestion = computed(() => {
+  const i = currentQuestionIndex.value
+  return i >= 0 ? lesson.questions[i] : null
+})
 const totalChallenges = computed(() => lesson.questions.length)
-const currentChallenge = computed(() => currentQuestionIndex.value + 1)
+const currentChallenge = computed(() => Math.max(0, currentQuestionIndex.value + 1))
 // Actual progress (internal)
 const actualProgress = computed(() => {
-  const completed = currentQuestionIndex.value + (questionState.value === 'solution' ? 1 : 0)
+  const i = currentQuestionIndex.value
+  if (i < 0) return 0
+  const completed = i + (questionState.value === 'solution' ? 1 : 0)
   return (completed / totalChallenges.value) * 100
 })
 // Displayed progress (synced with explosion animation at 1350ms)
@@ -347,6 +355,7 @@ const lessonName = computed(() => lesson.name)
 // Coach message based on state
 const coachMessage = computed(() => {
   const q = currentQuestion.value
+  if (!q) return 'Click Next to start the lesson.'
   switch (questionState.value) {
     case 'intro': return q.intro
     case 'wrong': return q.wrong
@@ -358,13 +367,14 @@ const coachMessage = computed(() => {
 
 // Coach bubble state based on question state
 const coachState = computed(() => {
+  const q = currentQuestion.value
   switch (questionState.value) {
     case 'intro':
     case 'hint':
-      // Determine which side to move from FEN (w = white, b = black)
-      const fen = currentQuestion.value.fen
+      if (!q) return 'white-to-move'
+      const fen = q.fen
       const parts = fen.split(' ')
-      const sideToMove = parts[1] || 'w' // Default to white if not specified
+      const sideToMove = parts[1] || 'w'
       return sideToMove === 'w' ? 'white-to-move' : 'black-to-move'
     case 'wrong':
       return 'incorrect'
@@ -378,14 +388,14 @@ const coachState = computed(() => {
 // Move notation for correct/incorrect states
 const moveNotation = computed(() => {
   if (!lastMove.value) return ''
-  // Format: piece + destination square (e.g., "Rxd6", "Kg2", "e4")
-  const correct = currentQuestion.value.correctMove
+  const q = currentQuestion.value
+  if (!q) return ''
+  const correct = q.correctMove
   const piece = correct.piece || ''
   const to = questionState.value === 'wrong' ? lastMove.value.to : correct.to
   // For non-pawn pieces, prepend the piece letter
   if (piece && piece !== 'P') {
-    // Check if it's a capture (different source column)
-    const isCapture = questionState.value === 'solution' && currentQuestion.value.solution.toLowerCase().includes('capture')
+    const isCapture = questionState.value === 'solution' && q.solution.toLowerCase().includes('capture')
     return isCapture ? `${piece}x${to}` : `${piece}${to}`
   }
   return to
@@ -528,14 +538,22 @@ const parseFEN = (fen) => {
   return result
 }
 
-// Load question position
+// Load question position (index >= 0). For index -1 use setBoardToDefault().
 const loadQuestion = (index) => {
   const q = lesson.questions[index]
+  if (!q) return
   pieces.value = parseFEN(q.fen)
   questionState.value = 'intro'
   selectedSquare.value = null
   lastMove.value = null
-  // Clear checkmate highlight when loading new question
+  checkmateHighlight.value = null
+}
+
+function setBoardToDefault() {
+  pieces.value = parseFEN(STARTING_FEN)
+  questionState.value = 'intro'
+  selectedSquare.value = null
+  lastMove.value = null
   checkmateHighlight.value = null
 }
 
@@ -570,9 +588,9 @@ const isWrongMove = (square) => {
 // MOVE HANDLING
 // ============================================
 const handleSquareClick = (square) => {
-  // If already solved, don't allow more moves
+  if (currentQuestionIndex.value < 0) return
   if (questionState.value === 'solution') return
-  
+
   const piece = getPieceOnSquare(square)
   
   // If no piece selected yet
@@ -850,8 +868,9 @@ const triggerCheckmateAnimation = (kingSquare, isBlackKing, onComplete) => {
 
 // Try to make a move (used by both click and drag)
 const tryMove = (from, to) => {
+  if (currentQuestionIndex.value < 0 || !currentQuestion.value) return false
   if (questionState.value === 'solution') return false
-  
+
   const movingPiece = getPieceOnSquare(from)
   if (!movingPiece || !movingPiece.type.startsWith('w')) return false
   
@@ -923,8 +942,9 @@ const tryMove = (from, to) => {
 // DRAG & DROP
 // ============================================
 const handleDragStart = (event, square) => {
+  if (currentQuestionIndex.value < 0) return
   if (questionState.value === 'solution') return
-  
+
   const piece = getPieceOnSquare(square)
   if (!piece || !piece.type.startsWith('w')) return
   
@@ -997,14 +1017,16 @@ const isPieceDragged = (square) => {
 // ACTIONS
 // ============================================
 const handleHint = () => {
+  if (!currentQuestion.value) return
   if (questionState.value === 'solution') return
   streak.value = 0 // Reset streak on hint
   questionState.value = 'hint'
 }
 
 const showSolution = () => {
-  // Show the solution (correct move) and transition to solution state
-  const correct = currentQuestion.value.correctMove
+  const q = currentQuestion.value
+  if (!q) return
+  const correct = q.correctMove
   makeMove(correct.from, correct.to)
   questionState.value = 'solution'
   lastMove.value = { from: correct.from, to: correct.to }
@@ -1185,6 +1207,13 @@ watch(videoSectionRef, (el) => {
 })
 
 const nextQuestion = () => {
+  if (currentQuestionIndex.value === -1) {
+    currentQuestionIndex.value = 0
+    loadQuestion(0)
+    displayedProgress.value = actualProgress.value
+    displayedStreak.value = streak.value
+    return
+  }
   if (currentQuestionIndex.value < totalChallenges.value - 1) {
     currentQuestionIndex.value++
     loadQuestion(currentQuestionIndex.value)
@@ -1199,6 +1228,13 @@ const handleComplete = () => {
 }
 
 const prevQuestion = () => {
+  if (currentQuestionIndex.value === 0) {
+    currentQuestionIndex.value = -1
+    setBoardToDefault()
+    displayedProgress.value = 0
+    displayedStreak.value = streak.value
+    return
+  }
   if (currentQuestionIndex.value > 0) {
     currentQuestionIndex.value--
     loadQuestion(currentQuestionIndex.value)
@@ -1210,8 +1246,8 @@ const prevQuestion = () => {
 // ============================================
 // INITIALIZATION
 // ============================================
-// Load first question immediately during setup (fixes HMR issues)
-loadQuestion(0)
+// Board by default: show standard starting position; user clicks Next to start first puzzle
+setBoardToDefault()
 displayedProgress.value = 0
 displayedStreak.value = 0
 
