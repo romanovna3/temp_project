@@ -44,23 +44,23 @@ cd my-app
 npm run dev
 ```
 
-### 4. Deploy to share (GitHub Pages)
+### 4. Serve the website from GitHub Pages
 
-1. **Create a GitHub repo** (e.g. `my-chess-prototype`) and push your code:
+1. **Enable GitHub Pages**  
+   On GitHub: open **romanovna3/temp_project** → **Settings** → **Pages**.  
+   Under **Build and deployment**, set **Source** to **GitHub Actions**.
 
-   ```bash
-   git remote add origin https://github.com/YOUR_USERNAME/my-chess-prototype.git
-   git push -u origin main
-   ```
+2. **Add NPM token** (needed to install `@chesscom` design system in CI)  
+   **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.  
+   - Name: **NPM_TOKEN**  
+   - Value: a GitHub Personal Access Token (classic) with scope **read:packages** (and **repo** if the package is in a private repo).
 
-2. **Add NPM token** (needed for `@chesscom` design system):  
-   Repo **Settings → Secrets and variables → Actions** → **New repository secret** → name: **NPM_TOKEN**, value: your GitHub PAT with `read:packages`.
+3. **Deploy**  
+   Push to `main` (or re-run the **Deploy to GitHub Pages** workflow from the **Actions** tab).  
+   The workflow builds the app and deploys it to GitHub Pages.
 
-3. **Turn on GitHub Pages**:  
-   Repo **Settings → Pages** → **Source**: **GitHub Actions**.
-
-4. **Deploy**: Push to `main`. The workflow builds and deploys automatically.  
-   Your app will be at: **`https://YOUR_USERNAME.github.io/YOUR_REPO_NAME/`**
+4. **Your live site**  
+   After the workflow succeeds: **https://romanovna3.github.io/temp_project/**
 
 ## Daily workflow
 
