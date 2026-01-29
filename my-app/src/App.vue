@@ -588,56 +588,66 @@ const isWrongMove = (square) => {
 // MOVE HANDLING
 // ============================================
 const handleSquareClick = (square) => {
-  if (currentQuestionIndex.value < 0) return
-  if (questionState.value === 'solution') return
+  if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
-  
+
   // If no piece selected yet
   if (!selectedSquare.value) {
-    // Can only select white pieces (player plays as white)
     if (piece && piece.type.startsWith('w')) {
       selectedSquare.value = square
     }
     return
   }
-  
+
   // If clicking same square, deselect
   if (selectedSquare.value === square) {
     selectedSquare.value = null
     return
   }
-  
+
   // If clicking another white piece, select that instead
   if (piece && piece.type.startsWith('w')) {
     selectedSquare.value = square
     return
   }
-  
+
   // Attempt move
   const from = selectedSquare.value
   const to = square
   const movingPiece = getPieceOnSquare(from)
-  
+
   if (!movingPiece) {
     selectedSquare.value = null
     return
   }
-  
-  // Check if this is the correct move
+
+  // Default board (index -1): free play – any legal move executes
+  if (currentQuestionIndex.value < 0) {
+    if (!isLegalMove(from, to)) {
+      selectedSquare.value = null
+      return
+    }
+    const isCapture = getPieceOnSquare(to) !== undefined
+    makeMove(from, to)
+    lastMove.value = { from, to }
+    playSound(isCapture ? 'capture' : 'move')
+    selectedSquare.value = null
+    return
+  }
+
+  // Puzzle mode: check correct move
   const correct = currentQuestion.value.correctMove
   if (from === correct.from && to === correct.to) {
-    // Correct move!
     makeMove(from, to)
     streak.value++
     questionState.value = 'solution'
     lastMove.value = { from, to }
   } else {
-    // Wrong move - reset streak
     streak.value = 0
     questionState.value = 'wrong'
   }
-  
+
   selectedSquare.value = null
 }
 
@@ -868,18 +878,25 @@ const triggerCheckmateAnimation = (kingSquare, isBlackKing, onComplete) => {
 
 // Try to make a move (used by both click and drag)
 const tryMove = (from, to) => {
-  if (currentQuestionIndex.value < 0 || !currentQuestion.value) return false
-  if (questionState.value === 'solution') return false
+  if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return false
 
   const movingPiece = getPieceOnSquare(from)
   if (!movingPiece || !movingPiece.type.startsWith('w')) return false
-  
-  // Check if move is legal according to chess rules
+
   if (!isLegalMove(from, to)) {
-    return false // Illegal move - don't allow it
+    return false
   }
-  
-  // Check if this is the correct move
+
+  // Default board (index -1): free play – execute any legal move
+  if (currentQuestionIndex.value < 0) {
+    const isCapture = getPieceOnSquare(to) !== undefined
+    makeMove(from, to)
+    lastMove.value = { from, to }
+    playSound(isCapture ? 'capture' : 'move')
+    return true
+  }
+
+  // Puzzle mode: check correct move
   const correct = currentQuestion.value.correctMove
   if (from === correct.from && to === correct.to) {
     // Check if it's a capture (piece on target square)
@@ -942,8 +959,7 @@ const tryMove = (from, to) => {
 // DRAG & DROP
 // ============================================
 const handleDragStart = (event, square) => {
-  if (currentQuestionIndex.value < 0) return
-  if (questionState.value === 'solution') return
+  if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
   if (!piece || !piece.type.startsWith('w')) return
