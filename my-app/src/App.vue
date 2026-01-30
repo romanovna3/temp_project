@@ -50,8 +50,7 @@ const masteryPercent = computed(() =>
 // Panel view: in course view hide lesson action buttons (show only toolbar)
 const showLessonActions = ref(true)
 
-// Practice All button badge count (V6Button)
-const practiceAllBadgeCount = ref(32)
+// Practice button badge uses practiceReadyCount (computed from sectionMoves)
 
 // More button: show/hide additional mastery stats (8 Mastery Level items)
 const showMoreStats = ref(false)
@@ -86,6 +85,49 @@ function toggleSection(sectionId) {
 }
 function isSectionExpanded(sectionId) {
   return expandedSectionIds.value.has(sectionId)
+}
+
+// Panel view: 'courses' (course card, sections, lines) or 'line' (single Line screen, content empty for now)
+const panelView = ref('courses')
+const selectedLine = ref(null) // { section, move } when in Line view
+function openLine(section, move) {
+  selectedLine.value = { section, move }
+  panelView.value = 'line'
+}
+function backToCourses() {
+  panelView.value = 'courses'
+  selectedLine.value = null
+}
+
+// Line view: chess move rows (Figma 32-7715). Placeholder data; replace with real line moves later.
+const lineViewMoves = ref([
+  { number: 1, white: 'd4', black: 'd5' },
+  { number: 2, white: 'c4', black: 'e6' },
+  { number: 3, white: 'Nc3', black: 'Nf6' },
+  { number: 4, white: 'Bg5', black: 'Be7' },
+])
+const selectedPly = ref({ moveIndex: 0, side: 'white' })
+function isPlySelected(moveIndex, side) {
+  return selectedPly.value.moveIndex === moveIndex && selectedPly.value.side === side
+}
+function selectPly(moveIndex, side) {
+  selectedPly.value = { moveIndex, side }
+}
+function selectNextPly() {
+  const { moveIndex, side } = selectedPly.value
+  if (side === 'white') {
+    selectedPly.value = { moveIndex, side: 'black' }
+  } else if (moveIndex + 1 < lineViewMoves.value.length) {
+    selectedPly.value = { moveIndex: moveIndex + 1, side: 'white' }
+  }
+}
+function selectPreviousPly() {
+  const { moveIndex, side } = selectedPly.value
+  if (side === 'black') {
+    selectedPly.value = { moveIndex, side: 'white' }
+  } else if (moveIndex > 0) {
+    selectedPly.value = { moveIndex: moveIndex - 1, side: 'black' }
+  }
 }
 
 /** Progress % for a section (0–100), used by the circular progress bar on each row. */
@@ -181,6 +223,12 @@ const courseSections = [
   { id: 'quiz', name: 'Quiz', completed: 0, total: 2, status: 'not_started' },
 ]
 
+// Count of Ready item Lines (completed moves without level) for Practice button badge
+const practiceReadyCount = computed(() => {
+  const moves = Object.values(sectionMoves).flat()
+  return moves.filter(m => m.completed && !m.level).length
+})
+
 // Icon names from Figma design
 const icons = {
   // Header icons (20px)
@@ -188,6 +236,11 @@ const icons = {
   sound: 'media-audio-speaker-noise',
   // Board sidebar (20px)
   settings: 'utility-cogwheel',
+  // Footer toolbar: ellipsis (more options)
+  ellipsis: 'mark-ellipsis-horizontal',
+  // Video toggle in toolbar (20px)
+  videoOn: 'media-camera-video-on',
+  videoOff: 'media-camera-video-off',
   // Button icons (24px)
   video: 'media-camera-video-on',
   hint: 'device-bulb-glow',
@@ -1406,17 +1459,28 @@ onUnmounted(() => {
 
       <!-- Right: Panel (Courses view) -->
       <div class="review-panel">
-        <!-- SidebarHeader: left placeholder | Title (book + Courses) | right placeholder -->
+        <!-- SidebarHeader: left (back when Line view) | Title (book + Courses) | right placeholder -->
         <header class="panel-header sidebar-header">
-          <div class="sidebar-header-left" aria-hidden="true" />
-          <div class="sidebar-header-title">
-            <img :src="baseUrl + 'icons/book-mark-aqua.png'" alt="" class="sidebar-header-icon" width="24" height="24" aria-hidden="true" />
-            <span class="sidebar-header-text">Courses</span>
+          <div class="sidebar-header-left">
+            <button
+              v-if="panelView === 'line'"
+              type="button"
+              class="sidebar-header-back"
+              aria-label="Back to course"
+              @click="backToCourses"
+            >
+              <CcIcon :name="icons.back" variant="glyph" :size="20" />
+            </button>
+          </div>
+          <div class="sidebar-header-title" :class="{ 'sidebar-header-title--line': panelView === 'line' }">
+            <img v-if="panelView === 'courses'" :src="baseUrl + 'icons/book-mark-aqua.png'" alt="" class="sidebar-header-icon" width="24" height="24" aria-hidden="true" />
+            <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' }">{{ panelView === 'line' ? (selectedLine?.move?.text ?? 'Line') : 'Courses' }}</span>
           </div>
           <div class="sidebar-header-right" aria-hidden="true" />
         </header>
 
-        <!-- Content: Course Cards (spec), then progress, lines, sections -->
+        <!-- Content: Courses view (course card, progress, sections, lines) or Line view (empty for now) -->
+        <template v-if="panelView === 'courses'">
         <div ref="coursesContentRef" class="panel-content courses-content">
           <div
             v-for="course in courses"
@@ -1647,10 +1711,11 @@ onUnmounted(() => {
                       v-for="move in getSectionMoves(section)"
                       :key="`${section.id}-${move.id}`"
                       class="move-item"
-                  :class="{ 'move-item--inactive': !move.completed }"
-                  role="listitem"
-                  data-name="Move Item"
-                >
+                      :class="{ 'move-item--inactive': !move.completed }"
+                      role="listitem"
+                      data-name="Move Item"
+                      @click="openLine(section, move)"
+                    >
                   <div class="move-item-content">
                     <div class="move-item-inner">
                       <div class="move-item-plys">
@@ -1682,6 +1747,54 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+        </template>
+        <template v-else-if="panelView === 'line'">
+          <div class="panel-content courses-content line-view-content">
+            <!-- CoachNew – coach message / ready state at top of Line screen -->
+            <section class="coach-new" data-name="CoachNew">
+              <div class="coach-new-card" data-name="Quiz">
+                <div class="coach-new-inner">
+                  <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
+                  <div class="coach-new-message">
+                    <div class="coach-new-header">
+                      <span class="coach-new-title">Ready?</span>
+                    </div>
+                    <p class="coach-new-body">These are the moves you'll learn. Review them and let's start whenever you're ready</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <!-- Move rows – chess notation (Figma 32-7715) -->
+            <div class="line-view-moves">
+              <div
+                v-for="(pair, idx) in lineViewMoves"
+                :key="idx"
+                class="move-row"
+                data-name="Move"
+              >
+                <span class="move-number">{{ pair.number }}.</span>
+                <div class="ply-pair">
+                  <div class="ply-classification">
+                    <span class="ply-classification-placeholder" aria-hidden="true" />
+                    <span
+                      class="ply-chip"
+                      :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
+                      @click="selectPly(idx, 'white')"
+                    >{{ pair.white }}</span>
+                  </div>
+                  <div class="ply-classification">
+                    <span class="ply-classification-placeholder" aria-hidden="true" />
+                    <span
+                      class="ply-chip"
+                      :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') }"
+                      @click="selectPly(idx, 'black')"
+                    >{{ pair.black }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
 
         <!-- Buttons section – direct child of review-panel (index 2), before footer -->
         <section class="footer-section footer-section-actions">
@@ -1693,24 +1806,19 @@ onUnmounted(() => {
               </template>
               <template v-else-if="questionState === 'wrong'">
                 <div class="footer-buttons-row footer-buttons-row-split">
-                  <CcButton variant="secondary" size="large" @click="openVideo">{{ showVideoSection ? 'Hide Video' : 'Video' }}</CcButton>
                   <CcButton variant="secondary" size="large" :icon="{ name: 'circle-fill-question', variant: 'glyph' }" @click="showSolution">Solution</CcButton>
                   <CcButton variant="danger" size="large" :icon="{ name: 'arrow-spin-undo', variant: 'glyph' }" @click="handleRetry">Retry</CcButton>
                 </div>
               </template>
               <template v-else>
-                <!-- Top row: Video + Learn (equal width) -->
+                <!-- Single row: Continue (left) + Practice (count) (right) -->
                 <div class="footer-buttons-row footer-buttons-row-split">
-                  <CcButton variant="secondary" size="large" @click="openVideo" class="footer-btn-equal">{{ showVideoSection ? 'Hide Video' : 'Video' }}</CcButton>
-                  <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn</CcButton>
-                </div>
-                <!-- Bottom row: Practice All (full width) -->
-                <div class="footer-buttons-row footer-buttons-row-full">
-                  <button type="button" class="v6-btn-practice-all cc-button-component cc-button-primary cc-button-large cc-bg-primary footer-btn-full" data-name="V6 Button" aria-label="Practice All">
-                    <span class="v6-btn-practice-all-text">Practice All</span>
+                  <CcButton variant="secondary" size="large" class="footer-btn-equal">Continue</CcButton>
+                  <button type="button" class="v6-btn-practice-all cc-button-component cc-button-primary cc-button-large cc-bg-primary footer-btn-equal" data-name="V6 Button" aria-label="Practice">
+                    <span class="v6-btn-practice-all-text">Practice</span>
                     <span class="v6-btn-practice-all-badge-frame">
                       <span class="v6-btn-practice-all-badge">
-                        <span class="v6-btn-practice-all-badge-text">{{ practiceAllBadgeCount }}</span>
+                        <span class="v6-btn-practice-all-badge-text">{{ practiceReadyCount }}</span>
                       </span>
                     </span>
                   </button>
@@ -1719,24 +1827,27 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <!-- Footer – direct child of review-panel (index 3); contains toolbar only -->
-        <footer class="panel-footer">
-          <section class="footer-section footer-section-toolbar" data-name="Footer">
-            <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
-              <button type="button" class="footer-icon-btn" aria-label="Settings">
-                <CcIcon :name="icons.settings" variant="glyph" :size="20" class="footer-icon" />
-              </button>
-            </div>
-            <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
-              <button type="button" class="footer-icon-btn" aria-label="Previous" @click="prevQuestion">
-                <CcIcon name="arrow-chevron-left" variant="glyph" :size="20" class="footer-icon" />
-              </button>
-              <button type="button" class="footer-icon-btn" aria-label="Next" @click="nextQuestion">
-                <CcIcon name="arrow-chevron-right" variant="glyph" :size="20" class="footer-icon" />
-              </button>
-            </div>
-          </section>
-        </footer>
+        <!-- Toolbar – direct child of review-panel (index 2); icons row before footer -->
+        <section class="footer-section footer-section-toolbar" data-name="Footer">
+          <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
+            <button type="button" class="footer-icon-btn" aria-label="More options">
+              <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
+            </button>
+            <button type="button" class="footer-icon-btn" :aria-label="showVideoSection ? 'Hide video' : 'Show video'" @click="openVideo">
+              <CcIcon :name="showVideoSection ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
+            </button>
+          </div>
+          <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
+            <button type="button" class="footer-icon-btn" aria-label="Previous" @click="panelView === 'line' ? selectPreviousPly() : prevQuestion()">
+              <CcIcon name="arrow-chevron-left" variant="glyph" :size="20" class="footer-icon" />
+            </button>
+            <button type="button" class="footer-icon-btn" aria-label="Next" @click="panelView === 'line' ? selectNextPly() : nextQuestion()">
+              <CcIcon name="arrow-chevron-right" variant="glyph" :size="20" class="footer-icon" />
+            </button>
+          </div>
+        </section>
+
+        <footer class="panel-footer" />
       </div>
     </div>
   </div>
@@ -1940,6 +2051,21 @@ body {
   flex-shrink: 0;
   box-sizing: border-box;
 }
+.sidebar-header-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-icon-default, rgba(255, 255, 255, 0.72));
+  cursor: pointer;
+}
+.sidebar-header-back:hover {
+  color: var(--color-text-primary, rgba(255, 255, 255, 0.85));
+}
 .sidebar-header-title {
   display: flex;
   flex-direction: row;
@@ -1969,6 +2095,162 @@ body {
   text-overflow: ellipsis;
   max-height: 20px;
   flex-shrink: 0;
+}
+.sidebar-header-title--line .sidebar-header-text--truncate {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* CoachNew – coach message / ready state (Line view, Figma 32-5549) */
+.coach-new {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--space-3, 12px) 16px;
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+  background: var(--bg-coach-gradient, linear-gradient(to bottom, #1e1d1a, rgba(38, 36, 33, 0)));
+}
+.coach-new-card {
+  position: relative;
+  width: 100%;
+  min-height: var(--size-9, 36px);
+  flex-shrink: 0;
+  background: var(--bg-white, #ffffff);
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-subtle-white, rgba(255, 255, 255, 0.05));
+}
+.coach-new-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: 10px;
+  min-height: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+.coach-new-icon {
+  flex-shrink: 0;
+  width: var(--size-8, 32px);
+  height: var(--size-8, 32px);
+  display: block;
+  object-fit: contain;
+}
+.coach-new-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-1, 4px);
+  flex: 1 0 0;
+  min-width: 1px;
+  min-height: 1px;
+  position: relative;
+}
+.coach-new-header {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  position: relative;
+  flex-shrink: 0;
+}
+.coach-new-title {
+  font-family: var(--font-system-semibold, system-ui, sans-serif);
+  font-size: var(--text-xl, 18px);
+  line-height: var(--leading-6, 24px);
+  font-weight: 600;
+  color: var(--text-dark-primary, #312e2b);
+  flex-shrink: 0;
+}
+.coach-new-body {
+  margin: 0;
+  font-family: var(--font-system-medium, system-ui, sans-serif);
+  font-size: var(--text-base, 15px);
+  line-height: var(--leading-5, 20px);
+  font-weight: 500;
+  color: var(--text-dark-primary, #312e2b);
+  width: 100%;
+  white-space: pre-wrap;
+  flex-shrink: 0;
+}
+
+/* Line view: chess move rows (Figma 32-7715 – Move / Chess Move Notation Row) */
+.line-view-moves {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex-shrink: 0;
+}
+.move-row {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4, 16px);
+  margin-left: 16px;
+  margin-right: 16px;
+  height: 30px;
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.move-row:nth-child(even) {
+  background: var(--color-bg-subtlest, rgba(255, 255, 255, 0.02));
+}
+.move-number {
+  font-family: var(--font-system-semibold, system-ui, sans-serif);
+  font-size: var(--text-sm, 13px);
+  line-height: var(--leading-4, 16px);
+  font-weight: 600;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.5));
+  width: var(--size-6, 24px);
+  min-width: var(--size-6, 24px);
+  white-space: pre-wrap;
+  flex-shrink: 0;
+}
+.ply-pair {
+  display: flex;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.ply-classification {
+  display: flex;
+  gap: var(--space-1, 4px);
+  align-items: center;
+  width: var(--ply-classification-width, 100px);
+  min-width: var(--ply-classification-width, 100px);
+  position: relative;
+  flex-shrink: 0;
+}
+.ply-classification-placeholder {
+  width: var(--size-4, 16px);
+  height: var(--size-4, 16px);
+  flex-shrink: 0;
+}
+.ply-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border-radius: var(--radius-xs, 2px);
+  overflow: clip;
+  flex-shrink: 0;
+  font-family: var(--font-system-semibold, system-ui, sans-serif);
+  font-size: var(--text-sm-plus, 14px);
+  line-height: var(--leading-4, 16px);
+  font-weight: 600;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+  min-height: 18px;
+  white-space: pre-wrap;
+  cursor: pointer;
+}
+.ply-chip--selected {
+  background: var(--bg-ply-selected, rgba(255, 255, 255, 0.08));
+  box-shadow: var(--shadow-ply-selected, 0 2px 0 0 rgba(255, 255, 255, 0.5));
+  color: var(--text-primary-bright, #ffffff);
 }
 
 .lessons-icon {
@@ -2798,6 +3080,7 @@ body {
   width: 100%;
   align-content: stretch;
   transition: background 0.15s ease;
+  cursor: pointer;
 }
 .move-item:hover {
   background: var(--bg-hover-subtle, rgba(255, 255, 255, 0.02));
@@ -3005,9 +3288,7 @@ body {
   justify-content: space-between;
   background: unset;
   background-color: unset;
-  padding: 12px 16px 8px 16px;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding: 8px 12px 12px 12px;
   align-items: flex-start;
 }
 
@@ -3032,12 +3313,13 @@ body {
   cursor: pointer;
   flex-shrink: 0;
 }
-.footer-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+.footer-icon-btn:hover .footer-icon {
+  color: var(--icon-secondary, rgba(255, 255, 255, 0.72));
 }
 .footer-icon {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--icon-tertiary, rgba(255, 255, 255, 0.5));
   filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.2));
+  transition: color 0.15s ease;
 }
 
 .panel-toolbar-courses {
