@@ -4,6 +4,11 @@ import { computed } from 'vue'
 
 const router = useRouter()
 
+// Show/hide version cards (V1/V2 disabled for now; set to true to re-enable)
+const showV1 = false
+const showV2 = false
+const showV22 = true
+
 // Build/deploy time injected by Vite at build time
 const buildTime = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString()
 
@@ -29,7 +34,9 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
     <div class="index-layout">
       <main class="index-main">
         <div class="project-cards">
+          <!-- V1: hidden when showV1 is false -->
           <article
+            v-if="showV1"
             class="project-card"
             role="button"
             tabindex="0"
@@ -67,7 +74,9 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
               </div>
             </div>
           </article>
+          <!-- V2: hidden when showV2 is false -->
           <article
+            v-if="showV2"
             class="project-card"
             role="button"
             tabindex="0"
@@ -105,7 +114,9 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
               </div>
             </div>
           </article>
+          <!-- V2.2: hidden when showV22 is false -->
           <article
+            v-if="showV22"
             class="project-card"
             role="button"
             tabindex="0"
@@ -143,6 +154,7 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
               </div>
             </div>
           </article>
+          <!-- V3: always visible -->
           <article
             class="project-card"
             role="button"
