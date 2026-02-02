@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   // Use root in dev so http://127.0.0.1:5173/ loads the app; set VITE_BASE for deploy (e.g. /temp_project/my-app/)
   base: process.env.VITE_BASE || (process.env.NODE_ENV === 'development' ? '/' : '/temp_project/my-app/'),
   server: {
