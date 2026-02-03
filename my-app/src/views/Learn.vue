@@ -42,7 +42,7 @@ const progressPercent = computed(() =>
 )
 
 // Mastery bar: level out of 8 sections (fill 3 sections = Level 3)
-const masteryLevel = ref(3)
+const masteryLevel = ref(1)
 const masteryTotal = 8
 const masteryPercent = computed(() =>
   masteryTotal > 0 ? Math.min(100, (masteryLevel.value / masteryTotal) * 100) : 0
@@ -101,11 +101,15 @@ function openLine(section, move) {
   if (coursesContentRef.value != null) {
     savedCoursesScrollTop.value = coursesContentRef.value.scrollTop
   }
+  v3ScrollUpInstantHide.value = true
+  v3ShowScrollUp.value = false
+  clearV3ScrollUpHideTimer()
   selectedLine.value = { section, move }
   panelView.value = 'line'
 }
 function backToCourses() {
   const line = selectedLine.value
+  v3ScrollUpInstantHide.value = false
   if (!line) {
     panelView.value = 'courses'
     return
@@ -272,6 +276,8 @@ const practiceReadyCount = computed(() => {
 const extraDataPracticeIn = ref('1 DAY')
 const extraDataLevelBadge = ref('L1')
 const extraDataLevelName = ref('Rookie')
+const extraDataLevelBadgeNextLevel = ref('L2')
+const extraDataLevelNameNextLevel = ref('Keen Learner')
 
 // Icon names from Figma design
 const icons = {
@@ -1186,6 +1192,8 @@ const v3LastChapterShort = ref(false)
 const v3PaddingBottomPx = ref(null)
 // Show floating "scroll up" button when user has scrolled down (e.g. past ~3 chapters); hides after idle, reappears on any scroll
 const v3ShowScrollUp = ref(false)
+// When true, hide scroll-up instantly (no leave transition) – used when opening a line
+const v3ScrollUpInstantHide = ref(false)
 /** Fallback when there are < 3 chapters or 3rd block ref not ready */
 const V3_SCROLL_UP_THRESHOLD_FALLBACK = 400
 /** Seconds after scroll stops before the button auto-hides (user didn't click it) */
@@ -2662,7 +2670,7 @@ onUnmounted(() => {
         </div>
         <!-- Footer frame: bg/secondary; inner container has primary + overlay -->
         <div class="panel-footer-frame">
-        <div class="panel-footer-container">
+        <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line') }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted'" class="extra-data" data-name="LevelFooter">
             <!-- Completed lines: Practice in + time chip -->
@@ -2698,16 +2706,16 @@ onUnmounted(() => {
               />
             </div>
             <div class="extra-data-next-level" data-name="NextLevel">
-              <span class="extra-data-label">Level:</span>
+              <span class="extra-data-label">Next Level:</span>
               <div class="extra-data-level-chip" data-name="LevelChip">
                 <CcChip
-                  :label="extraDataLevelBadge"
+                  :label="extraDataLevelBadgeNextLevel"
                   color="aqua"
                   variant="translucent"
                   :is-uppercase="false"
                   label-class="extra-data-level-chip-label"
                 />
-                <span class="extra-data-level-name">{{ extraDataLevelName }}</span>
+                <span class="extra-data-level-name">{{ extraDataLevelNameNextLevel }}</span>
               </div>
             </div>
           </div>
@@ -2763,8 +2771,8 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <!-- Icon footer: ellipsis, video, prev/next – Chapter and Lines -->
-          <section class="footer-section footer-section-toolbar" data-name="IconFooter">
+          <!-- Icon footer (3rd footer): Chapter + Line (completed/ready); hidden on Line uncompleted so CTAs get 12px there -->
+          <section v-if="panelView === 'courses' || panelView === 'line'" class="footer-section footer-section-toolbar" data-name="IconFooter">
             <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
               <button type="button" class="footer-icon-btn" aria-label="More options">
                 <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
@@ -2798,21 +2806,23 @@ onUnmounted(() => {
           <footer class="panel-footer" />
         </div>
         </div>
-        <!-- V3 scroll-up button after footer in DOM; z 1 so footer (z 10) stacks on top -->
-        <Transition name="v3-scroll-up">
-          <button
-            v-if="isVideoV3 && panelView === 'courses' && v3ShowScrollUp"
-            type="button"
-            class="v3-scroll-up-btn"
-            aria-label="Scroll to top"
-            @click="scrollV3ToTop"
-            @wheel.prevent="onV3ScrollUpBtnWheel"
-            @touchstart="onV3ScrollUpBtnTouchStart"
-            @touchmove.prevent="onV3ScrollUpBtnTouchMove"
-          >
-            <CcIcon name="arrow-line-top" variant="glyph" :size="20" class="v3-scroll-up-icon" aria-hidden="true" />
-          </button>
-        </Transition>
+        <!-- V3 scroll-up button: wrapper hides instantly when opening a line (no transition delay) -->
+        <div class="v3-scroll-up-wrap" :class="{ 'v3-scroll-up-wrap--instant-hide': v3ScrollUpInstantHide }">
+          <Transition name="v3-scroll-up">
+            <button
+              v-if="isVideoV3 && panelView === 'courses' && v3ShowScrollUp"
+              type="button"
+              class="v3-scroll-up-btn"
+              aria-label="Scroll to top"
+              @click="scrollV3ToTop"
+              @wheel.prevent="onV3ScrollUpBtnWheel"
+              @touchstart="onV3ScrollUpBtnTouchStart"
+              @touchmove.prevent="onV3ScrollUpBtnTouchMove"
+            >
+              <CcIcon name="arrow-line-top" variant="glyph" :size="20" class="v3-scroll-up-icon" aria-hidden="true" />
+            </button>
+          </Transition>
+        </div>
       </div>
     </div>
   </div>
@@ -3384,6 +3394,14 @@ body {
   background: var(--color-bg-secondary);
 }
 
+/* V3 scroll-up wrapper: when opening a line, hide instantly so no transition delay */
+.v3-scroll-up-wrap--instant-hide {
+  opacity: 0;
+  visibility: hidden;
+  transition: none;
+  pointer-events: none;
+}
+
 /* V3: floating scroll-up circle; z 5 = above content (0), below footer (10) */
 .v3-scroll-up-btn {
   position: absolute;
@@ -3609,7 +3627,7 @@ body {
   margin-top: 0.47px;
 }
 
-/* VideoResize – height 16px; bg Material thick dark; inner bar 25% longer (30px) */
+/* VideoResize – height 16px; bg Material thick dark; bg/subtlest overlay on top */
 .video-resize {
   display: flex;
   flex-direction: column;
@@ -3625,6 +3643,13 @@ body {
   user-select: none;
   background: var(--color-gray-900, #1a1a1a);
 }
+.video-resize::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-subtlest, rgba(255, 255, 255, 0.04));
+  pointer-events: none;
+}
 .video-resize:focus {
   outline: 2px solid var(--color-text-link);
   outline-offset: 2px;
@@ -3637,6 +3662,8 @@ body {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 10px;
   pointer-events: none;
+  position: relative;
+  z-index: 1;
 }
 
 /* Progress – Figma node 2-5697 (exact spec: layout, spacing, typography, colors) */
@@ -3645,7 +3672,7 @@ body {
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  gap: 4px;
+  gap: 8px;
   padding: 12px 16px 8px;
   overflow: clip;
 }
@@ -4407,14 +4434,22 @@ body {
   gap: 0;
   margin-top: 0;
   height: fit-content;
-  padding-left: 0;
-  padding-right: 0;
+  padding: 8px 4px 0 4px;
   background-color: rgba(0, 0, 0, 0.14);
   box-sizing: border-box;
 }
 .panel-footer-container > * {
   position: relative;
   z-index: 1;
+}
+/* Uncompleted line (or any state with no level row + no icon footer): align spacing and padding */
+.panel-footer-container--no-icon-footer {
+  padding: 0 12px 0 12px;
+}
+.panel-footer-container--no-icon-footer .footer-section-actions {
+  margin-top: 12px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 /* Level footer: Practice in / Next Level (Lines page only) */
@@ -4423,12 +4458,14 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 8px 16px 4px;
-  margin-top: 4px;
+  padding: 4px 12px 4px 12px;
+  margin-top: 0;
   margin-bottom: 0;
   position: relative;
   width: 100%;
   min-width: 0;
+  height: fit-content;
+  background: unset;
   box-sizing: border-box;
 }
 .extra-data-practice-in {
@@ -4447,9 +4484,9 @@ body {
   align-items: center;
   gap: 4px;
   position: relative;
-  width: 100%;
   min-width: 0;
-  flex: 1 0 0;
+  flex-shrink: 0;
+  height: 20px;
 }
 .extra-data-ready-icon-frame {
   display: flex;
@@ -4500,12 +4537,19 @@ body {
   flex-shrink: 0;
   width: fit-content;
 }
-/* Level / level name: DS text-small-bold (12px / 16px); level name color 72% (DS text/default) */
-.extra-data-next-level .extra-data-label {
+/* Mastery only: Level label + level name – DS text-small-bold (12px / 16px); level name color 72% */
+.course-progress-mastery .extra-data-next-level .extra-data-label {
   font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
+}
+.course-progress-mastery .extra-data-level-name {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--color-text-default, rgba(255, 255, 255, 0.72));
 }
 .extra-data-level-chip {
   display: flex;
@@ -4527,12 +4571,17 @@ body {
   font-size: var(--text-xs, 12px) !important;
   line-height: var(--leading-4, 16px) !important;
 }
-.extra-data-level-name {
+/* Level footer (Lines page): original size/color – 14px label from .extra-data-label, 14px level name */
+.extra-data .extra-data-level-name {
   font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--text-sm-plus, 14px);
+  line-height: var(--leading-4, 16px);
   font-weight: 600;
   color: var(--color-text-default, rgba(255, 255, 255, 0.72));
+  position: relative;
+  flex-shrink: 0;
+}
+.extra-data-level-name {
   position: relative;
   flex-shrink: 0;
 }
@@ -4554,7 +4603,7 @@ body {
   align-items: center;
   width: 100%;
 }
-/* Buttons footer: Continue / Practice */
+/* Buttons footer: 2px top when 3rd footer present; 12px when 3rd footer absent (via --no-icon-footer) */
 .footer-section-actions {
   justify-content: center;
   padding: 12px;
@@ -4562,7 +4611,7 @@ body {
   width: 100%;
   min-width: 0;
   height: 56px;
-  margin: 8px 0 0 0;
+  margin: 2px 0 0 0;
 }
 
 /* Buttons container – column, 12px gap, align start */
@@ -4615,13 +4664,14 @@ body {
 .footer-buttons-row-full > * :deep(button) {
   width: 100%;
 }
-/* Icon footer: ellipsis, video, prev/next */
+/* Icon footer: ellipsis, video, prev/next – 4px less gap above (closer to CTAs) */
 .footer-section-toolbar {
   justify-content: space-between;
   padding: 12px;
   height: 56px;
   margin-left: 0;
   margin-right: 0;
+  margin-top: -4px;
   align-items: flex-start;
 }
 
