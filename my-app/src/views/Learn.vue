@@ -270,8 +270,8 @@ const practiceReadyCount = computed(() => {
 
 // ExtraData (Practice Schedule & Level Progress) – placeholder; wire to real data later
 const extraDataPracticeIn = ref('1 DAY')
-const extraDataLevelBadge = ref('L2')
-const extraDataLevelName = ref('Novice')
+const extraDataLevelBadge = ref('L1')
+const extraDataLevelName = ref('Rookie')
 
 // Icon names from Figma design
 const icons = {
@@ -1184,7 +1184,44 @@ const v3MaxScrollTop = ref(Infinity)
 const v3LastChapterShort = ref(false)
 // When last chapter is short: set padding so max scroll = last chapter at top (no room to scroll past)
 const v3PaddingBottomPx = ref(null)
+// Show floating "scroll up" button when user has scrolled down (e.g. past ~3 chapters); hides after idle, reappears on any scroll
+const v3ShowScrollUp = ref(false)
+/** Fallback when there are < 3 chapters or 3rd block ref not ready */
+const V3_SCROLL_UP_THRESHOLD_FALLBACK = 400
+/** Seconds after scroll stops before the button auto-hides (user didn't click it) */
+const V3_SCROLL_UP_IDLE_HIDE_MS = 2500
 let v3TouchStartY = 0
+let v3ScrollUpHideTimer = null
+
+function clearV3ScrollUpHideTimer() {
+  if (v3ScrollUpHideTimer != null) {
+    clearTimeout(v3ScrollUpHideTimer)
+    v3ScrollUpHideTimer = null
+  }
+}
+
+function scheduleV3ScrollUpHide() {
+  clearV3ScrollUpHideTimer()
+  v3ScrollUpHideTimer = setTimeout(() => {
+    v3ScrollUpHideTimer = null
+    v3ShowScrollUp.value = false
+  }, V3_SCROLL_UP_IDLE_HIDE_MS)
+}
+
+/** Scroll position at which the 3rd chapter "opens" (its block top reaches container top). Uses 3rd section block height if available. */
+function getV3ScrollUpThreshold() {
+  const el = coursesContentRef.value
+  if (!el) return V3_SCROLL_UP_THRESHOLD_FALLBACK
+  const sections = courseSections
+  if (sections.length < 3) return V3_SCROLL_UP_THRESHOLD_FALLBACK
+  const thirdSection = sections[2]
+  const thirdBlock = sectionBlockRefs.value[thirdSection.id]
+  if (!thirdBlock) return V3_SCROLL_UP_THRESHOLD_FALLBACK
+  const containerRect = el.getBoundingClientRect()
+  const blockRect = thirdBlock.getBoundingClientRect()
+  const threshold = el.scrollTop + (blockRect.top - containerRect.top)
+  return Math.max(0, threshold)
+}
 
 function setSectionBlockRef(sectionId, el) {
   // Vue 3 in v-for can pass an array when ref is collected
@@ -1386,12 +1423,52 @@ function onV3TouchMove(e) {
 }
 
 function onV3Scroll() {
+  const el = coursesContentRef.value
+  if (el) {
+    const showThreshold = getV3ScrollUpThreshold()
+    if (el.scrollTop >= showThreshold) {
+      v3ShowScrollUp.value = true
+      scheduleV3ScrollUpHide()
+    } else {
+      v3ShowScrollUp.value = false
+      clearV3ScrollUpHideTimer()
+    }
+  }
   clampV3Scroll()
   if (v3ScrollRaf) return
   v3ScrollRaf = requestAnimationFrame(() => {
     v3ScrollRaf = null
     updateStickySection()
   })
+}
+
+function scrollV3ToTop() {
+  const el = coursesContentRef.value
+  if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+/** Forward wheel/touch scroll from the scroll-up button to the courses content so scrolling works when hovering the icon */
+function onV3ScrollUpBtnWheel(e) {
+  const el = coursesContentRef.value
+  if (!el) return
+  el.scrollTop += e.deltaY
+  el.scrollTop = Math.max(0, Math.min(el.scrollTop, el.scrollHeight - el.clientHeight))
+  e.preventDefault()
+}
+let v3ScrollUpTouchStartY = 0
+function onV3ScrollUpBtnTouchStart(e) {
+  if (e.touches.length) v3ScrollUpTouchStartY = e.touches[0].clientY
+}
+function onV3ScrollUpBtnTouchMove(e) {
+  if (!e.touches.length) return
+  const el = coursesContentRef.value
+  if (!el) return
+  const y = e.touches[0].clientY
+  const delta = v3ScrollUpTouchStartY - y
+  v3ScrollUpTouchStartY = y
+  el.scrollTop += delta
+  el.scrollTop = Math.max(0, Math.min(el.scrollTop, el.scrollHeight - el.clientHeight))
+  e.preventDefault()
 }
 
 function setupV3IntersectionObserver() {
@@ -1728,8 +1805,17 @@ function setupV3ScrollListener() {
   v3ScrollCleanup = null
   v3IntersectionObserver?.disconnect()
   v3IntersectionObserver = null
-  if (!isVideoV3.value || !coursesContentRef.value) return
+  if (!isVideoV3.value || !coursesContentRef.value) {
+    v3ShowScrollUp.value = false
+    clearV3ScrollUpHideTimer()
+    return
+  }
   const el = coursesContentRef.value
+  const showThreshold = getV3ScrollUpThreshold()
+  const at = el.scrollTop >= showThreshold
+  v3ShowScrollUp.value = at
+  if (at) scheduleV3ScrollUpHide()
+  else clearV3ScrollUpHideTimer()
   el.addEventListener('scroll', onV3Scroll, { passive: true })
   el.addEventListener('wheel', onV3Wheel, { passive: false })
   el.addEventListener('touchstart', onV3TouchStart, { passive: true })
@@ -1741,6 +1827,7 @@ function setupV3ScrollListener() {
     el.removeEventListener('touchmove', onV3TouchMove)
     v3IntersectionObserver?.disconnect()
     v3IntersectionObserver = null
+    clearV3ScrollUpHideTimer()
     v3ScrollCleanup = null
   }
   // Section block refs may not be set until after paint; run after refs are in DOM
@@ -1995,10 +2082,23 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Mastery bar – 8 segments, aqua fill, mint gradient overlay; no Learned info -->
+          <!-- Mastery bar – 8 segments, aqua fill, mint gradient overlay; Next Level (same as Line page) in header -->
           <div class="course-progress course-progress-mastery" :class="{ 'course-progress-mastery--more-expanded': showMoreStats }" data-name="Mastery Container">
             <div class="course-progress-header" data-name="Header">
               <span class="course-progress-title">Mastery</span>
+              <div class="course-progress-mastery-next-level extra-data-next-level" data-name="NextLevel">
+                <span class="extra-data-label">Level:</span>
+                <div class="extra-data-level-chip" data-name="LevelChip">
+                  <CcChip
+                    :label="extraDataLevelBadge"
+                    color="aqua"
+                    variant="translucent"
+                    :is-uppercase="false"
+                    label-class="extra-data-level-chip-label"
+                  />
+                  <span class="extra-data-level-name">{{ extraDataLevelName }}</span>
+                </div>
+              </div>
             </div>
             <div class="course-progress-segmented-track" role="progressbar" :aria-valuenow="masteryLevel" :aria-valuemin="0" :aria-valuemax="masteryTotal" aria-label="Mastery: Level {{ masteryLevel }} of {{ masteryTotal }}">
               <div class="course-progress-segmented-segments">
@@ -2148,15 +2248,12 @@ onUnmounted(() => {
                         </div>
                         <div class="chapter-variations">
                           <span class="chapter-count">{{ section.completed }}/{{ section.total }}</span>
-                          <span class="chapter-chevron-wrap" aria-hidden="true">
-                            <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
-                          </span>
                         </div>
                       </div>
                     </button>
                   </div>
-                  <!-- Video under each chapter (same as first) – not sticky, scrolls away -->
-                  <section v-if="showVideoSection" class="video-section video-section--inline" :data-name="`VideoSection-${section.id}`">
+                  <!-- Video under each chapter – hidden for "The Games..." (id: games) only -->
+                  <section v-if="showVideoSection && section.id !== 'games'" class="video-section video-section--inline" :data-name="`VideoSection-${section.id}`">
                     <div
                       class="video-placeholder-frame"
                       :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px', backgroundColor: '#000000' }"
@@ -2563,7 +2660,8 @@ onUnmounted(() => {
         </template>
 
         </div>
-        <!-- Footer container: Level footer (Lines only) + Buttons footer + Icon footer -->
+        <!-- Footer frame: bg/secondary; inner container has primary + overlay -->
+        <div class="panel-footer-frame">
         <div class="panel-footer-container">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted'" class="extra-data" data-name="LevelFooter">
@@ -2600,7 +2698,7 @@ onUnmounted(() => {
               />
             </div>
             <div class="extra-data-next-level" data-name="NextLevel">
-              <span class="extra-data-label">Next Level:</span>
+              <span class="extra-data-label">Level:</span>
               <div class="extra-data-level-chip" data-name="LevelChip">
                 <CcChip
                   :label="extraDataLevelBadge"
@@ -2699,6 +2797,22 @@ onUnmounted(() => {
 
           <footer class="panel-footer" />
         </div>
+        </div>
+        <!-- V3 scroll-up button after footer in DOM; z 1 so footer (z 10) stacks on top -->
+        <Transition name="v3-scroll-up">
+          <button
+            v-if="isVideoV3 && panelView === 'courses' && v3ShowScrollUp"
+            type="button"
+            class="v3-scroll-up-btn"
+            aria-label="Scroll to top"
+            @click="scrollV3ToTop"
+            @wheel.prevent="onV3ScrollUpBtnWheel"
+            @touchstart="onV3ScrollUpBtnTouchStart"
+            @touchmove.prevent="onV3ScrollUpBtnTouchMove"
+          >
+            <CcIcon name="arrow-line-top" variant="glyph" :size="20" class="v3-scroll-up-icon" aria-hidden="true" />
+          </button>
+        </Transition>
       </div>
     </div>
   </div>
@@ -2875,6 +2989,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 /* Wrapper for header + content so footer stays pinned at bottom */
 .panel-main {
@@ -2883,6 +2998,8 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  z-index: 0;
 }
 
 /* SidebarHeader – three-column: left (48px) | title (flex) | right (48px); overlay bg; height 48px */
@@ -3266,6 +3383,58 @@ body {
   flex-shrink: 0;
   background: var(--color-bg-secondary);
 }
+
+/* V3: floating scroll-up circle; z 5 = above content (0), below footer (10) */
+.v3-scroll-up-btn {
+  position: absolute;
+  bottom: 140px;
+  left: 50%;
+  transform: translate(-50%, 0);
+  z-index: 5;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+.v3-scroll-up-btn:hover .v3-scroll-up-icon {
+  color: var(--icon-secondary, rgba(255, 255, 255, 0.72));
+}
+.v3-scroll-up-btn:active {
+  transform: translate(-50%, 0) scale(0.96);
+}
+
+/* V3 scroll-up: slide up from footer when appearing, slide down when disappearing */
+.v3-scroll-up-enter-active,
+.v3-scroll-up-leave-active {
+  transition: transform 0.25s ease;
+}
+.v3-scroll-up-enter-from {
+  transform: translate(-50%, 80px);
+}
+.v3-scroll-up-enter-to {
+  transform: translate(-50%, 0);
+}
+.v3-scroll-up-leave-from {
+  transform: translate(-50%, 0);
+}
+.v3-scroll-up-leave-to {
+  transform: translate(-50%, 80px);
+}
+.v3-scroll-up-icon {
+  flex-shrink: 0;
+  color: var(--icon-tertiary, rgba(255, 255, 255, 0.5));
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.2));
+  transition: color 0.15s ease;
+}
+
 .v3-lines-scroll {
   flex: 1;
   min-height: 0;
@@ -3288,12 +3457,12 @@ body {
   pointer-events: none;
 }
 
-/* Cover Image – 80×80, 3px radius */
+/* Cover Image – 64×64, 3px radius */
 .course-cover {
   position: relative;
-  width: 80px;
-  height: 80px;
-  min-width: 80px;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
   flex-shrink: 0;
   border-radius: 3px;
   overflow: hidden;
@@ -3315,7 +3484,7 @@ body {
   border-radius: 3px;
 }
 
-/* Title + Author section */
+/* Title + Author section – 8px gap between heading and author */
 .course-title-author {
   display: flex;
   flex-direction: column;
@@ -3338,9 +3507,9 @@ body {
 .course-title {
   margin: 0;
   font-family: 'Chess Sans', sans-serif;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 700;
-  line-height: 16px;
+  line-height: 20px;
   color: rgba(255, 255, 255, 0.72);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3476,13 +3645,13 @@ body {
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  gap: 12px;
+  gap: 4px;
   padding: 12px 16px 8px;
   overflow: clip;
 }
 .course-progress-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   width: 100%;
   flex: none;
@@ -3499,7 +3668,7 @@ body {
 .course-progress-learned {
   font-family: var(--font-family-system, system-ui, -apple-system, sans-serif);
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 16px;
   font-style: normal;
   color: rgba(255, 255, 255, 0.5);
@@ -3527,6 +3696,12 @@ body {
   pointer-events: none;
   z-index: 1;
   /* width set inline from progressPercent */
+}
+
+/* Mastery: Level block baseline-align with "Level:", chip, "Rookie" */
+.course-progress-mastery .course-progress-mastery-next-level {
+  flex-shrink: 0;
+  align-items: baseline;
 }
 
 /* Mastery container: when More is expanded, bottom padding 12px (default 8px from .course-progress) */
@@ -4215,10 +4390,17 @@ body {
   transform: scale(1); /* 6×6 with 2px radius */
 }
 
-/* Footer container */
+/* Footer frame – bg/opaque; z 10 so footer stacks above scroll-up icon */
+.panel-footer-frame {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  background-color: var(--color-bg-opaque);
+}
+
+/* Footer container – overlay 000 14% */
 .panel-footer-container {
   flex-shrink: 0;
-  z-index: 10;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -4229,6 +4411,10 @@ body {
   padding-right: 0;
   background-color: rgba(0, 0, 0, 0.14);
   box-sizing: border-box;
+}
+.panel-footer-container > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Level footer: Practice in / Next Level (Lines page only) */
@@ -4314,6 +4500,13 @@ body {
   flex-shrink: 0;
   width: fit-content;
 }
+/* Level / level name: DS text-small-bold (12px / 16px); level name color 72% (DS text/default) */
+.extra-data-next-level .extra-data-label {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
 .extra-data-level-chip {
   display: flex;
   align-items: center;
@@ -4335,11 +4528,11 @@ body {
   line-height: var(--leading-4, 16px) !important;
 }
 .extra-data-level-name {
-  font-family: var(--font-system-semibold, system-ui, sans-serif);
-  font-size: var(--text-sm-plus, 14px);
-  line-height: var(--leading-4, 16px);
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
   font-weight: 600;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+  color: var(--color-text-default, rgba(255, 255, 255, 0.72));
   position: relative;
   flex-shrink: 0;
 }
