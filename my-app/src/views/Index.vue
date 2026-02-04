@@ -1,6 +1,5 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { computed } from 'vue'
 
 const router = useRouter()
 
@@ -10,24 +9,41 @@ const showV2 = false
 const showV22 = true
 const showV23 = true
 
-// Build/deploy time injected by Vite at build time
-const buildTime = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString()
+// Build time injected by Vite at build time (replaced at build)
+const buildTime =
+  typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__
+    ? __BUILD_TIME__
+    : new Date().toISOString()
+
+// All cards show last deployed time (build time injected at build)
+const versionLastEdited = {
+  v1: buildTime,
+  v2: buildTime,
+  v22: buildTime,
+  v23: buildTime,
+  v3: buildTime,
+}
 
 function getEditedAgo(isoString) {
+  if (!isoString || typeof isoString !== 'string') return 'Edited recently'
   const then = new Date(isoString)
+  if (Number.isNaN(then.getTime())) return 'Edited recently'
   const now = new Date()
   const diffMs = now - then
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
+  if (diffMs < 0) return 'Edited just now'
   if (diffMins < 1) return 'Edited just now'
   if (diffMins < 60) return `Edited ${diffMins} min ago`
   if (diffHours < 24) return `Edited ${diffHours}h ago`
   if (diffDays < 7) return `Edited ${diffDays} days ago`
-  return then.toLocaleDateString()
+  return `Edited ${then.toLocaleDateString()}`
 }
 
-const editedAgo = computed(() => getEditedAgo(buildTime))
+function editedAgoFor(version) {
+  return getEditedAgo(versionLastEdited[version] ?? buildTime)
+}
 </script>
 
 <template>
@@ -70,7 +86,7 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
                 </span>
                 <div class="project-card__footer-labels">
                   <span class="project-card__footer-title">Chapter Page V1</span>
-                  <span class="project-card__footer-time">{{ editedAgo }}</span>
+                  <span class="project-card__footer-time">{{ editedAgoFor('v1') }}</span>
                 </div>
               </div>
             </div>
@@ -110,7 +126,7 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
                 </span>
                 <div class="project-card__footer-labels">
                   <span class="project-card__footer-title">Chapter Page V2</span>
-                  <span class="project-card__footer-time">{{ editedAgo }}</span>
+                  <span class="project-card__footer-time">{{ editedAgoFor('v2') }}</span>
                 </div>
               </div>
             </div>
@@ -150,7 +166,7 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
                 </span>
                 <div class="project-card__footer-labels">
                   <span class="project-card__footer-title">Chapter Page V2.2</span>
-                  <span class="project-card__footer-time">{{ editedAgo }}</span>
+                  <span class="project-card__footer-time">{{ editedAgoFor('v22') }}</span>
                 </div>
               </div>
             </div>
@@ -190,7 +206,7 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
                 </span>
                 <div class="project-card__footer-labels">
                   <span class="project-card__footer-title">Chapter Page V2.3</span>
-                  <span class="project-card__footer-time">{{ editedAgo }}</span>
+                  <span class="project-card__footer-time">{{ editedAgoFor('v23') }}</span>
                 </div>
               </div>
             </div>
@@ -229,7 +245,7 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
                 </span>
                 <div class="project-card__footer-labels">
                   <span class="project-card__footer-title">Chapter Page V3</span>
-                  <span class="project-card__footer-time">{{ editedAgo }}</span>
+                  <span class="project-card__footer-time">{{ editedAgoFor('v3') }}</span>
                 </div>
               </div>
             </div>
