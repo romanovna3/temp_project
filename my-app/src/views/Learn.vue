@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, provide } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, provide, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
+import { Chess } from 'chess.js'
 import { CcButton, CcChip, CcIconButton, CcIcon } from '@chesscom/design-system'
 import ProgressCircle from '../components/ProgressCircle.vue'
 
@@ -30,13 +31,15 @@ const linesFilterOptions = [
 ]
 const linesFilterValue = ref('all')
 
-// Progress under course card – derived from courseSections (Figma node 2-5697)
+// Progress under course card – derived from actual section moves (chapters/lines)
 const progressLearned = computed(() =>
-  courseSections.reduce((sum, s) => sum + s.completed, 0)
+  courseSections.reduce((sum, s) => sum + getSectionChapterProgress(s).completed, 0)
 )
 const progressTotal = computed(() =>
-  courseSections.reduce((sum, s) => sum + s.total, 0)
+  courseSections.reduce((sum, s) => sum + getSectionChapterProgress(s).total, 0)
 )
+/** Total number of lines in the course (for "X lines" display). */
+const courseTotalLines = computed(() => progressTotal.value)
 const progressPercent = computed(() =>
   progressTotal.value > 0 ? Math.min(100, (progressLearned.value / progressTotal.value) * 100) : 0
 )
@@ -78,15 +81,35 @@ const masteryLevelItems = [
 const expandedSectionIds = ref(new Set())
 function toggleSection(sectionId) {
   v3ReleasedUntilSectionId.value = null
-  // V2.2: opening another chapter (or closing) pauses the video – play button shows again
-  if (isVideoV2_2.value) {
-    v22PlayingSectionId.value = null
-  }
+  // V2.2 / V2.3: opening another chapter (or closing) pauses the video – play button shows again
+  if (isVideoV2_2.value) v22PlayingSectionId.value = null
+  if (isVideoV2_3.value) v23PlayingSectionId.value = null
   const currentlyExpanded = expandedSectionIds.value
   if (currentlyExpanded.has(sectionId)) {
     expandedSectionIds.value = new Set()
   } else {
     expandedSectionIds.value = new Set([sectionId]) // only one chapter open at a time
+    // Pin section to top during expand: every frame scroll so section stays at top (no jump)
+    nextTick(() => {
+      const container = coursesContentRef.value
+      if (!container) return
+      const sectionEl = Array.from(container.querySelectorAll('.section-item')).find(
+        (el) => el.getAttribute('data-section-id') === sectionId
+      )
+      if (!sectionEl) return
+      const expandDuration = 360
+      const start = performance.now()
+      const tick = () => {
+        const elapsed = performance.now() - start
+        if (elapsed >= expandDuration) return
+        const containerRect = container.getBoundingClientRect()
+        const sectionRect = sectionEl.getBoundingClientRect()
+        const scrollDelta = sectionRect.top - containerRect.top
+        if (Math.abs(scrollDelta) > 1) container.scrollTop += scrollDelta
+        requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    })
   }
 }
 function isSectionExpanded(sectionId) {
@@ -105,6 +128,9 @@ function openLine(section, move) {
   v3ShowScrollUp.value = false
   clearV3ScrollUpHideTimer()
   selectedLine.value = { section, move }
+  lineViewMoves.value = getMovesForLine(section, move)
+  selectedPly.value = { moveIndex: 0, side: 'white' }
+  hoveredChapterLine.value = null
   panelView.value = 'line'
 }
 function backToCourses() {
@@ -130,14 +156,539 @@ function backToCourses() {
   })
 }
 
-// Line view: chess move rows (Figma 32-7715). Placeholder data; replace with real line moves later.
-const lineViewMoves = ref([
-  { number: 1, white: 'd4', black: 'd5' },
-  { number: 2, white: 'c4', black: 'e6' },
-  { number: 3, white: 'Nc3', black: 'Nf6' },
-  { number: 4, white: 'Bg5', black: 'Be7' },
-])
+/** V2.3 Line view: prev/next line for headline chevrons; can cross chapter boundaries */
+const lineListForNav = computed(() => {
+  if (!selectedLine.value?.section) return []
+  return getSectionMoves(selectedLine.value.section)
+})
+const currentLineIndexForNav = computed(() => {
+  const { section, move } = selectedLine.value || {}
+  if (!move || !section) return -1
+  const moves = getSectionMoves(section)
+  return moves.findIndex((m) => m.id === move.id)
+})
+const currentSectionIndexForNav = computed(() => {
+  const { section } = selectedLine.value || {}
+  if (!section) return -1
+  return courseSections.findIndex((s) => s.id === section.id)
+})
+const hasPrevLine = computed(() => {
+  const idx = currentLineIndexForNav.value
+  const sectionIdx = currentSectionIndexForNav.value
+  if (idx < 0 || sectionIdx < 0) return false
+  if (idx > 0) return true
+  return sectionIdx > 0
+})
+const hasNextLine = computed(() => {
+  const idx = currentLineIndexForNav.value
+  const list = lineListForNav.value
+  const sectionIdx = currentSectionIndexForNav.value
+  if (idx < 0 || sectionIdx < 0) return false
+  if (idx < list.length - 1) return true
+  return sectionIdx < courseSections.length - 1
+})
+function goToPrevLine() {
+  if (!hasPrevLine.value || !selectedLine.value) return
+  const { section } = selectedLine.value
+  const moves = getSectionMoves(section)
+  const idx = currentLineIndexForNav.value
+  if (idx > 0) {
+    openLine(section, moves[idx - 1])
+    return
+  }
+  const sectionIdx = currentSectionIndexForNav.value
+  if (sectionIdx > 0) {
+    const prevSection = courseSections[sectionIdx - 1]
+    const prevMoves = getSectionMoves(prevSection)
+    if (prevMoves.length) openLine(prevSection, prevMoves[prevMoves.length - 1])
+  }
+}
+function goToNextLine() {
+  if (!hasNextLine.value || !selectedLine.value) return
+  const { section } = selectedLine.value
+  const moves = getSectionMoves(section)
+  const idx = currentLineIndexForNav.value
+  if (idx < moves.length - 1) {
+    openLine(section, moves[idx + 1])
+    return
+  }
+  const sectionIdx = currentSectionIndexForNav.value
+  if (sectionIdx >= 0 && sectionIdx < courseSections.length - 1) {
+    const nextSection = courseSections[sectionIdx + 1]
+    const nextMoves = getSectionMoves(nextSection)
+    if (nextMoves.length) openLine(nextSection, nextMoves[0])
+  }
+}
+
+// Line view: chess moves shown on the Line page. Key = `${section.id}-${move.id}` (baseId for -2 sections).
+// Each line has a distinct sequence so hover previews are visually different within a chapter.
+const lineMovesByKey = {
+  // Introduction (3 lines)
+  'intro-1': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bc4', black: 'Bc5' },
+    { number: 4, white: 'c3', black: 'Nf6' },
+  ],
+  'intro-2': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Be7' },
+  ],
+  'intro-3': [
+    { number: 1, white: 'e4', black: 'c5' },
+    { number: 2, white: 'Nf3', black: 'd6' },
+    { number: 3, white: 'd4', black: 'cxd4' },
+    { number: 4, white: 'Nxd4', black: 'Nf6' },
+  ],
+  // Tactical (10 lines)
+  'tactical-1': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Nxe5', black: 'Nxe5' },
+    { number: 5, white: 'd4', black: 'Nd3+' },
+  ],
+  'tactical-2': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Bc4', black: 'Nc6' },
+    { number: 3, white: 'Qh5', black: 'Nf6' },
+    { number: 4, white: 'Qxf7', black: '#' },
+  ],
+  'tactical-3': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Be7' },
+  ],
+  'tactical-4': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'a6' },
+    { number: 4, white: 'Ba4', black: 'Nf6' },
+  ],
+  'tactical-5': [
+    { number: 1, white: 'e4', black: 'c5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'd4', black: 'cxd4' },
+    { number: 4, white: 'Nxd4', black: 'e6' },
+  ],
+  'tactical-6': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'g6' },
+    { number: 3, white: 'Nc3', black: 'Bg7' },
+    { number: 4, white: 'e4', black: 'd6' },
+  ],
+  'tactical-7': [
+    { number: 1, white: 'e4', black: 'e6' },
+    { number: 2, white: 'd4', black: 'd5' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Be7' },
+  ],
+  'tactical-8': [
+    { number: 1, white: 'c4', black: 'e5' },
+    { number: 2, white: 'Nc3', black: 'Nf6' },
+    { number: 3, white: 'Nf3', black: 'Nc6' },
+    { number: 4, white: 'g3', black: 'Bb4' },
+  ],
+  'tactical-9': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'c6' },
+    { number: 3, white: 'Nf3', black: 'Nf6' },
+    { number: 4, white: 'Nc3', black: 'dxc4' },
+  ],
+  'tactical-10': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nf6' },
+    { number: 3, white: 'Nxe5', black: 'd6' },
+    { number: 4, white: 'Nf3', black: 'Nxe4' },
+  ],
+  // Additional Tactics (3 lines)
+  'additional-1': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'd6' },
+    { number: 3, white: 'd4', black: 'Bg4' },
+    { number: 4, white: 'dxe5', black: 'Nc6' },
+  ],
+  'additional-2': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'a6' },
+    { number: 4, white: 'Ba4', black: 'Nf6' },
+  ],
+  'additional-3': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Bb4' },
+    { number: 4, white: 'e3', black: 'O-O' },
+  ],
+  // Games (18 lines) – varied openings
+  'games-1': [
+    { number: 1, white: 'e4', black: 'c5' },
+    { number: 2, white: 'Nf3', black: 'd6' },
+    { number: 3, white: 'd4', black: 'cxd4' },
+    { number: 4, white: 'Nxd4', black: 'Nf6' },
+  ],
+  'games-2': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nf3', black: 'd5' },
+    { number: 4, white: 'Nc3', black: 'Be7' },
+  ],
+  'games-3': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'a6' },
+    { number: 4, white: 'Ba4', black: 'Nf6' },
+  ],
+  'games-4': [
+    { number: 1, white: 'e4', black: 'e6' },
+    { number: 2, white: 'd4', black: 'd5' },
+    { number: 3, white: 'Nd2', black: 'c5' },
+    { number: 4, white: 'exd5', black: 'exd5' },
+  ],
+  'games-5': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Be7' },
+  ],
+  'games-6': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nf6' },
+    { number: 3, white: 'Nxe5', black: 'd6' },
+    { number: 4, white: 'Nf3', black: 'Nxe4' },
+  ],
+  'games-7': [
+    { number: 1, white: 'c4', black: 'Nf6' },
+    { number: 2, white: 'Nc3', black: 'e5' },
+    { number: 3, white: 'Nf3', black: 'Nc6' },
+    { number: 4, white: 'e3', black: 'Bb4' },
+  ],
+  'games-8': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'g6' },
+    { number: 3, white: 'Nc3', black: 'Bg7' },
+    { number: 4, white: 'e4', black: 'd6' },
+  ],
+  'games-9': [
+    { number: 1, white: 'e4', black: 'c5' },
+    { number: 2, white: 'Nf3', black: 'e6' },
+    { number: 3, white: 'd4', black: 'cxd4' },
+    { number: 4, white: 'Nxd4', black: 'Nc6' },
+  ],
+  'games-10': [
+    { number: 1, white: 'Nf3', black: 'd5' },
+    { number: 2, white: 'd4', black: 'Nf6' },
+    { number: 3, white: 'c4', black: 'e6' },
+    { number: 4, white: 'Nc3', black: 'Be7' },
+  ],
+  'games-11': [
+    { number: 1, white: 'e4', black: 'c6' },
+    { number: 2, white: 'd4', black: 'd5' },
+    { number: 3, white: 'Nc3', black: 'dxe4' },
+    { number: 4, white: 'Nxe4', black: 'Bf5' },
+  ],
+  'games-12': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nf3', black: 'Bb4' },
+    { number: 4, white: 'Nc3', black: 'O-O' },
+  ],
+  'games-13': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bc4', black: 'Nf6' },
+    { number: 4, white: 'Ng5', black: 'd5' },
+  ],
+  'games-14': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'c6' },
+    { number: 3, white: 'Nf3', black: 'Nf6' },
+    { number: 4, white: 'Nc3', black: 'e6' },
+  ],
+  'games-15': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'Nf6' },
+    { number: 4, white: 'O-O', black: 'Nxe4' },
+  ],
+  'games-16': [
+    { number: 1, white: 'c4', black: 'e5' },
+    { number: 2, white: 'Nc3', black: 'Nf6' },
+    { number: 3, white: 'Nf3', black: 'Nc6' },
+    { number: 4, white: 'g3', black: 'd5' },
+  ],
+  'games-17': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'd4', black: 'exd4' },
+    { number: 4, white: 'Bc4', black: 'Bc5' },
+  ],
+  'games-18': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'Nf3', black: 'Nf6' },
+    { number: 3, white: 'c4', black: 'e6' },
+    { number: 4, white: 'Nc3', black: 'c6' },
+  ],
+  // Other / Opening Repertoire (10 lines)
+  'other-1': [
+    { number: 1, white: 'e4', black: 'c5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'd4', black: 'cxd4' },
+    { number: 4, white: 'Nxd4', black: 'e6' },
+  ],
+  'other-2': [
+    { number: 1, white: 'e4', black: 'e6' },
+    { number: 2, white: 'd4', black: 'd5' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'dxe4' },
+  ],
+  'other-3': [
+    { number: 1, white: 'e4', black: 'c6' },
+    { number: 2, white: 'd4', black: 'd5' },
+    { number: 3, white: 'Nc3', black: 'dxe4' },
+    { number: 4, white: 'Nxe4', black: 'Nd7' },
+  ],
+  'other-4': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'a6' },
+    { number: 4, white: 'Ba4', black: 'Nf6' },
+  ],
+  'other-5': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Be7' },
+  ],
+  'other-6': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'g6' },
+    { number: 3, white: 'Nc3', black: 'Bg7' },
+    { number: 4, white: 'e4', black: 'd6' },
+  ],
+  'other-7': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'c6' },
+    { number: 3, white: 'Nf3', black: 'Nf6' },
+    { number: 4, white: 'Nc3', black: 'e6' },
+  ],
+  'other-8': [
+    { number: 1, white: 'c4', black: 'e5' },
+    { number: 2, white: 'Nc3', black: 'Nf6' },
+    { number: 3, white: 'Nf3', black: 'Nc6' },
+    { number: 4, white: 'g3', black: 'Bb4' },
+  ],
+  'other-9': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'g3', black: 'd5' },
+    { number: 4, white: 'Nf3', black: 'Be7' },
+  ],
+  'other-10': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Bb4' },
+    { number: 4, white: 'e3', black: 'O-O' },
+  ],
+  // Blackmar-Diemer (20 lines)
+  'blackmar-1': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'e4', black: 'dxe4' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'f3', black: 'exf3' },
+  ],
+  'blackmar-2': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'e4', black: 'e5' },
+    { number: 3, white: 'dxe5', black: 'd4' },
+    { number: 4, white: 'Nf3', black: 'Nc6' },
+  ],
+  'blackmar-3': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'e4', black: 'e6' },
+    { number: 3, white: 'Nd2', black: 'c5' },
+    { number: 4, white: 'exd5', black: 'exd5' },
+  ],
+  'blackmar-4': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'e4', black: 'dxe4' },
+    { number: 3, white: 'Nc3', black: 'Nc6' },
+    { number: 4, white: 'Bc4', black: 'Nf6' },
+  ],
+  'blackmar-5': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'e4', black: 'dxe4' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'f3', black: 'Nc6' },
+  ],
+  'blackmar-6': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'Nf3', black: 'd5' },
+    { number: 3, white: 'e3', black: 'e6' },
+    { number: 4, white: 'Bd3', black: 'c5' },
+  ],
+  'blackmar-7': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bc4', black: 'Bc5' },
+    { number: 4, white: 'b4', black: 'Bxb4' },
+  ],
+  'blackmar-8': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'g6' },
+    { number: 3, white: 'Nc3', black: 'Bg7' },
+    { number: 4, white: 'Nf3', black: 'Nf6' },
+  ],
+  'blackmar-9': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'Nf6' },
+    { number: 4, white: 'd3', black: 'd6' },
+  ],
+  'blackmar-10': [
+    { number: 1, white: 'c4', black: 'Nf6' },
+    { number: 2, white: 'Nc3', black: 'e5' },
+    { number: 3, white: 'Nf3', black: 'Nc6' },
+    { number: 4, white: 'e3', black: 'Bb4' },
+  ],
+  'blackmar-11': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'e4', black: 'dxe4' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Nc6' },
+  ],
+  'blackmar-12': [
+    { number: 1, white: 'e4', black: 'c5' },
+    { number: 2, white: 'c3', black: 'd5' },
+    { number: 3, white: 'exd5', black: 'Qxd5' },
+    { number: 4, white: 'd4', black: 'Nc6' },
+  ],
+  'blackmar-13': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Bb4' },
+    { number: 4, white: 'Qc2', black: 'O-O' },
+  ],
+  'blackmar-14': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Nbd7' },
+  ],
+  'blackmar-15': [
+    { number: 1, white: 'e4', black: 'e6' },
+    { number: 2, white: 'd4', black: 'd5' },
+    { number: 3, white: 'Nd2', black: 'Nf6' },
+    { number: 4, white: 'e5', black: 'Nfd7' },
+  ],
+  'blackmar-16': [
+    { number: 1, white: 'Nf3', black: 'd5' },
+    { number: 2, white: 'd4', black: 'Nf6' },
+    { number: 3, white: 'c4', black: 'e6' },
+    { number: 4, white: 'Nc3', black: 'Be7' },
+  ],
+  'blackmar-17': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bc4', black: 'Nf6' },
+    { number: 4, white: 'd3', black: 'Be7' },
+  ],
+  'blackmar-18': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'Nf3', black: 'Nf6' },
+    { number: 3, white: 'c4', black: 'c6' },
+    { number: 4, white: 'Qb3', black: 'dxc4' },
+  ],
+  'blackmar-19': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Bc4', black: 'Nc6' },
+    { number: 3, white: 'Qh5', black: 'Nf6' },
+    { number: 4, white: 'Qxe5+', black: 'Be7' },
+  ],
+  'blackmar-20': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'e4', black: 'dxe4' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'f3', black: 'exf3' },
+  ],
+  // Quiz (2 lines)
+  'quiz-1': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'a6' },
+    { number: 4, white: 'Ba4', black: 'Nf6' },
+    { number: 5, white: 'O-O', black: 'Be7' },
+  ],
+  'quiz-2': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Bb4' },
+    { number: 4, white: 'e3', black: 'O-O' },
+  ],
+}
+const defaultLineMoves = [
+  { number: 1, white: 'e4', black: 'e5' },
+  { number: 2, white: 'Nf3', black: 'Nc6' },
+  { number: 3, white: 'Bb5', black: 'a6' },
+]
+function getMovesForLine(section, move) {
+  if (!section?.id || !move?.id) return defaultLineMoves
+  const baseId = String(section.id).replace(/-2$/, '')
+  const key = `${baseId}-${move.id}`
+  return lineMovesByKey[key] ?? defaultLineMoves
+}
+const lineViewMoves = ref([...defaultLineMoves])
 const selectedPly = ref({ moveIndex: 0, side: 'white' })
+
+/** Chapter page: hovered line for board preview (only for non-ready lines; ready = hidden). */
+const hoveredChapterLine = ref(null) // { section, move } | null
+
+/** Build FEN and lastMove for the position *after* the selected ply (selected = this move is highlighted; show board after it). */
+function getPositionAfterPly(moves, selectedPlyVal) {
+  try {
+    const flat = []
+    for (const pair of moves) {
+      if (pair.white) flat.push(pair.white)
+      if (pair.black && pair.black !== '#') flat.push(pair.black)
+    }
+    // Selected ply = "this move is visible" → show position after that move (1 half-move for white, 2 for black in that pair)
+    const halfCount = selectedPlyVal.moveIndex * 2 + (selectedPlyVal.side === 'white' ? 1 : 2)
+    const chess = new Chess()
+    let lastMove = null
+    for (let i = 0; i < halfCount && i < flat.length; i++) {
+      const result = chess.move(flat[i])
+      if (result) lastMove = { from: result.from, to: result.to }
+    }
+    return { fen: chess.fen(), lastMove }
+  } catch {
+    return { fen: STARTING_FEN, lastMove: null }
+  }
+}
+
+/** Position at end of a line (for chapter-page hover preview). */
+function getPositionAtEndOfLine(moves) {
+  if (!moves?.length) return { fen: STARTING_FEN, lastMove: null }
+  const last = moves[moves.length - 1]
+  const side = last?.black && last?.black !== '#' ? 'black' : 'white'
+  return getPositionAfterPly(moves, { moveIndex: moves.length - 1, side })
+}
+
+function setHoveredChapterLine(section, move) {
+  if (!section || !move) {
+    hoveredChapterLine.value = null
+    return
+  }
+  if (getLineType(move) === 'ready') return // hidden moves – don't preview
+  hoveredChapterLine.value = { section, move }
+}
+
+function clearHoveredChapterLine() {
+  hoveredChapterLine.value = null
+}
+
 function isPlySelected(moveIndex, side) {
   return selectedPly.value.moveIndex === moveIndex && selectedPly.value.side === side
 }
@@ -161,10 +712,25 @@ function selectPreviousPly() {
   }
 }
 
+/** Chapter (line) counts for a section – derived from actual moves so progress bar and counter match. */
+function getSectionChapterProgress(section) {
+  const moves = getSectionMoves(section)
+  const total = moves.length
+  const completed = moves.filter((m) => m.completed).length
+  return { completed, total }
+}
+
+/** Chapter counter display e.g. "2/3" for use in template (single call per section). */
+function getSectionChapterCountDisplay(section) {
+  const { completed, total } = getSectionChapterProgress(section)
+  return `${completed}/${total}`
+}
+
 /** Progress % for a section (0–100), used by the circular progress bar on each row. */
 function getSectionProgressPercent(section) {
-  if (!section?.total) return 0
-  return Math.min(100, (section.completed / section.total) * 100)
+  const { completed, total } = getSectionChapterProgress(section)
+  if (!total) return 0
+  return Math.min(100, (completed / total) * 100)
 }
 
 // Move items (Move Item List) – shown when chapter is expanded
@@ -179,22 +745,91 @@ const currentLineType = computed(() => {
   if (panelView.value !== 'line' || !selectedLine.value?.move) return 'completed'
   return getLineType(selectedLine.value.move)
 })
+/** V2.3 Line view: course name for header (line name moves to VariationsHeadline row) */
+const currentCourseTitle = computed(() => courses[0]?.title ?? 'Course')
 
 // 3 states: Uncompleted (dimmed check) | Ready (green check + animated dot) | Completed (green check + level chip e.g. L1)
+// Chess course line names – ~10 per chapter on average
 const sectionMoves = {
   intro: [
-    { id: '1', text: 'Introducing the Chapters', completed: true },
-    { id: '2', text: 'The Discovered Attack', completed: true },
-    { id: '3', text: 'The Double Check', completed: true },
+    { id: '1', text: 'The Italian Game: e4 e5 Nf3 Nc6', completed: true },
+    { id: '2', text: 'Control the Center: d4 d5', completed: true },
+    { id: '3', text: 'Opening principles', completed: true },
   ],
   tactical: [
-    { id: '1', text: '1... d5 without ...c5: 2... Bf5', completed: true },
-    { id: '2', text: 'Kline vs. Capablanca #1', completed: true },
-    { id: '3', text: 'Yermolinsky vs. Hodgson', completed: true },
-    { id: '4', text: 'Alexey Yermolinsky vs. Julian Hodgson, L... L1', completed: true, level: 'L1' },
-    { id: '5', text: 'Luke McShane vs. Vasilios Kotronias, Gib... L1', completed: true, level: 'L1' },
-    { id: '6', text: 'Learning from Proteus', completed: false },
-    { id: '7', text: 'McShane vs. Kotronias #1', completed: false },
+    { id: '1', text: 'Knight fork', completed: true, level: 'L1' },
+    { id: '2', text: 'Bishop pin', completed: true },
+    { id: '3', text: 'Queen skewer', completed: true },
+    { id: '4', text: 'Back-rank mate', completed: true },
+    { id: '5', text: 'Double attack', completed: false },
+    { id: '6', text: 'Deflection', completed: false },
+    { id: '7', text: 'Decoy', completed: false },
+    { id: '8', text: 'Removing the guard', completed: false },
+    { id: '9', text: 'Interference', completed: false },
+    { id: '10', text: 'Clearance', completed: false },
+  ],
+  additional: [
+    { id: '1', text: 'Discovered attack', completed: false },
+    { id: '2', text: 'Double check', completed: false },
+    { id: '3', text: 'Windmill', completed: false },
+  ],
+  games: [
+    { id: '1', text: 'Fischer vs. Spassky (1972)', completed: false },
+    { id: '2', text: 'Carlsen vs. Caruana (2018)', completed: false },
+    { id: '3', text: 'Kasparov vs. Deep Blue (1997)', completed: false },
+    { id: '4', text: 'Karpov vs. Kasparov (1985)', completed: false },
+    { id: '5', text: 'Anand vs. Topalov (2010)', completed: false },
+    { id: '6', text: 'Tal vs. Botvinnik (1960)', completed: false },
+    { id: '7', text: 'Lasker vs. Capablanca (1921)', completed: false },
+    { id: '8', text: 'Kramnik vs. Kasparov (2000)', completed: false },
+    { id: '9', text: 'Carlsen vs. Anand (2013)', completed: false },
+    { id: '10', text: 'Nakamura vs. So (2016)', completed: false },
+    { id: '11', text: 'Topalov vs. Anand (2006)', completed: false },
+    { id: '12', text: 'Spassky vs. Petrosian (1969)', completed: false },
+    { id: '13', text: 'Caruana vs. Carlsen (2018)', completed: false },
+    { id: '14', text: 'Aronian vs. Grischuk (2012)', completed: false },
+    { id: '15', text: 'Mamedyarov vs. Radjabov (2019)', completed: false },
+    { id: '16', text: 'Anand vs. Bacrot (2006)', completed: false },
+    { id: '17', text: 'Sandipan vs. Tiviakov (2007)', completed: false },
+    { id: '18', text: 'So vs. Kramnik (2016)', completed: false },
+  ],
+  other: [
+    { id: '1', text: 'Sicilian Defense: 1.e4 c5', completed: false },
+    { id: '2', text: 'French Defense: 1.e4 e6', completed: false },
+    { id: '3', text: 'Caro-Kann: 1.e4 c6', completed: false },
+    { id: '4', text: 'Ruy Lopez: 1.e4 e5 2.Nf3 Nc6 3.Bb5', completed: false },
+    { id: '5', text: 'Queen\'s Gambit: 1.d4 d5 2.c4', completed: false },
+    { id: '6', text: 'King\'s Indian: 1.d4 Nf6 2.c4 g6', completed: false },
+    { id: '7', text: 'Slav Defense: 1.d4 d5 2.c4 c6', completed: false },
+    { id: '8', text: 'English Opening: 1.c4', completed: false },
+    { id: '9', text: 'Catalan: 1.d4 Nf6 2.c4 e6 3.g3', completed: false },
+    { id: '10', text: 'Nimzo-Indian: 1.d4 Nf6 2.c4 e6 3.Nc3 Bb4', completed: false },
+  ],
+  blackmar: [
+    { id: '1', text: 'BDG: 1.d4 d5 2.e4', completed: false },
+    { id: '2', text: 'Accepting: 2...dxe4', completed: false },
+    { id: '3', text: 'Declined: 2...e6', completed: false },
+    { id: '4', text: '3.Nc3 Nf6', completed: false },
+    { id: '5', text: '3...Nc6', completed: false },
+    { id: '6', text: '4.f3 exf3', completed: false },
+    { id: '7', text: '5.Nxf3 Bg4', completed: false },
+    { id: '8', text: '5...g6', completed: false },
+    { id: '9', text: 'Euwe Attack', completed: false },
+    { id: '10', text: 'Gunderam Defense', completed: false },
+    { id: '11', text: 'Teichmann Variation', completed: false },
+    { id: '12', text: 'Rider Attack', completed: false },
+    { id: '13', text: 'Bogoljubov Defense', completed: false },
+    { id: '14', text: '5.Bc4', completed: false },
+    { id: '15', text: '5...e6', completed: false },
+    { id: '16', text: '6.Ne2', completed: false },
+    { id: '17', text: '7.O-O', completed: false },
+    { id: '18', text: '8.Re1', completed: false },
+    { id: '19', text: '9.Qe2', completed: false },
+    { id: '20', text: '10.Ng3', completed: false },
+  ],
+  quiz: [
+    { id: '1', text: 'Tactics quiz', completed: false },
+    { id: '2', text: 'Opening quiz', completed: false },
   ],
 }
 
@@ -245,7 +880,8 @@ function seededShuffle(arr, seed) {
 function getSectionMoves(section) {
   const sectionId = typeof section === 'string' ? section : section?.id
   const total = typeof section === 'object' && section?.total != null ? section.total : 0
-  if (sectionMoves[sectionId]) return sectionMoves[sectionId]
+  const baseId = (sectionId || '').replace(/-2$/, '')
+  if (sectionMoves[baseId]) return sectionMoves[baseId]
   const shuffled = seededShuffle(uncompletedMoveTitles, sectionId)
   const count = Math.min(total, shuffled.length)
   return shuffled.slice(0, count).map((text, i) => ({
@@ -255,15 +891,42 @@ function getSectionMoves(section) {
   }))
 }
 
-// Course sections (Practice Filter: accordion list with progress)
-const courseSections = [
-  { id: 'intro', name: 'Introduction', completed: 3, total: 3, status: 'complete' },
-  { id: 'tactical', name: 'Tactical Section', completed: 5, total: 7, status: 'in_progress' },
-  { id: 'additional', name: 'Additional Tactics', completed: 0, total: 6, status: 'not_started' },
-  { id: 'games', name: 'The Games - Additional Tactics', completed: 0, total: 8, status: 'not_started' },
-  { id: 'other', name: 'Other Lines', completed: 0, total: 12, status: 'not_started' },
-  { id: 'blackmar', name: 'The Blackmar Diemer', completed: 0, total: 24, status: 'not_started' },
+// Course sections – ~10 lines per chapter on average (2–3 on some, up to 20 on others)
+const courseSectionsBase = [
+  { id: 'intro', name: 'Introduction', completed: 2, total: 3, status: 'in_progress' },
+  { id: 'tactical', name: 'Tactical Section', completed: 4, total: 10, status: 'in_progress' },
+  { id: 'additional', name: 'Additional Tactics', completed: 0, total: 3, status: 'not_started' },
+  { id: 'games', name: 'The Games - Additional Tactics', completed: 0, total: 18, status: 'not_started' },
+  { id: 'other', name: 'Other Lines', completed: 0, total: 10, status: 'not_started' },
+  { id: 'blackmar', name: 'The Blackmar Diemer', completed: 0, total: 20, status: 'not_started' },
   { id: 'quiz', name: 'Quiz', completed: 0, total: 2, status: 'not_started' },
+]
+// Second-pass chapter names for the duplicated list (chess course style)
+const courseSectionsSecondNames = {
+  intro: 'Core Concepts',
+  tactical: 'Pattern Recognition',
+  additional: 'Tactics in Practice',
+  games: 'Master Game Analysis',
+  other: 'Opening Repertoire',
+  blackmar: 'Gambit Lines',
+  quiz: 'Practice Test',
+}
+// Core Concepts and Pattern Recognition show as not started (incomplete round progress bar)
+const courseSectionsSecondOverrides = {
+  intro: { completed: 0, status: 'not_started' },
+  tactical: { completed: 0, status: 'not_started' },
+}
+const courseSections = [
+  ...courseSectionsBase,
+  ...courseSectionsBase.map((s) => {
+    const overrides = courseSectionsSecondOverrides[s.id]
+    return {
+      ...s,
+      id: `${s.id}-2`,
+      name: courseSectionsSecondNames[s.id] ?? `${s.name} (Part 2)`,
+      ...(overrides || {}),
+    }
+  }),
 ]
 
 // Count of Ready item Lines (completed moves without level) for Practice button badge
@@ -660,6 +1323,45 @@ function setBoardToDefault() {
   checkmateHighlight.value = null
 }
 
+// Board sync: Line view (selected ply) or Chapter page (hovered line preview for non-ready lines).
+watchEffect(() => {
+  if (panelView.value === 'line') {
+    if (!selectedLine.value) return
+    if (currentLineType.value === 'ready') {
+      pieces.value = parseFEN(STARTING_FEN)
+      lastMove.value = null
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+      return
+    }
+    if (!lineViewMoves.value?.length) return
+    const { fen, lastMove: last } = getPositionAfterPly(lineViewMoves.value, selectedPly.value)
+    pieces.value = parseFEN(fen)
+    lastMove.value = last
+    selectedSquare.value = null
+    checkmateHighlight.value = null
+    return
+  }
+  if (panelView.value === 'courses' && hoveredChapterLine.value) {
+    const { section, move } = hoveredChapterLine.value
+    if (getLineType(move) === 'ready') return
+    const moves = getMovesForLine(section, move)
+    const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
+    pieces.value = parseFEN(fen)
+    lastMove.value = last
+    selectedSquare.value = null
+    checkmateHighlight.value = null
+    return
+  }
+  // Courses, no hover: show default position
+  if (panelView.value === 'courses') {
+    pieces.value = parseFEN(STARTING_FEN)
+    lastMove.value = null
+    selectedSquare.value = null
+    checkmateHighlight.value = null
+  }
+})
+
 // Get piece on a specific square
 const getPieceOnSquare = (square) => {
   return pieces.value.find(p => p.square === square)
@@ -688,9 +1390,10 @@ const isWrongMove = (square) => {
 }
 
 // ============================================
-// MOVE HANDLING
+// MOVE HANDLING (board is display-only; interaction disabled)
 // ============================================
 const handleSquareClick = (square) => {
+  return // Board interaction disabled on all pages
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
@@ -1059,9 +1762,10 @@ const tryMove = (from, to) => {
 }
 
 // ============================================
-// DRAG & DROP
+// DRAG & DROP (board is display-only; interaction disabled)
 // ============================================
 const handleDragStart = (event, square) => {
+  return // Board interaction disabled on all pages
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
@@ -1167,6 +1871,37 @@ const isVideoV2 = computed(() => route.path === '/learn/v2')
 // V2.2: same as V2 but play button toggles to pause and makes that video sticky
 const isVideoV2_2 = computed(() => route.path === '/learn/v2.2')
 const v22PlayingSectionId = ref(null) // when set, this section's video shows pause and is sticky
+// V2.3: duplicate of V2.2 + sticky chapter title when expanded (sticks when it touches header); collapse when next chapter row touches
+const isVideoV2_3 = computed(() => route.path === '/learn/v2.3')
+const v23PlayingSectionId = ref(null)
+const v23SectionItemRefs = ref(Object.create(null))
+function setV23SectionItemRef(sectionId, el) {
+  const node = Array.isArray(el) ? el[0] : el
+  if (node) {
+    v23SectionItemRefs.value[sectionId] = node
+  } else {
+    delete v23SectionItemRefs.value[sectionId]
+  }
+}
+
+/** V2.3: do not collapse on scroll – let the sticky unstick naturally so content just scrolls up with no jump. User can collapse by clicking the chapter. */
+function onV23Scroll() {
+  /* no-op: no programmatic collapse when next chapter touches */
+}
+
+let v23ScrollCleanup = null
+function setupV23ScrollListener() {
+  v23ScrollCleanup?.()
+  v23ScrollCleanup = null
+  if (!isVideoV2_3.value || !coursesContentRef.value) return
+  const el = coursesContentRef.value
+  el.addEventListener('scroll', onV23Scroll, { passive: true })
+  v23ScrollCleanup = () => {
+    el.removeEventListener('scroll', onV23Scroll)
+    v23ScrollCleanup = null
+  }
+}
+
 const isVideoV3 = computed(() => route.path === '/learn/v3')
 const expandedSection = computed(() => {
   const id = [...expandedSectionIds.value][0]
@@ -1724,12 +2459,16 @@ const openVideo = () => {
 function toggleV22VideoPlay(sectionId) {
   v22PlayingSectionId.value = v22PlayingSectionId.value === sectionId ? null : sectionId
 }
+// V2.3: same as V2.2
+function toggleV23VideoPlay(sectionId) {
+  v23PlayingSectionId.value = v23PlayingSectionId.value === sectionId ? null : sectionId
+}
 
-
-// V2 / V2.2: show video by default (per-chapter blocks rendered below each chapter)
-watch([isVideoV2, isVideoV2_2, isVideoV3], ([v2, v22, v3]) => {
-  if (v2 || v22 || v3) showVideoSection.value = true
+// V2 / V2.2 / V2.3: show video by default (per-chapter blocks rendered below each chapter)
+watch([isVideoV2, isVideoV2_2, isVideoV2_3, isVideoV3], ([v2, v22, v23, v3]) => {
+  if (v2 || v22 || v23 || v3) showVideoSection.value = true
 }, { immediate: true })
+
 
 watch(showVideoSection, (visible) => {
   if (visible) {
@@ -1857,11 +2596,17 @@ watch([isVideoV3, coursesContentRef], () => {
   setupV3ScrollListener()
 }, { immediate: true })
 
+watch([isVideoV2_3, coursesContentRef], () => {
+  setupV23ScrollListener()
+}, { immediate: true })
+
 onMounted(() => {
   nextTick(setupV3ScrollListener)
+  nextTick(setupV23ScrollListener)
 })
 
 onUnmounted(() => {
+  v23ScrollCleanup?.()
   v3ScrollCleanup?.()
   teardownVideoSectionResizeObserver()
   document.removeEventListener('mousemove', handleDragMove)
@@ -1877,7 +2622,7 @@ onUnmounted(() => {
       <!-- Left: Chessboard -->
       <div class="board-section">
         <div class="board-wrapper">
-          <div class="chessboard" ref="boardRef">
+          <div class="chessboard chessboard--no-interaction" ref="boardRef">
             <div 
               v-for="square in squares" 
               :key="square"
@@ -2010,10 +2755,48 @@ onUnmounted(() => {
             </div>
             <div class="sidebar-header-title" :class="{ 'sidebar-header-title--line': panelView === 'line' }">
               <img v-if="panelView === 'courses'" :src="baseUrl + 'icons/book-mark-aqua.png'" alt="" class="sidebar-header-icon" width="24" height="24" aria-hidden="true" />
-              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' }">{{ panelView === 'line' ? (selectedLine?.move?.text ?? 'Line') : 'Courses' }}</span>
+              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' }">{{ panelView === 'line' ? (isVideoV2_3 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : 'Courses' }}</span>
             </div>
             <div class="sidebar-header-right" aria-hidden="true" />
           </header>
+
+          <!-- V2.3 Line view only: VariationsHeadline row (check + line title + level chip | prev/next chevrons) -->
+          <div v-if="isVideoV2_3 && panelView === 'line'" class="variations-headline" data-name="VariationsHeadline">
+            <span class="variations-headline-border" aria-hidden="true" />
+            <button
+              type="button"
+              class="variations-headline-btn variations-headline-btn--nav"
+              aria-label="Previous line"
+              :disabled="!hasPrevLine"
+              @click="goToPrevLine"
+            >
+              <CcIcon name="arrow-chevron-left" variant="glyph" :size="16" class="variations-headline-icon" />
+            </button>
+            <div class="variations-headline-center">
+              <div class="variations-headline-check-wrap" aria-hidden="true">
+                <CcIcon name="mark-check" variant="glyph" :size="16" class="variations-headline-check" />
+              </div>
+              <span class="variations-headline-title">{{ selectedLine?.move?.text ?? 'Line' }}</span>
+              <span v-if="selectedLine?.move?.completed && selectedLine?.move?.level" class="variations-headline-chip-wrap" aria-hidden="true">
+                <CcChip
+                  :label="selectedLine.move.level"
+                  color="aqua"
+                  variant="translucent"
+                  :is-uppercase="false"
+                  label-class="variations-headline-chip-label"
+                />
+              </span>
+            </div>
+            <button
+              type="button"
+              class="variations-headline-btn variations-headline-btn--nav"
+              aria-label="Next line"
+              :disabled="!hasNextLine"
+              @click="goToNextLine"
+            >
+              <CcIcon name="arrow-chevron-right" variant="glyph" :size="16" class="variations-headline-icon" />
+            </button>
+          </div>
 
           <!-- Content: Courses view (course card, progress, sections, lines) or Line view (empty for now) -->
           <template v-if="panelView === 'courses'">
@@ -2045,7 +2828,7 @@ onUnmounted(() => {
           </div>
 
           <!-- VideoSection (V1 only) – visible when Video button clicked; under course card; sticky -->
-          <section ref="videoSectionRef" v-show="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV3" class="video-section" data-name="VideoSection">
+          <section ref="videoSectionRef" v-show="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3 && !isVideoV3" class="video-section" data-name="VideoSection">
             <div
               class="video-placeholder-frame"
               :class="{ 'video-placeholder-frame--dragging': isResizingVideo }"
@@ -2078,7 +2861,7 @@ onUnmounted(() => {
           </section>
 
           <!-- Rest of content – hidden when video section is on (V1 only); always shown in V2 -->
-          <template v-if="!showVideoSection || isVideoV2 || isVideoV2_2 || isVideoV3">
+          <template v-if="!showVideoSection || isVideoV2 || isVideoV2_2 || isVideoV2_3 || isVideoV3">
           <!-- Progress – Figma node 2-5697 (specs: layout, spacing, typography, colors) -->
           <div class="course-progress" data-name="Course Progress Container">
             <div class="course-progress-header" data-name="Header">
@@ -2201,7 +2984,7 @@ onUnmounted(() => {
           </template>
 
           <div class="course-lines-row">
-            <span class="course-lines-count">{{ courses[0]?.lines ?? 120 }} lines</span>
+            <span class="course-lines-count">{{ courseTotalLines }} lines</span>
             <div class="show-all" data-name="Show All" aria-label="Show lines">
               <span class="show-all-label">Show</span>
               <select
@@ -2225,7 +3008,13 @@ onUnmounted(() => {
 
           <!-- Sections list – V3: all visible + scroll sticky; V2/V1: accordion -->
           <div class="sections-list">
-            <div v-for="(section, sectionIndex) in courseSections" :key="section.id" class="section-item" :data-section-id="section.id">
+            <div
+              v-for="(section, sectionIndex) in courseSections"
+              :key="section.id"
+              class="section-item"
+              :data-section-id="section.id"
+              :ref="isVideoV2_3 ? (el) => setV23SectionItemRef(section.id, el) : undefined"
+            >
               <!-- V3: every chapter in a sticky block – each sticks when it reaches the header; each has a video -->
               <template v-if="isVideoV3">
                 <div
@@ -2255,7 +3044,7 @@ onUnmounted(() => {
                           <span class="chapter-title">{{ section.name }}</span>
                         </div>
                         <div class="chapter-variations">
-                          <span class="chapter-count">{{ section.completed }}/{{ section.total }}</span>
+                          <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
                         </div>
                       </div>
                     </button>
@@ -2291,6 +3080,8 @@ onUnmounted(() => {
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
                         @click="openLine(section, move)"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -2321,16 +3112,12 @@ onUnmounted(() => {
               </template>
               <!-- V2/V1: accordion – expand to show video + lines -->
               <template v-else>
-                <!-- V2.2: one sticky wrapper so chapter + video stick together under the header -->
-                <div
-                  class="v22-chapter-video-block"
-                  :class="{ 'v22-chapter-video-block--sticky': isVideoV2_2 && v22PlayingSectionId === section.id }"
-                >
+                <!-- V2.3: always use wrap so collapse can animate smoothly (no layout jump when next chapter touches) -->
+                <div v-if="isVideoV2_3" class="v23-section-sticky-wrap">
                   <button
                     type="button"
                     class="chapter-v2"
-                    :class="{ 'chapter-v2--sticky-under-video': showVideoSection && !isVideoV2 && !isVideoV2_2 && isSectionExpanded(section.id) }"
-                    :style="showVideoSection && !isVideoV2 && !isVideoV2_2 && isSectionExpanded(section.id) ? { '--sticky-under-video-top': videoSectionHeightPx + 'px' } : undefined"
+                    :class="{ 'chapter-v2--sticky-title-v23': isSectionExpanded(section.id) }"
                     data-name="Chapter V2"
                     :aria-expanded="isSectionExpanded(section.id)"
                     @click="toggleSection(section.id)"
@@ -2348,7 +3135,131 @@ onUnmounted(() => {
                         <span class="chapter-title">{{ section.name }}</span>
                       </div>
                       <div class="chapter-variations">
-                        <span class="chapter-count">{{ section.completed }}/{{ section.total }}</span>
+                        <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
+                        <span class="chapter-chevron-wrap" aria-hidden="true">
+                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                  <div
+                    class="v23-expandable"
+                    :class="{ 'v23-expandable--open': isSectionExpanded(section.id) }"
+                  >
+                    <div
+                      class="v22-chapter-video-block"
+                      :class="{ 'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) }"
+                    >
+                      <section
+                        v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3) && showVideoSection && isSectionExpanded(section.id)"
+                        class="video-section video-section--inline"
+                        :data-name="`VideoSection-${section.id}`"
+                      >
+                        <div
+                          class="video-placeholder-frame"
+                          :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px' }"
+                        >
+                          <button
+                            v-if="videoFormat !== 'none'"
+                            type="button"
+                            class="video-play-button"
+                            :aria-label="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) ? 'Pause video' : 'Play video'"
+                            @click="isVideoV2_2 ? toggleV22VideoPlay(section.id) : isVideoV2_3 ? toggleV23VideoPlay(section.id) : undefined"
+                          >
+                            <CcIcon
+                              :name="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) ? 'media-control-pause' : 'media-control-play'"
+                              variant="glyph"
+                              :size="24"
+                              class="video-play-icon"
+                            />
+                          </button>
+                        </div>
+                      </section>
+                    </div>
+                    <Transition name="chapter-moves">
+                      <div
+                        v-if="isSectionExpanded(section.id) && getSectionMoves(section).length"
+                        class="move-list-wrap"
+                      >
+                      <div class="move-list" role="list" data-name="Lines" aria-label="Lines">
+                        <div
+                          v-for="move in getSectionMoves(section)"
+                          :key="`${section.id}-${move.id}`"
+                          class="move-item"
+                          :class="[
+                            { 'move-item--inactive': !move.completed },
+                            `move-item--${getLineType(move)}`
+                          ]"
+                          role="listitem"
+                          data-name="Line"
+                          :data-move-id="`${section.id}-${move.id}`"
+                          @click="openLine(section, move)"
+                          @mouseenter="setHoveredChapterLine(section, move)"
+                          @mouseleave="clearHoveredChapterLine()"
+                        >
+                          <div class="move-item-content">
+                            <div class="move-item-inner">
+                              <div class="move-item-plys">
+                                <span class="move-item-check-wrap" aria-hidden="true">
+                                  <CcIcon name="mark-check" variant="glyph" :size="16" class="move-item-check" />
+                                </span>
+                                <span class="move-item-text">{{ move.text }}</span>
+                              </div>
+                              <span v-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
+                                <CcChip
+                                  :label="move.level"
+                                  color="aqua"
+                                  variant="translucent"
+                                  :is-uppercase="false"
+                                  label-class="move-item-level-chip-label"
+                                />
+                              </span>
+                              <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
+                                <span class="move-item-dot" />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                    </div>
+                  </div>
+                </Transition>
+                  </div>
+                </div>
+                <!-- V2.2 only (no wrap): same structure without v23-section-sticky-wrap -->
+                <template v-else>
+                <div
+                  class="v22-chapter-video-block"
+                  :class="{
+                    'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id),
+                    'v22-chapter-video-block--v23-sticky-title': isVideoV2_3 && isSectionExpanded(section.id)
+                  }"
+                >
+                  <button
+                    type="button"
+                    class="chapter-v2"
+                    :class="{
+                      'chapter-v2--sticky-under-video': showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3 && isSectionExpanded(section.id),
+                      'chapter-v2--sticky-title-v23': isVideoV2_3 && isSectionExpanded(section.id)
+                    }"
+                    :style="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3 && isSectionExpanded(section.id) ? { '--sticky-under-video-top': videoSectionHeightPx + 'px' } : undefined"
+                    data-name="Chapter V2"
+                    :aria-expanded="isSectionExpanded(section.id)"
+                    @click="toggleSection(section.id)"
+                  >
+                    <span class="chapter-v2-border" aria-hidden="true" />
+                    <div class="chapter-progress-name">
+                      <div class="chapter-content">
+                        <span class="chapter-progress-icon" aria-hidden="true">
+                          <ProgressCircle
+                            :key="`progress-${section.id}`"
+                            :progress="getSectionProgressPercent(section)"
+                            :size="24"
+                          />
+                        </span>
+                        <span class="chapter-title">{{ section.name }}</span>
+                      </div>
+                      <div class="chapter-variations">
+                        <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
                         <span class="chapter-chevron-wrap" aria-hidden="true">
                           <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
                         </span>
@@ -2356,7 +3267,7 @@ onUnmounted(() => {
                     </div>
                   </button>
                   <section
-                    v-if="(isVideoV2 || isVideoV2_2) && showVideoSection && isSectionExpanded(section.id)"
+                    v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3) && showVideoSection && isSectionExpanded(section.id)"
                     class="video-section video-section--inline"
                     :data-name="`VideoSection-${section.id}`"
                   >
@@ -2368,11 +3279,11 @@ onUnmounted(() => {
                         v-if="videoFormat !== 'none'"
                         type="button"
                         class="video-play-button"
-                        :aria-label="isVideoV2_2 && v22PlayingSectionId === section.id ? 'Pause video' : 'Play video'"
-                        @click="isVideoV2_2 ? toggleV22VideoPlay(section.id) : undefined"
+                        :aria-label="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) ? 'Pause video' : 'Play video'"
+                        @click="isVideoV2_2 ? toggleV22VideoPlay(section.id) : isVideoV2_3 ? toggleV23VideoPlay(section.id) : undefined"
                       >
                         <CcIcon
-                          :name="isVideoV2_2 && v22PlayingSectionId === section.id ? 'media-control-pause' : 'media-control-play'"
+                          :name="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) ? 'media-control-pause' : 'media-control-play'"
                           variant="glyph"
                           :size="24"
                           class="video-play-icon"
@@ -2399,6 +3310,8 @@ onUnmounted(() => {
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
                         @click="openLine(section, move)"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -2427,7 +3340,8 @@ onUnmounted(() => {
                   </div>
                 </Transition>
               </template>
-            </div>
+              </template>
+          </div>
           </div>
           </div>
           </template>
@@ -2523,10 +3437,10 @@ onUnmounted(() => {
                   <div class="coach-new-inner">
                     <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
                     <div class="coach-new-message">
-                      <div class="coach-new-header">
+                      <div class="coach-new-header coach-new-header--hidden">
                         <span class="coach-new-title">It's practice time!</span>
                       </div>
-                      <p class="coach-new-body">Let's find out what you remember</p>
+                      <p class="coach-new-body">It's time to practice this line!</p>
                     </div>
                   </div>
                 </div>
@@ -2600,7 +3514,7 @@ onUnmounted(() => {
                       <div class="coach-new-header coach-new-header--hidden">
                         <span class="coach-new-title">It's practice time!</span>
                       </div>
-                      <p class="coach-new-body">These are the moves you'll learn. Review them and let's start whenever you're ready</p>
+                      <p class="coach-new-body">Let's learn this line together</p>
                     </div>
                   </div>
                 </div>
@@ -2780,6 +3694,9 @@ onUnmounted(() => {
               <button type="button" class="footer-icon-btn" :aria-label="showVideoSection ? 'Hide video' : 'Show video'" @click="openVideo">
                 <CcIcon :name="showVideoSection ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
               </button>
+              <button type="button" class="footer-icon-btn" aria-label="Book">
+                <CcIcon name="document-book-open" variant="glyph" :size="20" class="footer-icon" />
+              </button>
             </div>
             <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
               <button
@@ -2889,6 +3806,16 @@ body {
   overflow: hidden; /* Clip corners */
 }
 
+/* Board is display-only on all pages */
+.chessboard--no-interaction {
+  pointer-events: none;
+  cursor: default;
+}
+
+.chessboard--no-interaction .square {
+  cursor: default;
+}
+
 .square {
   position: relative;
   display: flex;
@@ -2934,6 +3861,10 @@ body {
 
 .piece.draggable {
   cursor: grab;
+}
+
+.chessboard--no-interaction .piece.draggable {
+  cursor: default;
 }
 
 .piece.draggable:active {
@@ -3012,7 +3943,7 @@ body {
   z-index: 0;
 }
 
-/* SidebarHeader – three-column: left (48px) | title (flex) | right (48px); overlay bg; height 48px */
+/* SidebarHeader – left (48px) | title (flex); overlay bg; height 48px; 16px right padding */
 .panel-header.sidebar-header {
   display: flex;
   flex-direction: row;
@@ -3023,6 +3954,7 @@ body {
   height: 48px;
   min-height: 48px;
   align-content: stretch;
+  padding-right: 16px;
   background: var(--bg-header-overlay, rgba(0, 0, 0, 0.14));
 }
 .sidebar-header-left,
@@ -3088,13 +4020,111 @@ body {
   white-space: nowrap;
 }
 
+/* V2.3 Line view: VariationsHeadline (Figma 56-8135) – back | check + line title + level chip | more */
+.variations-headline {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1, 4px);
+  position: relative;
+  width: 100%;
+  min-height: 1px;
+  flex-shrink: 0;
+  background: var(--bg-header-overlay, rgba(0, 0, 0, 0.14));
+}
+.variations-headline-border {
+  position: absolute;
+  inset: 0;
+  border-bottom: 1px solid var(--border-subtle-white, rgba(255, 255, 255, 0.1));
+  pointer-events: none;
+}
+.variations-headline-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-8, 32px);
+  height: var(--size-8, 32px);
+  min-width: var(--size-8, 32px);
+  min-height: var(--size-8, 32px);
+  border-radius: var(--radius-sm, 5px);
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.variations-headline-icon {
+  filter: drop-shadow(0 1px rgba(0, 0, 0, 0.2));
+}
+.variations-headline-btn--nav {
+  color: rgba(255, 255, 255, 0.5);
+}
+.variations-headline-btn--nav:hover:not(:disabled) {
+  color: rgba(255, 255, 255, 0.85);
+}
+.variations-headline-btn--nav:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.variations-headline-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 0 0;
+  min-width: 1px;
+  min-height: 1px;
+  position: relative;
+}
+.variations-headline-check-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-5, 20px);
+  height: var(--size-5, 20px);
+  min-width: var(--size-5, 20px);
+  min-height: var(--size-5, 20px);
+  border-radius: var(--radius-sm, 5px);
+  flex-shrink: 0;
+  color: var(--icon-success, #81b64c);
+}
+.variations-headline-check {
+  filter: drop-shadow(0 1px rgba(0, 0, 0, 0.2));
+}
+.variations-headline-title {
+  font-family: var(--font-system-semibold, 'Inter', sans-serif);
+  font-weight: 600;
+  font-size: var(--text-sm-plus, 14px);
+  line-height: var(--leading-5, 20px);
+  color: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 0 0;
+  min-width: 1px;
+  min-height: 1px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.variations-headline-chip-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.variations-headline-chip-wrap :deep(.cc-chip-component.cc-chip-aqua) {
+  --chip-translucent-fg: var(--color-aqua-300, #26c2a3);
+}
+.variations-headline-chip-wrap :deep(.variations-headline-chip-label) {
+  font-family: var(--font-family-system) !important;
+}
+
 /* CoachNew – coach message / ready state (Line view, Figma 32-5549) */
 .coach-new {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding-top: 4px;
-  padding-bottom: 8px;
+  padding-top: 12px;
+  padding-bottom: 12px;
   padding-left: 16px;
   padding-right: 16px;
   position: relative;
@@ -3169,7 +4199,7 @@ body {
 .coach-new-body-with-chip {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   gap: 0 6px;
   white-space: normal;
 }
@@ -3178,7 +4208,8 @@ body {
 }
 .coach-new-body-with-chip .coach-chip-light {
   flex-shrink: 0;
-  vertical-align: middle;
+  /* Nudge chip down so its text aligns with body copy (different font-size baselines) */
+  transform: translateY(2px);
 }
 /* Coach chip (light): Main Container – spec layout + DS tokens */
 .coach-chip-light {
@@ -3571,6 +4602,21 @@ body {
   top: 0;
   z-index: 2;
   background: var(--color-bg-opaque);
+}
+/* V2.3: wrap extends from chapter row through move list so sticky title's containing block includes all section content – title stays sticky until next section reaches top */
+.v23-section-sticky-wrap {
+  display: flex;
+  flex-direction: column;
+}
+/* V2.3: expandable area (video + moves) animates height so collapse on scroll has no layout jump */
+.v23-expandable {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease-out;
+}
+.v23-expandable--open {
+  max-height: 5000px;
+  transition: max-height 0.35s ease-in;
 }
 .video-placeholder-frame {
   flex-shrink: 0;
@@ -4157,6 +5203,20 @@ body {
 .chapter-v2--sticky-under-video[aria-expanded="true"] {
   background: var(--chapter-selected-bg, #353330);
 }
+
+/* V2.3: chapter title stays sticky under header until next chapter row touches it */
+.chapter-v2--sticky-title-v23 {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--chapter-selected-bg, #353330);
+  box-shadow: 0 1px 0 var(--color-border-subtlest, rgba(255, 255, 255, 0.08));
+}
+.chapter-v2--sticky-title-v23:hover,
+.chapter-v2--sticky-title-v23[aria-expanded="true"] {
+  background: var(--chapter-selected-bg, #353330);
+}
+
 .chapter-v2:focus-visible {
   outline: 2px solid var(--color-text-link);
   outline-offset: -2px;

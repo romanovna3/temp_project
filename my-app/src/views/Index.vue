@@ -8,6 +8,7 @@ const router = useRouter()
 const showV1 = false
 const showV2 = false
 const showV22 = true
+const showV23 = true
 
 // Build/deploy time injected by Vite at build time
 const buildTime = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString()
@@ -149,6 +150,46 @@ const editedAgo = computed(() => getEditedAgo(buildTime))
                 </span>
                 <div class="project-card__footer-labels">
                   <span class="project-card__footer-title">Chapter Page V2.2</span>
+                  <span class="project-card__footer-time">{{ editedAgo }}</span>
+                </div>
+              </div>
+            </div>
+          </article>
+          <!-- V2.3: hidden when showV23 is false -->
+          <article
+            v-if="showV23"
+            class="project-card"
+            role="button"
+            tabindex="0"
+            @click="router.push('/learn/v2.3')"
+            @keydown.enter="router.push('/learn/v2.3')"
+            @keydown.space.prevent="router.push('/learn/v2.3')"
+          >
+            <div class="project-card__upper">
+              <div class="project-card__pattern" aria-hidden="true" />
+              <div class="project-card__meta">
+                <div class="project-card__head">
+                  <img
+                    src="/icons/book-mark-aqua.png"
+                    alt=""
+                    class="project-card__icon"
+                    width="32"
+                    height="32"
+                  />
+                  <h2 class="project-card__title">Chapter Page V2.3</h2>
+                </div>
+              </div>
+            </div>
+            <div class="project-card__lower">
+              <div class="project-card__footer-left">
+                <span class="project-card__footer-icon" aria-hidden="true" title="Open">
+                  <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="M12 5l7 7-7 7" />
+                  </svg>
+                </span>
+                <div class="project-card__footer-labels">
+                  <span class="project-card__footer-title">Chapter Page V2.3</span>
                   <span class="project-card__footer-time">{{ editedAgo }}</span>
                 </div>
               </div>
