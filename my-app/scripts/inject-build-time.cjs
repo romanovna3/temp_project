@@ -1,0 +1,6 @@
+const fs = require('fs')
+const path = require('path')
+const buildTime = new Date().toISOString()
+const outPath = path.join(__dirname, '..', 'build-time.json')
+fs.writeFileSync(outPath, JSON.stringify({ buildTime }, null, 0))
+console.log('Build time set:', buildTime)

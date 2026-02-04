@@ -1,10 +1,21 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import fs from 'fs'
+
+function getBuildTime() {
+  try {
+    const raw = fs.readFileSync('build-time.json', 'utf8')
+    const { buildTime } = JSON.parse(raw)
+    return buildTime || new Date().toISOString()
+  } catch {
+    return new Date().toISOString()
+  }
+}
 
 export default defineConfig({
   plugins: [vue()],
   define: {
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __BUILD_TIME__: JSON.stringify(getBuildTime()),
   },
   // Use root in dev so http://127.0.0.1:5173/ loads the app; set VITE_BASE for deploy (e.g. /temp_project/my-app/)
   base: process.env.VITE_BASE || (process.env.NODE_ENV === 'development' ? '/' : '/temp_project/my-app/'),
