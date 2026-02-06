@@ -21,6 +21,7 @@ const versionLastEdited = {
   v2: buildTime,
   v22: buildTime,
   v23: buildTime,
+  v24: buildTime,
   v3: buildTime,
 }
 
@@ -207,6 +208,45 @@ function editedAgoFor(version) {
                 <div class="project-card__footer-labels">
                   <span class="project-card__footer-title">Chapter Page V2.3</span>
                   <span class="project-card__footer-time">{{ editedAgoFor('v23') }}</span>
+                </div>
+              </div>
+            </div>
+          </article>
+          <!-- V2.4: real course (Everything You Need to Know About Chess) -->
+          <article
+            class="project-card"
+            role="button"
+            tabindex="0"
+            @click="router.push('/learn/v2.4')"
+            @keydown.enter="router.push('/learn/v2.4')"
+            @keydown.space.prevent="router.push('/learn/v2.4')"
+          >
+            <div class="project-card__upper">
+              <div class="project-card__pattern" aria-hidden="true" />
+              <div class="project-card__meta">
+                <div class="project-card__head">
+                  <img
+                    src="/icons/book-mark-aqua.png"
+                    alt=""
+                    class="project-card__icon"
+                    width="32"
+                    height="32"
+                  />
+                  <h2 class="project-card__title">Chapter Page V2.4 (Real Course)</h2>
+                </div>
+              </div>
+            </div>
+            <div class="project-card__lower">
+              <div class="project-card__footer-left">
+                <span class="project-card__footer-icon" aria-hidden="true" title="Open">
+                  <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="M12 5l7 7-7 7" />
+                  </svg>
+                </span>
+                <div class="project-card__footer-labels">
+                  <span class="project-card__footer-title">Chapter Page V2.4</span>
+                  <span class="project-card__footer-time">{{ editedAgoFor('v24') }}</span>
                 </div>
               </div>
             </div>

@@ -20,10 +20,18 @@ import { playSound } from '../lib/playSound.js'
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
 
-// Courses data (right panel – Courses view, Practice Filter node 1-10063)
-const courses = [
+// Version: V2.3 = legacy content (14 sections), V2.4 = real course (7 chapters). Same layout for both.
+const route = useRoute()
+const isVideoV2_4 = computed(() => route.path === '/learn/v2.4')
+
+// Courses data – V2.3 legacy, V2.4 real course (right panel – Courses view)
+const coursesV23 = [
   { id: 1, title: "The Master's Hand: Capablanca's Endgame Technique", instructor: 'GM Alex Colovich', lines: 120, thumbnail: 'course-cover-gotham.png' },
 ]
+const coursesV24 = [
+  { id: 1, title: 'Everything You Need to Know About Chess', instructor: 'IM Danny Rensch', lines: 92, thumbnail: 'course-cover-everything.png' },
+]
+const courses = computed(() => (isVideoV2_4.value ? coursesV24 : coursesV23))
 
 // Lines filter options (label only the value – "Show " is separate)
 const linesFilterOptions = [
@@ -33,10 +41,10 @@ const linesFilterValue = ref('all')
 
 // Progress under course card – derived from actual section moves (chapters/lines)
 const progressLearned = computed(() =>
-  courseSections.reduce((sum, s) => sum + getSectionChapterProgress(s).completed, 0)
+  courseSections.value.reduce((sum, s) => sum + getSectionChapterProgress(s).completed, 0)
 )
 const progressTotal = computed(() =>
-  courseSections.reduce((sum, s) => sum + getSectionChapterProgress(s).total, 0)
+  courseSections.value.reduce((sum, s) => sum + getSectionChapterProgress(s).total, 0)
 )
 /** Total number of lines in the course (for "X lines" display). */
 const courseTotalLines = computed(() => progressTotal.value)
@@ -83,13 +91,13 @@ function toggleSection(sectionId) {
   v3ReleasedUntilSectionId.value = null
   // V2.2 / V2.3: opening another chapter (or closing) pauses the video – play button shows again
   if (isVideoV2_2.value) v22PlayingSectionId.value = null
-  if (isVideoV2_3.value) v23PlayingSectionId.value = null
+  if (isVideoV2_3OrV24.value) v23PlayingSectionId.value = null
   const currentlyExpanded = expandedSectionIds.value
   if (currentlyExpanded.has(sectionId)) {
     expandedSectionIds.value = new Set()
   } else {
     expandedSectionIds.value = new Set([sectionId]) // only one chapter open at a time
-    // Pin section to top during expand: every frame scroll so section stays at top (no jump)
+    // Pin section to top during expand only when needed: skip for short chapters that fit in view (no jump)
     nextTick(() => {
       const container = coursesContentRef.value
       if (!container) return
@@ -97,14 +105,23 @@ function toggleSection(sectionId) {
         (el) => el.getAttribute('data-section-id') === sectionId
       )
       if (!sectionEl) return
+      const containerRect = container.getBoundingClientRect()
+      const sectionRect = sectionEl.getBoundingClientRect()
+      const expandable = sectionEl.querySelector('.v23-expandable')
+      const expandedContentHeight = expandable ? expandable.scrollHeight : 0
+      const spaceBelowHeader = containerRect.bottom - sectionRect.top
+      const sectionAlreadyAtTop = sectionRect.top <= containerRect.top + 20
+      const contentFitsInView = expandedContentHeight <= spaceBelowHeader
+      // Only scroll to pin when section is below the fold and content doesn't fit – avoids jump for short chapters (Welcome, Introduction)
+      if (sectionAlreadyAtTop || contentFitsInView) return
       const expandDuration = 360
       const start = performance.now()
       const tick = () => {
         const elapsed = performance.now() - start
         if (elapsed >= expandDuration) return
-        const containerRect = container.getBoundingClientRect()
-        const sectionRect = sectionEl.getBoundingClientRect()
-        const scrollDelta = sectionRect.top - containerRect.top
+        const containerRectNow = container.getBoundingClientRect()
+        const sectionRectNow = sectionEl.getBoundingClientRect()
+        const scrollDelta = sectionRectNow.top - containerRectNow.top
         if (Math.abs(scrollDelta) > 1) container.scrollTop += scrollDelta
         requestAnimationFrame(tick)
       }
@@ -130,8 +147,10 @@ function openLine(section, move) {
   selectedLine.value = { section, move }
   lineViewMoves.value = getMovesForLine(section, move)
   selectedPly.value = { moveIndex: 0, side: 'white' }
+  isLineReadMode.value = false
   hoveredChapterLine.value = null
   panelView.value = 'line'
+  lineViewVideoFormat.value = 'large' // start large; shrink to small on first scroll when content is scrollable
 }
 function backToCourses() {
   const line = selectedLine.value
@@ -156,6 +175,11 @@ function backToCourses() {
   })
 }
 
+/** Header back button: on line view always go back to chapter (courses) page; works for all line types (info, quiz, completed, ready, uncompleted). */
+function onHeaderBackClick() {
+  if (panelView.value === 'line') backToCourses()
+}
+
 /** V2.3 Line view: prev/next line for headline chevrons; can cross chapter boundaries */
 const lineListForNav = computed(() => {
   if (!selectedLine.value?.section) return []
@@ -170,7 +194,7 @@ const currentLineIndexForNav = computed(() => {
 const currentSectionIndexForNav = computed(() => {
   const { section } = selectedLine.value || {}
   if (!section) return -1
-  return courseSections.findIndex((s) => s.id === section.id)
+  return courseSections.value.findIndex((s) => s.id === section.id)
 })
 const hasPrevLine = computed(() => {
   const idx = currentLineIndexForNav.value
@@ -185,7 +209,7 @@ const hasNextLine = computed(() => {
   const sectionIdx = currentSectionIndexForNav.value
   if (idx < 0 || sectionIdx < 0) return false
   if (idx < list.length - 1) return true
-  return sectionIdx < courseSections.length - 1
+  return sectionIdx < courseSections.value.length - 1
 })
 function goToPrevLine() {
   if (!hasPrevLine.value || !selectedLine.value) return
@@ -198,7 +222,7 @@ function goToPrevLine() {
   }
   const sectionIdx = currentSectionIndexForNav.value
   if (sectionIdx > 0) {
-    const prevSection = courseSections[sectionIdx - 1]
+    const prevSection = courseSections.value[sectionIdx - 1]
     const prevMoves = getSectionMoves(prevSection)
     if (prevMoves.length) openLine(prevSection, prevMoves[prevMoves.length - 1])
   }
@@ -213,8 +237,8 @@ function goToNextLine() {
     return
   }
   const sectionIdx = currentSectionIndexForNav.value
-  if (sectionIdx >= 0 && sectionIdx < courseSections.length - 1) {
-    const nextSection = courseSections[sectionIdx + 1]
+  if (sectionIdx >= 0 && sectionIdx < courseSections.value.length - 1) {
+    const nextSection = courseSections.value[sectionIdx + 1]
     const nextMoves = getSectionMoves(nextSection)
     if (nextMoves.length) openLine(nextSection, nextMoves[0])
   }
@@ -223,6 +247,8 @@ function goToNextLine() {
 // Line view: chess moves shown on the Line page. Key = `${section.id}-${move.id}` (baseId for -2 sections).
 // Each line has a distinct sequence so hover previews are visually different within a chapter.
 const lineMovesByKey = {
+  // Welcome (no moves – footer chevrons stay disabled)
+  'start-here-1': [],
   // Introduction (3 lines)
   'intro-1': [
     { number: 1, white: 'e4', black: 'e5' },
@@ -628,6 +654,319 @@ const lineMovesByKey = {
     { number: 3, white: 'Nc3', black: 'Bb4' },
     { number: 4, white: 'e3', black: 'O-O' },
   ],
+  'learning-the-game-1': [
+    { number: 1, white: 'Qh3', black: '' },
+  ],
+  'learning-the-game-2': [
+    { number: 1, white: 'Qd8', black: '' },
+  ],
+  'learning-the-game-3': [
+    { number: 1, white: 'Qh8', black: '' },
+  ],
+  'learning-the-game-4': [
+    { number: 1, white: 'Qd5', black: '' },
+  ],
+  'learning-the-game-5': [
+    { number: 1, white: 'Qa2', black: '' },
+  ],
+  'learning-the-game-6': [
+    { number: 1, white: 'Qf7', black: '' },
+  ],
+  'learning-the-game-7': [
+    { number: 1, white: 'Re8', black: '' },
+    { number: 2, white: 'Ra8', black: '' },
+    { number: 3, white: 'Ra4', black: '' },
+    { number: 4, white: 'Re4', black: '' },
+  ],
+  'learning-the-game-8': [
+    { number: 1, white: 'Rc7', black: '' },
+  ],
+  'learning-the-game-9': [
+    { number: 1, white: 'Ba4', black: '' },
+    { number: 2, white: 'Be8', black: '' },
+    { number: 3, white: 'Bf7', black: '' },
+    { number: 4, white: 'Bd5', black: '' },
+  ],
+  'learning-the-game-10': [
+    { number: 1, white: 'Be5', black: '' },
+  ],
+  'learning-the-game-11': [
+    { number: 1, white: 'Qa8', black: '' },
+    { number: 2, white: 'Qa1', black: '' },
+    { number: 3, white: 'Qg7', black: '' },
+    { number: 4, white: 'Qg4', black: '' },
+    { number: 5, white: 'Qd4', black: '' },
+  ],
+  'learning-the-game-12': [
+    { number: 1, white: 'Qa2', black: '' },
+  ],
+  'learning-the-game-13': [
+    { number: 1, white: 'Nc6', black: '' },
+    { number: 2, white: 'Nb4', black: '' },
+  ],
+  'learning-the-game-14': [
+    { number: 1, white: 'Nc6', black: '' },
+    { number: 2, white: 'Nd4', black: '' },
+    { number: 2, white: 'Ne5', black: '' },
+    { number: 2, white: 'Ne7', black: '' },
+    { number: 2, white: 'Nd8', black: '' },
+    { number: 2, white: 'Nb8', black: '' },
+    { number: 2, white: 'Na7', black: '' },
+    { number: 2, white: 'Na5', black: '' },
+    { number: 2, white: 'Nb4', black: '' },
+  ],
+  'learning-the-game-15': [
+    { number: 1, white: 'Ke5', black: '' },
+    { number: 2, white: 'Kd6', black: '' },
+    { number: 3, white: 'Kd5', black: '' },
+    { number: 4, white: 'Kc4', black: '' },
+    { number: 5, white: 'Kd4', black: '' },
+  ],
+  'learning-the-game-16': [
+    { number: 1, white: 'Ke3', black: '' },
+    { number: 1, white: 'Ke2', black: '' },
+    { number: 1, white: 'Kf2', black: '' },
+    { number: 1, white: 'Kf4', black: '' },
+  ],
+  'learning-the-game-17': [
+    { number: 1, white: 'exd5', black: '' },
+    { number: 2, white: 'd6', black: '' },
+    { number: 3, white: 'a4', black: '' },
+  ],
+  'learning-the-game-18': [
+    { number: 1, white: 'd5', black: '' },
+  ],
+  'learning-the-game-19': [
+    { number: 1, white: 'exf5', black: '' },
+  ],
+  'learning-the-game-20': [
+    { number: 1, white: 'e8=Q', black: '' },
+  ],
+  'the-opening-1': [
+    { number: 1, white: 'e4', black: '' },
+    { number: 2, white: 'd4', black: '' },
+    { number: 3, white: 'Nf3', black: '' },
+    { number: 4, white: 'Nc3', black: '' },
+    { number: 5, white: 'Nc4', black: '' },
+    { number: 6, white: 'Bf4', black: '' },
+    { number: 7, white: 'Qe2', black: '' },
+    { number: 8, white: 'O-O-O', black: '' },
+  ],
+  'the-opening-2': [
+    { number: 1, white: 'e4', black: '' },
+    { number: 2, white: 'd4', black: '' },
+    { number: 3, white: 'Nf3', black: '' },
+    { number: 4, white: 'Nc3', black: '' },
+    { number: 5, white: 'Bc4', black: '' },
+    { number: 6, white: 'Bf4', black: '' },
+    { number: 7, white: 'Qe2', black: '' },
+    { number: 8, white: 'O-O-O', black: '' },
+  ],
+  'the-opening-3': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bc4', black: 'Bb4' },
+    { number: 5, white: 'd3', black: 'd6' },
+    { number: 6, white: 'Bg5', black: 'O-O' },
+    { number: 7, white: 'O-O', black: '' },
+  ],
+  'the-opening-4': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'd6' },
+  ],
+  'the-opening-5': [
+    { number: 1, white: 'e4', black: 'd5' },
+    { number: 2, white: 'exd5', black: 'Qxd5' },
+    { number: 3, white: 'Nc3', black: 'Qc6' },
+    { number: 4, white: 'Bb5', black: '' },
+  ],
+  'the-opening-6': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'Nf6' },
+    { number: 4, white: 'O-O', black: '' },
+  ],
+  'the-opening-7': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Be7' },
+    { number: 5, white: 'e3', black: 'O-O' },
+    { number: 6, white: 'Nf3', black: '' },
+  ],
+  'the-opening-8': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Qh5', black: 'Nc6' },
+    { number: 3, white: 'Bc4', black: 'g6' },
+    { number: 4, white: 'Qf3', black: 'Nf6' },
+    { number: 5, white: 'g4', black: 'd5' },
+    { number: 6, white: 'exd5', black: 'Nd4' },
+    { number: 7, white: 'Qd1', black: 'Bxg4' },
+    { number: 8, white: 'Ne2', black: 'Nf3+' },
+    { number: 9, white: 'Kf1', black: 'Bh3#' },
+  ],
+  'the-opening-9': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Qh5', black: 'Nc6' },
+    { number: 3, white: 'Bc4', black: 'g6' },
+    { number: 4, white: 'Qf3', black: 'Nf6' },
+    { number: 5, white: 'g4', black: 'd5' },
+    { number: 6, white: 'exd5', black: 'Nd4' },
+    { number: 7, white: 'Qd1', black: 'Bxg4' },
+    { number: 8, white: 'Ne2', black: 'Nf3+' },
+    { number: 9, white: 'Kf1', black: 'Bh3#' },
+  ],
+  'the-opening-10': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bc4', black: 'Bb4' },
+    { number: 5, white: 'd3', black: 'd6' },
+    { number: 6, white: 'Bg5', black: 'O-O' },
+    { number: 7, white: 'O-O', black: '' },
+  ],
+  'the-opening-11': [
+    { number: 1, white: 'e4', black: 'd5' },
+    { number: 2, white: 'exd5', black: 'Qxd5' },
+    { number: 3, white: 'Nc3', black: 'Qc6' },
+    { number: 4, white: 'Bb5', black: '' },
+  ],
+  'the-opening-12': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Be7' },
+    { number: 5, white: 'e3', black: 'O-O' },
+    { number: 6, white: 'Nf3', black: '' },
+  ],
+  'tactics-strategy-1': [
+    { number: 1, white: 'Rf7', black: '' },
+  ],
+  'tactics-strategy-2': [
+    { number: 1, white: 'Ne7+', black: 'Kf7' },
+    { number: 2, white: 'Nxc8', black: '' },
+  ],
+  'tactics-strategy-3': [
+    { number: 1, white: 'Bb5', black: '' },
+  ],
+  'tactics-strategy-4': [
+    { number: 1, white: 'Bg5', black: 'Nd5' },
+    { number: 2, white: 'Bxd8', black: '' },
+  ],
+  'tactics-strategy-5': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: '' },
+  ],
+  'tactics-strategy-6': [
+    { number: 1, white: 'Re1+', black: 'Kd4' },
+    { number: 2, white: 'Rxe8', black: '' },
+  ],
+  'tactics-strategy-7': [
+    { number: 1, white: 'Re1', black: 'Qg6' },
+    { number: 2, white: 'Rxe8#', black: '' },
+  ],
+  'tactics-strategy-8': [
+    { number: 1, white: 'a8=Q+', black: 'Kf4' },
+    { number: 2, white: 'Qxh1', black: '' },
+  ],
+  // The Endgame (14 lines) – each with a different move sequence
+  'the-endgame-1': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bc4', black: 'Bc5' },
+    { number: 4, white: 'c3', black: 'Nf6' },
+  ],
+  'the-endgame-2': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Bg5', black: 'Be7' },
+  ],
+  'the-endgame-3': [
+    { number: 1, white: 'e4', black: 'c5' },
+    { number: 2, white: 'Nf3', black: 'd6' },
+    { number: 3, white: 'd4', black: 'cxd4' },
+    { number: 4, white: 'Nxd4', black: 'Nf6' },
+  ],
+  'the-endgame-4': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Nc3', black: 'Nf6' },
+    { number: 4, white: 'Nxe5', black: 'Nxe5' },
+    { number: 5, white: 'd4', black: 'Nd3+' },
+  ],
+  'the-endgame-5': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'e6' },
+    { number: 3, white: 'Nf3', black: 'd5' },
+    { number: 4, white: 'Nc3', black: 'Be7' },
+  ],
+  'the-endgame-6': [
+    { number: 1, white: 'e4', black: 'e6' },
+    { number: 2, white: 'd4', black: 'd5' },
+    { number: 3, white: 'Nd2', black: 'c5' },
+    { number: 4, white: 'exd5', black: 'exd5' },
+  ],
+  'the-endgame-7': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'Bb5', black: 'a6' },
+    { number: 4, white: 'Ba4', black: 'Nf6' },
+  ],
+  'the-endgame-8': [
+    { number: 1, white: 'c4', black: 'Nf6' },
+    { number: 2, white: 'Nc3', black: 'e5' },
+    { number: 3, white: 'Nf3', black: 'Nc6' },
+    { number: 4, white: 'e3', black: 'Bb4' },
+  ],
+  'the-endgame-9': [
+    { number: 1, white: 'd4', black: 'd5' },
+    { number: 2, white: 'c4', black: 'c6' },
+    { number: 3, white: 'Nf3', black: 'Nf6' },
+    { number: 4, white: 'Nc3', black: 'dxc4' },
+  ],
+  'the-endgame-10': [
+    { number: 1, white: 'e4', black: 'c5' },
+    { number: 2, white: 'Nf3', black: 'Nc6' },
+    { number: 3, white: 'd4', black: 'cxd4' },
+    { number: 4, white: 'Nxd4', black: 'e6' },
+  ],
+  'the-endgame-11': [
+    { number: 1, white: 'Nf3', black: 'd5' },
+    { number: 2, white: 'd4', black: 'Nf6' },
+    { number: 3, white: 'c4', black: 'e6' },
+    { number: 4, white: 'Nc3', black: 'Be7' },
+  ],
+  'the-endgame-12': [
+    { number: 1, white: 'e4', black: 'e5' },
+    { number: 2, white: 'Nf3', black: 'Nf6' },
+    { number: 3, white: 'Nxe5', black: 'd6' },
+    { number: 4, white: 'Nf3', black: 'Nxe4' },
+  ],
+  'the-endgame-13': [
+    { number: 1, white: 'd4', black: 'Nf6' },
+    { number: 2, white: 'c4', black: 'g6' },
+    { number: 3, white: 'Nc3', black: 'Bg7' },
+    { number: 4, white: 'e4', black: 'd6' },
+  ],
+  'the-endgame-14': [
+    { number: 1, white: 'e4', black: 'c6' },
+    { number: 2, white: 'd4', black: 'd5' },
+    { number: 3, white: 'Nc3', black: 'dxe4' },
+    { number: 4, white: 'Nxe4', black: 'Bf5' },
+  ],
+  'bringing-it-together-2': [
+    { number: 1, white: 'd4', black: '' },
+  ],
+  'bringing-it-together-3': [
+    { number: 1, white: 'c5', black: '' },
+  ],
+  'bringing-it-together-4': [
+    { number: 1, white: 'Bc5', black: '' },
+  ],
 }
 const defaultLineMoves = [
   { number: 1, white: 'e4', black: 'e5' },
@@ -695,20 +1034,88 @@ function isPlySelected(moveIndex, side) {
 function selectPly(moveIndex, side) {
   selectedPly.value = { moveIndex, side }
 }
+/** Handle click on inline move notation in body/caption HTML (event delegation). */
+function onInlinePlyChipClick(event) {
+  const target = event.target
+  if (!target) return
+  const el = target.nodeType === 1 ? target : target.parentElement
+  const chip = el?.closest?.('.inline-ply-chip')
+  if (!chip || !lineViewMoves.value?.length) return
+  event.preventDefault()
+  event.stopPropagation()
+  const move = chip.getAttribute('data-move')
+  if (!move) return
+  const moves = lineViewMoves.value
+  for (let idx = 0; idx < moves.length; idx++) {
+    const pair = moves[idx]
+    if (pair.white === move) {
+      selectPly(idx, 'white')
+      return
+    }
+    if (pair.black && pair.black === move) {
+      selectPly(idx, 'black')
+      return
+    }
+  }
+}
 function selectNextPly() {
+  const moves = lineViewMoves.value
+  if (!moves?.length) return
   const { moveIndex, side } = selectedPly.value
+  const pair = moves[moveIndex]
   if (side === 'white') {
-    selectedPly.value = { moveIndex, side: 'black' }
-  } else if (moveIndex + 1 < lineViewMoves.value.length) {
+    if (pair && pair.black) {
+      selectedPly.value = { moveIndex, side: 'black' }
+    } else if (moveIndex + 1 < moves.length) {
+      selectedPly.value = { moveIndex: moveIndex + 1, side: 'white' }
+    }
+  } else if (moveIndex + 1 < moves.length) {
     selectedPly.value = { moveIndex: moveIndex + 1, side: 'white' }
   }
 }
+
+/** True if there is a next ply within the current line (so Next chevron can advance ply). Only counts plies that exist (e.g. no "black" if the pair has no black move). */
+function hasNextPlyInLine() {
+  const moves = lineViewMoves.value
+  if (!moves?.length) return false
+  const { moveIndex, side } = selectedPly.value
+  const pair = moves[moveIndex]
+  if (side === 'white') {
+    if (pair && pair.black) return true
+    return moveIndex + 1 < moves.length
+  }
+  return moveIndex + 1 < moves.length
+}
+
+/** True if there is a previous ply within the current line (so Previous chevron can go back one ply). */
+function hasPreviousPlyInLine() {
+  const moves = lineViewMoves.value
+  if (!moves?.length) return false
+  const { moveIndex, side } = selectedPly.value
+  if (side === 'black') return true
+  return moveIndex > 0
+}
+
+function onFooterNextClick() {
+  if (panelView.value !== 'line') {
+    nextQuestion()
+    return
+  }
+  if (hasNextPlyInLine()) selectNextPly()
+}
+
 function selectPreviousPly() {
+  const moves = lineViewMoves.value
+  if (!moves?.length) return
   const { moveIndex, side } = selectedPly.value
   if (side === 'black') {
     selectedPly.value = { moveIndex, side: 'white' }
   } else if (moveIndex > 0) {
-    selectedPly.value = { moveIndex: moveIndex - 1, side: 'black' }
+    const prevPair = moves[moveIndex - 1]
+    selectedPly.value = {
+      moveIndex: moveIndex - 1,
+      side: prevPair && prevPair.black ? 'black' : 'white',
+    }
   }
 }
 
@@ -736,6 +1143,7 @@ function getSectionProgressPercent(section) {
 // Move items (Move Item List) – shown when chapter is expanded
 // 3 line types for layout/styling: completed | uncompleted | ready
 function getLineType(move) {
+  if (move?.info) return 'info'
   if (!move?.completed) return 'uncompleted'
   return move.level ? 'completed' : 'ready'
 }
@@ -746,11 +1154,99 @@ const currentLineType = computed(() => {
   return getLineType(selectedLine.value.move)
 })
 /** V2.3 Line view: course name for header (line name moves to VariationsHeadline row) */
-const currentCourseTitle = computed(() => courses[0]?.title ?? 'Course')
+const currentCourseTitle = computed(() => courses.value[0]?.title ?? 'Course')
 
 // 3 states: Uncompleted (dimmed check) | Ready (green check + animated dot) | Completed (green check + level chip e.g. L1)
-// Chess course line names – ~10 per chapter on average
-const sectionMoves = {
+// Placeholder line titles until real lines are provided; keyed by section id, counts match course structure.
+function buildPlaceholderMoves(total) {
+  return Array.from({ length: total }, (_, i) => ({
+    id: String(i + 1),
+    text: `Line ${i + 1}`,
+    completed: false,
+  }))
+}
+
+// V2.4: real course – 7 chapters, real line titles from course curriculum
+const sectionMovesV24 = {
+  'start-here': [
+    { id: '1', text: 'Welcome!', completed: true, info: true },
+  ],
+  intro: [
+    { id: '1', text: 'Introduction', completed: true, info: true },
+  ],
+  'learning-the-game': [
+    { id: '1', text: 'Learning the Board: Ranks', completed: true, quiz: true, level: 'L2' },
+    { id: '2', text: 'Learning the Board: Files', completed: true, quiz: true, level: 'L2' },
+    { id: '3', text: 'Learning the Board: Diagonals', completed: true, quiz: true, level: 'L2' },
+    { id: '4', text: 'Getting to Know the Squares #1', completed: true, quiz: true, level: 'L2' },
+    { id: '5', text: 'Getting to Know the Squares #2', completed: true, quiz: true, level: 'L2' },
+    { id: '6', text: 'Getting to Know the Squares #3', completed: true, quiz: true, level: 'L2' },
+    { id: '7', text: 'Meet the Rook', completed: true, info: true, level: 'L2' },
+    { id: '8', text: 'Meet the Rook - Practice', completed: true, quiz: true, nextLevel: 'L2' },
+    { id: '9', text: 'Meet the Bishop', completed: true, info: true, level: 'L1' },
+    { id: '10', text: 'Meet the Bishop - Practice', completed: true, quiz: true, level: 'L1' },
+    { id: '11', text: 'Meet the Queen', completed: true, info: true, level: 'L1' },
+    { id: '12', text: 'Meet the Queen - Practice', completed: true, quiz: true, nextLevel: 'L1' },
+    { id: '13', text: 'Meet the Knight', completed: true, info: true, nextLevel: 'L1' },
+    { id: '14', text: 'Meet the Knight - Practice', completed: true, quiz: true, nextLevel: 'L1' },
+    { id: '15', text: 'Meet the King', completed: true, info: true, nextLevel: 'L1' },
+    { id: '16', text: 'Meet the King - Practice', completed: true, quiz: true, nextLevel: 'L1' },
+    { id: '17', text: 'Meet the Pawn', completed: false, info: true },
+    { id: '18', text: 'Meet the Pawn - Practice #1', completed: false, quiz: true },
+    { id: '19', text: 'Meet the Pawn - Practice #2', completed: false, quiz: true },
+    { id: '20', text: 'Pawn Promotion', completed: false, quiz: true },
+  ],
+  'the-opening': [
+    { id: '1', text: 'The Dream Opening', completed: false, info: true },
+    { id: '2', text: 'The Dream Opening - Practice', completed: false, quiz: true },
+    { id: '3', text: 'The Dream Opening (Both Colors)', completed: false, info: true },
+    { id: '4', text: "Danny's Ten Opening Rules", completed: false, info: true },
+    { id: '5', text: 'Leave the Queen at Home!', completed: false },
+    { id: '6', text: 'Early Castling in the Ruy Lopez', completed: false },
+    { id: '7', text: "Learn the Queen's Gambit", completed: false },
+    { id: '8', text: "Don't Try Scholar's Mate!", completed: false },
+    { id: '9', text: 'Breaking Principles When Necessary', completed: false },
+    { id: '10', text: 'Review #1', completed: false },
+    { id: '11', text: 'Review #2', completed: false },
+    { id: '12', text: 'Review #3', completed: false },
+  ],
+  'tactics-strategy': [
+    { id: '1', text: 'Tactics: Double Attack #1', completed: false },
+    { id: '2', text: 'Tactics: Double Attack #2', completed: false },
+    { id: '3', text: 'Tactics: Absolute Pin', completed: false },
+    { id: '4', text: 'Tactics: Relative Pin', completed: false },
+    { id: '5', text: "Tactics: Relative Pin in the Queen's Gambit", completed: false },
+    { id: '6', text: 'Tactics: Skewer', completed: false },
+    { id: '7', text: 'Tactics: A Deadly Rook Skewer', completed: false },
+    { id: '8', text: 'Tactics: Skewer - The Infamous Endgame Skewer', completed: false },
+  ],
+  'the-endgame': [
+    { id: '1', text: 'Endgame Checkmates: Ladder Mate', completed: false },
+    { id: '2', text: 'Endgame Checkmates: The Queen Checkmate', completed: false },
+    { id: '3', text: 'Endgame Checkmates: The Rook Mate', completed: false, info: true },
+    { id: '4', text: 'The Rook Mate - Practice', completed: false },
+    { id: '5', text: 'Pawn Promotion: King on the 6th #1', completed: false },
+    { id: '6', text: 'Pawn Promotion: King on the 6th #2', completed: false },
+    { id: '7', text: 'Passed Pawns', completed: false, info: true },
+    { id: '8', text: 'Outside Passed Pawns', completed: false, info: true },
+    { id: '9', text: 'Outside Passed Pawns #2', completed: false, info: true },
+    { id: '10', text: 'Outside Passed Pawns #2: How we got there', completed: false, info: true },
+    { id: '11', text: 'The Active King', completed: false, info: true },
+    { id: '12', text: 'Review #1', completed: false },
+    { id: '13', text: 'Review #2', completed: false },
+    { id: '14', text: 'Review #3', completed: false },
+  ],
+  'bringing-it-together': [
+    { id: '1', text: 'The Immortal Blitz Game: Wesley So vs. Garry Kasparov, St. Louis, 2022', completed: false, info: true },
+    { id: '2', text: 'Final Review #1', completed: false, quiz: true },
+    { id: '3', text: 'Final Review #2', completed: false, quiz: true },
+    { id: '4', text: 'Final Review #3', completed: false, quiz: true },
+    { id: '5', text: 'Course Conclusion', completed: false, info: true },
+  ],
+}
+
+// V2.3: legacy content – 7 base sections + 7 “Part 2” sections, explicit line names
+const sectionMovesV23 = {
   intro: [
     { id: '1', text: 'The Italian Game: e4 e5 Nf3 Nc6', completed: true },
     { id: '2', text: 'Control the Center: d4 d5', completed: true },
@@ -833,6 +1329,635 @@ const sectionMoves = {
   ],
 }
 
+const sectionMoves = computed(() => (isVideoV2_4.value ? sectionMovesV24 : sectionMovesV23))
+
+// Informational line content (key: sectionId-moveId). Coach message + body HTML for info-only lines.
+const infoLineContentByKey = {
+  'start-here-1': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<h2 class="info-line-heading">You made it!</h2>
+<p class="info-line-divider" aria-hidden="true">__________________________</p>
+<p>Welcome!</p>
+<p>We're glad you're here learning chess with us.</p>
+<p>We're glad you're here learning chess with us.</p>
+<p>Equipped with MoveTrainer®, and the world's largest chess content library, your chess will know no limits!</p>
+<p>But what is MoveTrainer® and how does it work?</p>
+<p>Watch this short explainer video to find out!</p>
+<p>Then, you'll be ready to dive into this course and learn Everything You Need to Know About Chess!</p>
+<p class="info-line-divider" aria-hidden="true">__________________________</p>
+<p>Happy learning,</p>`,
+  },
+  'intro-1': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Chess is a fun and beautiful game that everyone can enjoy. While Chess.com is where you practice and play, Chessable is the place where you can learn and improve your game with courses for all levels and interests.</p>
+<p>This is a crash course for players just starting out. Welcome to the very beginning of your chess journey!</p>
+<p>Chess International Master and Chess.com Chief Chess Officer Danny Rensch is here to guide you through the very basics of the game.</p>
+<p><strong>You will learn:</strong></p>
+<p>♟️ The language of chess and how we identify pieces, squares and other elements of a chess board.</p>
+<p>♟️ How each piece moves</p>
+<p>♟️ How to play good moves in the Opening (the first phase of the game)</p>
+<p>♟️ Basic tactics and patterns that will help you win your opponent's pieces</p>
+<p>♟️ Basic checkmate patterns to finish off your opponent with</p>
+<p>♟️ Fundamental strategic concepts to help guide your play</p>
+<p>♟️ Checkmating techniques in the endgame, such as how to checkmate your opponent with only a king and queen</p>
+<p>...and more!</p>
+<p>To study this course, simply hit the Learn button and start learning! You can read the text in each variation, repeat the concepts demonstrated to you by MoveTrainer to ensure you understand it, and watch the video in each chapter to digest Danny's expert instruction.</p>
+<p>At the end of each chapter there are 3 Review variations which will test your understanding of the material in each chapter.</p>
+<p>By the end of this course, you will understand chess better than most of your friends and family and 99% of everyone who has ever played the game. Who knows, you may be very well be on your way to chess mastery!</p>
+<p>We wish you all the best in your chess journey. Don't forget that all work and no play makes you a dull chess player. Play on Chess.com! Building experience is just as important to improvement as building knowledge. So without further ado, let's dive in!</p>`,
+  },
+  'learning-the-game-7': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Rooks, sometimes incorrectly referred to as castles due to their shape, are perhaps the easiest piece to understand.</p>
+<p>Rooks move as far as they like; up, down, or side to side along either ranks or files. Let's see it moving in a square from e4 up to e8, across to a8, down to a4, and back over to e4.</p>
+<p>This is how the rook moves around in straight lines across the board.</p>`,
+    hasMoves: true,
+  },
+  'learning-the-game-9': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Meet the bishop. It moves only diagonally across one color complex - light or dark. Here we have a light-squared bishop. Let's see it moving along the light-squared diagonals.</p>
+<p>Notice a bishop must stay on the same color complex (in this case, the light-squares) for the entire game!</p>`,
+    hasMoves: true,
+  },
+  'learning-the-game-11': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>The queen is the most powerful piece on the board.</p>
+<p>She has the combined power to move like a bishop and rook and as far as she likes. Let's see her in action roaming around the board.</p>
+<p>The queen is the most powerful piece because of the great number of squares she can control, especially from the middle of the board!</p>`,
+    hasMoves: true,
+    movesLayout: 'inline',
+    inlinePieceSymbol: '♛',
+  },
+  'learning-the-game-13': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>The knight is a little different. It does not move in a straight line, like the rest of the pieces. Instead, it moves in an 'L' shape; two squares in one direction followed by one square in another adjacent direction. The knight is the only piece you might say can jump over other pieces without capturing or disturbing them.</p>
+<p>Let's see the knight gallop around a little.</p>
+<p>Notice the knight can essentially jump over other pieces (of either color) without capturing or disturbing them.</p>
+<p>Knights are considered the most tricky piece because of its unique moving pattern.</p>`,
+    hasMoves: true,
+    movesLayout: 'inline',
+  },
+  'learning-the-game-15': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>His majesty, the king moves one square in any direction he wishes - up or down, side to side, or diagonally. While it controls every square around it, its limited mobility makes it substantially less powerful than his royal counterpart, the queen.</p>
+<p>Let's see how he moves.</p>
+<p>The king's mobility is the most limited, and if you lose the king, you lose the game, as we will soon discuss. Therefore, the king requires protection throughout the game.</p>`,
+    hasMoves: true,
+    movesLayout: 'inline',
+  },
+  'learning-the-game-17': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    movesInBody: true,
+    introBodyHtml: `<p>Pawns move up the board in a straight line, one square at a time. They are the only piece that cannot move backward.</p>
+<p><strong>Capturing:</strong> Pawns capture differently than they move – they capture diagonally.</p>
+<p><strong>Initial two-square move:</strong> A pawn on its starting square (the 2nd and 7th ranks) has the option to move two squares forward instead of just one.</p>`,
+    moveExplanations: [
+      'Since there is a pawn diagonally to ours, we may capture it like this!',
+      'Since the d-pawn is not on its starting square, it is restricted to moving just one square forward at a time.',
+      'Since the a-pawn was sitting on its starting square, it can move up two squares instead of one!',
+    ],
+    closingBodyHtml: `<p>Note the h-pawns are blocking each other, so neither may move.</p>`,
+  },
+  'the-opening-1': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    movesInBody: true,
+    introBodyHtml: `<p>The opening phase of a chess game starts on the first move, and can be said to be finished once the rooks are connected. This means all the other pieces will have joined the action by moving off their starting squares on the back rank.</p>
+<p><strong>The goals of the opening phase of the game are the following:</strong></p>
+<ol>
+<li>Control the center of the board.</li>
+<li>Develop all your pieces into the game.</li>
+<li>Get your king to safety (usually by castling).</li>
+</ol>
+<p>Let's walk through the ideal opening moves and explain them one by one.</p>`,
+    moveExplanations: [
+      'A phenomenal first move - controlling central squares and opening lines for development of the bishop and queen.',
+      'If you are allowed, it\'s usually a good idea to take the center with both pawns! This opens lines for the dark-squared bishop and controls more key central squares.',
+      'Developing your pieces is essential, as you will learn in my 10 opening rules. The knight moves towards the center, controlling key central squares.',
+      'The queen\'s knight develops towards the center.',
+      'Likewise, the queen\'s knight moves towards the center, controlling the central e4 and d5-squares. The knights are ideally placed.',
+      'An active square for the bishop, playing a role in controlling the center and allowing room for White to castle kingside.',
+      'Likewise, a great square for the dark-squared bishop. As long as we are bringing our pieces into play, we are in good shape.',
+      'The queen finally joins the action, supporting her forces safely from behind and introducing the possibility of castling queenside!',
+    ],
+    closingBodyHtml: `<p>The position shown is a dream opening for White. Of course, Black gets to move too but for illustration purposes, each of White's pieces is on its most active square controlling the center of the board and ready to engage in battle. White's next move might be Re1, bringing the last piece into the middle of the board.</p>
+<p>Notice in order to finish development and connect the rooks, White had to castle! This serves the dual purpose of bringing the king to safety and finishing development.</p>`,
+  },
+  'the-opening-3': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    movesInBody: true,
+    introBodyHtml: `<p>Now let's let Black move too and see what good opening moves look like in a more realistic scenario.</p>`,
+    moveExplanations: [
+      '<p>A good first move, controlling the center with a pawn, and opening lines for the queen and f1-bishop.</p><p>Black follows suit.</p>',
+      '<p>White develops a piece towards the center and at the same time, attacks Black\'s e5 pawn! It\'s helpful when your opening moves serve multiple purposes.</p><p>Black develops a piece towards the center and defends the pawn.</p>',
+      '<p>The other knights come out to play.</p>',
+      '<p>White develops the bishop to its most active square, controlling the center, also preparing to castle kingside.</p><p>Black plays Bb4.</p>',
+      '<p>There are other good moves, such as castling right away, but d3 is good because it bolsters White\'s center and prepares the development of the dark-squared bishop.</p><p>Black follows suit.</p>',
+      '<p>White is getting close to finishing development now that most pieces are developed!</p><p>Both sides up to this point have played standard and good developing moves and now it\'s time to round out the opening by getting the king to safety followed by connecting the rooks.</p>',
+      '<p>Now both sides have castled, fulfilling the crucial principle of getting the king to safety.</p><p>All that\'s left to finish development is to connect the rooks by bringing in the queen. Of course, there may be better moves to make instead depending on the position, which is one of the reasons the opening can be tricky! For instance, an experienced player may recognize White\'s threat of 8.d5 here.</p><p>However, the point we want you to take away is that as a rule of thumb, when the queen moves into the game and the rooks are connected, the opening is done.</p>',
+    ],
+    closingBodyHtml: '',
+  },
+  'the-opening-4': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    movesInBody: true,
+    introBodyHtml: `<p>I have 10 rules for the opening that I've been teaching students for decades. Now that we understand the goals of the opening, let's talk about them.</p>
+<p><strong>1. Develop!</strong></p>
+<p><strong>2. Develop!</strong></p>
+<p><strong>3. Develop!</strong></p>
+<p>Using your full army is important enough to merit 3 spots on this list! In chess, Teamwork makes the dream work. Involve your entire army for full effectiveness!</p>
+<p><strong>4. Control the center.</strong></p>
+<p>The center is the most important strategic area of the board to control and occupy. From there, your pieces have the best scope to the rest of the board.</p>
+<p><strong>5. Don't move the same piece twice.</strong></p>
+<p>Observing this rule will help you follow rules 1-3!</p>
+<p><strong>6. Get castled early!</strong></p>
+<p>You can castle as early as move 4, as you see in this variation. This is a good idea because the action often takes place in the center of the board, meaning the king is most often safer on the edge behind the cover of pawns.</p>
+<p><strong>7. Don't bring out the queen too early!</strong></p>
+<p>The queen is the most valuable piece, so it pays to keep her at home until the big guns are needed, otherwise she may become a target.</p>
+<p><strong>8. Develop a plan!</strong></p>
+<p>This one is slightly more advanced because it's about where specifically to put your pieces. Mastering this will come with experience, while following the other rules, you should be paying attention to what your opponent is doing and put your pieces on effective squares accordingly. This leads us to Rule #9...</p>
+<p><strong>9. Follow rules 1-8 and try to stop your opponent from doing the same.</strong></p>
+<p>It's so easy to get lost in your own ideas and neglect your opponent's. Don't fall into that mindset. As we've seen, the best opening moves are multi-purposed. Not only can they improve our position, but obstruct your opponent's! Doing so is the best way to finish the opening with the best possible position.</p>
+<p><strong>10. Connect the rooks!</strong></p>
+<p>Don't proceed with your plan of attack until your pieces are developed, your rooks are connected, and ready to swing into the action.</p>
+<p>Now, play through the moves in this variation and for each move, stop and consider the role it plays in following these rules.</p>`,
+    moveExplanations: [
+      '<p>The first suboptimal opening move. Although it\'s not blundering anything, it blocks in Black\'s dark-squared bishop, preventing it from developing to an active square.</p><p>This move is blocking the development of the light-squared bishop. This means more moves are required to get these pieces into the game.</p><p>This move does nothing whatsoever to help develop Black\'s pieces.</p>',
+      '<p>Once again, White has played logical moves that observe the goals of the opening and follow Danny\'s rules. Conversely, Black has played a few moves which hinder their own development. Several more moves are necessary from the black side to finish developing. For this reason, White has an advantage out of the opening!</p><p>Rule #9 hasn\'t come into play so much as there is little tension between the pieces, allowing each side to follow their respective opening plans.</p>',
+    ],
+    closingBodyHtml: `<p>The better the opening rules are followed, the better our position will be in the middlegame, and the better prepared our pieces will be to attack and eventually checkmate the opponent.</p>`,
+  },
+  'the-endgame-3': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Endgame Checkmates: The Rook Mate. With only a king and rook left, you can force checkmate by driving the enemy king to the edge of the board. The two rooks (or rook and king) work together to shrink the space available to the enemy king until it is checkmated.</p>
+<p>This is one of the most important endgame patterns to learn. Let's see how it's done.</p>`,
+    hasMoves: true,
+  },
+  'the-endgame-7': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Passed pawns are pawns that have no enemy pawns in front of them on the same file or on adjacent files. They can advance toward promotion without being blocked by opposing pawns.</p>
+<p>Passed pawns are often a major advantage in the endgame. They can tie down the enemy king or create decisive threats. In this lesson we look at how to create and use passed pawns.</p>`,
+    hasMoves: true,
+  },
+  'the-endgame-8': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Outside passed pawns are passed pawns that sit on the wing – far from the main action. They are especially dangerous because they can draw the enemy king away from the center, allowing your own king to invade.</p>
+<p>Using an outside passed pawn is a key endgame technique. Let's see how it works.</p>`,
+    hasMoves: true,
+  },
+  'the-endgame-9': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Outside Passed Pawns #2. Here we look at another example of how an outside passed pawn can decide the game. When you have a passed pawn on the a-file or h-file, your opponent's king may have to travel a long way to stop it.</p>
+<p>That gives your king time to capture pawns or invade on the other side.</p>`,
+    hasMoves: true,
+  },
+  'the-endgame-10': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Outside Passed Pawns #2: How we got there. Before using an outside passed pawn, you often need to create it. This lesson shows a typical path from a more crowded position to one where the outside passed pawn becomes the hero.</p>
+<p>Pay attention to how the pawn structure changes and how the king finds the right square.</p>`,
+    hasMoves: true,
+  },
+  'the-endgame-11': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>The active king. In the endgame, the king is a strong piece. With fewer pieces on the board, it is safe to bring the king toward the center and use it to support pawns, attack enemy pawns, or restrict the opponent's king.</p>
+<p>An active king often makes the difference between a draw and a win. Let's see how to activate your king in the endgame.</p>`,
+    hasMoves: true,
+  },
+  'bringing-it-together-1': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Congratulations! By getting this far in the course, you've learned a heck of a lot about chess:</p>
+<ul>
+<li>♟️ The rules of the game and the language of chess</li>
+<li>♟️ How to play good opening moves</li>
+<li>♟️ How to navigate the middlegame with some basic strategic concepts</li>
+<li>♟️ How to win your opponent's pieces through tactics</li>
+<li>♟️ How to checkmate your opponent in the middlegame and endgame</li>
+</ul>
+<p>and much more!</p>
+<p>But for now, they're individual concepts compartmentalized in your brain. Now it's time to see a full game of chess from start to finish and see these principles in action in all their glory.</p>
+<p>This game is by Wesley So, a top American Grandmaster who managed to slay the one and only Garry Kasparov, former World Champion and one of the greatest players of all time. Wesley had the White pieces while Kasparov had the Black pieces. We will analyze this game from Wesley's point of view.</p>`,
+    hasMoves: true,
+  },
+  'bringing-it-together-5': {
+    coachMessage: 'Review the content below and continue when you\'re ready',
+    bodyHtml: `<p>Congratulations! You've finished the entire course, and now know all there is to know about chess!</p>
+<p>Well, okay, maybe not. 😉 Mastering the game takes years of study and practice. Even the World Chess Champion himself would tell you that he is still working to improve!</p>
+<p>But with this course, you're off to a strong start.</p>
+<p>Here's what we recommend to keep improving:</p>
+<p><strong>Keep practicing tactics!</strong> Tactics are the keys to winning chess games. For your next Chessable course, we recommend 1001 Chess Exercises For Beginners where popular streamer, Fiona Steil-Antoni will introduce and guide you through every tactic you need to know! You can practice Chess.com's Puzzles feature or through many Chessable courses.</p>
+<p><strong>Study other Chessable courses.</strong> There are courses on virtually every part of the game, from openings to endgames, taught by the best players and coaches in the world. Check out more courses using the link below.</p>
+<p><strong>Play games!</strong> It's important to put what you learn into practice. Chess is very much like a sport - it's not just about what you know, it's also about keeping sharp and putting your skills to the test! You can play games live on Chess.com or against bots.</p>
+<p>And most of all, <strong>have fun!</strong> Chess is full of wild, elegant, exciting, creative, and endless possibilities no matter what your level - remember to enjoy the journey!</p>
+<p><em>Note: If you'd like to study this course again, for optimal functionality, we recommend using the Delete My Progress option in Chapter Options before doing so.</em></p>`,
+    hasMoves: true,
+  },
+}
+
+// Quiz line content (key: sectionId-moveId): coach header, body, optional intro text
+const quizLineContentByKey = {
+  'learning-the-game-1': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Squares on a chess board can be divided and understood according to ranks (side to side), files (up and down) and diagonals. Let's talk about ranks. There are 8 ranks on a chess board numbered from 1-8.</p>
+<p>Here we see a lone queen sitting on the 3rd rank. We will learn about her highness when we talk about the pieces. For now, to get a better feel for the board, let's try moving her all the way across the 3rd rank to the other side.</p>`,
+    readModeCaption: 'The queen shuffles all the way to the other side along the 3rd rank.',
+  },
+  'learning-the-game-2': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Files are the sets of squares that go up and down on a chess board. There are 8 of them, lettered from a to h. Here, a queen sits on the d-file. Let's move her all the way down to the other side of the d-file.</p>`,
+    readModeCaption: 'I think you have the hang of it.',
+    readModeMoveWhite: 'Qd1',
+  },
+  'learning-the-game-3': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>There are lots of diagonals of varying sizes on a chess board.</p>
+<p>Here, the queen sits on the a1-h8 diagonal. Let's move her along it to the other side - the h8-square.</p>`,
+    readModeCaption: 'Note that all squares on a given diagonal must be of the same color - light or dark.',
+    readModeMoveWhite: 'Qh8',
+  },
+  'learning-the-game-4': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>There are 64 squares on a chess board, each with their own unique letter-number coordinate. Let's practice moving a piece to a given square. Let's start by moving the queen to the d5-square.</p>`,
+    readModeCaption: 'Nice job. Notice the d5-square sits on the d-file and the 5th rank.',
+    readModeMoveWhite: 'Qd5',
+  },
+  'learning-the-game-5': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Now try moving the queen to the a2-square.</p>`,
+    readModeCaption: 'Yep - most chess pieces can move backwards as well as forwards!',
+    readModeMoveWhite: 'Qa2',
+  },
+  'learning-the-game-6': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Let's do one more. Find the f7-square for the queen.</p>`,
+    readModeCaption: 'You got it. Now you understand the basic layout of the chess board! For more practice on coordinate recognition, check out Vision Drills on Chess.com',
+    readModeMoveWhite: 'Qf7',
+  },
+  'learning-the-game-8': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Let's practice moving the rook up to the c7 square.</p>`,
+    readModeCaption: 'The rook is a very powerful piece, second only to the queen. Together, they make up the major pieces.',
+    readModeMoveWhite: 'Rc7',
+  },
+  'learning-the-game-10': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Let's practice moving this dark-squared bishop along one of its favorite diagonals to the e5-square.</p>`,
+    readModeCaption: 'The bishop and knight are called minor pieces, and are essential components of your army.',
+    readModeMoveWhite: 'Be5',
+  },
+  'learning-the-game-12': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Every chess piece can move backwards except for pawns (which we will cover soon).</p>
+<p>Let's move the queen diagonally like a bishop, back to the a2-square.</p>`,
+    readModeCaption: 'Remember, the queen can go in any direction she likes, including up and down 1. Qg1 and side to side 1. Qd8 like a rook.',
+    readModeCaptionHtml: `<p>Remember, the queen can go in any direction she likes, including up and down <span class="inline-ply-chip" data-move="Qg1">1. Qg1</span> and side to side <span class="inline-ply-chip" data-move="Qd8">1. Qd8</span> like a rook.</p>`,
+    readModeMoveWhite: 'Qa2',
+  },
+  'learning-the-game-14': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>This piece takes the most practice getting used to. Let's move the knight up to c6 in its signature L-shape.</p>`,
+    readModeCaption: 'From this square, the knight can jump to 8 different squares (all dark!). Let\'s see them:',
+    readModeMoveWhite: 'Nc6',
+  },
+  'learning-the-game-16': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Let's see the king step one square to the side to the e3-square.</p>`,
+    readModeCaption: 'The king can move one square in any direction, like so:',
+    readModeMoveWhite: 'Ke3',
+  },
+  'learning-the-game-18': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>The pawn is not on its starting square, so it may only move one square forward at a time. Try it for yourself!</p>`,
+    readModeCaption: 'Pretty simple! Next we will practice capturing with the pawn.',
+    readModeMoveWhite: 'd5',
+  },
+  'learning-the-game-19': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Here Black's rook can be captured by the white pawn!</p>`,
+    readModeCaption: 'It\'s always a good thing to take your opponent\'s pieces, especially with a pawn!',
+    readModeMoveWhite: 'exf5',
+  },
+  'learning-the-game-20': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Every pawn contains the hidden potential to transform into a queen, bishop, rook, or knight when it reaches the other side of the board (the 8th rank for a white pawn, or the 1st rank for a black pawn). This is called pawn promotion.</p>
+<p>Most often, players opt to promote to a queen because the queen is the most powerful piece. Let's practice promoting a far-advanced pawn to a queen.</p>`,
+    readModeCaption: 'Just like that, a new queen enters the game which is great news for White.',
+    readModeMoveWhite: 'e8=Q',
+  },
+  'the-opening-2': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Now let's test your memory. Make the best developing moves possible in the same order you just saw in the previous variation.</p>
+<p><strong>Hint:</strong></p>
+<ul>
+<li>Control the center with pawns.</li>
+<li>Knights before bishops.</li>
+<li>Bring in the queen to prepare to castle queenside.</li>
+</ul>`,
+  },
+  'bringing-it-together-2': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>Wesley So, Top American Grandmaster, understands opening principles and here plays the best move, demonstrating optimal control of the center. What did he play?</p>`,
+    readModeCaption: 'Perfect! Occupying the center with two pawns gives White a great start to the game.',
+    readModeMoveWhite: 'd4',
+  },
+  'bringing-it-together-3': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>White's king is safe in the center for now, so castling immediately isn't strictly necessary. Wesley has a nice space advantage and with his next aggressive move, takes even more space and gives one of his pieces a great square to come forward to. What did he play?</p>`,
+    readModeCaptionHtml: `<p>A fantastic idea, giving the d2-knight the c4 square to hop to as a more aggressive post. You don't always want to make so many pawn moves in the opening, but Black has no immediate threats and this pawn move helps White develop.</p>
+<p>Think about it. The d2-knight needs to move in order for the dark-squared bishop to develop. So, preparing the excellent c4-square for the knight facilitates queenside development!</p>`,
+    readModeMoveWhite: 'c5',
+  },
+  'bringing-it-together-4': {
+    coachTitle: 'Play the correct move',
+    coachBody: 'White to play',
+    bodyHtml: `<p>After a dominant display of flawless opening and middlegame strategy from Wesley So, he arrived at this position in which all of Black's pieces are tied down or out of the game.</p>
+<p>Wesley now brought one more piece into the attack to finish off Kasparov. How can White attack a pinned piece and overwhelm Black's position?</p>`,
+    readModeCaption: "Black probably wishes he was castled a long time ago, because his king is being swarmed by too many White pieces. The bishop now attacks the knight on e7 and unfortunately for Black, there's no way to save it!",
+    readModeMoveWhite: 'Bc5',
+  },
+}
+// Read mode: toggled by book icon in footer; when ON: coach off, book = crossed, CTA = Back + Continue (for all lines that have it)
+const isLineReadMode = ref(false)
+function toggleLineReadMode() {
+  if (panelView.value === 'line') isLineReadMode.value = !isLineReadMode.value
+}
+function exitReadMode() {
+  isLineReadMode.value = false
+}
+const isQuizLine = computed(() => !!selectedLine.value?.move?.quiz)
+const quizLineContentCurrent = computed(() => {
+  const section = selectedLine.value?.section
+  const move = selectedLine.value?.move
+  if (!section?.id || !move?.id || !move?.quiz) return null
+  const key = `${section.id}-${move.id}`
+  return quizLineContentByKey[key] || null
+})
+
+const infoLineContentCurrent = computed(() => {
+  const section = selectedLine.value?.section
+  const move = selectedLine.value?.move
+  if (!section?.id || !move?.id || !move?.info) return null
+  const key = `${section.id}-${move.id}`
+  return infoLineContentByKey[key] || { coachMessage: 'Review the content below and continue when you\'re ready', bodyHtml: '' }
+})
+
+/** Read mode body copy (key: sectionId-moveId). Shown below the move list in read mode – moves first, then this copy. */
+const lineReadModeBodyByKey = {
+  'the-opening-5': {
+    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+<p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
+<p>One of Black's most common replies, following suit by occupying the center with a pawn right away.</p>
+<p>White lunges forward with a second pawn towards the center of the board, and threatens to capture Black's d-pawn!</p>
+<p>Black decides not to capture on c4 as after White will recapture on c4 with the bishop, and has excellent control of the center with both pawns!</p>
+<p>Instead, Black opts to defend their central pawn with 2...e6. This is called the Queen's Gambit Declined.</p>`,
+  },
+  'the-opening-6': {
+    bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
+<p>Let's see if you can learn and remember the first moves of this ancient opening.</p>
+<p>A perfect move; controlling the center and making way for the queen and bishop.</p>
+<p>As we've already seen, this move does many things:</p>
+<ol>
+<li>Develops a piece</li>
+<li>Controls the center</li>
+<li>Brings the king one move closer to castling to safety</li>
+<li>Attacks a pawn!</li>
+</ol>
+<p>Black defends.</p>
+<p>This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times. In addition to developing a piece and preparing to castle, the point of this move is to attack Black's knight – an important defender of Black's center. In this way, this bishop move indirectly controls the center!</p>`,
+  },
+  'the-opening-7': {
+    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+<p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
+<p>One of Black's most common replies, following suit by occupying the center with a pawn right away.</p>
+<p>White lunges forward with a second pawn towards the center of the board, and threatens to capture Black's d-pawn!</p>
+<p>Black decides not to capture on c4 as after White will recapture on c4 with the bishop, and has excellent control of the center with both pawns!</p>
+<p>Instead, Black opts to defend their central pawn with 2...e6. This is called the Queen's Gambit Declined.</p>`,
+  },
+  'the-opening-8': {
+    bodyHtml: `<p>Let's take a look at another example of what can go wrong if one side insists on going for checkmate with the queen too early.</p>
+<p>A strong first move, occupying the center, stopping white from playing d4 next, and facilitating kingside development.</p>
+<p>White brings out the queen as early as move 2, threatening to win our central pawn. So, we defend it by developing a piece. Remember, it's important to notice and react appropriately to your opponent's threats.</p>
+<p>White is trying to checkmate us on the f7 square. If we don't defend, next would end the game and we would lose.</p>
+<p>Let's learn how to defend against this popular try at the beginner level.</p>
+<p>White is going for Scholar's Mate with Queen to f7 next, which we saw in the first lesson. This can be a quick way to catch unwitting opponents off guard. If Black isn't careful and plays something like 3...Nf6 attacking the queen, White would be able to give checkmate already on move four with 4. Qxf7#. But we see White's threat and are ready to punish them for breaking the opening rules.</p>
+<p>...g6 defends against the checkmate threat on f7, and forces White to waste another move on the queen, otherwise she will be captured.</p>`,
+  },
+  'the-opening-9': {
+    bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
+<p>Let's see if you can learn and remember the first moves of this ancient opening.</p>
+<p>A perfect move; controlling the center and making way for the queen and bishop.</p>
+<p>As we've already seen, this move does many things:</p>
+<ol>
+<li>Develops a piece</li>
+<li>Controls the center</li>
+<li>Brings the king one move closer to castling to safety</li>
+<li>Attacks a pawn!</li>
+</ol>
+<p>Black defends.</p>
+<p>This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times. In addition to developing a piece and preparing to castle, the point of this move is to attack Black's knight – an important defender of Black's center. In this way, this bishop move indirectly controls the center!</p>`,
+  },
+  'the-opening-10': {
+    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+<p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
+<p>One of Black's most common replies, following suit by occupying the center with a pawn right away.</p>
+<p>White lunges forward with a second pawn towards the center of the board, and threatens to capture Black's d-pawn!</p>
+<p>Black decides not to capture on c4 as after White will recapture on c4 with the bishop, and has excellent control of the center with both pawns!</p>
+<p>Instead, Black opts to defend their central pawn with 2...e6. This is called the Queen's Gambit Declined.</p>`,
+  },
+  'the-opening-11': {
+    bodyHtml: `<p>Let's take a look at another example of what can go wrong if one side insists on going for checkmate with the queen too early.</p>
+<p>A strong first move, occupying the center, stopping white from playing d4 next, and facilitating kingside development.</p>
+<p>White brings out the queen as early as move 2, threatening to win our central pawn. So, we defend it by developing a piece. Remember, it's important to notice and react appropriately to your opponent's threats.</p>
+<p>White is trying to checkmate us on the f7 square. If we don't defend, next would end the game and we would lose.</p>
+<p>Let's learn how to defend against this popular try at the beginner level.</p>
+<p>White is going for Scholar's Mate with Queen to f7 next, which we saw in the first lesson. This can be a quick way to catch unwitting opponents off guard. If Black isn't careful and plays something like 3...Nf6 attacking the queen, White would be able to give checkmate already on move four with 4. Qxf7#. But we see White's threat and are ready to punish them for breaking the opening rules.</p>
+<p>...g6 defends against the checkmate threat on f7, and forces White to waste another move on the queen, otherwise she will be captured.</p>`,
+  },
+  'the-opening-12': {
+    bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
+<p>Let's see if you can learn and remember the first moves of this ancient opening.</p>
+<p>A perfect move; controlling the center and making way for the queen and bishop.</p>
+<p>As we've already seen, this move does many things:</p>
+<ol>
+<li>Develops a piece</li>
+<li>Controls the center</li>
+<li>Brings the king one move closer to castling to safety</li>
+<li>Attacks a pawn!</li>
+</ol>
+<p>Black defends.</p>
+<p>This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times. In addition to developing a piece and preparing to castle, the point of this move is to attack Black's knight – an important defender of Black's center. In this way, this bishop move indirectly controls the center!</p>`,
+  },
+  'tactics-strategy-1': {
+    bodyHtml: `<p>For our first tactic, let's examine the double attack, also called a fork.</p>
+<p>A double attack is when one piece attacks two enemy pieces at the same time. In this position, the rook can attack both the enemy bishop and knight because they are sitting on the same rank!</p>
+<p><span class="inline-ply-chip" data-move="Rf7">1. Rf7</span></p>
+<p>Rook to f7 double attacks the bishop and knight, and Black cannot save them both. This means on the next move, White can capture one of them.</p>`,
+  },
+  'tactics-strategy-2': {
+    bodyHtml: `<p>Here it's White's move, and there are actually two different double attacks possible.</p>
+<p>One of them is Knight to e7, double attacking the king and queen.</p>
+<p>A double attack involving the enemy king is particularly effective because it comes with check, meaning your opponent will need to spend a move escaping the check.</p>
+<p><span class="inline-ply-chip" data-move="Ne7+">1. Ne7+</span></p>
+<p>Double attacking the king and queen is the best move in this position because we win the queen. However, the other double attack in this position is the move <span class="inline-ply-chip" data-move="b4">1. b4</span> which attacks both knights at the same time. Under normal circumstances, Black would not be able to save them both.</p>
+<p><span class="inline-ply-chip" data-move="Kf7">1... Kf7</span> <span class="inline-ply-chip" data-move="Nxc8">2. Nxc8</span></p>
+<p>We have chosen the better of the two double attacks, and we have won the enemy queen!</p>`,
+  },
+  'tactics-strategy-3': {
+    bodyHtml: `<p>Let's move on to the next tactic: the pin.</p>
+<p>A pin occurs when a bishop, rook, or queen attacks an enemy piece, disabling it from moving because there's a better piece behind it. Let's have a look at an example.</p>
+<p><span class="inline-ply-chip" data-move="Bb5">1. Bb5</span></p>
+<p>What a move! With this move, there are actually two pins in the position:</p>
+<ol>
+<li>The white rook pins the black knight to the king.</li>
+<li>The white bishop pins the black rook to the king.</li>
+</ol>
+<p>Neither the black rook nor the black knight can legally move, because it's against the rules to put your own king in check! That's why this kind of pin is called an absolute pin, since the black pieces absolutely cannot move.</p>`,
+  },
+  'tactics-strategy-4': {
+    bodyHtml: `<p>The second type of pin is called a relative pin. Let's see what it looks like.</p>
+<p><span class="inline-ply-chip" data-move="Bg5">1. Bg5</span></p>
+<p>The bishop attacks the knight, and this time the enemy queen sits behind it. In this position, it would be a bad idea to move the black knight, though not illegal. In some rare instances, it can be a good idea to move pieces in relative pins if they create a strong counterattack.</p>
+<p><span class="inline-ply-chip" data-move="Nd5">1... Nd5</span> <span class="inline-ply-chip" data-move="Bxd8">2. Bxd8</span></p>
+<p>However in most positions, like this one, if the knight were to move, we would simply capture the queen and likely win the game.</p>`,
+  },
+  'tactics-strategy-5': {
+    bodyHtml: `<p>The Queen's Gambit opening features a relative pin like we just saw in the early stages of the game. Do you remember how it goes?</p>
+<p><span class="inline-ply-chip" data-move="d4">1. d4</span> – In the Queen's Gambit, White grabs the center with the queen's pawn on the first move.</p>
+<p><span class="inline-ply-chip" data-move="d5">1... d5</span> – Black responds in turn.</p>
+<p><span class="inline-ply-chip" data-move="c4">2. c4</span> – White puts pressure on Black's center by placing a second pawn in the center.</p>
+<p><span class="inline-ply-chip" data-move="e6">2... e6</span> – Black defends their center.</p>
+<p><span class="inline-ply-chip" data-move="Nc3">3. Nc3</span> – White develops their queenside pieces, starting with the knight towards the center, again adding pressure to Black's center.</p>
+<p><span class="inline-ply-chip" data-move="Nf6">3... Nf6</span> – Black develops a knight and defends the center simultaneously.</p>`,
+  },
+  'tactics-strategy-6': {
+    bodyHtml: `<p>A skewer is in some ways the opposite of a pin. A pin features a weaker piece sitting in front of, and shielding a more powerful piece behind it.</p>
+<p>A skewer sees a more powerful piece attacked and forced to retreat, revealing an attack on another vulnerable piece behind it on the same rank, file, or diagonal.</p>
+<p>Let's see an example.</p>
+<p><span class="inline-ply-chip" data-move="Re1+">1. Re1+</span></p>
+<p>In this position, whoever's turn it is to move will win the game due to a skewer.</p>
+<p>Fortunately for White, it is their turn, and rook to e1 wins the enemy rook by attacking the king and forcing it to move out of the way.</p>`,
+  },
+  'tactics-strategy-7': {
+    bodyHtml: `<p>Here is an example of a skewer occurring from a more realistic position. Here we can notice the queen and rook are lined up on the same file – prime conditions for a rook skewer.</p>
+<p><span class="inline-ply-chip" data-move="Re1">1. Re1</span> – White skewers the queen and rook along the e-file. Black must move the queen.</p>
+<p><span class="inline-ply-chip" data-move="Qg6">1... Qg6</span> – Black saves the queen but leaves the rook undefended.</p>
+<p><span class="inline-ply-chip" data-move="Rxe8#">2. Rxe8#</span> – White captures the rook with checkmate. The skewer won material and finished the game.</p>`,
+  },
+  'tactics-strategy-8': {
+    bodyHtml: `<p>Skewers are especially common in the endgame when the king is exposed. Here we see a classic example: a pawn promotes with check, and the new queen skewers the enemy king and rook.</p>
+<p><span class="inline-ply-chip" data-move="a8=Q+">1. a8=Q+</span> – The pawn promotes to a queen with check. Black's king must move.</p>
+<p><span class="inline-ply-chip" data-move="Kf4">1... Kf4</span> – The king steps aside.</p>
+<p><span class="inline-ply-chip" data-move="Qxh1">2. Qxh1</span> – The queen captures the rook, winning the game. This is the infamous endgame skewer: the king was forced to move, exposing the piece behind it.</p>`,
+  },
+  'the-endgame-1': {
+    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+<p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
+<p>One of Black's most common replies, following suit by occupying the center with a pawn right away.</p>
+<p>White lunges forward with a second pawn towards the center of the board, and threatens to capture Black's d-pawn!</p>
+<p>Black decides not to capture on c4 as after White will recapture on c4 with the bishop, and has excellent control of the center with both pawns!</p>
+<p>Instead, Black opts to defend their central pawn with 2...e6. This is called the Queen's Gambit Declined.</p>`,
+  },
+  'the-endgame-2': {
+    bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
+<p>Let's see if you can learn and remember the first moves of this ancient opening.</p>
+<p>A perfect move; controlling the center and making way for the queen and bishop.</p>
+<p>As we've already seen, this move does many things:</p>
+<ol>
+<li>Develops a piece</li>
+<li>Controls the center</li>
+<li>Brings the king one move closer to castling to safety</li>
+<li>Attacks a pawn!</li>
+</ol>
+<p>Black defends.</p>
+<p>This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times.</p>`,
+  },
+  'the-endgame-3': {
+    bodyHtml: `<p>For our first tactic, let's examine the double attack, also called a fork.</p>
+<p>A double attack is when one piece attacks two enemy pieces at the same time. In this position, the rook can attack both the enemy bishop and knight because they are sitting on the same rank!</p>
+<p>Rook to f7 double attacks the bishop and knight, and Black cannot save them both. This means on the next move, White can capture one of them.</p>`,
+  },
+  'the-endgame-4': {
+    bodyHtml: `<p>Here it's White's move, and there are actually two different double attacks possible.</p>
+<p>One of them is Knight to e7, double attacking the king and queen.</p>
+<p>A double attack involving the enemy king is particularly effective because it comes with check, meaning your opponent will need to spend a move escaping the check.</p>
+<p>Double attacking the king and queen is the best move in this position because we win the queen.</p>`,
+  },
+  'the-endgame-5': {
+    bodyHtml: `<p>Let's move on to the next tactic: the pin.</p>
+<p>A pin occurs when a bishop, rook, or queen attacks an enemy piece, disabling it from moving because there's a better piece behind it. Let's have a look at an example.</p>
+<p>What a move! With this move, there are actually two pins in the position. Neither the black rook nor the black knight can legally move, because it's against the rules to put your own king in check! That's why this kind of pin is called an absolute pin.</p>`,
+  },
+  'the-endgame-6': {
+    bodyHtml: `<p>The second type of pin is called a relative pin. Let's see what it looks like.</p>
+<p>The bishop attacks the knight, and this time the enemy queen sits behind it. In this position, it would be a bad idea to move the black knight, though not illegal. In some rare instances, it can be a good idea to move pieces in relative pins if they create a strong counterattack.</p>
+<p>However in most positions, like this one, if the knight were to move, we would simply capture the queen and likely win the game.</p>`,
+  },
+  'the-endgame-7': {
+    bodyHtml: `<p>The Queen's Gambit opening features a relative pin like we just saw in the early stages of the game. Do you remember how it goes?</p>
+<p>In the Queen's Gambit, White grabs the center with the queen's pawn on the first move. Black responds in turn. White puts pressure on Black's center by placing a second pawn in the center. Black defends their center.</p>
+<p>White develops their queenside pieces, starting with the knight towards the center. Black develops a knight and defends the center simultaneously.</p>`,
+  },
+  'the-endgame-8': {
+    bodyHtml: `<p>A skewer is in some ways the opposite of a pin. A pin features a weaker piece sitting in front of, and shielding a more powerful piece behind it.</p>
+<p>A skewer sees a more powerful piece attacked and forced to retreat, revealing an attack on another vulnerable piece behind it on the same rank, file, or diagonal.</p>
+<p>In this position, whoever's turn it is to move will win the game due to a skewer. Fortunately for White, it is their turn, and rook to e1 wins the enemy rook by attacking the king and forcing it to move out of the way.</p>`,
+  },
+  'the-endgame-9': {
+    bodyHtml: `<p>Here is an example of a skewer occurring from a more realistic position. Here we can notice the queen and rook are lined up on the same file – prime conditions for a rook skewer.</p>
+<p>White skewers the queen and rook along the e-file. Black must move the queen. Black saves the queen but leaves the rook undefended. White captures the rook with checkmate. The skewer won material and finished the game.</p>`,
+  },
+  'the-endgame-10': {
+    bodyHtml: `<p>Skewers are especially common in the endgame when the king is exposed. Here we see a classic example: a pawn promotes with check, and the new queen skewers the enemy king and rook.</p>
+<p>The pawn promotes to a queen with check. Black's king must move. The king steps aside. The queen captures the rook, winning the game. This is the infamous endgame skewer: the king was forced to move, exposing the piece behind it.</p>`,
+  },
+  'the-endgame-11': {
+    bodyHtml: `<p>Let's take a look at another example of what can go wrong if one side insists on going for checkmate with the queen too early.</p>
+<p>A strong first move, occupying the center, stopping white from playing d4 next, and facilitating kingside development.</p>
+<p>White brings out the queen as early as move 2, threatening to win our central pawn. So, we defend it by developing a piece. Remember, it's important to notice and react appropriately to your opponent's threats.</p>
+<p>...g6 defends against the checkmate threat on f7, and forces White to waste another move on the queen, otherwise she will be captured.</p>`,
+  },
+  'the-endgame-12': {
+    bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
+<p>Let's see if you can learn and remember the first moves of this ancient opening. A perfect move; controlling the center and making way for the queen and bishop. Black defends. This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times.</p>`,
+  },
+  'the-endgame-13': {
+    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+<p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop. One of Black's most common replies, following suit by occupying the center with a pawn right away. White lunges forward with a second pawn towards the center of the board. Instead, Black opts to defend their central pawn with 2...e6. This is called the Queen's Gambit Declined.</p>`,
+  },
+  'the-endgame-14': {
+    bodyHtml: `<p>For our first tactic, let's examine the double attack, also called a fork.</p>
+<p>A double attack is when one piece attacks two enemy pieces at the same time. In this position, the rook can attack both the enemy bishop and knight because they are sitting on the same rank! Rook to f7 double attacks the bishop and knight, and Black cannot save them both.</p>`,
+  },
+}
+const lineReadModeBodyCurrent = computed(() => {
+  const section = selectedLine.value?.section
+  const move = selectedLine.value?.move
+  if (!section?.id || !move?.id) return null
+  const key = `${section.id}-${move.id}`
+  return lineReadModeBodyByKey[key] || null
+})
+
+/** INFO lines that do not have video: Welcome (start-here), Introduction (intro). */
+const lineViewInfoLineHasVideo = computed(() => {
+  const id = selectedLine.value?.section?.id
+  return id !== 'start-here' && id !== 'intro'
+})
+
 // Pool of uncompleted move titles – shuffled per section to fill section.total (0/6 → 6 items, 0/24 → 24, etc.)
 const uncompletedMoveTitles = [
   'Learning from Proteus',
@@ -881,7 +2006,8 @@ function getSectionMoves(section) {
   const sectionId = typeof section === 'string' ? section : section?.id
   const total = typeof section === 'object' && section?.total != null ? section.total : 0
   const baseId = (sectionId || '').replace(/-2$/, '')
-  if (sectionMoves[baseId]) return sectionMoves[baseId]
+  const moves = sectionMoves.value
+  if (moves[baseId]) return moves[baseId]
   const shuffled = seededShuffle(uncompletedMoveTitles, sectionId)
   const count = Math.min(total, shuffled.length)
   return shuffled.slice(0, count).map((text, i) => ({
@@ -891,47 +2017,47 @@ function getSectionMoves(section) {
   }))
 }
 
-// Course sections – ~10 lines per chapter on average (2–3 on some, up to 20 on others)
-const courseSectionsBase = [
-  { id: 'intro', name: 'Introduction', completed: 2, total: 3, status: 'in_progress' },
-  { id: 'tactical', name: 'Tactical Section', completed: 4, total: 10, status: 'in_progress' },
-  { id: 'additional', name: 'Additional Tactics', completed: 0, total: 3, status: 'not_started' },
-  { id: 'games', name: 'The Games - Additional Tactics', completed: 0, total: 18, status: 'not_started' },
-  { id: 'other', name: 'Other Lines', completed: 0, total: 10, status: 'not_started' },
-  { id: 'blackmar', name: 'The Blackmar Diemer', completed: 0, total: 20, status: 'not_started' },
-  { id: 'quiz', name: 'Quiz', completed: 0, total: 2, status: 'not_started' },
+// V2.4: real course – 7 chapters
+const courseSectionsV24 = [
+  { id: 'start-here', name: 'New? Start here!', completed: 0, total: 1, status: 'not_started', videoAvailable: false },
+  { id: 'intro', name: 'Introduction', completed: 0, total: 1, status: 'not_started', videoAvailable: false },
+  { id: 'learning-the-game', name: '1) Learning the Game', completed: 0, total: 20, status: 'not_started', videoAvailable: true },
+  { id: 'the-opening', name: '2) The Opening', completed: 0, total: 12, status: 'not_started', videoAvailable: true },
+  { id: 'tactics-strategy', name: '3) Tactics & Strategy', completed: 0, total: 8, status: 'not_started', videoAvailable: true },
+  { id: 'the-endgame', name: '4) The Endgame', completed: 0, total: 14, status: 'not_started', videoAvailable: true },
+  { id: 'bringing-it-together', name: '5) Bringing it all Together', completed: 0, total: 5, status: 'not_started', videoAvailable: true },
 ]
-// Second-pass chapter names for the duplicated list (chess course style)
-const courseSectionsSecondNames = {
-  intro: 'Core Concepts',
-  tactical: 'Pattern Recognition',
-  additional: 'Tactics in Practice',
-  games: 'Master Game Analysis',
-  other: 'Opening Repertoire',
-  blackmar: 'Gambit Lines',
-  quiz: 'Practice Test',
-}
-// Core Concepts and Pattern Recognition show as not started (incomplete round progress bar)
-const courseSectionsSecondOverrides = {
-  intro: { completed: 0, status: 'not_started' },
-  tactical: { completed: 0, status: 'not_started' },
-}
-const courseSections = [
-  ...courseSectionsBase,
-  ...courseSectionsBase.map((s) => {
-    const overrides = courseSectionsSecondOverrides[s.id]
+
+// V2.3: legacy – 7 base sections + 7 Part 2 sections
+const courseSectionsV23Base = [
+  { id: 'intro', name: 'Introduction', completed: 2, total: 3, status: 'in_progress', videoAvailable: true },
+  { id: 'tactical', name: 'Tactical Section', completed: 4, total: 10, status: 'in_progress', videoAvailable: true },
+  { id: 'additional', name: 'Additional Tactics', completed: 0, total: 3, status: 'not_started', videoAvailable: true },
+  { id: 'games', name: 'The Games - Additional Tactics', completed: 0, total: 18, status: 'not_started', videoAvailable: false },
+  { id: 'other', name: 'Other Lines', completed: 0, total: 10, status: 'not_started', videoAvailable: true },
+  { id: 'blackmar', name: 'The Blackmar Diemer', completed: 0, total: 20, status: 'not_started', videoAvailable: true },
+  { id: 'quiz', name: 'Quiz', completed: 0, total: 2, status: 'not_started', videoAvailable: true },
+]
+const courseSectionsV23SecondNames = { intro: 'Core Concepts', tactical: 'Pattern Recognition', additional: 'Tactics in Practice', games: 'Master Game Analysis', other: 'Opening Repertoire', blackmar: 'Gambit Lines', quiz: 'Practice Test' }
+const courseSectionsV23SecondOverrides = { intro: { completed: 0, status: 'not_started' }, tactical: { completed: 0, status: 'not_started' } }
+const courseSectionsV23 = [
+  ...courseSectionsV23Base,
+  ...courseSectionsV23Base.map((s) => {
+    const overrides = courseSectionsV23SecondOverrides[s.id]
     return {
       ...s,
       id: `${s.id}-2`,
-      name: courseSectionsSecondNames[s.id] ?? `${s.name} (Part 2)`,
+      name: courseSectionsV23SecondNames[s.id] ?? `${s.name} (Part 2)`,
+      videoAvailable: s.id === 'games' ? false : true,
       ...(overrides || {}),
     }
   }),
 ]
+const courseSections = computed(() => (isVideoV2_4.value ? courseSectionsV24 : courseSectionsV23))
 
 // Count of Ready item Lines (completed moves without level) for Practice button badge
 const practiceReadyCount = computed(() => {
-  const moves = Object.values(sectionMoves).flat()
+  const moves = Object.values(sectionMoves.value).flat()
   return moves.filter(m => m.completed && !m.level).length
 })
 
@@ -941,6 +2067,21 @@ const extraDataLevelBadge = ref('L1')
 const extraDataLevelName = ref('Rookie')
 const extraDataLevelBadgeNextLevel = ref('L2')
 const extraDataLevelNameNextLevel = ref('Keen Learner')
+
+/** On line page: for ready lines, Next Level chip shows move.nextLevel; otherwise use placeholder refs. */
+const displayNextLevelBadge = computed(() => {
+  const move = selectedLine.value?.move
+  if (currentLineType.value === 'ready' && move?.nextLevel) return move.nextLevel
+  return extraDataLevelBadgeNextLevel.value
+})
+const displayNextLevelName = computed(() => {
+  const move = selectedLine.value?.move
+  if (currentLineType.value === 'ready' && move?.nextLevel) {
+    const item = masteryLevelItems.find((m) => m.level === move.nextLevel)
+    return item?.title ?? move.nextLevel
+  }
+  return extraDataLevelNameNextLevel.value
+})
 
 // Icon names from Figma design
 const icons = {
@@ -1370,6 +2511,33 @@ const getPieceOnSquare = (square) => {
 // Get piece image path from Chess.com CDN
 const getPieceImage = (piece) => {
   return `https://www.chess.com/chess-themes/pieces/neo/300/${piece.type}.png`
+}
+
+// Piece letter to design-system glyph name (for move notation)
+const PIECE_GLYPH_MAP = {
+  Q: 'piece-fill-queen',
+  R: 'piece-fill-rook',
+  B: 'piece-fill-bishop',
+  N: 'piece-fill-knight',
+  K: 'piece-fill-king',
+  P: 'piece-fill-pawn',
+}
+const PIECE_ICON_SIZE = 18 // 25% smaller than default 24px
+function getPieceIconName(notation) {
+  if (!notation || typeof notation !== 'string') return null
+  const first = notation.charAt(0)
+  if (PIECE_GLYPH_MAP[first]) return PIECE_GLYPH_MAP[first]
+  if (first >= 'a' && first <= 'h') return 'piece-fill-pawn' // pawn move e4, exd5
+  return null // O-O, O-O-O, etc.
+}
+function getPieceDisplaySquare(notation) {
+  if (!notation || typeof notation !== 'string') return notation
+  if (/^[QRBNK]x?[a-h][1-8]/.test(notation)) return notation.slice(1)
+  return notation
+}
+function getDisplayWhiteNotation(pair, idx) {
+  if (isQuizLine.value && quizLineContentCurrent.value?.readModeMoveWhite && idx === 0) return quizLineContentCurrent.value.readModeMoveWhite
+  return pair?.white
 }
 
 // Check if square is selected
@@ -1866,13 +3034,12 @@ const handleRetry = () => {
 }
 
 // V2: video visible by default, one per chapter, not sticky
-const route = useRoute()
 const isVideoV2 = computed(() => route.path === '/learn/v2')
 // V2.2: same as V2 but play button toggles to pause and makes that video sticky
 const isVideoV2_2 = computed(() => route.path === '/learn/v2.2')
 const v22PlayingSectionId = ref(null) // when set, this section's video shows pause and is sticky
-// V2.3: duplicate of V2.2 + sticky chapter title when expanded (sticks when it touches header); collapse when next chapter row touches
-const isVideoV2_3 = computed(() => route.path === '/learn/v2.3')
+// V2.3: duplicate of V2.2 + sticky chapter title when expanded. V2.4: same layout, real course content.
+const isVideoV2_3OrV24 = computed(() => route.path === '/learn/v2.3' || route.path === '/learn/v2.4')
 const v23PlayingSectionId = ref(null)
 const v23SectionItemRefs = ref(Object.create(null))
 function setV23SectionItemRef(sectionId, el) {
@@ -1893,7 +3060,7 @@ let v23ScrollCleanup = null
 function setupV23ScrollListener() {
   v23ScrollCleanup?.()
   v23ScrollCleanup = null
-  if (!isVideoV2_3.value || !coursesContentRef.value) return
+  if (!isVideoV2_3OrV24.value || !coursesContentRef.value) return
   const el = coursesContentRef.value
   el.addEventListener('scroll', onV23Scroll, { passive: true })
   v23ScrollCleanup = () => {
@@ -1905,7 +3072,7 @@ function setupV23ScrollListener() {
 const isVideoV3 = computed(() => route.path === '/learn/v3')
 const expandedSection = computed(() => {
   const id = [...expandedSectionIds.value][0]
-  return id ? (courseSections.find((s) => s.id === id) ?? null) : null
+  return id ? (courseSections.value.find((s) => s.id === id) ?? null) : null
 })
 
 // V3: scroll-driven sticky – which section's block has reached the header
@@ -2017,11 +3184,11 @@ function updateStickySection() {
   // 1. Which section has reached the header – single "current", topmost at or past header.
   //    When in released state, only consider sections up to and including releasedUntil so we never skip order.
   const releasedUntilIndex = releasedUntil != null
-    ? courseSections.findIndex((s) => s.id === releasedUntil)
+    ? courseSections.value.findIndex((s) => s.id === releasedUntil)
     : -1
   const sectionsToConsider = releasedUntilIndex >= 0
-    ? courseSections.slice(0, releasedUntilIndex + 1)
-    : courseSections
+    ? courseSections.value.slice(0, releasedUntilIndex + 1)
+    : courseSections.value
 
   let best = null
   let bestTop = -Infinity
@@ -2044,8 +3211,8 @@ function updateStickySection() {
     const stickyVideoEl = v3StickyVideoRef.value
     const videoBottom = stickyVideoEl ? stickyVideoEl.getBoundingClientRect().bottom : (stickyStripEl ? stickyStripEl.getBoundingClientRect().bottom : null)
     if (videoBottom != null) {
-      const currentIndex = courseSections.findIndex((s) => s.id === best.id)
-      const nextSection = currentIndex >= 0 && currentIndex < courseSections.length - 1 ? courseSections[currentIndex + 1] : null
+      const currentIndex = courseSections.value.findIndex((s) => s.id === best.id)
+      const nextSection = currentIndex >= 0 && currentIndex < courseSections.value.length - 1 ? courseSections.value[currentIndex + 1] : null
       if (nextSection) {
         const nextEl = sectionBlockRefs.value[nextSection.id]
         if (nextEl) {
@@ -2084,7 +3251,7 @@ function updateStickySection() {
 /** V3: video placeholder bg – #000 for even chapter index, dark grey for odd */
 function getStickyVideoBg(section) {
   if (!section) return '#000000'
-  const i = courseSections.findIndex((s) => s.id === section.id)
+  const i = courseSections.value.findIndex((s) => s.id === section.id)
   return i >= 0 && i % 2 === 1 ? '#2a2a2a' : '#000000'
 }
 
@@ -2094,48 +3261,58 @@ let v3IntersectionObserver = null
 
 /** V3 (last chapter only): stop scroll when (1) last chapter block is at header, or (2) bottom of last chapter (block + lines) is at viewport bottom. When last chapter is short, set padding so there is no room to scroll past. */
 function clampV3Scroll() {
-  if (!isVideoV3.value || !coursesContentRef.value) {
-    v3PaddingBottomPx.value = null
-    return
-  }
-  const el = coursesContentRef.value
-  const lastSection = courseSections[courseSections.length - 1]
-  if (!lastSection) {
-    v3PaddingBottomPx.value = null
-    return
-  }
-  const lastBlock = sectionBlockRefs.value[lastSection.id]
-  if (!lastBlock) {
-    v3PaddingBottomPx.value = null
-    return
-  }
-  const lastBlockRect = lastBlock.getBoundingClientRect()
-  const scrollElRect = el.getBoundingClientRect()
-  const maxWhenBlockAtTop = el.scrollTop + (lastBlockRect.top - scrollElRect.top)
-  const lastSectionItem = lastBlock.parentElement
-  const bottomLimit = lastSectionItem
-    ? el.scrollTop + (lastSectionItem.getBoundingClientRect().bottom - scrollElRect.bottom)
-    : maxWhenBlockAtTop
-  const lastChapterHeight = lastSectionItem ? lastSectionItem.getBoundingClientRect().height : 0
-  const contentShorterThanViewport = lastChapterHeight > 0 && lastChapterHeight <= scrollElRect.height
-  v3LastChapterShort.value = contentShorterThanViewport
+  try {
+    if (!isVideoV3.value || !coursesContentRef.value) {
+      v3PaddingBottomPx.value = null
+      return
+    }
+    const el = coursesContentRef.value
+    const sections = courseSections.value
+    if (!sections?.length) {
+      v3PaddingBottomPx.value = null
+      return
+    }
+    const lastSection = sections[sections.length - 1]
+    const lastBlock = sectionBlockRefs.value[lastSection.id]
+    if (!lastBlock) {
+      v3PaddingBottomPx.value = null
+      return
+    }
+    const lastBlockRect = lastBlock.getBoundingClientRect()
+    const scrollElRect = el.getBoundingClientRect()
+    const maxWhenBlockAtTop = el.scrollTop + (lastBlockRect.top - scrollElRect.top)
+    const lastSectionItem = lastBlock.parentElement
+    const bottomLimit = lastSectionItem
+      ? el.scrollTop + (lastSectionItem.getBoundingClientRect().bottom - scrollElRect.bottom)
+      : maxWhenBlockAtTop
+    const lastChapterHeight = lastSectionItem ? lastSectionItem.getBoundingClientRect().height : 0
+    const contentShorterThanViewport = lastChapterHeight > 0 && lastChapterHeight <= scrollElRect.height
+    v3LastChapterShort.value = contentShorterThanViewport
 
-  if (contentShorterThanViewport) {
-    const currentPadding = parseFloat(getComputedStyle(el).paddingBottom) || 0
-    const contentHeight = el.scrollHeight - currentPadding
-    const newPaddingPx = Math.max(0, Math.round(maxWhenBlockAtTop + el.clientHeight - contentHeight))
-    v3PaddingBottomPx.value = Number.isFinite(newPaddingPx) ? newPaddingPx : null
-  } else {
-    v3PaddingBottomPx.value = null
-  }
+    if (contentShorterThanViewport) {
+      const currentPadding = parseFloat(getComputedStyle(el).paddingBottom) || 0
+      const contentHeight = el.scrollHeight - currentPadding
+      const newPaddingPx = Math.max(0, Math.round(maxWhenBlockAtTop + el.clientHeight - contentHeight))
+      const toSet = Number.isFinite(newPaddingPx) ? newPaddingPx : null
+      if (v3PaddingBottomPx.value !== toSet) {
+        v3PaddingBottomPx.value = toSet
+      }
+    } else {
+      if (v3PaddingBottomPx.value !== null) {
+        v3PaddingBottomPx.value = null
+      }
+    }
 
-  const maxScrollTop = Math.max(
-    0,
-    contentShorterThanViewport ? maxWhenBlockAtTop : Math.max(maxWhenBlockAtTop, bottomLimit)
-  )
-  v3MaxScrollTop.value = maxScrollTop
-  if (el.scrollTop > maxScrollTop) {
-    el.scrollTop = maxScrollTop
+    const maxScrollTop = Math.max(
+      0,
+      contentShorterThanViewport ? maxWhenBlockAtTop : Math.max(maxWhenBlockAtTop, bottomLimit)
+    )
+    v3MaxScrollTop.value = maxScrollTop
+    if (el.scrollTop > maxScrollTop) {
+      el.scrollTop = maxScrollTop
+    }
+  } catch (_) {
+    v3PaddingBottomPx.value = null
   }
 }
 
@@ -2219,7 +3396,7 @@ function setupV3IntersectionObserver() {
   v3IntersectionObserver = null
   if (!isVideoV3.value || !coursesContentRef.value) return
   const root = coursesContentRef.value
-  const sectionIds = courseSections.map((s) => s.id)
+  const sectionIds = courseSections.value.map((s) => s.id)
   const elements = sectionIds.map((id) => sectionBlockRefs.value[id]).filter(Boolean)
   if (elements.length === 0) {
     // Refs may not be set yet (v-for); retry once when still on V3
@@ -2349,9 +3526,10 @@ function updateVideoSectionHeightPx() {
   }
 }
 
-// Line view: video with resize, default small; same footer toggle (showVideoSection)
+// Line view: video with resize, default large; shrink to small on first scroll when content is scrollable
 const lineViewVideoFormat = ref('large')
 const lineViewVideoSectionRef = ref(null)
+const lineViewScrollBodyRef = ref(null)
 const lineViewIsResizingVideo = ref(false)
 const lineViewVideoDragPreviewHeight = ref(null)
 let lineViewResizeStartY = 0
@@ -2367,8 +3545,9 @@ const lineViewVideoFrameHeight = computed(() => {
 })
 const lineViewVideoFrameWidth = computed(() => {
   const h = lineViewVideoFrameHeight.value
-  const rawW = lineViewVideoSectionRef.value?.clientWidth
-  const w = (rawW && rawW > 0) ? rawW : 460
+  const rawW = lineViewVideoSectionRef.value?.clientWidth ?? 0
+  const scrollBodyW = lineViewScrollBodyRef.value?.clientWidth ?? 0
+  const w = (rawW > 0) ? rawW : ((scrollBodyW > 0) ? scrollBodyW : 460)
   if (lineViewIsResizingVideo.value && lineViewVideoDragPreviewHeight.value != null) {
     if (h <= 0) return 0
     if (h < VIDEO_SMALL_H) return Math.round(198 * (h / VIDEO_SMALL_H))
@@ -2427,6 +3606,43 @@ function stopLineViewVideoResize(e) {
   }
 }
 
+// Line view only: shrink video when user scrolls down (if scrollable); expand back to large when user scrolls to top
+const LINE_VIEW_VIDEO_SMALL_COOLDOWN_MS = 400
+let lineViewVideoLastSetToSmallAt = 0
+function onLineViewScrollBodyScroll() {
+  const el = lineViewScrollBodyRef.value
+  if (!el || !showVideoSection.value) return
+  const scrollable = el.scrollHeight > el.clientHeight
+  if (el.scrollTop <= 0) {
+    const now = Date.now()
+    if (now - lineViewVideoLastSetToSmallAt > LINE_VIEW_VIDEO_SMALL_COOLDOWN_MS) {
+      lineViewVideoFormat.value = 'large'
+    }
+  } else if (scrollable && lineViewVideoFormat.value === 'large') {
+    lineViewVideoFormat.value = 'small'
+    lineViewVideoLastSetToSmallAt = Date.now()
+  }
+}
+
+let lineViewScrollElWithListener = null
+function attachLineViewScrollListenerIfNeeded() {
+  const el = lineViewScrollBodyRef.value
+  if (panelView.value !== 'line' || !el) {
+    if (lineViewScrollElWithListener) {
+      lineViewScrollElWithListener.removeEventListener('scroll', onLineViewScrollBodyScroll)
+      lineViewScrollElWithListener = null
+    }
+    return
+  }
+  if (lineViewScrollElWithListener !== el) {
+    if (lineViewScrollElWithListener) {
+      lineViewScrollElWithListener.removeEventListener('scroll', onLineViewScrollBodyScroll)
+    }
+    el.addEventListener('scroll', onLineViewScrollBodyScroll, { passive: true })
+    lineViewScrollElWithListener = el
+  }
+}
+
 // ResizeObserver: keep sticky chapter top in sync with video section height during drag and size transition
 let videoSectionResizeObserver = null
 let videoSectionObservedEl = null
@@ -2452,6 +3668,7 @@ function teardownVideoSectionResizeObserver() {
 }
 
 const openVideo = () => {
+  // In read mode, toggling video must not show the coach (read mode stays on)
   showVideoSection.value = !showVideoSection.value
 }
 
@@ -2465,9 +3682,18 @@ function toggleV23VideoPlay(sectionId) {
 }
 
 // V2 / V2.2 / V2.3: show video by default (per-chapter blocks rendered below each chapter)
-watch([isVideoV2, isVideoV2_2, isVideoV2_3, isVideoV3], ([v2, v22, v23, v3]) => {
+watch([isVideoV2, isVideoV2_2, isVideoV2_3OrV24, isVideoV3], ([v2, v22, v23, v3]) => {
   if (v2 || v22 || v23 || v3) showVideoSection.value = true
 }, { immediate: true })
+
+// Line view only: attach scroll listener to shrink video when user scrolls (if content is scrollable)
+watchEffect(() => {
+  panelView.value
+  lineViewScrollBodyRef.value
+  nextTick(() => {
+    attachLineViewScrollListenerIfNeeded()
+  })
+})
 
 
 watch(showVideoSection, (visible) => {
@@ -2596,7 +3822,7 @@ watch([isVideoV3, coursesContentRef], () => {
   setupV3ScrollListener()
 }, { immediate: true })
 
-watch([isVideoV2_3, coursesContentRef], () => {
+watch([isVideoV2_3OrV24, coursesContentRef], () => {
   setupV23ScrollListener()
 }, { immediate: true })
 
@@ -2744,24 +3970,23 @@ onUnmounted(() => {
           <header ref="panelHeaderRef" class="panel-header sidebar-header">
             <div class="sidebar-header-left">
               <button
-                v-if="panelView === 'line'"
                 type="button"
                 class="sidebar-header-back"
-                aria-label="Back to course"
-                @click="backToCourses"
+                :aria-label="panelView === 'line' ? 'Back to chapter' : 'Back'"
+                @click="onHeaderBackClick"
               >
                 <CcIcon :name="icons.back" variant="glyph" :size="20" />
               </button>
             </div>
             <div class="sidebar-header-title" :class="{ 'sidebar-header-title--line': panelView === 'line' }">
               <img v-if="panelView === 'courses'" :src="baseUrl + 'icons/book-mark-aqua.png'" alt="" class="sidebar-header-icon" width="24" height="24" aria-hidden="true" />
-              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' }">{{ panelView === 'line' ? (isVideoV2_3 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : 'Courses' }}</span>
+              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : 'Courses' }}</span>
             </div>
             <div class="sidebar-header-right" aria-hidden="true" />
           </header>
 
           <!-- V2.3 Line view only: VariationsHeadline row (check + line title + level chip | prev/next chevrons) -->
-          <div v-if="isVideoV2_3 && panelView === 'line'" class="variations-headline" data-name="VariationsHeadline">
+          <div v-if="isVideoV2_3OrV24 && panelView === 'line'" class="variations-headline" data-name="VariationsHeadline">
             <span class="variations-headline-border" aria-hidden="true" />
             <button
               type="button"
@@ -2773,19 +3998,10 @@ onUnmounted(() => {
               <CcIcon name="arrow-chevron-left" variant="glyph" :size="16" class="variations-headline-icon" />
             </button>
             <div class="variations-headline-center">
-              <div class="variations-headline-check-wrap" aria-hidden="true">
+              <div class="variations-headline-check-wrap" :class="{ 'variations-headline-check-wrap--uncompleted': selectedLine?.move && !selectedLine.move.completed }" aria-hidden="true">
                 <CcIcon name="mark-check" variant="glyph" :size="16" class="variations-headline-check" />
               </div>
               <span class="variations-headline-title">{{ selectedLine?.move?.text ?? 'Line' }}</span>
-              <span v-if="selectedLine?.move?.completed && selectedLine?.move?.level" class="variations-headline-chip-wrap" aria-hidden="true">
-                <CcChip
-                  :label="selectedLine.move.level"
-                  color="aqua"
-                  variant="translucent"
-                  :is-uppercase="false"
-                  label-class="variations-headline-chip-label"
-                />
-              </span>
             </div>
             <button
               type="button"
@@ -2828,7 +4044,7 @@ onUnmounted(() => {
           </div>
 
           <!-- VideoSection (V1 only) – visible when Video button clicked; under course card; sticky -->
-          <section ref="videoSectionRef" v-show="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3 && !isVideoV3" class="video-section" data-name="VideoSection">
+          <section ref="videoSectionRef" v-show="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && !isVideoV3" class="video-section" data-name="VideoSection">
             <div
               class="video-placeholder-frame"
               :class="{ 'video-placeholder-frame--dragging': isResizingVideo }"
@@ -2861,7 +4077,7 @@ onUnmounted(() => {
           </section>
 
           <!-- Rest of content – hidden when video section is on (V1 only); always shown in V2 -->
-          <template v-if="!showVideoSection || isVideoV2 || isVideoV2_2 || isVideoV2_3 || isVideoV3">
+          <template v-if="!showVideoSection || isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24 || isVideoV3">
           <!-- Progress – Figma node 2-5697 (specs: layout, spacing, typography, colors) -->
           <div class="course-progress" data-name="Course Progress Container">
             <div class="course-progress-header" data-name="Header">
@@ -3013,7 +4229,7 @@ onUnmounted(() => {
               :key="section.id"
               class="section-item"
               :data-section-id="section.id"
-              :ref="isVideoV2_3 ? (el) => setV23SectionItemRef(section.id, el) : undefined"
+              :ref="isVideoV2_3OrV24 ? (el) => setV23SectionItemRef(section.id, el) : undefined"
             >
               <!-- V3: every chapter in a sticky block – each sticks when it reaches the header; each has a video -->
               <template v-if="isVideoV3">
@@ -3050,7 +4266,7 @@ onUnmounted(() => {
                     </button>
                   </div>
                   <!-- Video under each chapter – hidden for "The Games..." (id: games) only -->
-                  <section v-if="showVideoSection && section.id !== 'games'" class="video-section video-section--inline" :data-name="`VideoSection-${section.id}`">
+                  <section v-if="showVideoSection && section.videoAvailable" class="video-section video-section--inline" :data-name="`VideoSection-${section.id}`">
                     <div
                       class="video-placeholder-frame"
                       :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px', backgroundColor: '#000000' }"
@@ -3103,6 +4319,9 @@ onUnmounted(() => {
                             <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                               <span class="move-item-dot" />
                             </span>
+                            <span v-else-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -3113,7 +4332,7 @@ onUnmounted(() => {
               <!-- V2/V1: accordion – expand to show video + lines -->
               <template v-else>
                 <!-- V2.3: always use wrap so collapse can animate smoothly (no layout jump when next chapter touches) -->
-                <div v-if="isVideoV2_3" class="v23-section-sticky-wrap">
+                <div v-if="isVideoV2_3OrV24" class="v23-section-sticky-wrap">
                   <button
                     type="button"
                     class="chapter-v2"
@@ -3148,10 +4367,10 @@ onUnmounted(() => {
                   >
                     <div
                       class="v22-chapter-video-block"
-                      :class="{ 'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) }"
+                      :class="{ 'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id) }"
                     >
                       <section
-                        v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3) && showVideoSection && isSectionExpanded(section.id)"
+                        v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24) && showVideoSection && section.videoAvailable && isSectionExpanded(section.id)"
                         class="video-section video-section--inline"
                         :data-name="`VideoSection-${section.id}`"
                       >
@@ -3163,11 +4382,11 @@ onUnmounted(() => {
                             v-if="videoFormat !== 'none'"
                             type="button"
                             class="video-play-button"
-                            :aria-label="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) ? 'Pause video' : 'Play video'"
-                            @click="isVideoV2_2 ? toggleV22VideoPlay(section.id) : isVideoV2_3 ? toggleV23VideoPlay(section.id) : undefined"
+                            :aria-label="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id) ? 'Pause video' : 'Play video'"
+                            @click="isVideoV2_2 ? toggleV22VideoPlay(section.id) : isVideoV2_3OrV24 ? toggleV23VideoPlay(section.id) : undefined"
                           >
                             <CcIcon
-                              :name="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) ? 'media-control-pause' : 'media-control-play'"
+                              :name="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id) ? 'media-control-pause' : 'media-control-play'"
                               variant="glyph"
                               :size="24"
                               class="video-play-icon"
@@ -3217,6 +4436,9 @@ onUnmounted(() => {
                               <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                                 <span class="move-item-dot" />
                               </span>
+                              <span v-else-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                                <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -3230,18 +4452,18 @@ onUnmounted(() => {
                 <div
                   class="v22-chapter-video-block"
                   :class="{
-                    'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id),
-                    'v22-chapter-video-block--v23-sticky-title': isVideoV2_3 && isSectionExpanded(section.id)
+                    'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id),
+                    'v22-chapter-video-block--v23-sticky-title': isVideoV2_3OrV24 && isSectionExpanded(section.id)
                   }"
                 >
                   <button
                     type="button"
                     class="chapter-v2"
                     :class="{
-                      'chapter-v2--sticky-under-video': showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3 && isSectionExpanded(section.id),
-                      'chapter-v2--sticky-title-v23': isVideoV2_3 && isSectionExpanded(section.id)
+                      'chapter-v2--sticky-under-video': showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionExpanded(section.id),
+                      'chapter-v2--sticky-title-v23': isVideoV2_3OrV24 && isSectionExpanded(section.id)
                     }"
-                    :style="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3 && isSectionExpanded(section.id) ? { '--sticky-under-video-top': videoSectionHeightPx + 'px' } : undefined"
+                    :style="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionExpanded(section.id) ? { '--sticky-under-video-top': videoSectionHeightPx + 'px' } : undefined"
                     data-name="Chapter V2"
                     :aria-expanded="isSectionExpanded(section.id)"
                     @click="toggleSection(section.id)"
@@ -3267,7 +4489,7 @@ onUnmounted(() => {
                     </div>
                   </button>
                   <section
-                    v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3) && showVideoSection && isSectionExpanded(section.id)"
+                    v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24) && showVideoSection && section.videoAvailable && isSectionExpanded(section.id)"
                     class="video-section video-section--inline"
                     :data-name="`VideoSection-${section.id}`"
                   >
@@ -3279,11 +4501,11 @@ onUnmounted(() => {
                         v-if="videoFormat !== 'none'"
                         type="button"
                         class="video-play-button"
-                        :aria-label="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) ? 'Pause video' : 'Play video'"
-                        @click="isVideoV2_2 ? toggleV22VideoPlay(section.id) : isVideoV2_3 ? toggleV23VideoPlay(section.id) : undefined"
+                        :aria-label="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id) ? 'Pause video' : 'Play video'"
+                        @click="isVideoV2_2 ? toggleV22VideoPlay(section.id) : isVideoV2_3OrV24 ? toggleV23VideoPlay(section.id) : undefined"
                       >
                         <CcIcon
-                          :name="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3 && v23PlayingSectionId === section.id) ? 'media-control-pause' : 'media-control-play'"
+                          :name="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id) ? 'media-control-pause' : 'media-control-play'"
                           variant="glyph"
                           :size="24"
                           class="video-play-icon"
@@ -3333,6 +4555,9 @@ onUnmounted(() => {
                             <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                               <span class="move-item-dot" />
                             </span>
+                            <span v-else-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -3349,7 +4574,7 @@ onUnmounted(() => {
           <div class="panel-content courses-content line-view-content" :class="`line-view-content--${currentLineType}`">
             <!-- COMPLETED LINES SCREEN – design for lines with level (e.g. L1, L2). Do not mix with ready. -->
             <template v-if="currentLineType === 'completed'">
-              <section class="coach-new" data-name="CoachNew">
+              <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
                   <div class="coach-new-inner">
                     <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
@@ -3357,74 +4582,69 @@ onUnmounted(() => {
                       <div class="coach-new-header coach-new-header--hidden">
                         <span class="coach-new-title">It's practice time!</span>
                       </div>
-                      <p class="coach-new-body coach-new-body-with-chip">
-                        You've learned all the moves, now come back in
-                        <span class="coach-chip-light" data-name="Chip">
-                          <span class="coach-chip-light-icon-wrap" aria-hidden="true">
-                            <CcIcon name="time-clock" variant="glyph" :size="12" class="coach-chip-light-icon" aria-hidden="true" />
-                          </span>
-                          <span class="coach-chip-light-text">{{ extraDataPracticeIn }}</span>
-                        </span>
-                        to practice
+                      <p class="coach-new-body">
+                        You've learned this line already – come back in {{ extraDataPracticeIn.toLowerCase() }} to practice.
                       </p>
                     </div>
                   </div>
                 </div>
               </section>
-              <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
-                <div
-                  class="video-placeholder-frame"
-                  :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
-                  :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
-                >
-                  <Transition name="video-play-fade">
-                    <button
-                      v-if="lineViewVideoFormat !== 'none'"
-                      key="play"
-                      type="button"
-                      class="video-play-button"
-                      aria-label="Play video"
-                    >
-                      <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
-                    </button>
-                  </Transition>
-                </div>
-                <div
-                  class="video-resize"
-                  data-name="VideoResize"
-                  role="separator"
-                  aria-orientation="horizontal"
-                  aria-label="Resize video"
-                  tabindex="0"
-                  @mousedown.prevent="startLineViewVideoResize"
-                >
-                  <span class="video-resize-handle" />
-                </div>
-              </section>
-              <div class="line-view-moves">
-                <div
-                  v-for="(pair, idx) in lineViewMoves"
-                  :key="idx"
-                  class="move-row"
-                  data-name="Move"
-                >
-                  <span class="move-number">{{ pair.number }}.</span>
-                  <div class="ply-pair">
-                    <div class="ply-classification">
-                      <span class="ply-classification-placeholder" aria-hidden="true" />
-                      <span
-                        class="ply-chip"
-                        :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
-                        @click="selectPly(idx, 'white')"
-                      >{{ pair.white }}</span>
-                    </div>
-                    <div class="ply-classification">
-                      <span class="ply-classification-placeholder" aria-hidden="true" />
-                      <span
-                        class="ply-chip"
-                        :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') }"
-                        @click="selectPly(idx, 'black')"
-                      >{{ pair.black }}</span>
+              <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
+                <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                  <div
+                    class="video-placeholder-frame"
+                    :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
+                    :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
+                  >
+                    <Transition name="video-play-fade">
+                      <button
+                        v-if="lineViewVideoFormat !== 'none'"
+                        key="play"
+                        type="button"
+                        class="video-play-button"
+                        aria-label="Play video"
+                      >
+                        <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
+                      </button>
+                    </Transition>
+                  </div>
+                  <div
+                    class="video-resize"
+                    data-name="VideoResize"
+                    role="separator"
+                    aria-orientation="horizontal"
+                    aria-label="Resize video"
+                    tabindex="0"
+                    @mousedown.prevent="startLineViewVideoResize"
+                  >
+                    <span class="video-resize-handle" />
+                  </div>
+                </section>
+                <div class="line-view-moves">
+                  <div
+                    v-for="(pair, idx) in lineViewMoves"
+                    :key="idx"
+                    class="move-row"
+                    data-name="Move"
+                  >
+                    <span class="move-number">{{ pair.number }}.</span>
+                    <div class="ply-pair">
+                      <div class="ply-classification">
+                        <span class="ply-classification-placeholder" aria-hidden="true" />
+                        <span
+                          class="ply-chip"
+                          :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
+                          @click="selectPly(idx, 'white')"
+                        ><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ getPieceDisplaySquare(pair.white) || pair.white }}</span></span>
+                      </div>
+                      <div class="ply-classification">
+                        <span class="ply-classification-placeholder" aria-hidden="true" />
+                        <span
+                          class="ply-chip"
+                          :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') && pair.black, 'ply-chip--empty': !pair.black }"
+                          @click="pair.black && selectPly(idx, 'black')"
+                        ><CcIcon v-if="pair.black && getPieceIconName(pair.black)" :name="getPieceIconName(pair.black)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ pair.black ? (getPieceDisplaySquare(pair.black) || pair.black) : '' }}</span></span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3432,7 +4652,7 @@ onUnmounted(() => {
             </template>
             <!-- READY LINES SCREEN – separate design for completed lines without level. Style independently. -->
             <template v-else-if="currentLineType === 'ready'">
-              <section class="coach-new" data-name="CoachNew">
+              <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
                   <div class="coach-new-inner">
                     <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
@@ -3445,138 +4665,365 @@ onUnmounted(() => {
                   </div>
                 </div>
               </section>
-              <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
-                <div
-                  class="video-placeholder-frame"
-                  :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
-                  :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
-                >
-                  <Transition name="video-play-fade">
-                    <button
-                      v-if="lineViewVideoFormat !== 'none'"
-                      key="play"
-                      type="button"
-                      class="video-play-button"
-                      aria-label="Play video"
-                    >
-                      <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
-                    </button>
-                  </Transition>
-                </div>
-                <div
-                  class="video-resize"
-                  data-name="VideoResize"
-                  role="separator"
-                  aria-orientation="horizontal"
-                  aria-label="Resize video"
-                  tabindex="0"
-                  @mousedown.prevent="startLineViewVideoResize"
-                >
-                  <span class="video-resize-handle" />
-                </div>
-              </section>
-              <div class="line-view-moves">
-                <div
-                  v-for="(pair, idx) in lineViewMoves"
-                  :key="idx"
-                  class="move-row"
-                  data-name="Move"
-                >
-                  <span class="move-number">{{ pair.number }}.</span>
-                  <div class="ply-pair">
-                    <div class="ply-classification">
-                      <span class="ply-classification-placeholder" aria-hidden="true" />
-                      <span
-                        class="ply-chip"
-                        :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
-                        @click="selectPly(idx, 'white')"
-                      >{{ pair.white }}</span>
-                    </div>
-                    <div class="ply-classification">
-                      <span class="ply-classification-placeholder" aria-hidden="true" />
-                      <span
-                        class="ply-chip"
-                        :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') }"
-                        @click="selectPly(idx, 'black')"
-                      >{{ pair.black }}</span>
+              <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
+                <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                  <div
+                    class="video-placeholder-frame"
+                    :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
+                    :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
+                  >
+                    <Transition name="video-play-fade">
+                      <button
+                        v-if="lineViewVideoFormat !== 'none'"
+                        key="play"
+                        type="button"
+                        class="video-play-button"
+                        aria-label="Play video"
+                      >
+                        <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
+                      </button>
+                    </Transition>
+                  </div>
+                  <div
+                    class="video-resize"
+                    data-name="VideoResize"
+                    role="separator"
+                    aria-orientation="horizontal"
+                    aria-label="Resize video"
+                    tabindex="0"
+                    @mousedown.prevent="startLineViewVideoResize"
+                  >
+                    <span class="video-resize-handle" />
+                  </div>
+                </section>
+                <div class="line-view-moves">
+                  <div
+                    v-for="(pair, idx) in lineViewMoves"
+                    :key="idx"
+                    class="move-row"
+                    data-name="Move"
+                  >
+                    <span class="move-number">{{ pair.number }}.</span>
+                    <div class="ply-pair">
+                      <div class="ply-classification">
+                        <span class="ply-classification-placeholder" aria-hidden="true" />
+                        <span
+                          class="ply-chip"
+                          :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
+                          @click="selectPly(idx, 'white')"
+                        ><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ getPieceDisplaySquare(pair.white) || pair.white }}</span></span>
+                      </div>
+                      <div class="ply-classification">
+                        <span class="ply-classification-placeholder" aria-hidden="true" />
+                        <span
+                          class="ply-chip"
+                          :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') && pair.black, 'ply-chip--empty': !pair.black }"
+                          @click="pair.black && selectPly(idx, 'black')"
+                        ><CcIcon v-if="pair.black && getPieceIconName(pair.black)" :name="getPieceIconName(pair.black)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ pair.black ? (getPieceDisplaySquare(pair.black) || pair.black) : '' }}</span></span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </template>
-            <!-- UNCOMPLETED LINES SCREEN – no header; body only; Learn + Practice (disabled) -->
-            <template v-else>
-              <section class="coach-new" data-name="CoachNew">
+            <!-- INFORMATIONAL LINES SCREEN – coach + video + text body + moves (table or inline); single Continue Learning button -->
+            <template v-else-if="currentLineType === 'info'">
+              <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
                   <div class="coach-new-inner">
                     <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
                     <div class="coach-new-message">
-                      <div class="coach-new-header coach-new-header--hidden">
-                        <span class="coach-new-title">It's practice time!</span>
+                      <p class="coach-new-body coach-new-body--info-only">{{ infoLineContentCurrent?.coachMessage }}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
+                <section ref="lineViewVideoSectionRef" v-show="showVideoSection && lineViewInfoLineHasVideo" class="video-section" data-name="VideoSection">
+                  <div
+                    class="video-placeholder-frame"
+                    :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
+                    :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
+                  >
+                    <Transition name="video-play-fade">
+                      <button
+                        v-if="lineViewVideoFormat !== 'none'"
+                        key="play"
+                        type="button"
+                        class="video-play-button"
+                        aria-label="Play video"
+                      >
+                        <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
+                      </button>
+                    </Transition>
+                  </div>
+                  <div
+                    class="video-resize"
+                    data-name="VideoResize"
+                    role="separator"
+                    aria-orientation="horizontal"
+                    aria-label="Resize video"
+                    tabindex="0"
+                    @mousedown.prevent="startLineViewVideoResize"
+                  >
+                    <span class="video-resize-handle" />
+                  </div>
+                </section>
+                <template v-if="infoLineContentCurrent?.movesInBody && lineViewMoves?.length">
+                  <div class="info-line-body cc-paragraph-medium" v-html="infoLineContentCurrent.introBodyHtml" />
+                  <template v-for="(pair, idx) in lineViewMoves" :key="idx">
+                    <div class="line-view-moves">
+                      <div
+                        class="move-row"
+                        data-name="Move"
+                      >
+                        <span class="move-number">{{ pair.number }}.</span>
+                        <div class="ply-pair">
+                          <div class="ply-classification">
+                            <span class="ply-classification-placeholder" aria-hidden="true" />
+                            <span
+                              class="ply-chip"
+                              :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
+                              @click="selectPly(idx, 'white')"
+                            ><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ getPieceDisplaySquare(pair.white) || pair.white }}</span></span>
+                          </div>
+                          <div class="ply-classification">
+                            <span class="ply-classification-placeholder" aria-hidden="true" />
+                            <span
+                              class="ply-chip ply-chip--empty"
+                            ><span class="ply-chip-text"></span></span>
+                          </div>
+                        </div>
                       </div>
-                      <p class="coach-new-body">Let's learn this line together</p>
                     </div>
+                    <div v-if="infoLineContentCurrent?.moveExplanations?.[idx]" class="info-line-body cc-paragraph-medium info-line-move-explanation" v-html="infoLineContentCurrent.moveExplanations[idx]"></div>
+                  </template>
+                  <div class="info-line-body cc-paragraph-medium" v-html="infoLineContentCurrent.closingBodyHtml" />
+                </template>
+                <template v-else>
+                  <div v-if="infoLineContentCurrent?.hasMoves && lineViewMoves?.length" :class="infoLineContentCurrent?.movesLayout === 'inline' ? 'line-view-moves line-view-moves--inline' : 'line-view-moves'">
+                    <template v-if="infoLineContentCurrent?.movesLayout === 'inline'">
+                      <div class="line-view-moves-inline">
+                        <template v-for="(pair, idx) in lineViewMoves" :key="idx">
+                          <span
+                            v-if="pair.white"
+                            class="line-view-move-inline-chip"
+                            :class="{ 'line-view-move-inline-chip--selected': isPlySelected(idx, 'white') }"
+                            @click="selectPly(idx, 'white')"
+                          ><span class="line-view-move-inline-chip-inner">{{ pair.number }}. </span><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="line-view-move-inline-piece-icon" /><span class="line-view-move-inline-chip-inner"> {{ getPieceDisplaySquare(pair.white) }} --</span></span>
+                          <span v-if="idx < lineViewMoves.length - 1" class="line-view-moves-inline-sep"> </span>
+                        </template>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div
+                        v-for="(pair, idx) in lineViewMoves"
+                        :key="idx"
+                        class="move-row"
+                        data-name="Move"
+                      >
+                        <span class="move-number">{{ pair.number }}.</span>
+                        <div class="ply-pair">
+                          <div class="ply-classification">
+                            <span class="ply-classification-placeholder" aria-hidden="true" />
+                            <span
+                              class="ply-chip"
+                              :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
+                              @click="selectPly(idx, 'white')"
+                            ><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ getPieceDisplaySquare(pair.white) || pair.white }}</span></span>
+                          </div>
+                          <div class="ply-classification">
+                            <span class="ply-classification-placeholder" aria-hidden="true" />
+                            <span
+                              class="ply-chip"
+                              :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') && pair.black, 'ply-chip--empty': !pair.black }"
+                              @click="pair.black && selectPly(idx, 'black')"
+                            ><CcIcon v-if="pair.black && getPieceIconName(pair.black)" :name="getPieceIconName(pair.black)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ pair.black ? (getPieceDisplaySquare(pair.black) || pair.black) : '' }}</span></span>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
                   </div>
-                </div>
-              </section>
-              <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
-                <div
-                  class="video-placeholder-frame"
-                  :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
-                  :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
-                >
-                  <Transition name="video-play-fade">
-                    <button
-                      v-if="lineViewVideoFormat !== 'none'"
-                      key="play"
-                      type="button"
-                      class="video-play-button"
-                      aria-label="Play video"
-                    >
-                      <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
-                    </button>
-                  </Transition>
-                </div>
-                <div
-                  class="video-resize"
-                  data-name="VideoResize"
-                  role="separator"
-                  aria-orientation="horizontal"
-                  aria-label="Resize video"
-                  tabindex="0"
-                  @mousedown.prevent="startLineViewVideoResize"
-                >
-                  <span class="video-resize-handle" />
-                </div>
-              </section>
-              <div class="line-view-moves">
-                <div
-                  v-for="(pair, idx) in lineViewMoves"
-                  :key="idx"
-                  class="move-row"
-                  data-name="Move"
-                >
-                  <span class="move-number">{{ pair.number }}.</span>
-                  <div class="ply-pair">
-                    <div class="ply-classification">
-                      <span class="ply-classification-placeholder" aria-hidden="true" />
-                      <span
-                        class="ply-chip"
-                        :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
-                        @click="selectPly(idx, 'white')"
-                      >{{ pair.white }}</span>
-                    </div>
-                    <div class="ply-classification">
-                      <span class="ply-classification-placeholder" aria-hidden="true" />
-                      <span
-                        class="ply-chip"
-                        :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') }"
-                        @click="selectPly(idx, 'black')"
-                      >{{ pair.black }}</span>
-                    </div>
+                  <div v-if="infoLineContentCurrent?.bodyHtml" class="info-line-body-wrap" @click="onInlinePlyChipClick">
+                    <div class="info-line-body cc-paragraph-medium" v-html="infoLineContentCurrent.bodyHtml" />
                   </div>
-                </div>
+                </template>
               </div>
+            </template>
+            <!-- UNCOMPLETED LINES SCREEN – read mode (no coach, video + content/moves) or default (coach + video/moves or quiz learn) -->
+            <template v-else>
+              <!-- Read mode ON: no coach; for quiz = video + content + move + caption; else video + moves -->
+              <template v-if="isLineReadMode">
+                <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
+                  <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                    <div
+                      class="video-placeholder-frame"
+                      :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
+                      :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
+                    >
+                      <Transition name="video-play-fade">
+                        <button
+                          v-if="lineViewVideoFormat !== 'none'"
+                          key="play"
+                          type="button"
+                          class="video-play-button"
+                          aria-label="Play video"
+                        >
+                          <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
+                        </button>
+                      </Transition>
+                    </div>
+                    <div
+                      class="video-resize"
+                      data-name="VideoResize"
+                      role="separator"
+                      aria-orientation="horizontal"
+                      aria-label="Resize video"
+                      tabindex="0"
+                      @mousedown.prevent="startLineViewVideoResize"
+                    >
+                      <span class="video-resize-handle" />
+                    </div>
+                  </section>
+                  <div v-if="isQuizLine && quizLineContentCurrent?.bodyHtml" class="info-line-body-wrap" @click="onInlinePlyChipClick">
+                    <div class="info-line-body cc-paragraph-medium" v-html="quizLineContentCurrent.bodyHtml" />
+                  </div>
+                  <div class="line-view-moves">
+                    <div
+                      v-for="(pair, idx) in lineViewMoves"
+                      :key="idx"
+                      class="move-row"
+                      data-name="Move"
+                    >
+                      <span class="move-number">{{ pair.number }}.</span>
+                      <div class="ply-pair">
+                        <div class="ply-classification">
+                          <span class="ply-classification-placeholder" aria-hidden="true" />
+                          <span
+                            class="ply-chip"
+                            :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
+                            @click="selectPly(idx, 'white')"
+                          ><CcIcon v-if="getPieceIconName(getDisplayWhiteNotation(pair, idx))" :name="getPieceIconName(getDisplayWhiteNotation(pair, idx))" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ getPieceDisplaySquare(getDisplayWhiteNotation(pair, idx)) || getDisplayWhiteNotation(pair, idx) }}</span></span>
+                        </div>
+                        <div class="ply-classification">
+                          <span class="ply-classification-placeholder" aria-hidden="true" />
+                          <span
+                            class="ply-chip"
+                            :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') && pair.black, 'ply-chip--empty': !pair.black }"
+                            @click="pair.black && selectPly(idx, 'black')"
+                          ><CcIcon v-if="pair.black && getPieceIconName(pair.black)" :name="getPieceIconName(pair.black)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ pair.black ? (getPieceDisplaySquare(pair.black) || pair.black) : '' }}</span></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <template v-if="isQuizLine && (quizLineContentCurrent?.readModeCaptionHtml || quizLineContentCurrent?.readModeCaption)">
+                    <div v-if="quizLineContentCurrent?.readModeCaptionHtml" class="quiz-line-read-caption-wrap" @click="onInlinePlyChipClick">
+                    <p class="quiz-line-read-caption quiz-line-read-caption--html" v-html="quizLineContentCurrent.readModeCaptionHtml"></p>
+                  </div>
+                    <p v-else class="quiz-line-read-caption">{{ quizLineContentCurrent.readModeCaption }}</p>
+                  </template>
+                  <div v-if="lineReadModeBodyCurrent?.bodyHtml" class="info-line-body-wrap">
+                    <div class="info-line-body cc-paragraph-medium" v-html="lineReadModeBodyCurrent.bodyHtml" />
+                  </div>
+                </div>
+              </template>
+              <!-- Quiz learn mode (read mode OFF): coach + text only; no video, no moves -->
+              <template v-else-if="isQuizLine && quizLineContentCurrent">
+                <section class="coach-new" data-name="CoachNew">
+                  <div class="coach-new-card" data-name="Quiz">
+                    <div class="coach-new-inner">
+                      <img :src="baseUrl + 'icons/misc/play-white.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
+                      <div class="coach-new-message">
+                        <div class="coach-new-header">
+                          <span class="coach-new-title">{{ quizLineContentCurrent.coachTitle }}</span>
+                        </div>
+                        <p class="coach-new-body">{{ quizLineContentCurrent.coachBody }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
+                  <div class="info-line-body-wrap" @click="onInlinePlyChipClick">
+                    <div class="info-line-body cc-paragraph-medium" v-html="quizLineContentCurrent.bodyHtml" />
+                  </div>
+                </div>
+              </template>
+              <!-- Default uncompleted: coach + video + moves -->
+              <template v-else>
+                <section class="coach-new" data-name="CoachNew">
+                  <div class="coach-new-card" data-name="Quiz">
+                    <div class="coach-new-inner">
+                      <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
+                      <div class="coach-new-message">
+                        <div class="coach-new-header coach-new-header--hidden">
+                          <span class="coach-new-title">It's practice time!</span>
+                        </div>
+                        <p class="coach-new-body">Let's learn this line together.</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
+                  <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                    <div
+                      class="video-placeholder-frame"
+                      :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
+                      :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
+                    >
+                      <Transition name="video-play-fade">
+                        <button
+                          v-if="lineViewVideoFormat !== 'none'"
+                          key="play"
+                          type="button"
+                          class="video-play-button"
+                          aria-label="Play video"
+                        >
+                          <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
+                        </button>
+                      </Transition>
+                    </div>
+                    <div
+                      class="video-resize"
+                      data-name="VideoResize"
+                      role="separator"
+                      aria-orientation="horizontal"
+                      aria-label="Resize video"
+                      tabindex="0"
+                      @mousedown.prevent="startLineViewVideoResize"
+                    >
+                      <span class="video-resize-handle" />
+                    </div>
+                  </section>
+                  <div class="line-view-moves">
+                    <div
+                      v-for="(pair, idx) in lineViewMoves"
+                      :key="idx"
+                      class="move-row"
+                      data-name="Move"
+                    >
+                      <span class="move-number">{{ pair.number }}.</span>
+                      <div class="ply-pair">
+                        <div class="ply-classification">
+                          <span class="ply-classification-placeholder" aria-hidden="true" />
+                          <span
+                            class="ply-chip"
+                            :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
+                            @click="selectPly(idx, 'white')"
+                          ><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ getPieceDisplaySquare(pair.white) || pair.white }}</span></span>
+                        </div>
+                        <div class="ply-classification">
+                          <span class="ply-classification-placeholder" aria-hidden="true" />
+                          <span
+                            class="ply-chip"
+                            :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') && pair.black, 'ply-chip--empty': !pair.black }"
+                            @click="pair.black && selectPly(idx, 'black')"
+                          ><CcIcon v-if="pair.black && getPieceIconName(pair.black)" :name="getPieceIconName(pair.black)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ pair.black ? (getPieceDisplaySquare(pair.black) || pair.black) : '' }}</span></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
             </template>
           </div>
         </template>
@@ -3586,7 +5033,7 @@ onUnmounted(() => {
         <div class="panel-footer-frame">
         <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line') }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
-          <div v-if="panelView === 'line' && currentLineType !== 'uncompleted'" class="extra-data" data-name="LevelFooter">
+          <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
             <!-- Completed lines: Practice in + time chip -->
             <div v-if="currentLineType === 'completed'" class="extra-data-practice-in" data-name="PracticeIn">
               <span class="extra-data-label">Practice in:</span>
@@ -3623,20 +5070,27 @@ onUnmounted(() => {
               <span class="extra-data-label">Next Level:</span>
               <div class="extra-data-level-chip" data-name="LevelChip">
                 <CcChip
-                  :label="extraDataLevelBadgeNextLevel"
+                  :label="displayNextLevelBadge"
                   color="aqua"
                   variant="translucent"
                   :is-uppercase="false"
                   label-class="extra-data-level-chip-label"
                 />
-                <span class="extra-data-level-name">{{ extraDataLevelNameNextLevel }}</span>
+                <span class="extra-data-level-name">{{ displayNextLevelName }}</span>
               </div>
             </div>
           </div>
-          <!-- Buttons footer: Continue / Practice – Chapter and Lines; Completed lines: Learn Again + Practice (disabled) -->
+          <!-- Buttons footer: Continue / Practice – Chapter and Lines; Read mode: Back + Continue -->
           <section class="footer-section footer-section-actions" data-name="ButtonsFooter">
+            <!-- Read mode ON: Back (S) exits read mode + nav; Continue (P) -->
+            <div v-if="panelView === 'line' && isLineReadMode" class="footer-buttons-container">
+              <div class="footer-buttons-row footer-buttons-row-split">
+                <CcButton variant="secondary" size="large" class="footer-btn-equal" @click="exitReadMode">Back</CcButton>
+                <CcButton variant="primary" size="large" class="footer-btn-equal" @click="hasNextLine ? goToNextLine() : backToCourses()">Continue</CcButton>
+              </div>
+            </div>
             <!-- Completed lines: Learn Again (secondary) + Practice (disabled, no badge) -->
-            <div v-if="panelView === 'line' && currentLineType === 'completed'" class="footer-buttons-container">
+            <div v-else-if="panelView === 'line' && currentLineType === 'completed'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-split">
                 <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn Again</CcButton>
                 <CcButton variant="primary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
@@ -3649,11 +5103,23 @@ onUnmounted(() => {
                 <CcButton variant="primary" size="large" class="footer-btn-equal">Practice</CcButton>
               </div>
             </div>
+            <!-- Quiz line learn mode: single Hint (secondary) -->
+            <div v-else-if="panelView === 'line' && currentLineType === 'uncompleted' && isQuizLine" class="footer-buttons-container">
+              <div class="footer-buttons-row footer-buttons-row-full">
+                <CcButton variant="secondary" size="large" class="footer-btn-full" @click="handleHint">Hint</CcButton>
+              </div>
+            </div>
             <!-- Uncompleted lines: Learn (primary/green) + Practice (secondary, disabled, no badge) -->
             <div v-else-if="panelView === 'line' && currentLineType === 'uncompleted'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-split">
                 <CcButton variant="primary" size="large" class="footer-btn-equal">Learn</CcButton>
                 <CcButton variant="secondary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
+              </div>
+            </div>
+            <!-- Informational lines: single Continue Learning button -->
+            <div v-else-if="panelView === 'line' && currentLineType === 'info'" class="footer-buttons-container">
+              <div class="footer-buttons-row footer-buttons-row-full">
+                <CcButton variant="primary" size="large" class="footer-btn-full" @click="hasNextLine ? goToNextLine() : backToCourses()">Continue Learning</CcButton>
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container">
@@ -3663,13 +5129,24 @@ onUnmounted(() => {
                   </div>
                 </template>
                 <template v-else-if="questionState === 'wrong'">
-                  <div class="footer-buttons-row footer-buttons-row-split">
+                  <!-- Quiz line: single Hint (secondary) instead of Solution + Retry -->
+                  <div v-if="isQuizLine" class="footer-buttons-row footer-buttons-row-full">
+                    <CcButton variant="secondary" size="large" class="footer-btn-full" @click="handleHint">Hint</CcButton>
+                  </div>
+                  <div v-else class="footer-buttons-row footer-buttons-row-split">
                     <CcButton variant="secondary" size="large" :icon="{ name: 'circle-fill-question', variant: 'glyph' }" @click="showSolution">Solution</CcButton>
                     <CcButton variant="danger" size="large" :icon="{ name: 'arrow-spin-undo', variant: 'glyph' }" @click="handleRetry">Retry</CcButton>
                   </div>
                 </template>
+                <template v-else-if="practiceReadyCount === 0">
+                  <!-- Practice 0: Continue (green) + Practice (disabled, grey, no badge) -->
+                  <div class="footer-buttons-row footer-buttons-row-split">
+                    <CcButton variant="primary" size="large" class="footer-btn-equal">Continue</CcButton>
+                    <CcButton variant="secondary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
+                  </div>
+                </template>
                 <template v-else>
-                  <!-- Single row: Continue (left) + Practice (count) (right) -->
+                  <!-- Continue (secondary) + Practice (primary with badge) -->
                   <div class="footer-buttons-row footer-buttons-row-split">
                     <CcButton variant="secondary" size="large" class="footer-btn-equal">Continue</CcButton>
                     <button type="button" class="v6-btn-practice-all cc-button-component cc-button-primary cc-button-large cc-bg-primary footer-btn-equal" data-name="V6 Button" aria-label="Practice">
@@ -3691,18 +5168,25 @@ onUnmounted(() => {
               <button type="button" class="footer-icon-btn" aria-label="More options">
                 <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
               </button>
-              <button type="button" class="footer-icon-btn" :aria-label="showVideoSection ? 'Hide video' : 'Show video'" @click="openVideo">
+              <button type="button" class="footer-icon-btn" :aria-label="showVideoSection ? 'Hide video' : 'Show video'" :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && (selectedLine?.section?.id === 'start-here' || selectedLine?.section?.id === 'intro') || isQuizLine)" @click="openVideo">
                 <CcIcon :name="showVideoSection ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
               </button>
-              <button type="button" class="footer-icon-btn" aria-label="Book">
-                <CcIcon name="document-book-open" variant="glyph" :size="20" class="footer-icon" />
+              <button
+                v-if="panelView === 'line' && currentLineType !== 'info' && currentLineType !== 'ready'"
+                type="button"
+                class="footer-icon-btn"
+                :aria-label="isLineReadMode ? 'Read mode off' : 'Read mode'"
+                @click="toggleLineReadMode"
+              >
+                <img v-if="isLineReadMode" :src="baseUrl + 'icons/misc/read-mode-off.svg'" alt="" class="footer-icon footer-icon-img" width="20" height="20" aria-hidden="true" />
+                <CcIcon v-else name="document-book-open" variant="glyph" :size="20" class="footer-icon" />
               </button>
             </div>
             <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
               <button
                 type="button"
                 class="footer-icon-btn"
-                :disabled="!(panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted'))"
+                :disabled="!(panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasPreviousPlyInLine())"
                 aria-label="Previous"
                 @click="panelView === 'line' ? selectPreviousPly() : prevQuestion()"
               >
@@ -3711,9 +5195,9 @@ onUnmounted(() => {
               <button
                 type="button"
                 class="footer-icon-btn"
-                :disabled="!(panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted'))"
+                :disabled="!(panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasNextPlyInLine())"
                 aria-label="Next"
-                @click="panelView === 'line' ? selectNextPly() : nextQuestion()"
+                @click="onFooterNextClick"
               >
                 <CcIcon name="arrow-chevron-right" variant="glyph" :size="20" class="footer-icon" />
               </button>
@@ -3955,7 +5439,7 @@ body {
   min-height: 48px;
   align-content: stretch;
   padding-right: 16px;
-  background: var(--bg-header-overlay, rgba(0, 0, 0, 0.14));
+  background: var(--bg-header-overlay, rgba(0, 0, 0, 0.24));
 }
 .sidebar-header-left,
 .sidebar-header-right {
@@ -4027,7 +5511,8 @@ body {
   padding: var(--space-1, 4px);
   position: relative;
   width: 100%;
-  min-height: 1px;
+  height: 48px;
+  min-height: 48px;
   flex-shrink: 0;
   background: var(--bg-header-overlay, rgba(0, 0, 0, 0.14));
 }
@@ -4087,6 +5572,13 @@ body {
   flex-shrink: 0;
   color: var(--icon-success, #81b64c);
 }
+.variations-headline-check-wrap--uncompleted {
+  opacity: 0.5;
+}
+.variations-headline-check-wrap--uncompleted .variations-headline-check {
+  color: rgba(255, 255, 255, 0.4);
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.2));
+}
 .variations-headline-check {
   filter: drop-shadow(0 1px rgba(0, 0, 0, 0.2));
 }
@@ -4105,17 +5597,6 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-.variations-headline-chip-wrap {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-.variations-headline-chip-wrap :deep(.cc-chip-component.cc-chip-aqua) {
-  --chip-translucent-fg: var(--color-aqua-300, #26c2a3);
-}
-.variations-headline-chip-wrap :deep(.variations-headline-chip-label) {
-  font-family: var(--font-family-system) !important;
 }
 
 /* CoachNew – coach message / ready state (Line view, Figma 32-5549) */
@@ -4178,8 +5659,10 @@ body {
 }
 /* Line view: coach header and body both visible (e.g. "It's practice time!" / "Let's find out what you remember") */
 .coach-new-title {
+  display: flex;
+  flex-direction: column;
   font-family: var(--font-system-semibold, system-ui, sans-serif);
-  font-size: var(--text-xl, 18px);
+  font-size: 16px;
   line-height: var(--leading-6, 24px);
   font-weight: 600;
   color: var(--text-dark-primary, #312e2b);
@@ -4282,6 +5765,72 @@ body {
   padding-left: 0;
   padding-right: 0;
 }
+.line-view-moves--inline {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.line-view-moves-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  font-size: var(--text-sm, 13px);
+  line-height: 20px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+}
+.line-view-move-inline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: var(--radius-xs, 2px);
+  cursor: pointer;
+  font-family: var(--font-system-semibold, system-ui, sans-serif);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.line-view-move-inline-chip:hover {
+  color: var(--text-primary-bright, #ffffff);
+  background: rgba(255, 255, 255, 0.08);
+}
+.line-view-move-inline-chip--selected {
+  background: var(--bg-ply-selected, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 2px 0 0 rgba(255, 255, 255, 0.5);
+  color: var(--text-primary-bright, #ffffff);
+}
+.line-view-move-inline-piece-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+}
+/* Force 18px for piece icons everywhere: pierce CcIcon and target by container */
+.line-view-move-inline-piece-icon :deep(svg),
+.ply-chip-piece-icon :deep(svg),
+.line-view-move-inline-piece-icon :deep(.cc-icon),
+.ply-chip-piece-icon :deep(.cc-icon) {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+}
+.line-view-moves-inline .line-view-move-inline-chip :deep(svg),
+.line-view-moves-inline .line-view-move-inline-chip :deep(.cc-icon),
+.line-view-moves .move-row .ply-chip :deep(svg),
+.line-view-moves .move-row .ply-chip :deep(.cc-icon) {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+}
+.line-view-moves-inline-sep {
+  user-select: none;
+}
 .move-row {
   display: flex;
   align-items: center;
@@ -4328,9 +5877,10 @@ body {
   flex-shrink: 0;
 }
 .ply-chip {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   padding: 2px 4px;
   border-radius: var(--radius-xs, 2px);
   overflow: clip;
@@ -4344,10 +5894,26 @@ body {
   white-space: pre-wrap;
   cursor: pointer;
 }
+.ply-chip-piece-icon {
+  flex-shrink: 0;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+}
+.ply-chip-text {
+  flex-shrink: 0;
+}
 .ply-chip--selected {
   background: var(--bg-ply-selected, rgba(255, 255, 255, 0.08));
   box-shadow: var(--shadow-ply-selected, 0 2px 0 0 rgba(255, 255, 255, 0.5));
   color: var(--text-primary-bright, #ffffff);
+}
+.ply-chip--empty {
+  cursor: default;
+  pointer-events: none;
 }
 
 .lessons-icon {
@@ -4372,16 +5938,42 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 0 var(--space-16) 0;
   display: flex;
   flex-direction: column;
   gap: 0;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
-/* Line view: no horizontal scroll */
+/* Line view: outer container does not scroll; coach stays fixed, only .line-view-scroll-body scrolls */
+.panel-content.courses-content.line-view-content {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .line-view-content {
-  overflow-x: hidden;
   min-width: 0;
+}
+/* Line view: scroll only the content below the coach; scrollbar stays inside this area and is always visible */
+.line-view-scroll-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+.line-view-scroll-body::-webkit-scrollbar {
+  width: 8px;
+}
+.line-view-scroll-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.line-view-scroll-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+.line-view-scroll-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
 }
 /* Line view screens – style separately; do not mix completed vs ready */
 /* .line-view-content--completed { } – design for completed lines (with level) */
@@ -4392,6 +5984,137 @@ body {
   -webkit-user-select: none;
 }
 /* .line-view-content--uncompleted { } – design for uncompleted lines */
+
+/* Informational line: text-only body (no moves table). Body = DS cc-paragraph-medium (14px / 20px line height). */
+.cc-paragraph-medium {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+.info-line-body-wrap {
+  width: 100%;
+  min-width: 0;
+}
+.quiz-line-read-caption-wrap {
+  width: 100%;
+  min-width: 0;
+}
+.info-line-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 8px;
+  padding: 16px;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.info-line-body p,
+.info-line-body .info-line-heading {
+  line-height: 20px;
+}
+.info-line-body p {
+  margin: 0 0 20px;
+}
+.info-line-body p:last-child {
+  margin-bottom: 0;
+}
+.info-line-body .info-line-heading {
+  margin: 0 0 10px;
+}
+.info-line-body .info-line-move-notation {
+  margin: 0 0 4px;
+}
+.info-line-body .info-line-move-notation .inline-ply-chip {
+  display: block;
+  width: fit-content;
+  min-width: 80px;
+}
+.info-line-body .info-line-divider {
+  margin: 20px 0 !important;
+}
+.info-line-move-explanation {
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+.info-line-move-explanation p {
+  margin: 0 0 20px;
+}
+.info-line-move-explanation p:last-child {
+  margin-bottom: 0;
+}
+.quiz-line-read-caption {
+  margin: 16px 0 0;
+  padding: 0 var(--space-4, 16px);
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+}
+.line-view-moves + .quiz-line-read-caption {
+  margin-top: 20px;
+}
+.quiz-line-read-caption .inline-ply-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: var(--radius-xs, 2px);
+  font-family: var(--font-system-semibold, system-ui, sans-serif);
+  font-size: var(--text-sm-plus, 14px);
+  font-weight: 600;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+  cursor: pointer;
+  pointer-events: auto;
+  background: var(--bg-ply-selected, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.3);
+}
+.quiz-line-read-caption .inline-ply-chip:hover {
+  color: var(--text-primary-bright, #ffffff);
+  background: rgba(255, 255, 255, 0.12);
+}
+.info-line-body .inline-ply-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: var(--radius-xs, 2px);
+  font-family: var(--font-system-semibold, system-ui, sans-serif);
+  font-size: var(--text-sm-plus, 14px);
+  font-weight: 600;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+  cursor: pointer;
+  pointer-events: auto;
+  background: var(--bg-ply-selected, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.3);
+}
+.info-line-body .inline-ply-chip:hover {
+  color: var(--text-primary-bright, #ffffff);
+  background: rgba(255, 255, 255, 0.12);
+}
+.info-line-heading {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: var(--leading-5, 20px);
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 0.5em;
+}
+.info-line-divider {
+  color: rgba(255, 255, 255, 0.35) !important;
+  margin: 1em 0 !important;
+  letter-spacing: 0.02em;
+}
+
+.coach-new-body--info-only {
+  margin: 0;
+}
 /* V3: extra bottom padding so last chapter can be scrolled through fully */
 .courses-content--v3 {
   padding-bottom: 80vh;
@@ -5450,6 +7173,17 @@ body {
 }
 .move-item-level-wrap :deep(.move-item-level-chip-label) {
   font-family: var(--font-family-system) !important;
+  font-size: 12px !important;
+}
+
+.move-item-info-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.move-item-info-wrap :deep(.move-item-info-chip-label) {
+  font-family: var(--font-family-system) !important;
+  font-size: 12px !important;
 }
 
 .move-item-indicator-wrap {
@@ -5764,7 +7498,14 @@ body {
   filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.2));
   transition: color 0.15s ease;
 }
-/* Prev/next arrows in footer – disabled on ready/uncompleted/chapter; enabled on completed lines */
+.footer-icon-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: block;
+}
+/* Disabled footer icon buttons (video on Welcome, prev/next on ready/uncompleted) */
+.footer-section-toolbar .footer-icon-btn:disabled,
 .footer-section-toolbar .footer-icon-group:last-child .footer-icon-btn:disabled {
   opacity: 0.5;
   pointer-events: none;

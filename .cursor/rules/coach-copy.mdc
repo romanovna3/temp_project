@@ -1,0 +1,17 @@
+---
+description: Never change coach bubble copy unless the user explicitly asks for it
+globs: my-app/src/views/Learn.vue
+alwaysApply: false
+---
+
+# Coach bubble copy
+
+**Do not change the copy in the coach bubble** (the card that shows above the main content on quiz/info lines) unless the user explicitly asks you to.
+
+- **Quiz lines**: Always use the standard coach copy:
+  - `coachTitle`: `'Play the correct move'`
+  - `coachBody`: `'White to play'` (or `'Black to play'` if the position is Black to move)
+- Put any custom prompt, scenario text, or question **only in `bodyHtml`** (the text below the coach bubble), not in `coachTitle` or `coachBody`.
+- **Info lines**: Keep existing `coachMessage` (e.g. "Review the content below and continue when you're ready") unless the user asks to change it.
+
+When adding or editing quiz content (e.g. in `quizLineContentByKey`), leave coach fields as above and put user-provided narrative or questions in `bodyHtml` only.
