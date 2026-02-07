@@ -247,8 +247,6 @@ function goToNextLine() {
 // Line view: chess moves shown on the Line page. Key = `${section.id}-${move.id}` (baseId for -2 sections).
 // Each line has a distinct sequence so hover previews are visually different within a chapter.
 const lineMovesByKey = {
-  // Welcome (no moves – footer chevrons stay disabled)
-  'start-here-1': [],
   // Introduction (3 lines)
   'intro-1': [
     { number: 1, white: 'e4', black: 'e5' },
@@ -1153,6 +1151,31 @@ const currentLineType = computed(() => {
   if (panelView.value !== 'line' || !selectedLine.value?.move) return 'completed'
   return getLineType(selectedLine.value.move)
 })
+
+/** Uncompleted lines: hand-with-pawn icon – white when White to move, black when Black to move; deterministic per line so icons vary across lines. */
+const uncompletedLineCoachIcon = computed(() => {
+  if (panelView.value !== 'line' || currentLineType.value !== 'uncompleted') return 'play-white.png'
+  const moves = lineViewMoves.value
+  const sideToMove = !moves?.length
+    ? 'white'
+    : (moves[moves.length - 1]?.black && moves[moves.length - 1].black !== '#')
+      ? 'white'
+      : 'black'
+  return sideToMove === 'white' ? 'play-white.png' : 'play-black.png'
+})
+
+/** Ready lines: hand-with-pawn icon – same as uncompleted (white when White to move, black when Black to move). */
+const readyLineCoachIcon = computed(() => {
+  if (panelView.value !== 'line' || currentLineType.value !== 'ready') return 'play-white.png'
+  const moves = lineViewMoves.value
+  const sideToMove = !moves?.length
+    ? 'white'
+    : (moves[moves.length - 1]?.black && moves[moves.length - 1].black !== '#')
+      ? 'white'
+      : 'black'
+  return sideToMove === 'white' ? 'play-white.png' : 'play-black.png'
+})
+
 /** V2.3 Line view: course name for header (line name moves to VariationsHeadline row) */
 const currentCourseTitle = computed(() => courses.value[0]?.title ?? 'Course')
 
@@ -1168,9 +1191,6 @@ function buildPlaceholderMoves(total) {
 
 // V2.4: real course – 7 chapters, real line titles from course curriculum
 const sectionMovesV24 = {
-  'start-here': [
-    { id: '1', text: 'Welcome!', completed: true, info: true },
-  ],
   intro: [
     { id: '1', text: 'Introduction', completed: true, info: true },
   ],
@@ -1182,7 +1202,7 @@ const sectionMovesV24 = {
     { id: '5', text: 'Getting to Know the Squares #2', completed: true, quiz: true, level: 'L2' },
     { id: '6', text: 'Getting to Know the Squares #3', completed: true, quiz: true, level: 'L2' },
     { id: '7', text: 'Meet the Rook', completed: true, info: true, level: 'L2' },
-    { id: '8', text: 'Meet the Rook - Practice', completed: true, quiz: true, nextLevel: 'L2' },
+    { id: '8', text: 'Meet the Rook - Practice', completed: true, quiz: true, level: 'L1' },
     { id: '9', text: 'Meet the Bishop', completed: true, info: true, level: 'L1' },
     { id: '10', text: 'Meet the Bishop - Practice', completed: true, quiz: true, level: 'L1' },
     { id: '11', text: 'Meet the Queen', completed: true, info: true, level: 'L1' },
@@ -1191,21 +1211,21 @@ const sectionMovesV24 = {
     { id: '14', text: 'Meet the Knight - Practice', completed: true, quiz: true, nextLevel: 'L1' },
     { id: '15', text: 'Meet the King', completed: true, info: true, nextLevel: 'L1' },
     { id: '16', text: 'Meet the King - Practice', completed: true, quiz: true, nextLevel: 'L1' },
-    { id: '17', text: 'Meet the Pawn', completed: false, info: true },
-    { id: '18', text: 'Meet the Pawn - Practice #1', completed: false, quiz: true },
-    { id: '19', text: 'Meet the Pawn - Practice #2', completed: false, quiz: true },
-    { id: '20', text: 'Pawn Promotion', completed: false, quiz: true },
+    { id: '17', text: 'Meet the Pawn', completed: true, info: true },
+    { id: '18', text: 'Meet the Pawn - Practice #1', completed: true, quiz: true },
+    { id: '19', text: 'Meet the Pawn - Practice #2', completed: true, quiz: true },
+    { id: '20', text: 'Pawn Promotion', completed: true, quiz: true },
   ],
   'the-opening': [
-    { id: '1', text: 'The Dream Opening', completed: false, info: true },
-    { id: '2', text: 'The Dream Opening - Practice', completed: false, quiz: true },
-    { id: '3', text: 'The Dream Opening (Both Colors)', completed: false, info: true },
-    { id: '4', text: "Danny's Ten Opening Rules", completed: false, info: true },
-    { id: '5', text: 'Leave the Queen at Home!', completed: false },
-    { id: '6', text: 'Early Castling in the Ruy Lopez', completed: false },
-    { id: '7', text: "Learn the Queen's Gambit", completed: false },
-    { id: '8', text: "Don't Try Scholar's Mate!", completed: false },
-    { id: '9', text: 'Breaking Principles When Necessary', completed: false },
+    { id: '1', text: 'The Dream Opening', completed: true, info: true },
+    { id: '2', text: 'The Dream Opening - Practice', completed: true, quiz: true },
+    { id: '3', text: 'The Dream Opening (Both Colors)', completed: true, info: true },
+    { id: '4', text: "Danny's Ten Opening Rules", completed: true, info: true },
+    { id: '5', text: 'Leave the Queen at Home!', completed: true },
+    { id: '6', text: 'Early Castling in the Ruy Lopez', completed: true },
+    { id: '7', text: "Learn the Queen's Gambit", completed: true },
+    { id: '8', text: "Don't Try Scholar's Mate!", completed: true },
+    { id: '9', text: 'Breaking Principles When Necessary', completed: true },
     { id: '10', text: 'Review #1', completed: false },
     { id: '11', text: 'Review #2', completed: false },
     { id: '12', text: 'Review #3', completed: false },
@@ -1333,22 +1353,8 @@ const sectionMoves = computed(() => (isVideoV2_4.value ? sectionMovesV24 : secti
 
 // Informational line content (key: sectionId-moveId). Coach message + body HTML for info-only lines.
 const infoLineContentByKey = {
-  'start-here-1': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
-    bodyHtml: `<h2 class="info-line-heading">You made it!</h2>
-<p class="info-line-divider" aria-hidden="true">__________________________</p>
-<p>Welcome!</p>
-<p>We're glad you're here learning chess with us.</p>
-<p>We're glad you're here learning chess with us.</p>
-<p>Equipped with MoveTrainer®, and the world's largest chess content library, your chess will know no limits!</p>
-<p>But what is MoveTrainer® and how does it work?</p>
-<p>Watch this short explainer video to find out!</p>
-<p>Then, you'll be ready to dive into this course and learn Everything You Need to Know About Chess!</p>
-<p class="info-line-divider" aria-hidden="true">__________________________</p>
-<p>Happy learning,</p>`,
-  },
   'intro-1': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Chess is a fun and beautiful game that everyone can enjoy. While Chess.com is where you practice and play, Chessable is the place where you can learn and improve your game with courses for all levels and interests.</p>
 <p>This is a crash course for players just starting out. Welcome to the very beginning of your chess journey!</p>
 <p>Chess International Master and Chess.com Chief Chess Officer Danny Rensch is here to guide you through the very basics of the game.</p>
@@ -1367,20 +1373,20 @@ const infoLineContentByKey = {
 <p>We wish you all the best in your chess journey. Don't forget that all work and no play makes you a dull chess player. Play on Chess.com! Building experience is just as important to improvement as building knowledge. So without further ado, let's dive in!</p>`,
   },
   'learning-the-game-7': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Rooks, sometimes incorrectly referred to as castles due to their shape, are perhaps the easiest piece to understand.</p>
 <p>Rooks move as far as they like; up, down, or side to side along either ranks or files. Let's see it moving in a square from e4 up to e8, across to a8, down to a4, and back over to e4.</p>
 <p>This is how the rook moves around in straight lines across the board.</p>`,
     hasMoves: true,
   },
   'learning-the-game-9': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Meet the bishop. It moves only diagonally across one color complex - light or dark. Here we have a light-squared bishop. Let's see it moving along the light-squared diagonals.</p>
 <p>Notice a bishop must stay on the same color complex (in this case, the light-squares) for the entire game!</p>`,
     hasMoves: true,
   },
   'learning-the-game-11': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>The queen is the most powerful piece on the board.</p>
 <p>She has the combined power to move like a bishop and rook and as far as she likes. Let's see her in action roaming around the board.</p>
 <p>The queen is the most powerful piece because of the great number of squares she can control, especially from the middle of the board!</p>`,
@@ -1389,7 +1395,7 @@ const infoLineContentByKey = {
     inlinePieceSymbol: '♛',
   },
   'learning-the-game-13': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>The knight is a little different. It does not move in a straight line, like the rest of the pieces. Instead, it moves in an 'L' shape; two squares in one direction followed by one square in another adjacent direction. The knight is the only piece you might say can jump over other pieces without capturing or disturbing them.</p>
 <p>Let's see the knight gallop around a little.</p>
 <p>Notice the knight can essentially jump over other pieces (of either color) without capturing or disturbing them.</p>
@@ -1398,7 +1404,7 @@ const infoLineContentByKey = {
     movesLayout: 'inline',
   },
   'learning-the-game-15': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>His majesty, the king moves one square in any direction he wishes - up or down, side to side, or diagonally. While it controls every square around it, its limited mobility makes it substantially less powerful than his royal counterpart, the queen.</p>
 <p>Let's see how he moves.</p>
 <p>The king's mobility is the most limited, and if you lose the king, you lose the game, as we will soon discuss. Therefore, the king requires protection throughout the game.</p>`,
@@ -1406,7 +1412,7 @@ const infoLineContentByKey = {
     movesLayout: 'inline',
   },
   'learning-the-game-17': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     movesInBody: true,
     introBodyHtml: `<p>Pawns move up the board in a straight line, one square at a time. They are the only piece that cannot move backward.</p>
 <p><strong>Capturing:</strong> Pawns capture differently than they move – they capture diagonally.</p>
@@ -1419,7 +1425,7 @@ const infoLineContentByKey = {
     closingBodyHtml: `<p>Note the h-pawns are blocking each other, so neither may move.</p>`,
   },
   'the-opening-1': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     movesInBody: true,
     introBodyHtml: `<p>The opening phase of a chess game starts on the first move, and can be said to be finished once the rooks are connected. This means all the other pieces will have joined the action by moving off their starting squares on the back rank.</p>
 <p><strong>The goals of the opening phase of the game are the following:</strong></p>
@@ -1443,7 +1449,7 @@ const infoLineContentByKey = {
 <p>Notice in order to finish development and connect the rooks, White had to castle! This serves the dual purpose of bringing the king to safety and finishing development.</p>`,
   },
   'the-opening-3': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     movesInBody: true,
     introBodyHtml: `<p>Now let's let Black move too and see what good opening moves look like in a more realistic scenario.</p>`,
     moveExplanations: [
@@ -1458,7 +1464,7 @@ const infoLineContentByKey = {
     closingBodyHtml: '',
   },
   'the-opening-4': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     movesInBody: true,
     introBodyHtml: `<p>I have 10 rules for the opening that I've been teaching students for decades. Now that we understand the goals of the opening, let's talk about them.</p>
 <p><strong>1. Develop!</strong></p>
@@ -1487,43 +1493,43 @@ const infoLineContentByKey = {
     closingBodyHtml: `<p>The better the opening rules are followed, the better our position will be in the middlegame, and the better prepared our pieces will be to attack and eventually checkmate the opponent.</p>`,
   },
   'the-endgame-3': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Endgame Checkmates: The Rook Mate. With only a king and rook left, you can force checkmate by driving the enemy king to the edge of the board. The two rooks (or rook and king) work together to shrink the space available to the enemy king until it is checkmated.</p>
 <p>This is one of the most important endgame patterns to learn. Let's see how it's done.</p>`,
     hasMoves: true,
   },
   'the-endgame-7': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Passed pawns are pawns that have no enemy pawns in front of them on the same file or on adjacent files. They can advance toward promotion without being blocked by opposing pawns.</p>
 <p>Passed pawns are often a major advantage in the endgame. They can tie down the enemy king or create decisive threats. In this lesson we look at how to create and use passed pawns.</p>`,
     hasMoves: true,
   },
   'the-endgame-8': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Outside passed pawns are passed pawns that sit on the wing – far from the main action. They are especially dangerous because they can draw the enemy king away from the center, allowing your own king to invade.</p>
 <p>Using an outside passed pawn is a key endgame technique. Let's see how it works.</p>`,
     hasMoves: true,
   },
   'the-endgame-9': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Outside Passed Pawns #2. Here we look at another example of how an outside passed pawn can decide the game. When you have a passed pawn on the a-file or h-file, your opponent's king may have to travel a long way to stop it.</p>
 <p>That gives your king time to capture pawns or invade on the other side.</p>`,
     hasMoves: true,
   },
   'the-endgame-10': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Outside Passed Pawns #2: How we got there. Before using an outside passed pawn, you often need to create it. This lesson shows a typical path from a more crowded position to one where the outside passed pawn becomes the hero.</p>
 <p>Pay attention to how the pawn structure changes and how the king finds the right square.</p>`,
     hasMoves: true,
   },
   'the-endgame-11': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>The active king. In the endgame, the king is a strong piece. With fewer pieces on the board, it is safe to bring the king toward the center and use it to support pawns, attack enemy pawns, or restrict the opponent's king.</p>
 <p>An active king often makes the difference between a draw and a win. Let's see how to activate your king in the endgame.</p>`,
     hasMoves: true,
   },
   'bringing-it-together-1': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Congratulations! By getting this far in the course, you've learned a heck of a lot about chess:</p>
 <ul>
 <li>♟️ The rules of the game and the language of chess</li>
@@ -1538,7 +1544,7 @@ const infoLineContentByKey = {
     hasMoves: true,
   },
   'bringing-it-together-5': {
-    coachMessage: 'Review the content below and continue when you\'re ready',
+    coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Congratulations! You've finished the entire course, and now know all there is to know about chess!</p>
 <p>Well, okay, maybe not. 😉 Mastering the game takes years of study and practice. Even the World Chess Champion himself would tell you that he is still working to improve!</p>
 <p>But with this course, you're off to a strong start.</p>
@@ -1713,7 +1719,7 @@ const infoLineContentCurrent = computed(() => {
   const move = selectedLine.value?.move
   if (!section?.id || !move?.id || !move?.info) return null
   const key = `${section.id}-${move.id}`
-  return infoLineContentByKey[key] || { coachMessage: 'Review the content below and continue when you\'re ready', bodyHtml: '' }
+  return infoLineContentByKey[key] || { coachMessage: 'Read through this line and arrow through the moves.', bodyHtml: '' }
 })
 
 /** Read mode body copy (key: sectionId-moveId). Shown below the move list in read mode – moves first, then this copy. */
@@ -1952,10 +1958,10 @@ const lineReadModeBodyCurrent = computed(() => {
   return lineReadModeBodyByKey[key] || null
 })
 
-/** INFO lines that do not have video: Welcome (start-here), Introduction (intro). */
+/** INFO lines that do not have video: Introduction (intro). */
 const lineViewInfoLineHasVideo = computed(() => {
   const id = selectedLine.value?.section?.id
-  return id !== 'start-here' && id !== 'intro'
+  return id !== 'intro'
 })
 
 // Pool of uncompleted move titles – shuffled per section to fill section.total (0/6 → 6 items, 0/24 → 24, etc.)
@@ -2017,9 +2023,8 @@ function getSectionMoves(section) {
   }))
 }
 
-// V2.4: real course – 7 chapters
+// V2.4: real course – 6 chapters (start-here removed)
 const courseSectionsV24 = [
-  { id: 'start-here', name: 'New? Start here!', completed: 0, total: 1, status: 'not_started', videoAvailable: false },
   { id: 'intro', name: 'Introduction', completed: 0, total: 1, status: 'not_started', videoAvailable: false },
   { id: 'learning-the-game', name: '1) Learning the Game', completed: 0, total: 20, status: 'not_started', videoAvailable: true },
   { id: 'the-opening', name: '2) The Opening', completed: 0, total: 12, status: 'not_started', videoAvailable: true },
@@ -2067,6 +2072,20 @@ const extraDataLevelBadge = ref('L1')
 const extraDataLevelName = ref('Rookie')
 const extraDataLevelBadgeNextLevel = ref('L2')
 const extraDataLevelNameNextLevel = ref('Keen Learner')
+
+/** Completed lines coach copy: practice wait time – 1 day for L1, 3 days for L2. */
+const completedLinePracticeTime = computed(() => {
+  const level = selectedLine.value?.move?.level
+  return level === 'L2' ? '3 days' : '1 day'
+})
+
+/** Level footer "Practice in:" chip – 3 days for Next Level L2, 1 day for L1 (completed and ready lines). */
+const displayPracticeIn = computed(() => {
+  const move = selectedLine.value?.move
+  if (!move) return '1 day'
+  const level = move.level || move.nextLevel
+  return level === 'L2' ? '3 days' : '1 day'
+})
 
 /** On line page: for ready lines, Next Level chip shows move.nextLevel; otherwise use placeholder refs. */
 const displayNextLevelBadge = computed(() => {
@@ -3606,10 +3625,11 @@ function stopLineViewVideoResize(e) {
   }
 }
 
-// Line view only: shrink video when user scrolls down (if scrollable); expand back to large when user scrolls to top
+// Line view only: shrink video when user scrolls down (if scrollable); expand back to large when user scrolls to top. INFO: video is scrollable, keep large.
 const LINE_VIEW_VIDEO_SMALL_COOLDOWN_MS = 400
 let lineViewVideoLastSetToSmallAt = 0
 function onLineViewScrollBodyScroll() {
+  if (currentLineType.value === 'info') return
   const el = lineViewScrollBodyRef.value
   if (!el || !showVideoSection.value) return
   const scrollable = el.scrollHeight > el.clientHeight
@@ -4199,7 +4219,7 @@ onUnmounted(() => {
           </div>
           </template>
 
-          <div class="course-lines-row">
+          <div v-show="false" class="course-lines-row">
             <span class="course-lines-count">{{ courseTotalLines }} lines</span>
             <div class="show-all" data-name="Show All" aria-label="Show lines">
               <span class="show-all-label">Show</span>
@@ -4315,6 +4335,9 @@ onUnmounted(() => {
                                 :is-uppercase="false"
                                 label-class="move-item-level-chip-label"
                               />
+                            </span>
+                            <span v-else-if="move.completed && move.info" class="move-item-info-wrap" aria-hidden="true">
+                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
                             </span>
                             <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                               <span class="move-item-dot" />
@@ -4432,6 +4455,9 @@ onUnmounted(() => {
                                   :is-uppercase="false"
                                   label-class="move-item-level-chip-label"
                                 />
+                              </span>
+                              <span v-else-if="move.completed && move.info" class="move-item-info-wrap" aria-hidden="true">
+                                <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
                               </span>
                               <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                                 <span class="move-item-dot" />
@@ -4552,6 +4578,9 @@ onUnmounted(() => {
                                 label-class="move-item-level-chip-label"
                               />
                             </span>
+                            <span v-else-if="move.completed && move.info" class="move-item-info-wrap" aria-hidden="true">
+                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                            </span>
                             <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                               <span class="move-item-dot" />
                             </span>
@@ -4577,14 +4606,9 @@ onUnmounted(() => {
               <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
                   <div class="coach-new-inner">
-                    <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
+                    <img :src="baseUrl + 'icons/misc/time-rapid.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
                     <div class="coach-new-message">
-                      <div class="coach-new-header coach-new-header--hidden">
-                        <span class="coach-new-title">It's practice time!</span>
-                      </div>
-                      <p class="coach-new-body">
-                        You've learned this line already – come back in {{ extraDataPracticeIn.toLowerCase() }} to practice.
-                      </p>
+                      <p class="coach-new-body">You've learned this line already. Come back in {{ completedLinePracticeTime }} to practice.</p>
                     </div>
                   </div>
                 </div>
@@ -4650,16 +4674,13 @@ onUnmounted(() => {
                 </div>
               </div>
             </template>
-            <!-- READY LINES SCREEN – separate design for completed lines without level. Style independently. -->
+            <!-- READY LINES SCREEN – hand-with-pawn (color by side to move), copy, CTA Practice (primary) + Learn Again (secondary) -->
             <template v-else-if="currentLineType === 'ready'">
               <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
                   <div class="coach-new-inner">
-                    <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
+                    <img :src="baseUrl + 'icons/misc/' + readyLineCoachIcon" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
                     <div class="coach-new-message">
-                      <div class="coach-new-header coach-new-header--hidden">
-                        <span class="coach-new-title">It's practice time!</span>
-                      </div>
                       <p class="coach-new-body">It's time to practice this line!</p>
                     </div>
                   </div>
@@ -4731,7 +4752,7 @@ onUnmounted(() => {
               <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
                   <div class="coach-new-inner">
-                    <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
+                    <img :src="baseUrl + 'icons/misc/circle-blue-info.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
                     <div class="coach-new-message">
                       <p class="coach-new-body coach-new-body--info-only">{{ infoLineContentCurrent?.coachMessage }}</p>
                     </div>
@@ -4739,7 +4760,7 @@ onUnmounted(() => {
                 </div>
               </section>
               <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
-                <section ref="lineViewVideoSectionRef" v-show="showVideoSection && lineViewInfoLineHasVideo" class="video-section" data-name="VideoSection">
+                <section ref="lineViewVideoSectionRef" v-show="showVideoSection && lineViewInfoLineHasVideo" class="video-section" :class="{ 'video-section--inline': currentLineType === 'info' }" data-name="VideoSection">
                   <div
                     class="video-placeholder-frame"
                     :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
@@ -4948,16 +4969,13 @@ onUnmounted(() => {
                   </div>
                 </div>
               </template>
-              <!-- Default uncompleted: coach + video + moves -->
+              <!-- Default uncompleted: hand-with-pawn (white/black by side to move), copy, CTA Learn + Practice disabled -->
               <template v-else>
                 <section class="coach-new" data-name="CoachNew">
                   <div class="coach-new-card" data-name="Quiz">
                     <div class="coach-new-inner">
-                      <img :src="baseUrl + 'icons/misc/play-black.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
+                      <img :src="baseUrl + 'icons/misc/' + uncompletedLineCoachIcon" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
                       <div class="coach-new-message">
-                        <div class="coach-new-header coach-new-header--hidden">
-                          <span class="coach-new-title">It's practice time!</span>
-                        </div>
                         <p class="coach-new-body">Let's learn this line together.</p>
                       </div>
                     </div>
@@ -5038,7 +5056,7 @@ onUnmounted(() => {
             <div v-if="currentLineType === 'completed'" class="extra-data-practice-in" data-name="PracticeIn">
               <span class="extra-data-label">Practice in:</span>
               <CcChip
-                :label="extraDataPracticeIn"
+                :label="displayPracticeIn"
                 icon="time-clock"
                 color="gray"
                 variant="translucent"
@@ -5057,7 +5075,7 @@ onUnmounted(() => {
             <div v-else class="extra-data-practice-in" data-name="PracticeIn">
               <span class="extra-data-label">Practice in:</span>
               <CcChip
-                :label="extraDataPracticeIn"
+                :label="displayPracticeIn"
                 icon="time-clock"
                 color="gray"
                 variant="translucent"
@@ -5096,11 +5114,11 @@ onUnmounted(() => {
                 <CcButton variant="primary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
               </div>
             </div>
-            <!-- Ready lines: Learn Again (secondary) + Practice (enabled, no badge) -->
+            <!-- Ready lines: Practice (primary) + Learn Again (secondary) -->
             <div v-else-if="panelView === 'line' && currentLineType === 'ready'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-split">
-                <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn Again</CcButton>
                 <CcButton variant="primary" size="large" class="footer-btn-equal">Practice</CcButton>
+                <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn Again</CcButton>
               </div>
             </div>
             <!-- Quiz line learn mode: single Hint (secondary) -->
@@ -5116,10 +5134,10 @@ onUnmounted(() => {
                 <CcButton variant="secondary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
               </div>
             </div>
-            <!-- Informational lines: single Continue Learning button -->
+            <!-- Informational lines: single Next Line button -->
             <div v-else-if="panelView === 'line' && currentLineType === 'info'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-full">
-                <CcButton variant="primary" size="large" class="footer-btn-full" @click="hasNextLine ? goToNextLine() : backToCourses()">Continue Learning</CcButton>
+                <CcButton variant="primary" size="large" class="footer-btn-full" @click="hasNextLine ? goToNextLine() : backToCourses()">Next Line</CcButton>
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container">
@@ -5168,7 +5186,7 @@ onUnmounted(() => {
               <button type="button" class="footer-icon-btn" aria-label="More options">
                 <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
               </button>
-              <button type="button" class="footer-icon-btn" :aria-label="showVideoSection ? 'Hide video' : 'Show video'" :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && (selectedLine?.section?.id === 'start-here' || selectedLine?.section?.id === 'intro') || isQuizLine)" @click="openVideo">
+              <button type="button" class="footer-icon-btn" :aria-label="showVideoSection ? 'Hide video' : 'Show video'" :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && selectedLine?.section?.id === 'intro' || isQuizLine)" @click="openVideo">
                 <CcIcon :name="showVideoSection ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
               </button>
               <button
