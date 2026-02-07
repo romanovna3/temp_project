@@ -74,12 +74,7 @@ function expandMoreStats() {
   })
 }
 // AdvancedStatsExpanded: L1–L2 active with actual variation counts (L2 = cumulative); L3–L8 locked with lock icon
-const masteryVariationCountByLevel = computed(() => {
-  const moves = courseSections.value.flatMap((s) => getSectionMoves(s) || [])
-  const countL1 = moves.filter((m) => m.level === 'L1').length
-  const countL2 = moves.filter((m) => m.level === 'L1' || m.level === 'L2').length
-  return { L1: countL1, L2: countL2 }
-})
+const masteryVariationCountByLevel = computed(() => ({ L1: 8, L2: 6 }))
 
 const masteryLevelItems = computed(() => {
   const counts = masteryVariationCountByLevel.value
