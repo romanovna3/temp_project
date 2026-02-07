@@ -73,17 +73,27 @@ function expandMoreStats() {
     lessButtonContainerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   })
 }
-// AdvancedStatsExpanded: L1–L6 active with counter, L7–L8 locked with lock icon
-const masteryLevelItems = [
-  { level: 'L1', title: 'Rookie', counter: 120, locked: false },
-  { level: 'L2', title: 'Keen Learner', counter: 100, locked: false },
-  { level: 'L3', title: 'Apprentice', counter: 80, locked: false },
-  { level: 'L4', title: 'Rank Riser', counter: 68, locked: false },
-  { level: 'L5', title: 'Booked Up', counter: 54, locked: false },
-  { level: 'L6', title: 'Expert', counter: 1, locked: false },
-  { level: 'L7', title: 'Encyclopaedic', counter: null, locked: true },
-  { level: 'L8', title: 'Master', counter: null, locked: true },
-]
+// AdvancedStatsExpanded: L1–L2 active with actual variation counts (L2 = cumulative); L3–L8 locked with lock icon
+const masteryVariationCountByLevel = computed(() => {
+  const moves = courseSections.value.flatMap((s) => getSectionMoves(s) || [])
+  const countL1 = moves.filter((m) => m.level === 'L1').length
+  const countL2 = moves.filter((m) => m.level === 'L1' || m.level === 'L2').length
+  return { L1: countL1, L2: countL2 }
+})
+
+const masteryLevelItems = computed(() => {
+  const counts = masteryVariationCountByLevel.value
+  return [
+    { level: 'L1', title: 'Rookie', counter: counts.L1, locked: false },
+    { level: 'L2', title: 'Keen Learner', counter: counts.L2, locked: false },
+    { level: 'L3', title: 'Apprentice', counter: null, locked: true },
+    { level: 'L4', title: 'Rank Riser', counter: null, locked: true },
+    { level: 'L5', title: 'Booked Up', counter: null, locked: true },
+    { level: 'L6', title: 'Expert', counter: null, locked: true },
+    { level: 'L7', title: 'Encyclopaedic', counter: null, locked: true },
+    { level: 'L8', title: 'Master', counter: null, locked: true },
+  ]
+})
 
 // Section expand/collapse (accordion)
 const expandedSectionIds = ref(new Set())
@@ -2073,33 +2083,34 @@ const extraDataLevelName = ref('Rookie')
 const extraDataLevelBadgeNextLevel = ref('L2')
 const extraDataLevelNameNextLevel = ref('Keen Learner')
 
-/** Completed lines coach copy: practice wait time – 1 day for L1, 3 days for L2. */
+/** Completed lines coach copy: practice wait time – L1 (or ready) 3 days, L2 1 week. */
 const completedLinePracticeTime = computed(() => {
   const level = selectedLine.value?.move?.level
-  return level === 'L2' ? '3 days' : '1 day'
+  return level === 'L2' ? '1 week' : '3 days'
 })
 
-/** Level footer "Practice in:" chip – 3 days for Next Level L2, 1 day for L1 (completed and ready lines). */
+/** Level footer "Practice in:" chip – 3 days for L1/ready, 1 week for L2. */
 const displayPracticeIn = computed(() => {
   const move = selectedLine.value?.move
-  if (!move) return '1 day'
+  if (!move) return '3 days'
   const level = move.level || move.nextLevel
-  return level === 'L2' ? '3 days' : '1 day'
+  return level === 'L2' ? '1 week' : '3 days'
 })
 
-/** On line page: for ready lines, Next Level chip shows move.nextLevel; otherwise use placeholder refs. */
+/** On line page: Next Level chip – ready-for-review lines always L1; completed lines use next level (L1→L2, L2→L3). */
 const displayNextLevelBadge = computed(() => {
   const move = selectedLine.value?.move
-  if (currentLineType.value === 'ready' && move?.nextLevel) return move.nextLevel
+  if (currentLineType.value === 'ready') return 'L1'
+  if (currentLineType.value === 'completed' && move?.level) {
+    const next = move.level === 'L1' ? 'L2' : move.level === 'L2' ? 'L3' : null
+    if (next) return next
+  }
   return extraDataLevelBadgeNextLevel.value
 })
 const displayNextLevelName = computed(() => {
-  const move = selectedLine.value?.move
-  if (currentLineType.value === 'ready' && move?.nextLevel) {
-    const item = masteryLevelItems.find((m) => m.level === move.nextLevel)
-    return item?.title ?? move.nextLevel
-  }
-  return extraDataLevelNameNextLevel.value
+  const badge = displayNextLevelBadge.value
+  const item = masteryLevelItems.value.find((m) => m.level === badge)
+  return item?.title ?? badge ?? extraDataLevelNameNextLevel.value
 })
 
 // Icon names from Figma design
@@ -4327,7 +4338,10 @@ onUnmounted(() => {
                               </span>
                               <span class="move-item-text">{{ move.text }}</span>
                             </div>
-                            <span v-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
+                            <span v-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                            </span>
+                            <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
                               <CcChip
                                 :label="move.level"
                                 color="aqua"
@@ -4336,14 +4350,8 @@ onUnmounted(() => {
                                 label-class="move-item-level-chip-label"
                               />
                             </span>
-                            <span v-else-if="move.completed && move.info" class="move-item-info-wrap" aria-hidden="true">
-                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
-                            </span>
                             <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                               <span class="move-item-dot" />
-                            </span>
-                            <span v-else-if="move.info" class="move-item-info-wrap" aria-hidden="true">
-                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
                             </span>
                           </div>
                         </div>
@@ -4447,7 +4455,10 @@ onUnmounted(() => {
                                 </span>
                                 <span class="move-item-text">{{ move.text }}</span>
                               </div>
-                              <span v-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
+                              <span v-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                                <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                              </span>
+                              <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
                                 <CcChip
                                   :label="move.level"
                                   color="aqua"
@@ -4456,14 +4467,8 @@ onUnmounted(() => {
                                   label-class="move-item-level-chip-label"
                                 />
                               </span>
-                              <span v-else-if="move.completed && move.info" class="move-item-info-wrap" aria-hidden="true">
-                                <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
-                              </span>
                               <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                                 <span class="move-item-dot" />
-                              </span>
-                              <span v-else-if="move.info" class="move-item-info-wrap" aria-hidden="true">
-                                <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
                               </span>
                             </div>
                           </div>
@@ -4569,7 +4574,10 @@ onUnmounted(() => {
                               </span>
                               <span class="move-item-text">{{ move.text }}</span>
                             </div>
-                            <span v-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
+                            <span v-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                            </span>
+                            <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
                               <CcChip
                                 :label="move.level"
                                 color="aqua"
@@ -4578,14 +4586,8 @@ onUnmounted(() => {
                                 label-class="move-item-level-chip-label"
                               />
                             </span>
-                            <span v-else-if="move.completed && move.info" class="move-item-info-wrap" aria-hidden="true">
-                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
-                            </span>
                             <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
                               <span class="move-item-dot" />
-                            </span>
-                            <span v-else-if="move.info" class="move-item-info-wrap" aria-hidden="true">
-                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
                             </span>
                           </div>
                         </div>
