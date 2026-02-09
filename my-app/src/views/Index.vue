@@ -1,13 +1,36 @@
 <script setup>
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-// Show/hide version cards (V1/V2 disabled for now; set to true to re-enable)
-const showV1 = false
-const showV2 = false
-const showV22 = true
+// Folder view: when true, show only folder contents with folder header + back button
+const folderViewActive = ref(false)
+const folderName = 'Previous versions'
+
+// Items inside the folder (clicking folder shows ONLY these cards)
+const folderItems = [
+  { path: '/learn', title: 'Chapter Page V1', versionKey: 'v1' },
+  { path: '/learn/v2', title: 'Chapter Page V2', versionKey: 'v2' },
+  { path: '/learn/v2.2', title: 'Chapter Page V2.2', versionKey: 'v22' },
+  { path: '/learn/v3', title: 'Chapter Page V3', versionKey: 'v3' },
+]
+const folderItemsCount = computed(() => folderItems.length)
+
+function openFolder() {
+  folderViewActive.value = true
+}
+function closeFolder() {
+  folderViewActive.value = false
+}
+
+// Main chapter page row (only these when folder is closed)
 const showV23 = true
+
+// Opening Courses section on main page (not in folder). Only show when there are cards here.
+const openingCoursesItems = [
+  { path: '/learn/opening-courses-v1', title: 'Opening Courses V1', versionKey: 'openingCoursesV1' },
+]
 
 // Build time injected by Vite at build time (replaced at build)
 const buildTime =
@@ -22,6 +45,7 @@ const versionLastEdited = {
   v22: buildTime,
   v23: buildTime,
   v24: buildTime,
+  openingCoursesV1: buildTime,
   v3: buildTime,
 }
 
@@ -51,128 +75,85 @@ function editedAgoFor(version) {
   <div class="index-page app dark-mode">
     <div class="index-layout">
       <main class="index-main">
-        <div class="project-cards">
-          <!-- V1: hidden when showV1 is false -->
+        <!-- Chapter page section: folder card above headline; click shows only folder contents + header with back -->
+        <section class="index-section">
+          <!-- Folder card: above "Chapter page" headline; click opens folder view -->
           <article
-            v-if="showV1"
-            class="project-card"
+            v-if="!folderViewActive"
+            class="folder-card"
             role="button"
             tabindex="0"
-            @click="router.push('/learn')"
-            @keydown.enter="router.push('/learn')"
-            @keydown.space.prevent="router.push('/learn')"
+            :aria-label="`${folderName}, ${folderItemsCount} pages`"
+            @click="openFolder()"
+            @keydown.enter.prevent="openFolder()"
+            @keydown.space.prevent="openFolder()"
           >
-            <div class="project-card__upper">
-              <div class="project-card__pattern" aria-hidden="true" />
-              <div class="project-card__meta">
-                <div class="project-card__head">
-                  <img
-                    src="/icons/book-mark-aqua.png"
-                    alt=""
-                    class="project-card__icon"
-                    width="32"
-                    height="32"
-                  />
-                  <h2 class="project-card__title">Chapter Page V1</h2>
-                </div>
-              </div>
-            </div>
-            <div class="project-card__lower">
-              <div class="project-card__footer-left">
-                <span class="project-card__footer-icon" aria-hidden="true" title="Open">
-                  <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="M12 5l7 7-7 7" />
-                  </svg>
-                </span>
-                <div class="project-card__footer-labels">
-                  <span class="project-card__footer-title">Chapter Page V1</span>
-                  <span class="project-card__footer-time">{{ editedAgoFor('v1') }}</span>
-                </div>
-              </div>
-            </div>
+            <span class="folder-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 6a2 2 0 0 1 2-2h3.5a1 1 0 0 1 .7.3l1.6 1.6a1 1 0 0 0 .7.3H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" fill="#E8A84A" stroke="#D4953A" stroke-width="1.2" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="folder-card__label">1. {{ folderName }}</span>
+            <span class="folder-card__count">{{ folderItemsCount }}</span>
           </article>
-          <!-- V2: hidden when showV2 is false -->
-          <article
-            v-if="showV2"
-            class="project-card"
-            role="button"
-            tabindex="0"
-            @click="router.push('/learn/v2')"
-            @keydown.enter="router.push('/learn/v2')"
-            @keydown.space.prevent="router.push('/learn/v2')"
-          >
-            <div class="project-card__upper">
-              <div class="project-card__pattern" aria-hidden="true" />
-              <div class="project-card__meta">
-                <div class="project-card__head">
-                  <img
-                    src="/icons/book-mark-aqua.png"
-                    alt=""
-                    class="project-card__icon"
-                    width="32"
-                    height="32"
-                  />
-                  <h2 class="project-card__title">Chapter Page V2</h2>
+
+          <!-- Folder view: header (back + folder name) + only folder cards -->
+          <template v-if="folderViewActive">
+            <header class="folder-view-header">
+              <button
+                type="button"
+                class="folder-view-back"
+                aria-label="Back"
+                @click="closeFolder()"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h2 class="folder-view-title">{{ folderName }}</h2>
+            </header>
+            <div class="project-cards">
+              <article
+                v-for="item in folderItems"
+                :key="item.path"
+                class="project-card"
+                role="button"
+                tabindex="0"
+                @click="router.push(item.path)"
+                @keydown.enter="router.push(item.path)"
+                @keydown.space.prevent="router.push(item.path)"
+              >
+                <div class="project-card__upper">
+                  <div class="project-card__pattern" aria-hidden="true" />
+                  <div class="project-card__meta">
+                    <div class="project-card__head">
+                      <img src="/icons/book-mark-aqua.png" alt="" class="project-card__icon" width="32" height="32" />
+                      <h2 class="project-card__title">{{ item.title }}</h2>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div class="project-card__lower">
-              <div class="project-card__footer-left">
-                <span class="project-card__footer-icon" aria-hidden="true" title="Open">
-                  <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="M12 5l7 7-7 7" />
-                  </svg>
-                </span>
-                <div class="project-card__footer-labels">
-                  <span class="project-card__footer-title">Chapter Page V2</span>
-                  <span class="project-card__footer-time">{{ editedAgoFor('v2') }}</span>
+                <div class="project-card__lower">
+                  <div class="project-card__footer-left">
+                    <span class="project-card__footer-icon" aria-hidden="true" title="Open">
+                      <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14" /><path d="M12 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                    <div class="project-card__footer-labels">
+                      <span class="project-card__footer-title">{{ item.title }}</span>
+                      <span class="project-card__footer-time">{{ editedAgoFor(item.versionKey) }}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </article>
             </div>
-          </article>
-          <!-- V2.2: hidden when showV22 is false -->
-          <article
-            v-if="showV22"
-            class="project-card"
-            role="button"
-            tabindex="0"
-            @click="router.push('/learn/v2.2')"
-            @keydown.enter="router.push('/learn/v2.2')"
-            @keydown.space.prevent="router.push('/learn/v2.2')"
-          >
-            <div class="project-card__upper">
-              <div class="project-card__pattern" aria-hidden="true" />
-              <div class="project-card__meta">
-                <div class="project-card__head">
-                  <img
-                    src="/icons/book-mark-aqua.png"
-                    alt=""
-                    class="project-card__icon"
-                    width="32"
-                    height="32"
-                  />
-                  <h2 class="project-card__title">Chapter Page V2.2</h2>
-                </div>
-              </div>
-            </div>
-            <div class="project-card__lower">
-              <div class="project-card__footer-left">
-                <span class="project-card__footer-icon" aria-hidden="true" title="Open">
-                  <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="M12 5l7 7-7 7" />
-                  </svg>
-                </span>
-                <div class="project-card__footer-labels">
-                  <span class="project-card__footer-title">Chapter Page V2.2</span>
-                  <span class="project-card__footer-time">{{ editedAgoFor('v22') }}</span>
-                </div>
-              </div>
-            </div>
-          </article>
-          <!-- V2.3: hidden when showV23 is false -->
+          </template>
+
+          <!-- Main view: "Chapter page" headline + V2.3, V2.4 only -->
+          <template v-else>
+            <h2 class="index-section__title">Chapter page</h2>
+            <div class="project-cards">
+            <!-- V2.3 -->
           <article
             v-if="showV23"
             class="project-card"
@@ -251,46 +232,49 @@ function editedAgoFor(version) {
               </div>
             </div>
           </article>
-          <!-- V3: always visible -->
-          <article
-            class="project-card"
-            role="button"
-            tabindex="0"
-            @click="router.push('/learn/v3')"
-            @keydown.enter="router.push('/learn/v3')"
-            @keydown.space.prevent="router.push('/learn/v3')"
-          >
-            <div class="project-card__upper">
-              <div class="project-card__pattern" aria-hidden="true" />
-              <div class="project-card__meta">
-                <div class="project-card__head">
-                  <img
-                    src="/icons/book-mark-aqua.png"
-                    alt=""
-                    class="project-card__icon"
-                    width="32"
-                    height="32"
-                  />
-                  <h2 class="project-card__title">Chapter Page V3</h2>
+            </div>
+          </template>
+        </section>
+
+        <!-- Opening Courses: only on main index page, not when folder is open -->
+        <section v-if="openingCoursesItems.length && !folderViewActive" class="index-section">
+          <h2 class="index-section__title">Opening Courses</h2>
+          <div class="project-cards">
+            <article
+              v-for="item in openingCoursesItems"
+              :key="item.path"
+              class="project-card"
+              role="button"
+              tabindex="0"
+              @click="router.push(item.path)"
+              @keydown.enter="router.push(item.path)"
+              @keydown.space.prevent="router.push(item.path)"
+            >
+              <div class="project-card__upper">
+                <div class="project-card__pattern" aria-hidden="true" />
+                <div class="project-card__meta">
+                  <div class="project-card__head">
+                    <img src="/icons/book-mark-aqua.png" alt="" class="project-card__icon" width="32" height="32" />
+                    <h2 class="project-card__title">{{ item.title }}</h2>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="project-card__lower">
-              <div class="project-card__footer-left">
-                <span class="project-card__footer-icon" aria-hidden="true" title="Open">
-                  <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="M12 5l7 7-7 7" />
-                  </svg>
-                </span>
-                <div class="project-card__footer-labels">
-                  <span class="project-card__footer-title">Chapter Page V3</span>
-                  <span class="project-card__footer-time">{{ editedAgoFor('v3') }}</span>
+              <div class="project-card__lower">
+                <div class="project-card__footer-left">
+                  <span class="project-card__footer-icon" aria-hidden="true" title="Open">
+                    <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14" /><path d="M12 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                  <div class="project-card__footer-labels">
+                    <span class="project-card__footer-title">{{ item.title }}</span>
+                    <span class="project-card__footer-time">{{ editedAgoFor(item.versionKey) }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </article>
-        </div>
+            </article>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -312,15 +296,119 @@ function editedAgoFor(version) {
 .index-main {
   width: 100%;
   max-width: 1144px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-32, 32px);
+}
+.index-section__title {
+  margin: 0 0 var(--space-16, 16px);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "SF Compact Display", sans-serif;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.index-section:first-child .index-section__title {
+  margin-top: 0;
 }
 .project-cards {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-24, 24px);
-  justify-content: center;
+  justify-content: flex-start;
 }
 .project-card {
   flex: 0 0 360px;
+}
+
+/* Folder card: horizontal bar above course cards (icon + label + count) */
+.folder-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12, 12px);
+  width: 100%;
+  max-width: 360px;
+  padding: var(--space-12, 12px) var(--space-16, 16px);
+  margin-bottom: var(--space-16, 16px);
+  border-radius: var(--radius-lg, 8px);
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.folder-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.folder-card:focus-visible {
+  outline: 2px solid var(--color-aqua-300, #26C2A3);
+  outline-offset: 2px;
+}
+.folder-card__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+.folder-card__icon svg {
+  width: 100%;
+  height: 100%;
+}
+.folder-card__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+}
+.folder-card__count {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Folder view: header with back button + folder name */
+.folder-view-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12, 12px);
+  margin-bottom: var(--space-16, 16px);
+}
+.folder-view-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md, 6px);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.folder-view-back:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.folder-view-back:focus-visible {
+  outline: 2px solid var(--color-aqua-300, #26C2A3);
+  outline-offset: 2px;
+}
+.folder-view-back svg {
+  width: 24px;
+  height: 24px;
+}
+.folder-view-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Card – Figma-style outline, no button */

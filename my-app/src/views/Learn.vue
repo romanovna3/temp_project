@@ -33,6 +33,14 @@ const coursesV24 = [
 ]
 const courses = computed(() => (isVideoV2_4.value ? coursesV24 : coursesV23))
 
+// Opening Courses V1: list of course cards under the coach (cover image TBD per user instructions)
+// Cover board is 4×4 center (c3–f6). col 0–3 = files c–f, row 0–3 = ranks 6–3 (row 0 = rank 6 top).
+const openingCourseCards = [
+  { id: 1, title: "Alekhine's Defense", description: "Alekhine's Defense is a rare, counter-attacking opening choice for Black against 1.e4.", linesCount: 10, coverPieces: [{ type: 'wp', col: 2, row: 2 }, { type: 'bn', col: 3, row: 0 }] },
+  { id: 2, title: "Sicilian Defense", description: "The Sicilian is Black's most popular response to 1.e4, leading to sharp, unbalanced positions.", linesCount: 24, coverPieces: [{ type: 'wp', col: 2, row: 2 }, { type: 'bp', col: 0, row: 1 }] },
+  { id: 3, title: "Italian Game", description: "The Italian Game focuses on rapid development and control of the center with 1.e4 e5 2.Nf3 Nc6 3.Bc4.", linesCount: 16, coverPieces: [{ type: 'wp', col: 2, row: 2 }, { type: 'bp', col: 2, row: 1 }] },
+]
+
 // Lines filter options (label only the value – "Show " is separate)
 const linesFilterOptions = [
   { value: 'all', label: 'All' },
@@ -153,6 +161,10 @@ function openLine(section, move) {
   lineViewMoves.value = getMovesForLine(section, move)
   selectedPly.value = { moveIndex: 0, side: 'white' }
   isLineReadMode.value = false
+  if (hoveredChapterLineDelayTimer) {
+    clearTimeout(hoveredChapterLineDelayTimer)
+    hoveredChapterLineDelayTimer = null
+  }
   hoveredChapterLine.value = null
   panelView.value = 'line'
   lineViewVideoFormat.value = 'large' // start large; shrink to small on first scroll when content is scrollable
@@ -987,6 +999,8 @@ const selectedPly = ref({ moveIndex: 0, side: 'white' })
 
 /** Chapter page: hovered line for board preview (only for non-ready lines; ready = hidden). */
 const hoveredChapterLine = ref(null) // { section, move } | null
+const HOVER_BOARD_PREVIEW_DELAY_MS = 180
+let hoveredChapterLineDelayTimer = null
 
 /** Build FEN and lastMove for the position *after* the selected ply (selected = this move is highlighted; show board after it). */
 function getPositionAfterPly(moves, selectedPlyVal) {
@@ -1020,14 +1034,26 @@ function getPositionAtEndOfLine(moves) {
 
 function setHoveredChapterLine(section, move) {
   if (!section || !move) {
+    if (hoveredChapterLineDelayTimer) {
+      clearTimeout(hoveredChapterLineDelayTimer)
+      hoveredChapterLineDelayTimer = null
+    }
     hoveredChapterLine.value = null
     return
   }
   if (getLineType(move) === 'ready') return // hidden moves – don't preview
-  hoveredChapterLine.value = { section, move }
+  if (hoveredChapterLineDelayTimer) clearTimeout(hoveredChapterLineDelayTimer)
+  hoveredChapterLineDelayTimer = setTimeout(() => {
+    hoveredChapterLineDelayTimer = null
+    hoveredChapterLine.value = { section, move }
+  }, HOVER_BOARD_PREVIEW_DELAY_MS)
 }
 
 function clearHoveredChapterLine() {
+  if (hoveredChapterLineDelayTimer) {
+    clearTimeout(hoveredChapterLineDelayTimer)
+    hoveredChapterLineDelayTimer = null
+  }
   hoveredChapterLine.value = null
 }
 
@@ -3060,8 +3086,9 @@ const handleRetry = () => {
 
 // V2: video visible by default, one per chapter, not sticky
 const isVideoV2 = computed(() => route.path === '/learn/v2')
-// V2.2: same as V2 but play button toggles to pause and makes that video sticky
-const isVideoV2_2 = computed(() => route.path === '/learn/v2.2')
+// V2.2: same as V2 but play button toggles to pause and makes that video sticky. Opening Courses V1 uses same layout.
+const isVideoV2_2 = computed(() => route.path === '/learn/v2.2' || route.path === '/learn/opening-courses-v1')
+const isOpeningCoursesV1 = computed(() => route.path === '/learn/opening-courses-v1')
 const v22PlayingSectionId = ref(null) // when set, this section's video shows pause and is sticky
 // V2.3: duplicate of V2.2 + sticky chapter title when expanded. V2.4: same layout, real course content.
 const isVideoV2_3OrV24 = computed(() => route.path === '/learn/v2.3' || route.path === '/learn/v2.4')
@@ -3442,6 +3469,13 @@ function setupV3IntersectionObserver() {
 
 // Video section: show in panel when Video button clicked (V1); in V2 always visible per chapter
 const showVideoSection = ref(false)
+// V2.4 Ready to Practice: video hidden by default; user can turn it on via toolbar
+const readyLineVideoVisible = ref(false)
+/** Line view: video section is visible (for resize/scroll logic). V2.4 ready uses readyLineVideoVisible. */
+const lineViewVideoSectionVisible = computed(() => {
+  if (isVideoV2_4.value && currentLineType.value === 'ready') return readyLineVideoVisible.value
+  return showVideoSection.value
+})
 const videoSectionRef = ref(null)
 const coursesContentRef = ref(null)
 const videoSectionHeightPx = ref(270) // for sticky chapter; updated when video visible or size changes
@@ -3585,7 +3619,7 @@ const lineViewVideoFrameWidth = computed(() => {
 })
 
 function startLineViewVideoResize(e) {
-  if (!showVideoSection.value) return
+  if (!lineViewVideoSectionVisible.value) return
   lineViewIsResizingVideo.value = true
   lineViewResizeStartY = e.clientY
   lineViewResizeLastY = e.clientY
@@ -3637,7 +3671,7 @@ let lineViewVideoLastSetToSmallAt = 0
 function onLineViewScrollBodyScroll() {
   if (currentLineType.value === 'info') return
   const el = lineViewScrollBodyRef.value
-  if (!el || !showVideoSection.value) return
+  if (!el || !lineViewVideoSectionVisible.value) return
   const scrollable = el.scrollHeight > el.clientHeight
   if (el.scrollTop <= 0) {
     const now = Date.now()
@@ -3694,6 +3728,11 @@ function teardownVideoSectionResizeObserver() {
 }
 
 const openVideo = () => {
+  // V2.4 Ready to Practice: use separate toggle (hidden by default)
+  if (isVideoV2_4.value && panelView.value === 'line' && currentLineType.value === 'ready') {
+    readyLineVideoVisible.value = !readyLineVideoVisible.value
+    return
+  }
   // In read mode, toggling video must not show the coach (read mode stays on)
   showVideoSection.value = !showVideoSection.value
 }
@@ -4048,7 +4087,86 @@ onUnmounted(() => {
           :class="{ 'courses-content--v3': isVideoV3 }"
           :style="isVideoV3 && v3PaddingBottomPx != null ? { paddingBottom: `${v3PaddingBottomPx}px` } : {}"
         >
-          <!-- Normal content (V1, V2, V3 – all visible; V3: first chapter + video stick when they reach header) -->
+          <!-- Opening Courses V1 only: new coach container (CoachNew) instead of course card -->
+          <section v-if="isOpeningCoursesV1" class="coach-new-opening" data-name="CoachNew">
+            <div class="coach-new-opening__inner coach-feedback">
+              <div class="coach-new-opening__coach">
+                <div class="coach-new-opening__avatar-wrap">
+                  <img :src="baseUrl + 'icons/misc/coach-avatar-opening.png'" alt="" class="coach-new-opening__avatar" width="96" height="96" />
+                </div>
+                <div class="coach-new-opening__caret" aria-hidden="true">
+                  <img :src="baseUrl + 'icons/misc/bubble-tip-opening.png'" alt="" width="14" height="22" class="coach-new-opening__caret-img" />
+                </div>
+              </div>
+              <div class="coach-new-opening__message-wrap">
+                <div class="coach-new-opening__bubble">
+                  <div class="coach-new-opening__message">
+                    <div class="coach-new-opening__message-inner">
+                      <p class="coach-new-opening__text">Make your first move or choose an opening you want to learn!</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Opening Courses V1: course cards list (AI specs – design tokens) -->
+          <div v-if="isOpeningCoursesV1" class="opening-course-cards-list" data-name="Opening course cards">
+            <article
+              v-for="card in openingCourseCards"
+              :key="card.id"
+              class="opening-course-card"
+              data-name="Course card"
+            >
+              <div class="opening-course-card__inner">
+                <div class="opening-course-card__content-wrap">
+                  <!-- CourseCoverBoard: from Extract Styles for AI zip – 4×4 SVG board + pieces -->
+                  <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard">
+                    <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
+                      <g id="course-cover-board-grid">
+                        <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                      </g>
+                    </svg>
+                    <div
+                      v-for="(piece, i) in card.coverPieces"
+                      :key="`${card.id}-${i}-${piece.type}`"
+                      class="course-cover-board__piece"
+                      :style="{ '--file': piece.col, '--rank': piece.row }"
+                    >
+                      <img :src="getPieceImage({ type: piece.type })" alt="" class="course-cover-board__piece-img" width="24" height="24" aria-hidden="true" />
+                    </div>
+                  </div>
+                  <div class="opening-course-card__content">
+                    <div class="opening-course-card__title-author">
+                      <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                      <p class="opening-course-card__description">{{ card.description }}</p>
+                    </div>
+                    <div class="opening-course-card__properties">
+                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__lines-label" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <!-- Normal content (course card) – not for Opening Courses V1 -->
+          <template v-else>
           <div
             v-for="course in courses"
             :key="course.id"
@@ -4068,6 +4186,7 @@ onUnmounted(() => {
               <p class="course-author">{{ course.instructor }}</p>
             </div>
           </div>
+          </template>
 
           <!-- VideoSection (V1 only) – visible when Video button clicked; under course card; sticky -->
           <section ref="videoSectionRef" v-show="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && !isVideoV3" class="video-section" data-name="VideoSection">
@@ -4102,8 +4221,8 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <!-- Rest of content – hidden when video section is on (V1 only); always shown in V2 -->
-          <template v-if="!showVideoSection || isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24 || isVideoV3">
+          <!-- Rest of content – hidden when video section is on (V1 only); always shown in V2; hidden on Opening Courses V1 -->
+          <template v-if="(!showVideoSection || isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24 || isVideoV3) && !isOpeningCoursesV1">
           <!-- Progress – Figma node 2-5697 (specs: layout, spacing, typography, colors) -->
           <div class="course-progress" data-name="Course Progress Container">
             <div class="course-progress-header" data-name="Header">
@@ -4248,8 +4367,8 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Sections list – V3: all visible + scroll sticky; V2/V1: accordion -->
-          <div class="sections-list">
+          <!-- Sections list – V3: all visible + scroll sticky; V2/V1: accordion; hidden on Opening Courses V1 -->
+          <div v-if="!isOpeningCoursesV1" class="sections-list">
             <div
               v-for="(section, sectionIndex) in courseSections"
               :key="section.id"
@@ -4684,7 +4803,7 @@ onUnmounted(() => {
                 </div>
               </section>
               <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
-                <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                <section ref="lineViewVideoSectionRef" v-show="isVideoV2_4 ? readyLineVideoVisible : showVideoSection" class="video-section" data-name="VideoSection">
                   <div
                     class="video-placeholder-frame"
                     :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
@@ -5046,7 +5165,7 @@ onUnmounted(() => {
         </div>
         <!-- Footer frame: bg/secondary; inner container has primary + overlay -->
         <div class="panel-footer-frame">
-        <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line') }">
+        <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line') || isOpeningCoursesV1 }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
             <!-- Completed lines: Practice in + time chip -->
@@ -5095,10 +5214,16 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
-          <!-- Buttons footer: Continue / Practice – Chapter and Lines; Read mode: Back + Continue -->
+          <!-- Buttons footer: Continue / Practice – Chapter and Lines; Read mode: Back + Continue; Opening Courses V1: Start Learning only -->
           <section class="footer-section footer-section-actions" data-name="ButtonsFooter">
+            <!-- Opening Courses V1 (courses view): single CTA Start Learning -->
+            <div v-if="isOpeningCoursesV1 && panelView === 'courses'" class="footer-buttons-container">
+              <div class="footer-buttons-row footer-buttons-row-full">
+                <CcButton variant="primary" size="large" class="footer-btn-full">Start Learning</CcButton>
+              </div>
+            </div>
             <!-- Read mode ON: Back (S) exits read mode + nav; Continue (P) -->
-            <div v-if="panelView === 'line' && isLineReadMode" class="footer-buttons-container">
+            <div v-else-if="panelView === 'line' && isLineReadMode" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-split">
                 <CcButton variant="secondary" size="large" class="footer-btn-equal" @click="exitReadMode">Back</CcButton>
                 <CcButton variant="primary" size="large" class="footer-btn-equal" @click="hasNextLine ? goToNextLine() : backToCourses()">Continue</CcButton>
@@ -5111,11 +5236,11 @@ onUnmounted(() => {
                 <CcButton variant="primary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
               </div>
             </div>
-            <!-- Ready lines: Practice (primary) + Learn Again (secondary) -->
+            <!-- Ready lines: Learn Again (left) + Practice (primary, right) -->
             <div v-else-if="panelView === 'line' && currentLineType === 'ready'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-split">
-                <CcButton variant="primary" size="large" class="footer-btn-equal">Practice</CcButton>
                 <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn Again</CcButton>
+                <CcButton variant="primary" size="large" class="footer-btn-equal">Practice</CcButton>
               </div>
             </div>
             <!-- Quiz line learn mode: single Hint (secondary) -->
@@ -5177,14 +5302,14 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <!-- Icon footer (3rd footer): Chapter + Line (completed/ready); hidden on Line uncompleted so CTAs get 12px there -->
-          <section v-if="panelView === 'courses' || panelView === 'line'" class="footer-section footer-section-toolbar" data-name="IconFooter">
+          <!-- Icon footer (3rd footer): Chapter + Line (completed/ready); hidden on Line uncompleted and on Opening Courses V1 -->
+          <section v-if="(panelView === 'courses' || panelView === 'line') && !isOpeningCoursesV1" class="footer-section footer-section-toolbar" data-name="IconFooter">
             <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
               <button type="button" class="footer-icon-btn" aria-label="More options">
                 <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
               </button>
-              <button type="button" class="footer-icon-btn" :aria-label="showVideoSection ? 'Hide video' : 'Show video'" :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && selectedLine?.section?.id === 'intro' || isQuizLine)" @click="openVideo">
-                <CcIcon :name="showVideoSection ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
+              <button type="button" class="footer-icon-btn" :aria-label="(isVideoV2_4 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSection) ? 'Hide video' : 'Show video'" :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && selectedLine?.section?.id === 'intro' || isQuizLine)" @click="openVideo">
+                <CcIcon :name="(isVideoV2_4 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSection) ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
               </button>
               <button
                 v-if="panelView === 'line' && currentLineType !== 'info' && currentLineType !== 'ready'"
@@ -5960,6 +6085,265 @@ body {
   gap: 0;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
+
+/* Opening Courses V1: CoachNew container (Figma 62-6423) – replaces course card only */
+.coach-new-opening {
+  --shadow-message-bubble: 0px 2px 4px 0px rgba(0, 0, 0, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px 16px;
+  width: 100%;
+  min-height: 0;
+  background: #1e1d1a;
+  flex-shrink: 0;
+}
+.coach-new-opening__inner.coach-feedback {
+  display: flex;
+  align-items: center;
+  padding-right: 4px;
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+  flex-shrink: 0;
+}
+.coach-new-opening__coach {
+  display: flex;
+  align-items: center;
+  margin-right: -4px;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+.coach-new-opening__avatar-wrap {
+  width: 96px;
+  height: 96px;
+  overflow: clip;
+  border-radius: 5px;
+}
+.coach-new-opening__avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.coach-new-opening__caret {
+  position: absolute;
+  width: 14px;
+  height: 22px;
+  right: 4px;
+  top: 50px;
+}
+.coach-new-opening__caret img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+.coach-new-opening__message-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1 0 0;
+  min-width: 1px;
+  min-height: 1px;
+  margin-right: -4px;
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--shadow-message-bubble);
+}
+.coach-new-opening__bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 100%;
+  border-radius: 10px;
+  overflow: clip;
+  flex-shrink: 0;
+  background: #ffffff;
+}
+.coach-new-opening__message {
+  width: 100%;
+  min-height: 60px;
+  position: relative;
+  flex-shrink: 0;
+}
+.coach-new-opening__message-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 16px;
+  gap: 8px;
+  min-height: inherit;
+  width: 100%;
+}
+.coach-new-opening__text {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+  font-style: normal;
+  color: #312e2b;
+  white-space: pre-wrap;
+  width: 100%;
+  min-width: 100%;
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* Opening Courses V1: course cards list (AI specs – design tokens) */
+.opening-course-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+}
+/* Main container (Card): --bg-card-subtle, --space-2 (8px), --radius-lg (8px) */
+.opening-course-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px;
+  border-radius: 8px;
+  position: relative;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+}
+/* Inner card (CardA): --radius-sm (5px), --space-0.5 (2px) */
+.opening-course-card__inner {
+  border-radius: 5px;
+  width: 100%;
+  position: relative;
+  flex-shrink: 0;
+}
+.opening-course-card__content-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 2px;
+  width: 100%;
+}
+/* Opening thumbnail: wraps CourseCoverBoard (96×96), --radius-xs-plus (3px) */
+.opening-course-card__thumbnail {
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  min-height: 96px;
+  border-radius: 3px;
+  overflow: clip;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* CourseCoverBoard: 96×96, 4×4 squares @ 24px (design tokens) */
+.course-cover-board {
+  --color-chess-light: #ebecd0;
+  --color-chess-dark: #779556;
+  --size-chess-square: 24px;
+  --size-chess-board-cover: 96px;
+  position: relative;
+  width: var(--size-chess-board-cover);
+  height: var(--size-chess-board-cover);
+  flex-shrink: 0;
+}
+.course-cover-board__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+.course-cover-board__piece {
+  position: absolute;
+  left: calc(var(--file, 0) * var(--size-chess-square));
+  top: calc(var(--rank, 0) * var(--size-chess-square));
+  width: var(--size-chess-square);
+  height: var(--size-chess-square);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.course-cover-board__piece-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+/* Content section: --size-24 height, space-between, flex 1 0 0 */
+.opening-course-card__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex: 1 0 0;
+  height: 96px;
+  min-width: 1px;
+  min-height: 1px;
+  position: relative;
+}
+.opening-course-card__title-author {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  position: relative;
+  flex-shrink: 0;
+  min-width: 0;
+}
+/* Title: --font-chess-sans-extrabold, --text-sm-plus (14px), --leading-4 (16px), --text-primary (85% white) */
+.opening-course-card__title {
+  font-family: 'Chess Sans', 'Chess Sans ExtraBold', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 800;
+  font-style: normal;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: pre-wrap;
+  width: 100%;
+  min-width: 0;
+}
+/* Description: --text-xs (12px), --leading-4, --text-tertiary (50% white) */
+.opening-course-card__description {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: pre-wrap;
+  width: 100%;
+  flex-shrink: 0;
+}
+/* Properties + chip: --space-2 gap, --bg-chip-subtle-light, --text-secondary (72% white) */
+.opening-course-card__properties {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  flex-shrink: 0;
+}
+/* Chip label styling (DS CcChip used for "X Lines") */
+.opening-course-card__lines-label {
+  font-size: 12px;
+  line-height: 16px;
+}
+
 /* Line view: outer container does not scroll; coach stays fixed, only .line-view-scroll-body scrolls */
 .panel-content.courses-content.line-view-content {
   overflow: hidden;

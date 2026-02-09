@@ -7,6 +7,7 @@ const router = createRouter({
     { path: '/learn', name: 'learn', component: () => import('../views/Learn.vue') },
     { path: '/learn/v2', name: 'learn-v2', component: () => import('../views/Learn.vue') },
     { path: '/learn/v2.2', name: 'learn-v2-2', component: () => import('../views/Learn.vue') },
+    { path: '/learn/opening-courses-v1', name: 'learn-opening-courses-v1', component: () => import('../views/Learn.vue') },
     { path: '/learn/v2.3', name: 'learn-v2-3', component: () => import('../views/Learn.vue') },
     { path: '/learn/v2.4', name: 'learn-v2-4', component: () => import('../views/Learn.vue') },
     { path: '/learn/v3', name: 'learn-v3', component: () => import('../views/Learn.vue') },
