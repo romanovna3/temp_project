@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 
 const router = useRouter()
 
@@ -27,11 +27,6 @@ function closeFolder() {
 // Main chapter page row (only these when folder is closed)
 const showV23 = true
 
-// Opening Courses section on main page (not in folder). Only show when there are cards here.
-const openingCoursesItems = [
-  { path: '/learn/opening-courses-v1', title: 'Opening Courses V1', versionKey: 'openingCoursesV1' },
-]
-
 // Build time injected by Vite at build time (replaced at build)
 const buildTime =
   typeof __BUILD_TIME__ !== 'undefined' && __BUILD_TIME__
@@ -45,7 +40,6 @@ const versionLastEdited = {
   v22: buildTime,
   v23: buildTime,
   v24: buildTime,
-  openingCoursesV1: buildTime,
   v3: buildTime,
 }
 
@@ -236,45 +230,6 @@ function editedAgoFor(version) {
           </template>
         </section>
 
-        <!-- Opening Courses: only on main index page, not when folder is open -->
-        <section v-if="openingCoursesItems.length && !folderViewActive" class="index-section">
-          <h2 class="index-section__title">Opening Courses</h2>
-          <div class="project-cards">
-            <article
-              v-for="item in openingCoursesItems"
-              :key="item.path"
-              class="project-card"
-              role="button"
-              tabindex="0"
-              @click="router.push(item.path)"
-              @keydown.enter="router.push(item.path)"
-              @keydown.space.prevent="router.push(item.path)"
-            >
-              <div class="project-card__upper">
-                <div class="project-card__pattern" aria-hidden="true" />
-                <div class="project-card__meta">
-                  <div class="project-card__head">
-                    <img src="/icons/book-mark-aqua.png" alt="" class="project-card__icon" width="32" height="32" />
-                    <h2 class="project-card__title">{{ item.title }}</h2>
-                  </div>
-                </div>
-              </div>
-              <div class="project-card__lower">
-                <div class="project-card__footer-left">
-                  <span class="project-card__footer-icon" aria-hidden="true" title="Open">
-                    <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M5 12h14" /><path d="M12 5l7 7-7 7" />
-                    </svg>
-                  </span>
-                  <div class="project-card__footer-labels">
-                    <span class="project-card__footer-title">{{ item.title }}</span>
-                    <span class="project-card__footer-time">{{ editedAgoFor(item.versionKey) }}</span>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
       </main>
     </div>
   </div>
@@ -520,4 +475,5 @@ function editedAgoFor(version) {
   font-family: "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif;
   color: rgba(255, 255, 255, 0.65);
 }
+
 </style>
