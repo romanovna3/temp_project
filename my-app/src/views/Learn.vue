@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick, provide, watchE
 import { useRoute } from 'vue-router'
 import { Chess } from 'chess.js'
 import { CcButton, CcChip, CcIconButton, CcIcon } from '@chesscom/design-system'
+import SearchInput from '../components/SearchInput.vue'
 import ProgressCircle from '../components/ProgressCircle.vue'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -33,13 +34,131 @@ const coursesV24 = [
 ]
 const courses = computed(() => (isVideoV2_4.value ? coursesV24 : coursesV23))
 
-// Opening Courses V1: list of course cards under the coach (cover image TBD per user instructions)
-// Cover board is 4×4 center (c3–f6). col 0–3 = files c–f, row 0–3 = ranks 6–3 (row 0 = rank 6 top).
-const openingCourseCards = [
-  { id: 1, title: "Alekhine's Defense", description: "Alekhine's Defense is a rare, counter-attacking opening choice for Black against 1.e4.", linesCount: 10, coverPieces: [{ type: 'wp', col: 2, row: 2 }, { type: 'bn', col: 3, row: 0 }] },
-  { id: 2, title: "Sicilian Defense", description: "The Sicilian is Black's most popular response to 1.e4, leading to sharp, unbalanced positions.", linesCount: 24, coverPieces: [{ type: 'wp', col: 2, row: 2 }, { type: 'bp', col: 0, row: 1 }] },
-  { id: 3, title: "Italian Game", description: "The Italian Game focuses on rapid development and control of the center with 1.e4 e5 2.Nf3 Nc6 3.Bc4.", linesCount: 16, coverPieces: [{ type: 'wp', col: 2, row: 2 }, { type: 'bp', col: 2, row: 1 }] },
+// Opening Courses V1: raw rows from Opening Courses spec (stored for later use).
+// Columns: Opening Name | Color | First move | Against | Frequency Played
+const OPENING_COURSES_RAW = [
+  { name: 'Italian Game', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
+  { name: 'Ruy Lopez', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
+  { name: 'Scotch', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
+  { name: 'Four Knights', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
+  { name: 'Fried Liver', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
+  { name: 'Scandinavian Defense', color: 'White', firstMove: '1. e4', against: 'Scandi', frequency: '11%' },
+  { name: 'Petroff Defense', color: 'White', firstMove: '1. e4', against: 'Petroff', frequency: '9%' },
+  { name: 'Open Sicilian', color: 'White', firstMove: '1. e4', against: 'Sicilian', frequency: '7%' },
+  { name: 'Alapin', color: 'White', firstMove: '1. e4', against: 'Sicilian', frequency: '7%' },
+  { name: 'French Defense', color: 'White', firstMove: '1. e4', against: 'French', frequency: '6%' },
+  { name: 'Caro-Kann Defense', color: 'White', firstMove: '1. e4', against: 'Caro-Kann', frequency: '4%' },
+  { name: 'London System', color: 'White', firstMove: '1. d4', against: 'Anything', frequency: '100%' },
+  { name: "Queen's Gambit", color: 'White', firstMove: '1. d4', against: '1… d5', frequency: '56%' },
+  { name: 'English Opening', color: 'White', firstMove: '1. c4', against: 'Anything', frequency: '100%' },
+  { name: 'Italian Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '14%' },
+  { name: 'Ruy Lopez', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '6%' },
+  { name: 'Four Knights Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '7%' },
+  { name: 'Scotch Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '5%' },
+  { name: 'Sicilian Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
+  { name: 'Scandinavian Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
+  { name: 'Petroff Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '37%' },
+  { name: 'French Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
+  { name: 'Caro-Kann Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
+  { name: 'Pirc Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
+  { name: "Queen's Gambit Accepted", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '5%' },
+  { name: "Queen's Gambit Declined", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '5%' },
+  { name: 'London System', color: 'Black', firstMove: '1. d4', against: '1. d4, 2. Bf4', frequency: '4%' },
+  { name: 'Nimzo-Indian Defense', color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '4%' },
+  { name: "King's Indian Defense", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '4%' },
+  { name: 'Against 1. c4 & 1. Nf3', color: 'Black', firstMove: '1. c4 & 1. Nf3', against: '1. c4 & 1. Nf3', frequency: '5%' },
 ]
+
+// First move string → cover pieces for 4×4 center (c3–f6). col 0–3 = c–f, row 0–3 = ranks 6–3.
+function coverPiecesFromFirstMove(firstMove) {
+  const m = (firstMove || '').toLowerCase()
+  if (m.includes('1. e4') || m.includes('1.e4')) return [{ type: 'wp', col: 2, row: 2 }, { type: 'bp', col: 2, row: 1 }] // e4 e5
+  if (m.includes('1. d4') || m.includes('1.d4')) return [{ type: 'wp', col: 1, row: 2 }, { type: 'bp', col: 1, row: 1 }] // d4 d5
+  if (m.includes('1. c4') || m.includes('1.c4')) return [{ type: 'wp', col: 0, row: 2 }, { type: 'bp', col: 2, row: 2 }] // c4 e5 or generic
+  return [{ type: 'wp', col: 2, row: 2 }, { type: 'bp', col: 2, row: 1 }]
+}
+
+// Normalize name for deduplication (e.g. "Four Knights Game" → "Four Knights", "Scotch Game" → "Scotch").
+function openingNameKey(name) {
+  if (name === 'Four Knights Game') return 'Four Knights'
+  if (name === 'Scotch Game') return 'Scotch'
+  return name
+}
+
+// Descriptions from opening course transcriptions. Only for courses in our set (no Alekhine's, King's Gambit, etc.).
+const OPENING_DESCRIPTIONS = {
+  "Alapin": "A Sicilian sideline where White avoids the main theoretical battles and builds a strong center with c3 and d4.",
+  "Caro-Kann Defense": "This is one of Black's most solid answers to 1.e4. The idea of 1...c6 is to prepare d7–d5 on the next move.",
+  "English Opening": "A flexible opening starting with 1.c4, allowing White to control the center from the flank and transpose into many structures.",
+  "Four Knights": "A classical opening where both sides develop knights early and aim for solid central control and flexible middlegame plans.",
+  "French Defense": "The French Defense is a counter-attacking option against 1.e4. Black prepares to contest the center with 2...d5.",
+  "Fried Liver": "A sharp and tactical line of the Italian Game where White sacrifices material to launch an early attack on Black's king.",
+  "Italian Game": "The Italian game is a popular 1.e4 for all levels. Both sides develop logically to control the center and prepare to castle.",
+  "King's Indian Defense": "The KID is one of the sharpest answers to 1.d4. White can build a big center, and Black typically aims for a kingside attack.",
+  "London System": "The London is a relatively simple option for White. Both sides can develop peacefully, delaying most tactics until the middlegame.",
+  "Nimzo-Indian Defense": "One of Black's most solid answers to 1.d4. Black pins a white knight and fights for the central light squares.",
+  "Open Sicilian": "A dynamic variation of the Sicilian Defense where White opens the center early, leading to sharp positions and rich tactical play.",
+  "Petroff Defense": "A solid and symmetrical defense to 1.e4 where Black immediately challenges White's center and aims for a sound, resilient position.",
+  "Pirc Defense": "The Pirc is a rare, counterattacking option against 1.e4. It's a frequent choice for Grandmasters who must win as Black.",
+  "Queen's Gambit": "The famous Queen's Gambit! White offers a pawn for control of the center and Black frequently declines.",
+  "Queen's Gambit Accepted": "Black accepts the gambit pawn and temporarily gives up the center, aiming to neutralize White's initiative through active development.",
+  "Queen's Gambit Declined": "Black declines the gambit and maintains central tension, leading to a solid and strategic struggle for long-term advantages.",
+  "Ruy Lopez": "Both sides develop to control the center and White threatens to exchange a bishop for a knight on c6 at an opportune moment.",
+  "Scandinavian Defense": "The Scandinavian Defense is a way for Black to immediately trade off a pawn after 1.e4 by playing 1...d5.",
+  "Scotch": "The Scotch Game is a way for White to trade off Black's only center pawn after 1.e4 e5.",
+  "Sicilian Defense": "One of Black's most ambitious responses to 1.e4. Black fights for imbalance from the start, often leading to complex and tactical games.",
+}
+
+// First 3 moves (main line) per opening – used to show position on main board when card is selected. Format: array of { white, black }.
+const OPENING_FIRST_3_MOVES = {
+  "Alapin": [{ white: 'e4', black: 'c5' }, { white: 'c3', black: '' }],
+  "Against 1. c4 & 1. Nf3": [{ white: 'c4', black: 'e5' }, { white: 'Nc3', black: 'Nf6' }, { white: 'Nf3', black: 'Nc6' }],
+  "Caro-Kann Defense": [{ white: 'e4', black: 'c6' }, { white: 'd4', black: 'd5' }, { white: 'Nc3', black: 'dxe4' }],
+  "English Opening": [{ white: 'c4', black: 'e5' }, { white: 'Nc3', black: 'Nf6' }, { white: 'Nf3', black: 'Nc6' }],
+  "Four Knights": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'Nc3', black: 'Nf6' }],
+  "French Defense": [{ white: 'e4', black: 'e6' }, { white: 'd4', black: 'd5' }, { white: 'Nd2', black: 'Nf6' }],
+  "Fried Liver": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'Bc4', black: 'Nf6' }],
+  "Italian Game": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'Bc4', black: 'Bc5' }],
+  "King's Indian Defense": [{ white: 'd4', black: 'Nf6' }, { white: 'c4', black: 'g6' }, { white: 'Nc3', black: 'Bg7' }],
+  "London System": [{ white: 'd4', black: 'd5' }, { white: 'Bf4', black: 'Nf6' }, { white: 'e3', black: 'e6' }],
+  "Nimzo-Indian Defense": [{ white: 'd4', black: 'Nf6' }, { white: 'c4', black: 'e6' }, { white: 'Nc3', black: 'Bb4' }],
+  "Open Sicilian": [{ white: 'e4', black: 'c5' }, { white: 'Nf3', black: 'd6' }, { white: 'd4', black: 'cxd4' }],
+  "Petroff Defense": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nf6' }, { white: 'Nxe5', black: 'd6' }],
+  "Pirc Defense": [{ white: 'e4', black: 'd6' }, { white: 'd4', black: 'Nf6' }, { white: 'Nc3', black: 'g6' }],
+  "Queen's Gambit": [{ white: 'd4', black: 'd5' }, { white: 'c4', black: 'e6' }, { white: 'Nc3', black: 'Nf6' }],
+  "Queen's Gambit Accepted": [{ white: 'd4', black: 'd5' }, { white: 'c4', black: 'dxc4' }, { white: 'e3', black: 'e5' }],
+  "Queen's Gambit Declined": [{ white: 'd4', black: 'd5' }, { white: 'c4', black: 'e6' }, { white: 'Nc3', black: 'Nf6' }],
+  "Ruy Lopez": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'Bb5', black: 'a6' }],
+  "Scandinavian Defense": [{ white: 'e4', black: 'd5' }, { white: 'exd5', black: 'Qxd5' }, { white: 'Nc3', black: 'Qa5' }],
+  "Scotch": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'd4', black: 'exd4' }],
+  "Sicilian Defense": [{ white: 'e4', black: 'c5' }, { white: 'Nf3', black: 'd6' }, { white: 'd4', black: 'cxd4' }],
+}
+
+// One card per unique opening name (first occurrence wins for first move / cover). Full raw rows stored on card for later.
+const openingCourseCards = (() => {
+  const seen = new Set()
+  const cards = []
+  let id = 1
+  for (const row of OPENING_COURSES_RAW) {
+    const key = openingNameKey(row.name)
+    if (seen.has(key)) continue
+    seen.add(key)
+    const firstMove = row.firstMove
+    const title = key === row.name ? row.name : key
+    const description = OPENING_DESCRIPTIONS[title] ?? `${title} — ${firstMove}`
+    cards.push({
+      id: id++,
+      title,
+      firstMove,
+      description,
+      linesCount: 12,
+      type: row.color,
+      coverPieces: coverPiecesFromFirstMove(firstMove),
+      _meta: OPENING_COURSES_RAW.filter((r) => openingNameKey(r.name) === key),
+    })
+  }
+  return cards
+})()
 
 // Lines filter options (label only the value – "Show " is separate)
 const linesFilterOptions = [
@@ -1024,12 +1143,16 @@ function getPositionAfterPly(moves, selectedPlyVal) {
   }
 }
 
-/** Position at end of a line (for chapter-page hover preview). */
+/** Position at end of a line (for chapter-page hover preview). Never throws. */
 function getPositionAtEndOfLine(moves) {
-  if (!moves?.length) return { fen: STARTING_FEN, lastMove: null }
-  const last = moves[moves.length - 1]
-  const side = last?.black && last?.black !== '#' ? 'black' : 'white'
-  return getPositionAfterPly(moves, { moveIndex: moves.length - 1, side })
+  try {
+    if (!moves?.length) return { fen: STARTING_FEN, lastMove: null }
+    const last = moves[moves.length - 1]
+    const side = last?.black && last?.black !== '#' ? 'black' : 'white'
+    return getPositionAfterPly(moves, { moveIndex: moves.length - 1, side })
+  } catch {
+    return { fen: STARTING_FEN, lastMove: null }
+  }
 }
 
 function setHoveredChapterLine(section, move) {
@@ -1755,6 +1878,10 @@ const infoLineContentCurrent = computed(() => {
 
 /** Read mode body copy (key: sectionId-moveId). Shown below the move list in read mode – moves first, then this copy. */
 const lineReadModeBodyByKey = {
+  'learning-the-game-1': {
+    bodyHtml: `<p>Squares on a chess board can be divided and understood according to ranks (side to side), files (up and down) and diagonals. Let's talk about ranks. There are 8 ranks on a chess board numbered from 1-8.</p>
+<p>Here we see a lone queen sitting on the 3rd rank. We will learn about her highness when we talk about the pieces. For now, to get a better feel for the board, let's try moving her all the way across the 3rd rank to the other side.</p>`,
+  },
   'the-opening-5': {
     bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
 <p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
@@ -2276,6 +2403,86 @@ const draggedFrom = ref(null)
 const dragPosition = ref({ x: 0, y: 0 })
 const boardRef = ref(null)
 
+// Opening Courses V1: auto-play White's 3rd move after showing position after 2 moves (with sound + slide animation)
+let openingAutoMoveTimeoutId = null
+const openingCardAnimatingMove = ref(null) // { from, to, pieceType } when sliding the piece
+const openingCardAnimPhase = ref('from')   // 'from' | 'to' – for CSS transition
+const OPENING_AUTO_MOVE_DELAY_MS = 420
+const OPENING_AUTO_MOVE_DURATION_MS = 320
+function squareToPercent(square) {
+  if (!square || typeof square !== 'string' || square.length < 2) return { left: '0%', top: '0%' }
+  const fileIndex = square.charCodeAt(0) - 97 // a=0 .. h=7
+  const rank = parseInt(square[1], 10)
+  if (fileIndex < 0 || fileIndex > 7 || rank < 1 || rank > 8) return { left: '0%', top: '0%' }
+  return {
+    left: `${(fileIndex / 8) * 100}%`,
+    top: `${((8 - rank) / 8) * 100}%`,
+  }
+}
+function clearOpeningAutoMove() {
+  if (openingAutoMoveTimeoutId != null) {
+    clearTimeout(openingAutoMoveTimeoutId)
+    openingAutoMoveTimeoutId = null
+  }
+  openingCardAnimatingMove.value = null
+}
+
+function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite) {
+  openingAutoMoveTimeoutId = null
+  if (typeof fenAfterTwo !== 'string' || typeof thirdMoveWhite !== 'string') return
+  try {
+    const chess = new Chess(fenAfterTwo)
+    const result = chess.move(thirdMoveWhite)
+    if (!result || typeof result.from !== 'string' || typeof result.to !== 'string') return
+    const from = result.from
+    const to = result.to
+    const isCapture = !!result.captured
+    let pieceType = 'wb'
+    try {
+      const piecesAfterTwo = parseFEN(fenAfterTwo)
+      const p = piecesAfterTwo.find((x) => x && x.square === from)
+      if (p && typeof p.type === 'string') pieceType = p.type
+      // Remove captured piece immediately so it disappears the moment the moving piece is shown (no delay for e.g. Petroff Nxe5)
+      if (isCapture) {
+        pieces.value = piecesAfterTwo.filter((x) => x && x.square !== to)
+      }
+    } catch (_) {}
+    try {
+      playSound(isCapture ? 'capture' : 'move')
+    } catch (_) {}
+    // Show last-move highlight immediately when the piece “leaves” the square (start of slide)
+    lastMove.value = { from, to }
+    selectedSquare.value = null
+    checkmateHighlight.value = null
+    openingCardAnimatingMove.value = { from, to, pieceType }
+    openingCardAnimPhase.value = 'from'
+    nextTick(() => {
+      openingCardAnimPhase.value = 'to'
+    })
+    setTimeout(() => {
+      try {
+        pieces.value = parseFEN(chess.fen())
+      } catch (_) {}
+      openingCardAnimatingMove.value = null
+    }, OPENING_AUTO_MOVE_DURATION_MS)
+  } catch (_) {
+    openingCardAnimatingMove.value = null
+  }
+}
+
+const openingCardMovingPieceStyle = computed(() => {
+  const anim = openingCardAnimatingMove.value
+  if (!anim || typeof anim.from !== 'string' || typeof anim.to !== 'string') return { visibility: 'hidden' }
+  const pos = openingCardAnimPhase.value === 'from' ? squareToPercent(anim.from) : squareToPercent(anim.to)
+  return {
+    left: pos.left,
+    top: pos.top,
+    width: '12.5%',
+    height: '12.5%',
+    transition: `left ${OPENING_AUTO_MOVE_DURATION_MS}ms ease-out, top ${OPENING_AUTO_MOVE_DURATION_MS}ms ease-out`,
+  }
+})
+
 // Animation state
 const skillHighlight = ref(null)      // Square to highlight with skill animation (e.g., 'd6')
 const skillHighlightLabel = ref(null) // Label text for skill highlight (e.g., 'Correct!')
@@ -2469,31 +2676,64 @@ const isLightSquare = (square) => {
   return (fileIndex + rankIndex) % 2 === 1
 }
 
-// Parse FEN to pieces array
+// Parse FEN to pieces array. Never throws: returns STARTING_FEN parse on invalid input.
 const parseFEN = (fen) => {
-  const pieceMap = {
-    'r': 'br', 'n': 'bn', 'b': 'bb', 'q': 'bq', 'k': 'bk', 'p': 'bp',
-    'R': 'wr', 'N': 'wn', 'B': 'wb', 'Q': 'wq', 'K': 'wk', 'P': 'wp',
-  }
-  const result = []
-  const [position] = fen.split(' ')
-  const rows = position.split('/')
-  
-  rows.forEach((row, rowIndex) => {
-    let colIndex = 0
-    for (const char of row) {
-      if (/\d/.test(char)) {
-        colIndex += parseInt(char, 10)
-      } else if (pieceMap[char]) {
-        const file = files[colIndex]
-        const rank = 8 - rowIndex
-        result.push({ type: pieceMap[char], square: `${file}${rank}` })
-        colIndex++
-      }
+  try {
+    if (fen == null || typeof fen !== 'string') return parseFENSafeFallback()
+    const pieceMap = {
+      'r': 'br', 'n': 'bn', 'b': 'bb', 'q': 'bq', 'k': 'bk', 'p': 'bp',
+      'R': 'wr', 'N': 'wn', 'B': 'wb', 'Q': 'wq', 'K': 'wk', 'P': 'wp',
     }
-  })
-  
-  return result
+    const result = []
+    const [position] = fen.split(' ')
+    if (!position || typeof position !== 'string') return parseFENSafeFallback()
+    const rows = position.split('/')
+    if (rows.length !== 8) return parseFENSafeFallback()
+
+    rows.forEach((row, rowIndex) => {
+      let colIndex = 0
+      for (const char of row) {
+        if (/\d/.test(char)) {
+          colIndex += parseInt(char, 10)
+        } else if (pieceMap[char]) {
+          const file = files[colIndex]
+          const rank = 8 - rowIndex
+          result.push({ type: pieceMap[char], square: `${file}${rank}` })
+          colIndex++
+        }
+      }
+    })
+    return result
+  } catch {
+    return parseFENSafeFallback()
+  }
+}
+function parseFENSafeFallback() {
+  try {
+    const pieceMap = {
+      'r': 'br', 'n': 'bn', 'b': 'bb', 'q': 'bq', 'k': 'bk', 'p': 'bp',
+      'R': 'wr', 'N': 'wn', 'B': 'wb', 'Q': 'wq', 'K': 'wk', 'P': 'wp',
+    }
+    const result = []
+    const [position] = STARTING_FEN.split(' ')
+    const rows = position.split('/')
+    rows.forEach((row, rowIndex) => {
+      let colIndex = 0
+      for (const char of row) {
+        if (/\d/.test(char)) {
+          colIndex += parseInt(char, 10)
+        } else if (pieceMap[char]) {
+          const file = files[colIndex]
+          const rank = 8 - rowIndex
+          result.push({ type: pieceMap[char], square: `${file}${rank}` })
+          colIndex++
+        }
+      }
+    })
+    return result
+  } catch {
+    return []
+  }
 }
 
 // Load question position (index >= 0). For index -1 use setBoardToDefault().
@@ -2515,38 +2755,62 @@ function setBoardToDefault() {
   checkmateHighlight.value = null
 }
 
-// Board sync: Line view (selected ply) or Chapter page (hovered line preview for non-ready lines).
+// Board sync: Line view (selected ply), Opening Courses V1 (selected card), or Chapter page (hovered line).
+// Opening Courses branch is checked before chapter hover so selected card always wins on that page.
+// Wrapped in try/catch so a reactive error here cannot break the app or leave global listeners dangling.
 watchEffect(() => {
-  if (panelView.value === 'line') {
-    if (!selectedLine.value) return
-    if (currentLineType.value === 'ready') {
-      pieces.value = parseFEN(STARTING_FEN)
-      lastMove.value = null
+  try {
+    if (panelView.value === 'line') {
+      if (!selectedLine.value) return
+      if (currentLineType.value === 'ready') {
+        pieces.value = parseFEN(STARTING_FEN)
+        lastMove.value = null
+        selectedSquare.value = null
+        checkmateHighlight.value = null
+        return
+      }
+      if (!lineViewMoves.value?.length) return
+      const { fen, lastMove: last } = getPositionAfterPly(lineViewMoves.value, selectedPly.value)
+      pieces.value = parseFEN(fen)
+      lastMove.value = last
       selectedSquare.value = null
       checkmateHighlight.value = null
       return
     }
-    if (!lineViewMoves.value?.length) return
-    const { fen, lastMove: last } = getPositionAfterPly(lineViewMoves.value, selectedPly.value)
-    pieces.value = parseFEN(fen)
-    lastMove.value = last
-    selectedSquare.value = null
-    checkmateHighlight.value = null
-    return
-  }
-  if (panelView.value === 'courses' && hoveredChapterLine.value) {
-    const { section, move } = hoveredChapterLine.value
-    if (getLineType(move) === 'ready') return
-    const moves = getMovesForLine(section, move)
-    const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
-    pieces.value = parseFEN(fen)
-    lastMove.value = last
-    selectedSquare.value = null
-    checkmateHighlight.value = null
-    return
-  }
-  // Courses, no hover: show default position
-  if (panelView.value === 'courses') {
+    // Opening Courses V1: when a course card is selected, show first 2 moves of that opening on the board
+    if (panelView.value === 'courses' && isOpeningCoursesV1.value && selectedOpeningCardId.value != null) {
+      const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
+      const moves = card ? OPENING_FIRST_3_MOVES[card.title] : null
+      if (moves?.length) {
+        const firstTwo = moves.slice(0, 2)
+        const { fen, lastMove: last } = getPositionAtEndOfLine(firstTwo)
+        pieces.value = parseFEN(fen)
+        lastMove.value = last
+        selectedSquare.value = null
+        checkmateHighlight.value = null
+        return
+      }
+    }
+    // Chapter page: hovered line preview (non–Opening Courses or no card selected)
+    if (panelView.value === 'courses' && hoveredChapterLine.value) {
+      const { section, move } = hoveredChapterLine.value
+      if (getLineType(move) === 'ready') return
+      const moves = getMovesForLine(section, move)
+      const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
+      pieces.value = parseFEN(fen)
+      lastMove.value = last
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+      return
+    }
+    // Courses, no hover / no opening selected: show default position
+    if (panelView.value === 'courses') {
+      pieces.value = parseFEN(STARTING_FEN)
+      lastMove.value = null
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+    }
+  } catch (_) {
     pieces.value = parseFEN(STARTING_FEN)
     lastMove.value = null
     selectedSquare.value = null
@@ -2609,10 +2873,9 @@ const isWrongMove = (square) => {
 }
 
 // ============================================
-// MOVE HANDLING (board is display-only; interaction disabled)
+// MOVE HANDLING
 // ============================================
 const handleSquareClick = (square) => {
-  return // Board interaction disabled on all pages
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
@@ -2981,10 +3244,9 @@ const tryMove = (from, to) => {
 }
 
 // ============================================
-// DRAG & DROP (board is display-only; interaction disabled)
+// DRAG & DROP
 // ============================================
 const handleDragStart = (event, square) => {
-  return // Board interaction disabled on all pages
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
@@ -3088,7 +3350,177 @@ const handleRetry = () => {
 const isVideoV2 = computed(() => route.path === '/learn/v2')
 // V2.2: same as V2 but play button toggles to pause and makes that video sticky. Opening Courses V1 uses same layout.
 const isVideoV2_2 = computed(() => route.path === '/learn/v2.2' || route.path === '/learn/opening-courses-v1')
-const isOpeningCoursesV1 = computed(() => route.path === '/learn/opening-courses-v1')
+const isOpeningCoursesV1 = computed(() => (route && route.path) === '/learn/opening-courses-v1')
+const selectedOpeningCardId = ref(null)
+function toggleOpeningCardSelection(cardId) {
+  selectedOpeningCardId.value = selectedOpeningCardId.value === cardId ? null : cardId
+}
+
+// Opening Courses V1: search panel state (Figma 74-23788)
+const openingSearchQuery = ref('')
+const openingSortBy = ref('type') // 'name' | 'lines' | 'type'
+const openingSortOpen = ref(false)
+// Hide filter strip on scroll down, show on scroll up (scroll-direction header)
+const openingFilterStripHidden = ref(false)
+const lastOpeningScrollTop = ref(0)
+const openingSortLabel = computed(() => {
+  if (openingSortBy.value === 'lines') return 'Lines'
+  if (openingSortBy.value === 'type') return 'Type'
+  return 'Name'
+})
+const openingCoursesFiltered = computed(() => {
+  const q = (openingSearchQuery.value || '').trim().toLowerCase()
+  let list = q ? openingCourseCards.filter((c) => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q)) : [...openingCourseCards]
+  if (openingSortBy.value === 'name') {
+    list = list.slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+  } else if (openingSortBy.value === 'lines') {
+    list = list.slice().sort((a, b) => (b.linesCount ?? 0) - (a.linesCount ?? 0))
+  } else if (openingSortBy.value === 'type') {
+    list = list.slice().sort((a, b) => (a.type || '').localeCompare(b.type || ''))
+  }
+  return list
+})
+function onOpeningFiltersClick() {
+  // TODO: open filters modal/sheet
+}
+
+// Opening Courses V1: scroll listener – hide filter strip on scroll down, show on scroll up (guarded to avoid -102)
+function onOpeningContentScroll() {
+  try {
+    const el = coursesContentRef.value
+    if (!el || !isOpeningCoursesV1.value) return
+    const current = typeof el.scrollTop === 'number' ? el.scrollTop : 0
+    if (current > lastOpeningScrollTop.value && current > 60) {
+      openingFilterStripHidden.value = true
+    } else if (current < lastOpeningScrollTop.value) {
+      openingFilterStripHidden.value = false
+    }
+    lastOpeningScrollTop.value = current
+  } catch (_) {}
+}
+watch(
+  () => [isOpeningCoursesV1.value, coursesContentRef.value],
+  ([isV1, ref]) => {
+    const el = ref
+    if (!isV1 || !el) {
+      openingFilterStripHidden.value = false
+      return
+    }
+    try {
+      lastOpeningScrollTop.value = el.scrollTop ?? 0
+      el.addEventListener('scroll', onOpeningContentScroll, { passive: true })
+    } catch (_) {}
+    return () => {
+      try {
+        el.removeEventListener('scroll', onOpeningContentScroll)
+      } catch (_) {}
+    }
+  },
+  { immediate: true }
+)
+
+// Clear chapter hover when entering Opening Courses V1 so board sync uses only the selected card
+watch(isOpeningCoursesV1, (isV1) => {
+  if (isV1) {
+    clearHoveredChapterLine()
+  }
+}, { immediate: true })
+
+// Dedicated watcher: when an opening card is selected on Opening Courses V1, sync the main board to that opening’s first 3 moves.
+// CRASH DEBUG: If the app crashes on /#/learn/opening-courses-v1 (Error Code -102), see .cursor/rules/crash-debug.mdc and check squareToPercent, playOpeningThirdMove, optional chaining for moves[2], and clearOpeningAutoMove in onUnmounted.
+// Fallback: if OPENING_FIRST_3_MOVES[card.title] is missing, build a 1-move array from card.firstMove (e.g. "1. e4" → e4).
+function getOpeningMovesForCard(card) {
+  if (!card) return null
+  const fromMap = OPENING_FIRST_3_MOVES[card.title]
+  if (fromMap?.length) return fromMap
+  const m = (card.firstMove || '').match(/\d+\.\s*(\S+)/)
+  if (m) return [{ white: m[1], black: '' }]
+  return null
+}
+// Opening Courses V1: show only first 2 moves on the board.
+const OPENING_BOARD_MOVE_COUNT = 2
+watch(
+  () => (isOpeningCoursesV1.value ? selectedOpeningCardId.value : null),
+  (id) => {
+    try {
+      clearOpeningAutoMove()
+      if (!isOpeningCoursesV1.value) return
+      if (id == null) {
+        pieces.value = parseFEN(STARTING_FEN)
+        lastMove.value = null
+        selectedSquare.value = null
+        checkmateHighlight.value = null
+        return
+      }
+      const card = openingCourseCards.find((c) => c.id === id)
+      const moves = getOpeningMovesForCard(card)
+      if (moves?.length) {
+        try {
+          // Decide what position to show and which white move to animate (e.g. Italian: show 2 moves then Bc4; Alapin: only 2 pairs, 2nd has white only → show 1 move then animate c3)
+          let fenBeforeWhiteMove = null
+          let whiteMoveToAnimate = null
+          if (moves.length >= 3 && moves[2]?.white) {
+            const firstTwo = moves.slice(0, OPENING_BOARD_MOVE_COUNT)
+            const { fen } = getPositionAtEndOfLine(firstTwo)
+            fenBeforeWhiteMove = fen
+            whiteMoveToAnimate = moves[2].white
+          } else if (moves.length >= 2 && moves[1]?.white && !moves[1]?.black) {
+            const firstOne = moves.slice(0, 1)
+            const { fen } = getPositionAtEndOfLine(firstOne)
+            fenBeforeWhiteMove = fen
+            whiteMoveToAnimate = moves[1].white
+          }
+          if (fenBeforeWhiteMove && whiteMoveToAnimate) {
+            const movesForPosition = moves.length >= 3 && moves[2]?.white ? moves.slice(0, 2) : moves.slice(0, 1)
+            const { lastMove: last } = getPositionAtEndOfLine(movesForPosition)
+            pieces.value = parseFEN(fenBeforeWhiteMove)
+            lastMove.value = last
+            selectedSquare.value = null
+            checkmateHighlight.value = null
+            openingAutoMoveTimeoutId = setTimeout(() => {
+              try {
+                playOpeningThirdMove(fenBeforeWhiteMove, whiteMoveToAnimate)
+              } catch (_) {
+                openingCardAnimatingMove.value = null
+              }
+            }, OPENING_AUTO_MOVE_DELAY_MS)
+          } else {
+            const firstTwo = moves.slice(0, OPENING_BOARD_MOVE_COUNT)
+            const { fen: fenAfterTwo, lastMove: last } = getPositionAtEndOfLine(firstTwo)
+            pieces.value = parseFEN(fenAfterTwo)
+            lastMove.value = last
+            selectedSquare.value = null
+            checkmateHighlight.value = null
+          }
+        } catch (_) {
+          pieces.value = parseFEN(STARTING_FEN)
+          lastMove.value = null
+          selectedSquare.value = null
+          checkmateHighlight.value = null
+        }
+      } else {
+        pieces.value = parseFEN(STARTING_FEN)
+        lastMove.value = null
+        selectedSquare.value = null
+        checkmateHighlight.value = null
+      }
+    } catch (_) {
+      clearOpeningAutoMove()
+      try {
+        pieces.value = parseFEN(STARTING_FEN)
+        lastMove.value = null
+        selectedSquare.value = null
+        checkmateHighlight.value = null
+      } catch (__) {}
+    }
+  },
+  { immediate: true }
+)
+
+// Opening course card variant: 'full-card-outline' | 'square-outline'. Switch to compare for PMs; replace as needed.
+const OPENING_COURSE_CARD_VARIANT = 'square-outline'
+// Hover effect variant: 'v1' = card bg-subtlest only; 'v2' = cover overlay FFF 8%, heading boldest, body default.
+const OPENING_COURSE_CARD_HOVER_VARIANT = 'v2'
 const v22PlayingSectionId = ref(null) // when set, this section's video shows pause and is sticky
 // V2.3: duplicate of V2.2 + sticky chapter title when expanded. V2.4: same layout, real course content.
 const isVideoV2_3OrV24 = computed(() => route.path === '/learn/v2.3' || route.path === '/learn/v2.4')
@@ -3665,31 +4097,48 @@ function stopLineViewVideoResize(e) {
   }
 }
 
-// Line view only: shrink video when user scrolls down (if scrollable); expand back to large when user scrolls to top. INFO: video is scrollable, keep large.
-const LINE_VIEW_VIDEO_SMALL_COOLDOWN_MS = 400
+// Line view only: two states (small / large). Scroll down → small, scroll up or at top → large. Lockout after shrink to avoid jitter from layout change.
+const LINE_VIEW_VIDEO_SCROLL_THRESHOLD_PX = 8
+const LINE_VIEW_VIDEO_LOCKOUT_AFTER_SMALL_MS = 280
+let lineViewScrollBodyLastScrollTop = 0
 let lineViewVideoLastSetToSmallAt = 0
 function onLineViewScrollBodyScroll() {
   if (currentLineType.value === 'info') return
   const el = lineViewScrollBodyRef.value
   if (!el || !lineViewVideoSectionVisible.value) return
   const scrollable = el.scrollHeight > el.clientHeight
-  if (el.scrollTop <= 0) {
-    const now = Date.now()
-    if (now - lineViewVideoLastSetToSmallAt > LINE_VIEW_VIDEO_SMALL_COOLDOWN_MS) {
-      lineViewVideoFormat.value = 'large'
-    }
-  } else if (scrollable && lineViewVideoFormat.value === 'large') {
+  const scrollTop = el.scrollTop
+  const delta = scrollTop - lineViewScrollBodyLastScrollTop
+  lineViewScrollBodyLastScrollTop = scrollTop
+
+  const atTop = scrollTop <= 0
+  const scrollDown = delta >= LINE_VIEW_VIDEO_SCROLL_THRESHOLD_PX
+  const scrollUp = delta <= -LINE_VIEW_VIDEO_SCROLL_THRESHOLD_PX
+  const isSmall = lineViewVideoFormat.value === 'small'
+  const lockoutOk = Date.now() - lineViewVideoLastSetToSmallAt > LINE_VIEW_VIDEO_LOCKOUT_AFTER_SMALL_MS
+
+  if (isSmall && lockoutOk && (atTop || scrollUp)) {
+    lineViewVideoFormat.value = 'large'
+  } else if (!isSmall && scrollable && scrollDown) {
     lineViewVideoFormat.value = 'small'
     lineViewVideoLastSetToSmallAt = Date.now()
   }
 }
 
 let lineViewScrollElWithListener = null
+function onLineViewWheel(e) {
+  if (currentLineType.value === 'info') return
+  if (!lineViewVideoSectionVisible.value || lineViewVideoFormat.value !== 'small') return
+  if (e.deltaY < 0) {
+    lineViewVideoFormat.value = 'large'
+  }
+}
 function attachLineViewScrollListenerIfNeeded() {
   const el = lineViewScrollBodyRef.value
   if (panelView.value !== 'line' || !el) {
     if (lineViewScrollElWithListener) {
       lineViewScrollElWithListener.removeEventListener('scroll', onLineViewScrollBodyScroll)
+      lineViewScrollElWithListener.removeEventListener('wheel', onLineViewWheel, { passive: true })
       lineViewScrollElWithListener = null
     }
     return
@@ -3697,8 +4146,11 @@ function attachLineViewScrollListenerIfNeeded() {
   if (lineViewScrollElWithListener !== el) {
     if (lineViewScrollElWithListener) {
       lineViewScrollElWithListener.removeEventListener('scroll', onLineViewScrollBodyScroll)
+      lineViewScrollElWithListener.removeEventListener('wheel', onLineViewWheel, { passive: true })
     }
+    lineViewScrollBodyLastScrollTop = el.scrollTop
     el.addEventListener('scroll', onLineViewScrollBodyScroll, { passive: true })
+    el.addEventListener('wheel', onLineViewWheel, { passive: true })
     lineViewScrollElWithListener = el
   }
 }
@@ -3831,13 +4283,6 @@ setBoardToDefault()
 displayedProgress.value = 0
 displayedStreak.value = 0
 
-// Add global event listeners for drag immediately
-// (using document listeners that work even before mount)
-document.addEventListener('mousemove', handleDragMove)
-document.addEventListener('mouseup', handleDragEnd)
-document.addEventListener('touchmove', handleDragMove, { passive: false })
-document.addEventListener('touchend', handleDragEnd)
-
 function setupV3ScrollListener() {
   v3ScrollCleanup?.()
   v3ScrollCleanup = null
@@ -3892,11 +4337,16 @@ watch([isVideoV2_3OrV24, coursesContentRef], () => {
 }, { immediate: true })
 
 onMounted(() => {
+  document.addEventListener('mousemove', handleDragMove)
+  document.addEventListener('mouseup', handleDragEnd)
+  document.addEventListener('touchmove', handleDragMove, { passive: false })
+  document.addEventListener('touchend', handleDragEnd)
   nextTick(setupV3ScrollListener)
   nextTick(setupV23ScrollListener)
 })
 
 onUnmounted(() => {
+  clearOpeningAutoMove()
   v23ScrollCleanup?.()
   v3ScrollCleanup?.()
   teardownVideoSectionResizeObserver()
@@ -3913,7 +4363,7 @@ onUnmounted(() => {
       <!-- Left: Chessboard -->
       <div class="board-section">
         <div class="board-wrapper">
-          <div class="chessboard chessboard--no-interaction" ref="boardRef">
+          <div class="chessboard" ref="boardRef">
             <div 
               v-for="square in squares" 
               :key="square"
@@ -3991,9 +4441,9 @@ onUnmounted(() => {
                 <span class="checkmate-label-text">Checkmate</span>
               </div>
 
-              <!-- Piece -->
+              <!-- Piece (hide on from-square while Opening Courses auto-move is sliding) -->
               <img 
-                v-if="getPieceOnSquare(square) && !isPieceDragged(square)" 
+                v-if="getPieceOnSquare(square) && !isPieceDragged(square) && !(openingCardAnimatingMove && openingCardAnimatingMove.from === square)" 
                 class="piece"
                 :class="{ 'draggable': getPieceOnSquare(square)?.type.startsWith('w') }"
                 :src="getPieceImage(getPieceOnSquare(square))"
@@ -4007,8 +4457,21 @@ onUnmounted(() => {
               <!-- Rank label (left column) -->
               <span v-if="square[0] === 'a'" class="coord rank-coord">{{ square[1] }}</span>
             </div>
+            <!-- Opening Courses V1: sliding piece for auto-played 3rd move (White) -->
+            <div
+              v-if="openingCardAnimatingMove && openingCardAnimatingMove.from && openingCardAnimatingMove.to && openingCardAnimatingMove.pieceType"
+              class="opening-card-moving-piece"
+              :style="openingCardMovingPieceStyle"
+              aria-hidden="true"
+            >
+              <img
+                :src="getPieceImage({ type: openingCardAnimatingMove.pieceType })"
+                :alt="''"
+                class="opening-card-moving-piece__img"
+              />
+            </div>
           </div>
-          
+        
         </div>
         
         <!-- Dragged piece (follows cursor) -->
@@ -4081,47 +4544,87 @@ onUnmounted(() => {
 
           <!-- Content: Courses view (course card, progress, sections, lines) or Line view (empty for now) -->
           <template v-if="panelView === 'courses'">
-        <div
-          ref="coursesContentRef"
-          class="panel-content courses-content"
-          :class="{ 'courses-content--v3': isVideoV3 }"
-          :style="isVideoV3 && v3PaddingBottomPx != null ? { paddingBottom: `${v3PaddingBottomPx}px` } : {}"
-        >
-          <!-- Opening Courses V1 only: new coach container (CoachNew) instead of course card -->
-          <section v-if="isOpeningCoursesV1" class="coach-new-opening" data-name="CoachNew">
-            <div class="coach-new-opening__inner coach-feedback">
-              <div class="coach-new-opening__coach">
-                <div class="coach-new-opening__avatar-wrap">
-                  <img :src="baseUrl + 'icons/misc/coach-avatar-opening.png'" alt="" class="coach-new-opening__avatar" width="96" height="96" />
+        <!-- Opening Courses V1: coach fixed at top; filter + cards scroll. Filter hides on scroll down, slides in from behind coach on scroll up. -->
+        <template v-if="isOpeningCoursesV1">
+          <div class="opening-v1-layout">
+            <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
+              <div class="coach-new-opening__inner coach-feedback">
+                <div class="coach-new-opening__coach">
+                  <div class="coach-new-opening__avatar-wrap">
+                    <img :src="baseUrl + 'icons/misc/coach-avatar-opening.png'" alt="" class="coach-new-opening__avatar" width="96" height="96" />
+                  </div>
+                  <div class="coach-new-opening__caret" aria-hidden="true">
+                    <img :src="baseUrl + 'icons/misc/bubble-tip-opening.png'" alt="" width="14" height="22" class="coach-new-opening__caret-img" />
+                  </div>
                 </div>
-                <div class="coach-new-opening__caret" aria-hidden="true">
-                  <img :src="baseUrl + 'icons/misc/bubble-tip-opening.png'" alt="" width="14" height="22" class="coach-new-opening__caret-img" />
-                </div>
-              </div>
-              <div class="coach-new-opening__message-wrap">
-                <div class="coach-new-opening__bubble">
-                  <div class="coach-new-opening__message">
-                    <div class="coach-new-opening__message-inner">
-                      <p class="coach-new-opening__text">Make your first move or choose an opening you want to learn!</p>
+                <div class="coach-new-opening__message-wrap">
+                  <div class="coach-new-opening__bubble">
+                    <div class="coach-new-opening__message">
+                      <div class="coach-new-opening__message-inner">
+                        <p class="coach-new-opening__text">Make your first move or choose an opening you want to learn!</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <!-- Opening Courses V1: course cards list (AI specs – design tokens) -->
-          <div v-if="isOpeningCoursesV1" class="opening-course-cards-list" data-name="Opening course cards">
+            </section>
+            <div
+              ref="coursesContentRef"
+              class="opening-v1-scroll"
+            >
+              <div
+                class="opening-filter-strip"
+                :class="{ 'opening-filter-strip--hidden': openingFilterStripHidden }"
+              >
+                <div class="opening-search-panel" data-name="Opening search panel">
+                  <div class="opening-search-panel__row opening-search-panel__row--inputs">
+                    <div class="opening-search-panel__search">
+                      <SearchInput v-model="openingSearchQuery" placeholder="Search your courses" aria-label="Search your courses" />
+                    </div>
+                    <CcButton variant="secondary" size="medium" custom-img-src="/icons/sliders.png" class="opening-search-panel__filters-btn" @click="onOpeningFiltersClick">Filters</CcButton>
+                  </div>
+                </div>
+                <div class="opening-courses-meta-panel" data-name="Course counter and filter">
+                  <span class="opening-courses-meta-panel__count text-small-bold">{{ openingCoursesFiltered.length }} Courses</span>
+                  <div class="opening-courses-meta-panel__sort">
+                    <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
+                      <span class="text-small">Sort by </span><span class="text-small-bold">{{ openingSortLabel }}</span>
+                      <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
+                    </button>
+                    <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
+                      <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                      <button type="button" role="option" :aria-selected="openingSortBy === 'lines'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'lines'; openingSortOpen = false">Lines</button>
+                      <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">Type</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="opening-course-cards-list" data-name="Opening course cards">
             <article
-              v-for="card in openingCourseCards"
+              v-for="card in openingCoursesFiltered"
               :key="card.id"
               class="opening-course-card"
+              :class="[
+                `opening-course-card--variant-${OPENING_COURSE_CARD_VARIANT}`,
+                `opening-course-card--hover-${OPENING_COURSE_CARD_HOVER_VARIANT}`,
+                { 'opening-course-card--selected': OPENING_COURSE_CARD_VARIANT === 'full-card-outline' && selectedOpeningCardId === card.id }
+              ]"
               data-name="Course card"
+              :title="card.firstMove"
+              role="button"
+              tabindex="0"
+              @click="toggleOpeningCardSelection(card.id)"
+              @keydown.enter.space.prevent="toggleOpeningCardSelection(card.id)"
             >
               <div class="opening-course-card__inner">
                 <div class="opening-course-card__content-wrap">
-                  <!-- CourseCoverBoard: from Extract Styles for AI zip – 4×4 SVG board + pieces -->
-                  <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard">
+                  <!-- Cover wrapper: Square-outline variant outlines this only when selected (3px padding, 2px solid). -->
+                  <div
+                    class="opening-course-card__cover-wrap"
+                    :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && selectedOpeningCardId === card.id }"
+                  >
+                    <!-- CourseCoverBoard: from Extract Styles for AI zip – 4×4 SVG board + pieces -->
+                    <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
                     <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                       <g id="course-cover-board-grid">
                         <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -4151,22 +4654,31 @@ onUnmounted(() => {
                       <img :src="getPieceImage({ type: piece.type })" alt="" class="course-cover-board__piece-img" width="24" height="24" aria-hidden="true" />
                     </div>
                   </div>
+                  </div>
                   <div class="opening-course-card__content">
                     <div class="opening-course-card__title-author">
                       <h3 class="opening-course-card__title">{{ card.title }}</h3>
                       <p class="opening-course-card__description">{{ card.description }}</p>
                     </div>
                     <div class="opening-course-card__properties">
-                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__lines-label" />
+                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" />
                     </div>
                   </div>
                 </div>
               </div>
             </article>
+              </div>
+            </div>
           </div>
-
-          <!-- Normal content (course card) – not for Opening Courses V1 -->
-          <template v-else>
+          </template>
+          <!-- Normal content (course card, video, sections) – not Opening Courses V1 -->
+          <div
+            v-else
+            ref="coursesContentRef"
+            class="panel-content courses-content"
+            :class="{ 'courses-content--v3': isVideoV3 }"
+            :style="isVideoV3 && v3PaddingBottomPx != null ? { paddingBottom: `${v3PaddingBottomPx}px` } : {}"
+          >
           <div
             v-for="course in courses"
             :key="course.id"
@@ -4186,7 +4698,6 @@ onUnmounted(() => {
               <p class="course-author">{{ course.instructor }}</p>
             </div>
           </div>
-          </template>
 
           <!-- VideoSection (V1 only) – visible when Video button clicked; under course card; sticky -->
           <section ref="videoSectionRef" v-show="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && !isVideoV3" class="video-section" data-name="VideoSection">
@@ -4711,13 +5222,13 @@ onUnmounted(() => {
                 </Transition>
               </template>
               </template>
-          </div>
+            </div>
           </div>
           </div>
           </template>
           <template v-else-if="panelView === 'line'">
           <div class="panel-content courses-content line-view-content" :class="`line-view-content--${currentLineType}`">
-            <!-- COMPLETED LINES SCREEN – design for lines with level (e.g. L1, L2). Do not mix with ready. -->
+            <!-- COMPLETED LINES SCREEN – design for lines with level (e.g. L1, L2). Learn mode: copy only. Read mode: body + Move Comp + caption. -->
             <template v-if="currentLineType === 'completed'">
               <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
@@ -4730,64 +5241,88 @@ onUnmounted(() => {
                 </div>
               </section>
               <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
-                <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
-                  <div
-                    class="video-placeholder-frame"
-                    :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
-                    :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
-                  >
-                    <Transition name="video-play-fade">
-                      <button
-                        v-if="lineViewVideoFormat !== 'none'"
-                        key="play"
-                        type="button"
-                        class="video-play-button"
-                        aria-label="Play video"
-                      >
-                        <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
-                      </button>
-                    </Transition>
+                <!-- Learn mode (default): only the instructional copy, no Move Comp -->
+                <template v-if="!isLineReadMode">
+                  <div v-if="isQuizLine && quizLineContentCurrent?.bodyHtml" class="info-line-body-wrap" @click="onInlinePlyChipClick">
+                    <div class="info-line-body cc-paragraph-medium" v-html="quizLineContentCurrent.bodyHtml" />
                   </div>
-                  <div
-                    class="video-resize"
-                    data-name="VideoResize"
-                    role="separator"
-                    aria-orientation="horizontal"
-                    aria-label="Resize video"
-                    tabindex="0"
-                    @mousedown.prevent="startLineViewVideoResize"
-                  >
-                    <span class="video-resize-handle" />
+                  <div v-else-if="lineReadModeBodyCurrent?.bodyHtml" class="info-line-body-wrap">
+                    <div class="info-line-body cc-paragraph-medium" v-html="lineReadModeBodyCurrent.bodyHtml" />
                   </div>
-                </section>
-                <div class="line-view-moves">
-                  <div
-                    v-for="(pair, idx) in lineViewMoves"
-                    :key="idx"
-                    class="move-row"
-                    data-name="Move"
-                  >
-                    <span class="move-number">{{ pair.number }}.</span>
-                    <div class="ply-pair">
-                      <div class="ply-classification">
-                        <span class="ply-classification-placeholder" aria-hidden="true" />
-                        <span
-                          class="ply-chip"
-                          :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
-                          @click="selectPly(idx, 'white')"
-                        ><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ getPieceDisplaySquare(pair.white) || pair.white }}</span></span>
-                      </div>
-                      <div class="ply-classification">
-                        <span class="ply-classification-placeholder" aria-hidden="true" />
-                        <span
-                          class="ply-chip"
-                          :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') && pair.black, 'ply-chip--empty': !pair.black }"
-                          @click="pair.black && selectPly(idx, 'black')"
-                        ><CcIcon v-if="pair.black && getPieceIconName(pair.black)" :name="getPieceIconName(pair.black)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ pair.black ? (getPieceDisplaySquare(pair.black) || pair.black) : '' }}</span></span>
+                </template>
+                <!-- Read mode: body + Move Comp + caption -->
+                <template v-else>
+                  <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                    <div
+                      class="video-placeholder-frame"
+                      :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
+                      :style="{ width: lineViewVideoFrameWidth + 'px', height: lineViewVideoFrameHeight + 'px' }"
+                    >
+                      <Transition name="video-play-fade">
+                        <button
+                          v-if="lineViewVideoFormat !== 'none'"
+                          key="play"
+                          type="button"
+                          class="video-play-button"
+                          aria-label="Play video"
+                        >
+                          <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
+                        </button>
+                      </Transition>
+                    </div>
+                    <div
+                      class="video-resize"
+                      data-name="VideoResize"
+                      role="separator"
+                      aria-orientation="horizontal"
+                      aria-label="Resize video"
+                      tabindex="0"
+                      @mousedown.prevent="startLineViewVideoResize"
+                    >
+                      <span class="video-resize-handle" />
+                    </div>
+                  </section>
+                  <div v-if="isQuizLine && quizLineContentCurrent?.bodyHtml" class="info-line-body-wrap" @click="onInlinePlyChipClick">
+                    <div class="info-line-body cc-paragraph-medium" v-html="quizLineContentCurrent.bodyHtml" />
+                  </div>
+                  <div v-else-if="lineReadModeBodyCurrent?.bodyHtml" class="info-line-body-wrap">
+                    <div class="info-line-body cc-paragraph-medium" v-html="lineReadModeBodyCurrent.bodyHtml" />
+                  </div>
+                  <div class="line-view-moves">
+                    <div
+                      v-for="(pair, idx) in lineViewMoves"
+                      :key="idx"
+                      class="move-row"
+                      data-name="Move"
+                    >
+                      <span class="move-number">{{ pair.number }}.</span>
+                      <div class="ply-pair">
+                        <div class="ply-classification">
+                          <span class="ply-classification-placeholder" aria-hidden="true" />
+                          <span
+                            class="ply-chip"
+                            :class="{ 'ply-chip--selected': isPlySelected(idx, 'white') }"
+                            @click="selectPly(idx, 'white')"
+                          ><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ getPieceDisplaySquare(pair.white) || pair.white }}</span></span>
+                        </div>
+                        <div class="ply-classification">
+                          <span class="ply-classification-placeholder" aria-hidden="true" />
+                          <span
+                            class="ply-chip"
+                            :class="{ 'ply-chip--selected': isPlySelected(idx, 'black') && pair.black, 'ply-chip--empty': !pair.black }"
+                            @click="pair.black && selectPly(idx, 'black')"
+                          ><CcIcon v-if="pair.black && getPieceIconName(pair.black)" :name="getPieceIconName(pair.black)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="ply-chip-piece-icon" /><span class="ply-chip-text">{{ pair.black ? (getPieceDisplaySquare(pair.black) || pair.black) : '' }}</span></span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                  <template v-if="isQuizLine && (quizLineContentCurrent?.readModeCaptionHtml || quizLineContentCurrent?.readModeCaption)">
+                    <div v-if="quizLineContentCurrent?.readModeCaptionHtml" class="quiz-line-read-caption-wrap" @click="onInlinePlyChipClick">
+                      <p class="quiz-line-read-caption quiz-line-read-caption--html" v-html="quizLineContentCurrent.readModeCaptionHtml"></p>
+                    </div>
+                    <p v-else class="quiz-line-read-caption">{{ quizLineContentCurrent.readModeCaption }}</p>
+                  </template>
+                </template>
               </div>
             </template>
             <!-- READY LINES SCREEN – hand-with-pawn (color by side to move), copy, CTA Practice (primary) + Learn Again (secondary) -->
@@ -5418,6 +5953,7 @@ body {
 }
 
 .chessboard {
+  position: relative;
   width: 700px;
   min-width: 550px;
   height: 700px;
@@ -5428,6 +5964,22 @@ body {
   grid-template-rows: repeat(8, 1fr);
   border-radius: 3px;
   overflow: hidden; /* Clip corners */
+}
+
+/* Opening Courses V1: piece sliding from source to destination for auto-played 3rd move */
+.opening-card-moving-piece {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.opening-card-moving-piece__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* Board is display-only on all pages */
@@ -5460,7 +6012,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(129, 182, 76, 0.5); /* green-300 at 50% */
+  background: rgba(255, 240, 0, 0.3); /* #FFF000 30% opacity */
   z-index: 1;
   pointer-events: none;
 }
@@ -5723,7 +6275,7 @@ body {
   filter: drop-shadow(0 1px rgba(0, 0, 0, 0.2));
 }
 .variations-headline-title {
-  font-family: var(--font-system-semibold, 'Inter', sans-serif);
+  font-family: var(--font-family-system, system-ui, sans-serif);
   font-weight: 600;
   font-size: var(--text-sm-plus, 14px);
   line-height: var(--leading-5, 20px);
@@ -5739,7 +6291,7 @@ body {
   justify-content: center;
 }
 
-/* CoachNew – coach message / ready state (Line view, Figma 32-5549) */
+/* CoachNew – coach message / ready state (Line view); same bg as content window */
 .coach-new {
   display: flex;
   flex-direction: column;
@@ -5751,7 +6303,7 @@ body {
   position: relative;
   width: 100%;
   flex-shrink: 0;
-  background: var(--bg-coach-gradient, linear-gradient(to bottom, #1e1d1a, rgba(38, 36, 33, 0)));
+  background: var(--color-bg-secondary);
 }
 .coach-new-card {
   position: relative;
@@ -6086,19 +6638,19 @@ body {
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
-/* Opening Courses V1: CoachNew container (Figma 62-6423) – replaces course card only */
+/* Opening Courses V1: CoachNew container (Figma 62-6423) */
 .coach-new-opening {
   --shadow-message-bubble: 0px 2px 4px 0px rgba(0, 0, 0, 0.3);
-  position: sticky;
-  top: 0;
-  z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   padding: 12px 16px;
   width: 100%;
   min-height: 0;
-  background: #1e1d1a;
+  background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(34, 32, 30, 1) 100%);
+  background-color: var(--color-bg-opaque);
+  background-clip: unset;
+  -webkit-background-clip: unset;
   flex-shrink: 0;
 }
 .coach-new-opening__inner.coach-feedback {
@@ -6181,7 +6733,7 @@ body {
   width: 100%;
 }
 .coach-new-opening__text {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 15px;
   line-height: 20px;
   font-weight: 500;
@@ -6195,25 +6747,269 @@ body {
   margin: 0;
 }
 
+/* Opening Courses V1: coach fixed at top; filter + cards scroll. Filter hides on scroll down, slides in from behind coach on scroll up. */
+.opening-v1-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.coach-new-opening--fixed {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.opening-v1-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+.opening-v1-scroll .opening-filter-strip {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  transition: transform 0.25s ease-out;
+  background: var(--color-bg-base, #1a1918);
+  flex-shrink: 0;
+}
+.opening-v1-scroll .opening-filter-strip--hidden {
+  transform: translateY(-100%);
+}
+
+/* Opening Courses V1: search panel (Figma 74-23788) – search input, Filters button, count, Sort by */
+.opening-search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8, 8px);
+  width: 100%;
+  padding: var(--space-16, 16px) var(--space-16, 16px) 2px;
+  flex-shrink: 0;
+}
+.opening-search-panel__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-8, 8px);
+}
+.opening-search-panel__row--inputs {
+  gap: var(--space-8, 8px);
+}
+.opening-search-panel__row--meta {
+  justify-content: space-between;
+}
+.opening-search-panel__search {
+  flex: 1;
+  min-width: 0;
+}
+.opening-search-panel__filters-btn {
+  flex-shrink: 0;
+}
+/* Search panel: system font only (no heading/Chess Sans) */
+.opening-search-panel__count {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--color-text-primary, #fff);
+}
+.opening-search-panel__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--color-text-primary, #fff);
+  cursor: pointer;
+}
+.opening-search-panel__sort:hover {
+  background: var(--color-bg-subtlest, rgba(255, 255, 255, 0.08));
+}
+.opening-search-panel__sort-chevron {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.opening-search-panel__sort-wrap {
+  position: relative;
+}
+.opening-search-panel__sort-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 120px;
+  padding: 4px 0;
+  border-radius: 8px;
+  background: #2a2927;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+}
+.opening-search-panel__sort-option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text-primary, #fff);
+  text-align: left;
+  cursor: pointer;
+}
+.opening-search-panel__sort-option:hover,
+.opening-search-panel__sort-option[aria-selected="true"] {
+  background: var(--color-bg-subtlest, rgba(255, 255, 255, 0.08));
+}
+
+/* Opening Courses V1: course counter + filter panel (Chapter-page style – right over contents list) */
+.opening-courses-meta-panel {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8, 8px);
+  background: unset;
+  padding: 0 var(--space-16, 16px) var(--space-8, 8px);
+  flex-shrink: 0;
+}
+/* DS text styles: text-small (12px/16px, 400), text-small-bold (12px/16px, 600) */
+.opening-courses-meta-panel__count.text-small-bold {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.opening-courses-meta-panel__count {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.5);
+}
+.opening-courses-meta-panel__sort-btn .text-small {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+.opening-courses-meta-panel__sort-btn .text-small-bold {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.opening-courses-meta-panel .opening-search-panel__sort-option.text-small-bold {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.opening-courses-meta-panel__sort {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.opening-courses-meta-panel__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+.opening-courses-meta-panel__sort-btn:hover {
+  background: var(--color-bg-subtlest, rgba(255, 255, 255, 0.08));
+  color: var(--color-text-primary, #fff);
+}
+.opening-courses-meta-panel__sort-chevron {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.opening-courses-meta-panel .opening-search-panel__sort-dropdown {
+  right: 0;
+  left: auto;
+}
+
 /* Opening Courses V1: course cards list (AI specs – design tokens) */
 .opening-course-cards-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
-  padding: 16px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
-/* Main container (Card): --bg-card-subtle, --space-2 (8px), --radius-lg (8px) */
+/* Main container (Card). States: default (no bg), hover (--color-bg-subtlest), selected (variant-specific). */
 .opening-course-card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: 7px;
   position: relative;
   width: 100%;
-  background: rgba(255, 255, 255, 0.02);
   flex-shrink: 0;
+  outline: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+/* Hover V1: card background only */
+.opening-course-card--hover-v1:hover,
+.opening-course-card--hover-v1.opening-course-card--selected:hover {
+  background: var(--color-bg-subtlest);
+}
+
+/* Hover V2: cover overlay FFF 10% on the board only (no wrap padding), heading → boldest, body → default */
+.opening-course-card--hover-v2:hover .course-cover-board::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.opening-course-card--hover-v2 .opening-course-card__title,
+.opening-course-card--hover-v2 .opening-course-card__description {
+  transition: color 0.15s ease;
+}
+.opening-course-card--hover-v2:hover .opening-course-card__title {
+  color: var(--color-text-boldest, rgba(255, 255, 255, 1));
+}
+.opening-course-card--hover-v2:hover .opening-course-card__description {
+  color: var(--color-text-default, rgba(255, 255, 255, 0.72));
+}
+
+/* Variant: Full-card-outline – selected state outlines the whole card (2px, 50% opacity). */
+.opening-course-card--variant-full-card-outline.opening-course-card--selected {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-border-success, var(--color-green-300, #81B64C)) 50%, transparent);
+}
+.opening-course-card--variant-full-card-outline.opening-course-card--selected:hover {
+  background: var(--color-bg-subtlest);
+}
+
+/* Variant: Square-outline – selected state outlines only the cover (see .opening-course-card__cover-wrap--selected). */
+/* Card has no box-shadow when selected; hover/default same as above. */
+
+/* Cover wrapper: 3px padding; Square-outline puts 2px solid outline here when selected. */
+.opening-course-card__cover-wrap {
+  padding: 3px;
+  border-radius: calc(var(--radius-xs, 2px) + 3px);
+  flex-shrink: 0;
+  transition: box-shadow 0.15s ease;
+}
+.opening-course-card__cover-wrap--selected {
+  box-shadow: 0 0 0 2px var(--color-border-success, var(--color-green-300, #81B64C));
 }
 /* Inner card (CardA): --radius-sm (5px), --space-0.5 (2px) */
 .opening-course-card__inner {
@@ -6225,23 +7021,24 @@ body {
 .opening-course-card__content-wrap {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
   padding: 2px;
+  padding-bottom: 0;
   width: 100%;
 }
-/* Opening thumbnail: wraps CourseCoverBoard (96×96), --radius-xs-plus (3px) */
+/* Opening thumbnail: wraps CourseCoverBoard (96×96), --radius-xs (2px) */
 .opening-course-card__thumbnail {
   width: 96px;
   height: 96px;
   min-width: 96px;
   min-height: 96px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs, 2px);
   overflow: clip;
   position: relative;
   flex-shrink: 0;
 }
 
-/* CourseCoverBoard: 96×96, 4×4 squares @ 24px (design tokens) */
+/* CourseCoverBoard: 96×96, 4×4 squares @ 24px, --radius-xs (2px) round corners */
 .course-cover-board {
   --color-chess-light: #ebecd0;
   --color-chess-dark: #779556;
@@ -6251,6 +7048,8 @@ body {
   width: var(--size-chess-board-cover);
   height: var(--size-chess-board-cover);
   flex-shrink: 0;
+  border-radius: var(--radius-xs, 2px);
+  overflow: hidden;
 }
 .course-cover-board__svg {
   display: block;
@@ -6293,20 +7092,19 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 2px;
   width: 100%;
   position: relative;
   flex-shrink: 0;
   min-width: 0;
 }
-/* Title: --font-chess-sans-extrabold, --text-sm-plus (14px), --leading-4 (16px), --text-primary (85% white) */
+/* Title: card header – Chess Sans */
 .opening-course-card__title {
-  font-family: 'Chess Sans', 'Chess Sans ExtraBold', system-ui, sans-serif;
+  font-family: var(--font-family-heading, 'Chess Sans', sans-serif);
   font-size: 14px;
   line-height: 16px;
-  font-weight: 800;
-  font-style: normal;
-  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  color: var(--color-text-primary, rgba(255, 255, 255, 0.85));
   margin: 0;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -6314,21 +7112,24 @@ body {
   width: 100%;
   min-width: 0;
 }
-/* Description: --text-xs (12px), --leading-4, --text-tertiary (50% white) */
+/* Description: --text-xs (12px), --leading-4, --text-tertiary (50% white). System font only (no Inter). */
+/* Description: max 3 lines then truncate with ellipsis. Keep for responsive so longer copy doesn’t overflow. */
 .opening-course-card__description {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 12px;
   line-height: 16px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: pre-wrap;
   width: 100%;
   flex-shrink: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
-/* Properties + chip: --space-2 gap, --bg-chip-subtle-light, --text-secondary (72% white) */
+/* Properties + DS CcChip. cc-text-* = System font; Chess Sans only for headings (see .cursor/rules/design-system.mdc). */
 .opening-course-card__properties {
   display: flex;
   flex-wrap: wrap;
@@ -6338,10 +7139,12 @@ body {
   width: 100%;
   flex-shrink: 0;
 }
-/* Chip label styling (DS CcChip used for "X Lines") */
-.opening-course-card__lines-label {
-  font-size: 12px;
-  line-height: 16px;
+.opening-course-card__properties :deep(.cc-chip-fg) {
+  font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+}
+/* DS gray chip translucent: bg = --color-bg-subtle (dark: transparent-white-10). Ensure chip uses DS token. */
+.opening-course-card__properties :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent) {
+  background-color: var(--color-bg-subtle);
 }
 
 /* Line view: outer container does not scroll; coach stays fixed, only .line-view-scroll-body scrolls */
@@ -6360,6 +7163,10 @@ body {
   overflow-y: scroll;
   overflow-x: hidden;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+/* Line view: two states only (small/large). Short animation, no lag. */
+.line-view-scroll-body .video-section .video-placeholder-frame {
+  transition: width 0.2s ease-out, height 0.2s ease-out;
 }
 .line-view-scroll-body::-webkit-scrollbar {
   width: 8px;
@@ -6398,6 +7205,8 @@ body {
 .quiz-line-read-caption-wrap {
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
+  padding: 16px;
 }
 .info-line-body {
   display: flex;
@@ -6450,14 +7259,18 @@ body {
   margin-bottom: 0;
 }
 .quiz-line-read-caption {
-  margin: 16px 0 0;
-  padding: 0 var(--space-4, 16px);
+  margin: 0;
+  padding: 16px;
   font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 14px;
   line-height: 20px;
   font-weight: 400;
   color: var(--text-secondary, rgba(255, 255, 255, 0.72));
 }
+.quiz-line-read-caption-wrap .quiz-line-read-caption {
+  padding: 0;
+}
+.line-view-moves + .quiz-line-read-caption-wrap,
 .line-view-moves + .quiz-line-read-caption {
   margin-top: 20px;
 }
@@ -7637,7 +8450,7 @@ body {
 }
 /* Uncompleted line (or any state with no level row + no icon footer): align spacing and padding */
 .panel-footer-container--no-icon-footer {
-  padding: 0 12px 0 12px;
+  padding: 8px 12px 16px 12px;
 }
 .panel-footer-container--no-icon-footer .footer-section-actions {
   margin-top: 12px;
