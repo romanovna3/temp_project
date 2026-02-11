@@ -13,6 +13,8 @@ Zero to Hero: Building a Chess.com Prototype with Cursor.
   - Sample `CcButton` and `CcIcon` in `App.vue`
 - **Part 5:** GitHub Actions workflow: `.github/workflows/deploy.yml` (deploys `my-app` to GitHub Pages on push to `main`)
 
+**Setting up on a new computer?** Use **[docs/SETUP-NEW-MACHINE.md](docs/SETUP-NEW-MACHINE.md)** for step-by-step instructions (Homebrew, Node, Cursor, MCP, npm token, and common mistakes).
+
 ## What you need to do
 
 ### 1. Part 2: GitHub and npm token (if not done)
