@@ -4,6 +4,9 @@ import { useRouter, RouterLink } from 'vue-router'
 
 const router = useRouter()
 
+// Set to true to show the "Previous versions" folder card on the index (e.g. for dev/review)
+const showPreviousVersionsFolder = false
+
 // Folder view: when true, show only folder contents with folder header + back button
 const folderViewActive = ref(false)
 const folderName = 'Previous versions'
@@ -74,9 +77,9 @@ function editedAgoFor(version) {
       <main class="index-main">
         <!-- Chapter page section: folder card above headline; click shows only folder contents + header with back -->
         <section class="index-section">
-          <!-- Folder card: above "Chapter page" headline; click opens folder view -->
+          <!-- Folder card: above "Chapter page" headline; click opens folder view (hidden in production; set showPreviousVersionsFolder = true when needed) -->
           <article
-            v-if="!folderViewActive"
+            v-if="showPreviousVersionsFolder && !folderViewActive"
             class="folder-card"
             role="button"
             tabindex="0"
@@ -146,7 +149,7 @@ function editedAgoFor(version) {
             </div>
           </template>
 
-          <!-- Main view: "Chapter page" headline + V2.4 (Real course), V6, and V7; V4 and V5 hidden -->
+          <!-- Main view: "Chapter page" headline + V2.4 and V7 only (production) -->
           <template v-else>
             <h2 class="index-section__title">Chapter page</h2>
             <div class="project-cards">
@@ -184,44 +187,6 @@ function editedAgoFor(version) {
                     <div class="project-card__footer-labels">
                       <span class="project-card__footer-title">Chapter Page V2.4</span>
                       <span class="project-card__footer-time">{{ editedAgoFor('v24') }}</span>
-                    </div>
-                  </div>
-                </div>
-              </article>
-              <article
-                class="project-card"
-                role="button"
-                tabindex="0"
-                @click="router.push('/courses/v6')"
-                @keydown.enter="router.push('/courses/v6')"
-                @keydown.space.prevent="router.push('/courses/v6')"
-              >
-                <div class="project-card__upper">
-                  <div class="project-card__pattern" aria-hidden="true" />
-                  <div class="project-card__meta">
-                    <div class="project-card__head">
-                      <img
-                        src="/icons/book-mark-aqua.png"
-                        alt=""
-                        class="project-card__icon"
-                        width="32"
-                        height="32"
-                      />
-                      <h2 class="project-card__title">Chapter Page V6</h2>
-                    </div>
-                  </div>
-                </div>
-                <div class="project-card__lower">
-                  <div class="project-card__footer-left">
-                    <span class="project-card__footer-icon" aria-hidden="true" title="Open">
-                      <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h14" />
-                        <path d="M12 5l7 7-7 7" />
-                      </svg>
-                    </span>
-                    <div class="project-card__footer-labels">
-                      <span class="project-card__footer-title">Chapter Page V6</span>
-                      <span class="project-card__footer-time">{{ editedAgoFor('v6') }}</span>
                     </div>
                   </div>
                 </div>

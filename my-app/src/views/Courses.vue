@@ -1527,6 +1527,13 @@ function getLineType(move) {
   return move.level ? 'completed' : 'ready'
 }
 
+/** Ready lines only: level chip next to name – L1 for all Ready lines; L2 when nextLevel is L3. */
+function getReadyLineLevelChip(move) {
+  if (!move || move.level) return null
+  if (move.nextLevel === 'L3') return 'L2'
+  return 'L1'
+}
+
 // Line view screen type: completed vs ready vs uncompleted (separate designs, don’t mix)
 const currentLineType = computed(() => {
   if (panelView.value !== 'line' || !selectedLine.value?.move) return 'completed'
@@ -1587,7 +1594,7 @@ const sectionMovesV24 = {
     { id: '9', text: 'Meet the Bishop', completed: true, info: true, level: 'L1' },
     { id: '10', text: 'Meet the Bishop - Practice', completed: true, quiz: true, level: 'L1' },
     { id: '11', text: 'Meet the Queen', completed: true, info: true, level: 'L1' },
-    { id: '12', text: 'Meet the Queen - Practice', completed: true, quiz: true, nextLevel: 'L1' },
+    { id: '12', text: 'Meet the Queen - Practice', completed: true, quiz: true, nextLevel: 'L2' },
     { id: '13', text: 'Meet the Knight', completed: true, info: true, nextLevel: 'L1' },
     { id: '14', text: 'Meet the Knight - Practice', completed: true, quiz: true, nextLevel: 'L1' },
     { id: '15', text: 'Meet the King', completed: true, info: true, nextLevel: 'L1' },
@@ -2482,6 +2489,24 @@ const courseSectionsReadyForReview = computed(() => {
     .filter(Boolean)
 })
 
+/** V7 Practice tab: sections with ready and/or completed lines; each section has practiceMoves: { move, practiceType: 'ready'|'completed' } (ready first, then completed). */
+const courseSectionsForPractice = computed(() => {
+  if (!isVideoV7.value) return []
+  return courseSections.value
+    .map((section) => {
+      const all = getSectionMovesForDisplay(section)
+      const ready = all.filter((m) => getLineType(m) === 'ready')
+      const completed = all.filter((m) => getLineType(m) === 'completed')
+      const practiceMoves = [
+        ...ready.map((move) => ({ move, practiceType: 'ready' })),
+        ...completed.map((move) => ({ move, practiceType: 'completed' })),
+      ]
+      if (!practiceMoves.length) return null
+      return { ...section, practiceMoves, readyMoves: ready }
+    })
+    .filter(Boolean)
+})
+
 // Line card covers: V4 = color piece from first move + randomized colors (no adjacent same); V5/V6 = color piece (28px) + fixed color order
 const COVER_COLOR_PAIRS = [
   { light: 'orange-300', dark: 'orange-500' },
@@ -2581,10 +2606,10 @@ const displayPracticeIn = computed(() => {
   return level === 'L2' ? '1 week' : '3 days'
 })
 
-/** On line page: Next Level chip – ready-for-review lines always L1; completed lines use next level (L1→L2, L2→L3). */
+/** On line page: Next Level chip – ready-for-review lines show L2; completed lines use next level (L1→L2, L2→L3). */
 const displayNextLevelBadge = computed(() => {
   const move = selectedLine.value?.move
-  if (currentLineType.value === 'ready') return 'L1'
+  if (currentLineType.value === 'ready') return 'L2'
   if (currentLineType.value === 'completed' && move?.level) {
     const next = move.level === 'L1' ? 'L2' : move.level === 'L2' ? 'L3' : null
     if (next) return next
@@ -5203,7 +5228,7 @@ watch([isVideoV2_4OrV5, coursesContentRef], () => {
 
 /* Re-run line mask when switching to Practice tab so vertical line is masked under last line card (same as Learn). */
 let practiceTabMaskTimer = null
-watch([courseTabsActive, courseSectionsReadyForReview], () => {
+watch([courseTabsActive, courseSectionsForPractice], () => {
   if (practiceTabMaskTimer) {
     clearTimeout(practiceTabMaskTimer)
     practiceTabMaskTimer = null
@@ -5661,7 +5686,7 @@ onUnmounted(() => {
           <div
             v-else
             ref="coursesContentRef"
-            class="panel-content courses-content"
+            class="panel-content courses-content courses-content--line-items-no-click"
             :class="{ 'courses-content--v3': isVideoV3, 'courses-content--v5': isVideoV5, 'courses-content--v6': isVideoV6OrV7, 'courses-content--tabs-scroll-linked': isVideoV4OrV5OrV6 }"
             @scroll.passive="onCoursesContentScroll"
             :style="{
@@ -5953,18 +5978,17 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- V7 only: Ready for review – copy Learn tab structure exactly (sticky chapters, vertical line masked at last card) -->
-          <template v-if="isVideoV7 && courseSectionsReadyForReview.length && courseTabsActive === 'stats'">
+          <!-- V7 only: Practice tab – Ready + Completed lines, color-coded; vertical line masked at last card -->
+          <template v-if="isVideoV7 && courseSectionsForPractice.length && courseTabsActive === 'stats'">
             <div class="sections-list">
               <div
-                v-for="(section, sectionIndex) in courseSectionsReadyForReview"
+                v-for="(section, sectionIndex) in courseSectionsForPractice"
                 :key="section.id"
                 class="section-item"
                 :data-section-id="section.id"
                 :ref="(el) => setV23SectionItemRef(section.id, el)"
               >
                 <div class="v23-section-sticky-wrap">
-                  <!-- Same as Learn: timeline wrap + line; use Practice refs so line ends at last check -->
                   <div
                     class="v23-section-timeline-wrap v23-section-timeline-wrap--v4 v23-section-timeline-wrap--v6"
                     :ref="(el) => setPracticeSectionLineWrapRef(section.id, el)"
@@ -5975,6 +5999,14 @@ onUnmounted(() => {
                       data-name="Chapter V2"
                     >
                       <span class="chapter-v2-border" aria-hidden="true" />
+                      <div class="chapter-v2__timeline-col" aria-hidden="true">
+                        <ProgressCircle
+                          :key="`progress-practice-${section.id}`"
+                          :progress="0"
+                          :size="24"
+                          class="chapter-v2__timeline-progress"
+                        />
+                      </div>
                       <div class="chapter-progress-name">
                         <div class="chapter-content">
                           <span class="chapter-title">{{ section.name }}</span>
@@ -5982,48 +6014,43 @@ onUnmounted(() => {
                       </div>
                     </div>
                     <div class="v23-expandable v23-expandable--open">
-                      <!-- Same as Learn: v22-chapter-video-block then Transition then move-list-wrap -->
                       <div class="v22-chapter-video-block">
                       </div>
                       <Transition name="chapter-moves">
-                        <div v-if="section.readyMoves.length" class="move-list-wrap">
+                        <div v-if="section.practiceMoves.length" class="move-list-wrap">
                           <div class="chapter-line-cards-list-wrapper">
                             <div
                               class="opening-course-cards-list chapter-line-cards-list"
                               role="list"
                               data-name="Lines"
-                              aria-label="Ready lines"
+                              aria-label="Practice lines"
                             >
                               <article
-                                v-for="(move, lineIndex) in section.readyMoves"
-                                :key="`${section.id}-${move.id}`"
-                                class="opening-course-card opening-course-card--hover-v1 chapter-line-card chapter-line-card--v6-timeline-right chapter-line-card--v7-practice move-item--inactive"
+                                v-for="(item, lineIndex) in section.practiceMoves"
+                                :key="`${section.id}-${item.move.id}`"
+                                class="opening-course-card opening-course-card--hover-v1 chapter-line-card chapter-line-card--v6-timeline-right chapter-line-card--v7-practice"
                                 :class="[
-                                  lineIndex === section.readyMoves.length - 1 && 'chapter-line-card--last'
+                                  item.practiceType === 'completed' && 'chapter-line-card--v7-practice-completed',
+                                  lineIndex === section.practiceMoves.length - 1 && 'chapter-line-card--last'
                                 ]"
                                 role="listitem"
                                 data-name="Line"
-                                :data-move-id="`${section.id}-${move.id}`"
+                                :data-move-id="`${section.id}-${item.move.id}`"
                               >
                                 <div
-                                  class="chapter-line-card__body"
-                                  role="button"
-                                  tabindex="0"
-                                  :title="move.text"
-                                  @click="openLine(section, move)"
-                                  @mouseenter="setHoveredChapterLine(section, move)"
-                                  @mouseleave="clearHoveredChapterLine()"
-                                  @keydown.enter.space.prevent="openLine(section, move)"
+                                  class="chapter-line-card__body chapter-line-card__body--no-click"
+                                  :title="item.move.text"
                                 >
                                   <div class="opening-course-card__inner">
                                     <div class="opening-course-card__content-wrap">
                                       <div class="opening-course-card__cover-wrap">
                                         <div
                                           class="chapter-line-card__intro-cover chapter-line-card__intro-cover--v6 chapter-line-card__intro-cover--v7-practice"
+                                          :class="{ 'chapter-line-card__intro-cover--v7-practice-completed': item.practiceType === 'completed' }"
                                           aria-hidden="true"
                                         >
                                           <CcIcon
-                                            :name="move.info ? 'document-book-open' : move.quiz ? 'game-type-puzzle' : 'document-book-open'"
+                                            :name="item.move.info ? 'document-book-open' : 'game-type-puzzle'"
                                             variant="glyph"
                                             :size="20"
                                             class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--v6"
@@ -6033,19 +6060,37 @@ onUnmounted(() => {
                                       <div class="opening-course-card__content">
                                         <div class="chapter-line-card__header-row">
                                           <div class="chapter-line-card__title-wrap">
-                                            <h3 class="opening-course-card__title">{{ move.text }}</h3>
+                                            <h3 class="opening-course-card__title">{{ item.move.text }}</h3>
                                             <CcChip
-                                              v-if="move.info"
+                                              v-if="item.move.info"
                                               label="INFO"
                                               color="gray"
                                               variant="translucent"
                                               :is-uppercase="false"
                                               label-class="move-item-info-chip-label chapter-line-card__info-chip-inline"
                                             />
+                                            <CcChip
+                                              v-if="item.practiceType === 'ready' && getReadyLineLevelChip(item.move)"
+                                              :label="getReadyLineLevelChip(item.move)"
+                                              color="aqua"
+                                              variant="translucent"
+                                              :is-uppercase="false"
+                                              label-class="move-item-info-chip-label chapter-line-card__info-chip-inline"
+                                            />
+                                            <CcChip
+                                              v-if="item.practiceType === 'completed'"
+                                              label=""
+                                              icon="time-clock"
+                                              color="gray"
+                                              variant="translucent"
+                                              :is-uppercase="false"
+                                              class="chapter-line-card__practice-in-chip"
+                                              aria-label="Practice in"
+                                            />
                                           </div>
                                           <div class="chapter-line-card__header-indicators" />
                                         </div>
-                                        <p v-if="getLineMoveCount(section, move) > 0" class="chapter-line-card__moves-count">{{ getLineMoveCount(section, move) }} moves</p>
+                                        <p v-if="getLineMoveCount(section, item.move) > 0" class="chapter-line-card__moves-count">{{ getLineMoveCount(section, item.move) }} moves</p>
                                       </div>
                                     </div>
                                   </div>
@@ -6053,9 +6098,12 @@ onUnmounted(() => {
                                 <div
                                   class="chapter-line-card__timeline-col"
                                   aria-hidden="true"
-                                  :ref="lineIndex === section.readyMoves.length - 1 ? (el => setPracticeSectionLastCardColRef(section.id, el)) : undefined"
+                                  :ref="lineIndex === section.practiceMoves.length - 1 ? (el => setPracticeSectionLastCardColRef(section.id, el)) : undefined"
                                 >
-                                  <span class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6">
+                                  <span
+                                    class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6"
+                                    :class="{ 'chapter-line-card__timeline-node--completed': item.practiceType === 'completed' }"
+                                  >
                                   </span>
                                 </div>
                               </article>
@@ -6170,9 +6218,6 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
-                        @click="openLine(section, move)"
-                        @mouseenter="setHoveredChapterLine(section, move)"
-                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -6319,14 +6364,8 @@ onUnmounted(() => {
                       >
                         <!-- Body first in DOM (V6: timeline-col on right via row-reverse) -->
                         <div
-                          class="chapter-line-card__body"
-                          role="button"
-                          tabindex="0"
+                          class="chapter-line-card__body chapter-line-card__body--no-click"
                           :title="move.text"
-                          @click="openLine(section, move)"
-                          @mouseenter="setHoveredChapterLine(section, move)"
-                          @mouseleave="clearHoveredChapterLine()"
-                          @keydown.enter.space.prevent="openLine(section, move)"
                         >
                         <div class="opening-course-card__inner">
                           <div class="opening-course-card__content-wrap">
@@ -6343,7 +6382,7 @@ v-if="isVideoV6OrV7"
                                 aria-hidden="true"
                               >
                                 <CcIcon
-                                  :name="move.info ? 'document-book-open' : move.quiz ? 'game-type-puzzle' : 'document-book-open'"
+                                  :name="move.info ? 'document-book-open' : 'game-type-puzzle'"
                                   variant="glyph"
                                   :size="20"
                                   class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--v6"
@@ -6477,9 +6516,6 @@ v-if="isVideoV6OrV7"
                           role="listitem"
                           data-name="Line"
                           :data-move-id="`${section.id}-${move.id}`"
-                          @click="openLine(section, move)"
-                          @mouseenter="setHoveredChapterLine(section, move)"
-                          @mouseleave="clearHoveredChapterLine()"
                         >
                           <div class="move-item-content">
                             <div class="move-item-inner">
@@ -6599,9 +6635,6 @@ v-if="isVideoV6OrV7"
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
-                        @click="openLine(section, move)"
-                        @mouseenter="setHoveredChapterLine(section, move)"
-                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -8894,8 +8927,12 @@ body {
   height: 13px;
   display: block;
 }
-/* Next-to-learn line: bright green-200 outline + glow */
+/* Next-to-learn line: 11×11 node, bright green-200 outline + glow */
 .courses-content--v6 .chapter-line-card__timeline-node--next-to-learn {
+  width: 11px;
+  height: 11px;
+  min-width: 11px;
+  min-height: 11px;
   outline: 2px solid var(--color-green-200, #B2E068);
   outline-offset: 0;
   box-shadow: 0 0 0 2px var(--color-green-200, #B2E068), 0 0 8px 2px var(--color-green-200, #B2E068);
@@ -9023,6 +9060,13 @@ body {
   outline: 2px solid var(--color-aqua-300, #26C2A3);
   outline-offset: 2px;
 }
+/* Line items are non-clickable (no open line page) */
+.chapter-line-card__body--no-click {
+  cursor: default;
+}
+.chapter-line-card__body--no-click:focus-visible {
+  outline: none;
+}
 /* Card hover must not apply to the row (article); only body gets hover */
 .chapter-line-card.opening-course-card--hover-v1:hover {
   background: transparent;
@@ -9098,6 +9142,9 @@ body {
   padding: 0;
   gap: 0;
   justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  flex: 0 1 auto;
 }
 /* ========== V5/V6: line card overrides (48×48 cover, no body bg, content-wrap padding 0 margin 8, icon in light band) ========== */
 .courses-content--v5 .chapter-line-card__body,
@@ -9204,16 +9251,25 @@ body {
 .chapter-line-card.move-item--inactive .opening-course-card__title {
   color: var(--color-text-tertiary, rgba(255, 255, 255, 0.5));
 }
+/* Practice tab: same header/title color as Learn tab (don’t dim Ready lines) */
+/* Practice tab: 72% opacity on all line card text (title, moves count, etc.) */
+.chapter-line-card--v7-practice .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.72);
+  min-width: 0;
+  width: fit-content;
+}
 /* Header row: title (left) + L1/L2 chip or Ready dot or INFO (top right) on one line */
 .chapter-line-card__header-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   min-width: 0;
 }
 .chapter-line-card__title-wrap {
-  flex: 1;
+  flex: 0 1 auto;
+  width: fit-content;
   min-width: 0;
   overflow: hidden;
   display: flex;
@@ -9221,15 +9277,17 @@ body {
   gap: 6px;
 }
 .chapter-line-card__title-wrap .opening-course-card__title {
-  flex: 1 1 auto;
-  min-width: 0;
-  width: auto;
+  flex: 0 0 auto;
+  width: fit-content;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
 }
 .chapter-line-card__title-wrap :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent) {
   background-color: var(--color-bg-subtle);
+}
+.chapter-line-card__title-wrap :deep(.cc-chip-component.cc-chip-aqua.cc-chip-translucent) {
+  --chip-translucent-fg: var(--color-aqua-300, #26C2A3);
 }
 .chapter-line-card__title-wrap :deep(.move-item-info-chip-label) {
   font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif) !important;
@@ -9551,10 +9609,10 @@ body {
   min-height: 0;
 }
 
-/* V4: course card in same frame as line cards (align padding, same card look). z-index so card scrolls above sticky tabs on initial scroll. */
+/* V4: course card in same frame as line cards (align padding, same card look). z-index below tabs so card scrolls under sticky tabs when at top. */
 .course-card-frame {
   position: relative;
-  z-index: 16;
+  z-index: 1;
   padding: 12px 12px 0 12px;
   width: 100%;
   height: fit-content;
@@ -10188,6 +10246,34 @@ body {
   flex-shrink: 0;
   width: 20px;
   height: 20px;
+}
+
+/* V7 Practice: Completed lines – same aqua cover as Ready; chip stays grey */
+.course-tab-panel--stats .chapter-line-card__intro-cover--v7-practice-completed {
+  background: rgba(98, 246, 202, 0.1);
+}
+.course-tab-panel--stats .chapter-line-card__intro-cover--v7-practice-completed .chapter-line-card__intro-cover-icon--v6 {
+  color: var(--color-aqua-300, #26C2A3);
+}
+
+/* V7 Practice: grey watch chip – icon only (same time-clock as footer Practice in chip) */
+.chapter-line-card__practice-in-chip {
+  flex-shrink: 0;
+}
+.chapter-line-card__practice-in-chip :deep(.cc-chip-fg) {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+/* Hide only the label part so the time-clock icon stays visible */
+.chapter-line-card__practice-in-chip :deep(.cc-chip-fg > *:not(.cc-icon-glyph):not(svg)) {
+  display: none;
+}
+.chapter-line-card__practice-in-chip :deep(.cc-icon-glyph),
+.chapter-line-card__practice-in-chip :deep(svg) {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.72);
+  fill: currentColor;
 }
 
 /* Stats cards row: 3 cards in a row, fill width, stack when responsive */
@@ -10931,6 +11017,14 @@ body {
 }
 .move-item:hover .move-item-content {
   background: var(--bg-hover-subtle, rgba(255, 255, 255, 0.02));
+}
+/* Line items are non-clickable (no open line page) */
+.courses-content--line-items-no-click .move-item {
+  cursor: default;
+}
+.courses-content--line-items-no-click .move-item:hover,
+.courses-content--line-items-no-click .move-item:hover .move-item-content {
+  background: transparent;
 }
 
 .move-item-content {
