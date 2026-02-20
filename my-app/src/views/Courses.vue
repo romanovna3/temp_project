@@ -6102,7 +6102,6 @@ onUnmounted(() => {
                                 >
                                   <span
                                     class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6"
-                                    :class="{ 'chapter-line-card__timeline-node--completed': item.practiceType === 'completed' }"
                                   >
                                   </span>
                                 </div>
@@ -8917,6 +8916,11 @@ body {
   height: 13px;
   min-width: 13px;
   min-height: 13px;
+}
+/* Uncompleted: same visible circle as others (ring + fill) */
+.courses-content--v6 .chapter-line-card__timeline-node--v6:not(.chapter-line-card__timeline-node--completed) {
+  border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
+  background: var(--color-bg-primary, #312e2b);
 }
 .courses-content--v6 .chapter-line-card__timeline-node--v6.chapter-line-card__timeline-node--completed {
   background: transparent;
