@@ -1,6 +1,6 @@
 <script setup>
 /**
- * Board area – Juicy Learn style: ranks 8–1, files a–h, centered.
+ * Board area – Courses style: ranks 8–1, files a–h, centered.
  * Non-interactive placeholder for now.
  */
 const ranks = [8, 7, 6, 5, 4, 3, 2, 1]

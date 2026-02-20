@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, provide, watchEffect } from 'vue'
+import { ref, computed, watch, onMounted, onUpdated, onUnmounted, nextTick, provide, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import { Chess } from 'chess.js'
-import { CcButton, CcChip, CcIconButton, CcIcon } from '@chesscom/design-system'
+import { CcButton, CcChip, CcIconButton, CcIcon, CcTabGroup, CcTabItem } from '@chesscom/design-system'
 import SearchInput from '../components/SearchInput.vue'
 import ProgressCircle from '../components/ProgressCircle.vue'
+import StatsCards from '../components/StatsCards.vue'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -21,18 +22,26 @@ import { playSound } from '../lib/playSound.js'
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
 
-// Version: V2.3 = legacy content (14 sections), V2.4 = real course (7 chapters). Same layout for both.
+// Version: V2.3 = legacy content (14 sections), V2.4 = real course (7 chapters). V5/V6 = same layout as V4 but different line-card styling.
 const route = useRoute()
-const isVideoV2_4 = computed(() => route.path === '/learn/v2.4')
+const isVideoV2_4 = computed(() => route.path === '/courses/v4')
+const isVideoV5 = computed(() => route.path === '/courses/v5')
+const isVideoV6 = computed(() => route.path === '/courses/v6')
+const isVideoV7 = computed(() => route.path === '/courses/v7')
+const isVideoV6OrV7 = computed(() => isVideoV6.value || isVideoV7.value)
+const isVideoV2_4OrV5 = computed(() => isVideoV2_4.value || isVideoV5.value || isVideoV6.value || isVideoV7.value)
+const isVideoV5OrV6 = computed(() => isVideoV5.value || isVideoV6.value || isVideoV7.value)
+// V4/V5/V6/V7: scroll-linked tabs, new sticky. V2.4 is a separate view (CoursesV24.vue).
+const isVideoV4OrV5OrV6 = computed(() => route.path === '/courses/v4' || route.path === '/courses/v5' || route.path === '/courses/v6' || route.path === '/courses/v7')
 
-// Courses data – V2.3 legacy, V2.4 real course (right panel – Courses view)
+// Courses data – V2.3 legacy, V2.4/V4/V5/V6 real course (right panel – Courses view)
 const coursesV23 = [
   { id: 1, title: "The Master's Hand: Capablanca's Endgame Technique", instructor: 'GM Alex Colovich', lines: 120, thumbnail: 'course-cover-gotham.png' },
 ]
 const coursesV24 = [
   { id: 1, title: 'Everything You Need to Know About Chess', instructor: 'IM Danny Rensch', lines: 92, thumbnail: 'course-cover-everything.png' },
 ]
-const courses = computed(() => (isVideoV2_4.value ? coursesV24 : coursesV23))
+const courses = computed(() => (isVideoV2_4OrV5.value ? coursesV24 : coursesV23))
 
 // Opening Courses V1: raw rows from Opening Courses spec (stored for later use).
 // Columns: Opening Name | Color | First move | Against | Frequency Played
@@ -69,7 +78,62 @@ const OPENING_COURSES_RAW = [
   { name: 'Against 1. c4 & 1. Nf3', color: 'Black', firstMove: '1. c4 & 1. Nf3', against: '1. c4 & 1. Nf3', frequency: '5%' },
 ]
 
-// First move string → cover pieces for 4×4 center (c3–f6). col 0–3 = c–f, row 0–3 = ranks 6–3.
+// Cover pieces for 4×4 center (c3–f6). col 0–3 = c–f, row 0–3 = ranks 6–3.
+// Shows 3 half-moves: White's 1st, Black's 1st, White's 2nd (e.g. 1.e4 e5 2.Nf3)
+// Square to cover grid: file c-f → col 0-3, rank 6-3 → row 0-3
+function squareToCoverCoords(square) {
+  if (!square || square.length < 2) return null
+  const file = square.charCodeAt(0) - 'c'.charCodeAt(0) // c=0, d=1, e=2, f=3
+  const rank = 6 - parseInt(square[1], 10) // rank 6=row 0, rank 3=row 3
+  if (file < 0 || file > 3 || rank < 0 || rank > 3) return null
+  return { col: file, row: rank }
+}
+
+// Get piece type for cover from SAN move (simplified - just pawns and pieces that land in c3-f6)
+function getCoverPieceFromMove(san, isWhite) {
+  if (!san) return null
+  const color = isWhite ? 'w' : 'b'
+  // Piece moves: Nf3, Bc4, etc.
+  const pieceMatch = san.match(/^([NBRQK])x?([a-h][1-8])/)
+  if (pieceMatch) {
+    const pieceMap = { N: 'n', B: 'b', R: 'r', Q: 'q', K: 'k' }
+    const coords = squareToCoverCoords(pieceMatch[2])
+    if (coords) return { type: color + pieceMap[pieceMatch[1]], ...coords }
+    return null
+  }
+  // Pawn moves: e4, d5, exd5, etc.
+  const pawnMatch = san.match(/^[a-h]?x?([a-h][1-8])/)
+  if (pawnMatch) {
+    const coords = squareToCoverCoords(pawnMatch[1])
+    if (coords) return { type: color + 'p', ...coords }
+  }
+  return null
+}
+
+// Build cover pieces from opening title (uses OPENING_FIRST_5_MOVES)
+function coverPiecesFromOpening(title) {
+  const moves = OPENING_FIRST_5_MOVES[title]
+  if (!moves?.length) return []
+  const pieces = []
+  // 1st White move
+  if (moves[0]?.white) {
+    const p = getCoverPieceFromMove(moves[0].white, true)
+    if (p) pieces.push(p)
+  }
+  // 1st Black move
+  if (moves[0]?.black) {
+    const p = getCoverPieceFromMove(moves[0].black, false)
+    if (p) pieces.push(p)
+  }
+  // 2nd White move
+  if (moves[1]?.white) {
+    const p = getCoverPieceFromMove(moves[1].white, true)
+    if (p) pieces.push(p)
+  }
+  return pieces
+}
+
+// Fallback for openings not in OPENING_FIRST_5_MOVES
 function coverPiecesFromFirstMove(firstMove) {
   const m = (firstMove || '').toLowerCase()
   if (m.includes('1. e4') || m.includes('1.e4')) return [{ type: 'wp', col: 2, row: 2 }, { type: 'bp', col: 2, row: 1 }] // e4 e5
@@ -85,53 +149,180 @@ function openingNameKey(name) {
   return name
 }
 
-// Descriptions from opening course transcriptions. Only for courses in our set (no Alekhine's, King's Gambit, etc.).
+// Descriptions from opening course transcriptions. Kept to ~2 lines for card layout.
 const OPENING_DESCRIPTIONS = {
-  "Alapin": "A Sicilian sideline where White avoids the main theoretical battles and builds a strong center with c3 and d4.",
-  "Caro-Kann Defense": "This is one of Black's most solid answers to 1.e4. The idea of 1...c6 is to prepare d7–d5 on the next move.",
-  "English Opening": "A flexible opening starting with 1.c4, allowing White to control the center from the flank and transpose into many structures.",
-  "Four Knights": "A classical opening where both sides develop knights early and aim for solid central control and flexible middlegame plans.",
-  "French Defense": "The French Defense is a counter-attacking option against 1.e4. Black prepares to contest the center with 2...d5.",
-  "Fried Liver": "A sharp and tactical line of the Italian Game where White sacrifices material to launch an early attack on Black's king.",
-  "Italian Game": "The Italian game is a popular 1.e4 for all levels. Both sides develop logically to control the center and prepare to castle.",
-  "King's Indian Defense": "The KID is one of the sharpest answers to 1.d4. White can build a big center, and Black typically aims for a kingside attack.",
-  "London System": "The London is a relatively simple option for White. Both sides can develop peacefully, delaying most tactics until the middlegame.",
-  "Nimzo-Indian Defense": "One of Black's most solid answers to 1.d4. Black pins a white knight and fights for the central light squares.",
-  "Open Sicilian": "A dynamic variation of the Sicilian Defense where White opens the center early, leading to sharp positions and rich tactical play.",
-  "Petroff Defense": "A solid and symmetrical defense to 1.e4 where Black immediately challenges White's center and aims for a sound, resilient position.",
-  "Pirc Defense": "The Pirc is a rare, counterattacking option against 1.e4. It's a frequent choice for Grandmasters who must win as Black.",
-  "Queen's Gambit": "The famous Queen's Gambit! White offers a pawn for control of the center and Black frequently declines.",
-  "Queen's Gambit Accepted": "Black accepts the gambit pawn and temporarily gives up the center, aiming to neutralize White's initiative through active development.",
-  "Queen's Gambit Declined": "Black declines the gambit and maintains central tension, leading to a solid and strategic struggle for long-term advantages.",
-  "Ruy Lopez": "Both sides develop to control the center and White threatens to exchange a bishop for a knight on c6 at an opportune moment.",
-  "Scandinavian Defense": "The Scandinavian Defense is a way for Black to immediately trade off a pawn after 1.e4 by playing 1...d5.",
-  "Scotch": "The Scotch Game is a way for White to trade off Black's only center pawn after 1.e4 e5.",
-  "Sicilian Defense": "One of Black's most ambitious responses to 1.e4. Black fights for imbalance from the start, often leading to complex and tactical games.",
+  "Alapin": "Sicilian sideline: White avoids main theory and builds a strong center with c3 and d4.",
+  "Caro-Kann Defense": "Solid answer to 1.e4. 1...c6 prepares ...d5 and a sound, resilient structure.",
+  "English Opening": "1.c4: White controls the center from the flank and can transpose into many structures.",
+  "Four Knights": "Classical: both sides develop knights early for solid central control and flexible plans.",
+  "French Defense": "Counter-attacking reply to 1.e4. Black contests the center with ...d5.",
+  "Fried Liver": "Sharp Italian line where White sacrifices material for an early attack on the king.",
+  "Italian Game": "Popular 1.e4 for all levels. Logical development and control of the center.",
+  "King's Indian Defense": "Sharp reply to 1.d4. Black often aims for a fierce kingside attack.",
+  "London System": "Simple White setup. Peaceful development; tactics usually wait for the middlegame.",
+  "Nimzo-Indian Defense": "Solid answer to 1.d4. Black pins the knight and fights for light squares.",
+  "Open Sicilian": "Dynamic Sicilian: White opens the center early for sharp, tactical play.",
+  "Petroff Defense": "Solid, symmetrical defense to 1.e4. Black challenges the center at once.",
+  "Pirc Defense": "Rare, counterattacking option to 1.e4. A favorite when Black must play for a win.",
+  "Queen's Gambit": "White offers a pawn for the center. Black often declines with a solid setup.",
+  "Queen's Gambit Accepted": "Black takes the pawn and gives up the center, aiming to equalize with active play.",
+  "Queen's Gambit Declined": "Black keeps the pawn and the tension for a solid, strategic fight.",
+  "Ruy Lopez": "Classical 1.e4 e5. White eyes the knight on c6; both sides fight for the center.",
+  "Scandinavian Defense": "Black immediately challenges the e4-pawn with 1...d5 and forces exchanges.",
+  "Scotch": "White trades Black's central e5-pawn early after 1.e4 e5 for an open, clear game.",
+  "Sicilian Defense": "Ambitious reply to 1.e4. Black unbalances from move one for complex, tactical games.",
 }
 
-// First 3 moves (main line) per opening – used to show position on main board when card is selected. Format: array of { white, black }.
-const OPENING_FIRST_3_MOVES = {
-  "Alapin": [{ white: 'e4', black: 'c5' }, { white: 'c3', black: '' }],
-  "Against 1. c4 & 1. Nf3": [{ white: 'c4', black: 'e5' }, { white: 'Nc3', black: 'Nf6' }, { white: 'Nf3', black: 'Nc6' }],
-  "Caro-Kann Defense": [{ white: 'e4', black: 'c6' }, { white: 'd4', black: 'd5' }, { white: 'Nc3', black: 'dxe4' }],
-  "English Opening": [{ white: 'c4', black: 'e5' }, { white: 'Nc3', black: 'Nf6' }, { white: 'Nf3', black: 'Nc6' }],
-  "Four Knights": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'Nc3', black: 'Nf6' }],
-  "French Defense": [{ white: 'e4', black: 'e6' }, { white: 'd4', black: 'd5' }, { white: 'Nd2', black: 'Nf6' }],
-  "Fried Liver": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'Bc4', black: 'Nf6' }],
-  "Italian Game": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'Bc4', black: 'Bc5' }],
-  "King's Indian Defense": [{ white: 'd4', black: 'Nf6' }, { white: 'c4', black: 'g6' }, { white: 'Nc3', black: 'Bg7' }],
-  "London System": [{ white: 'd4', black: 'd5' }, { white: 'Bf4', black: 'Nf6' }, { white: 'e3', black: 'e6' }],
-  "Nimzo-Indian Defense": [{ white: 'd4', black: 'Nf6' }, { white: 'c4', black: 'e6' }, { white: 'Nc3', black: 'Bb4' }],
-  "Open Sicilian": [{ white: 'e4', black: 'c5' }, { white: 'Nf3', black: 'd6' }, { white: 'd4', black: 'cxd4' }],
-  "Petroff Defense": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nf6' }, { white: 'Nxe5', black: 'd6' }],
-  "Pirc Defense": [{ white: 'e4', black: 'd6' }, { white: 'd4', black: 'Nf6' }, { white: 'Nc3', black: 'g6' }],
-  "Queen's Gambit": [{ white: 'd4', black: 'd5' }, { white: 'c4', black: 'e6' }, { white: 'Nc3', black: 'Nf6' }],
-  "Queen's Gambit Accepted": [{ white: 'd4', black: 'd5' }, { white: 'c4', black: 'dxc4' }, { white: 'e3', black: 'e5' }],
-  "Queen's Gambit Declined": [{ white: 'd4', black: 'd5' }, { white: 'c4', black: 'e6' }, { white: 'Nc3', black: 'Nf6' }],
-  "Ruy Lopez": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'Bb5', black: 'a6' }],
-  "Scandinavian Defense": [{ white: 'e4', black: 'd5' }, { white: 'exd5', black: 'Qxd5' }, { white: 'Nc3', black: 'Qa5' }],
-  "Scotch": [{ white: 'e4', black: 'e5' }, { white: 'Nf3', black: 'Nc6' }, { white: 'd4', black: 'exd4' }],
-  "Sicilian Defense": [{ white: 'e4', black: 'c5' }, { white: 'Nf3', black: 'd6' }, { white: 'd4', black: 'cxd4' }],
+// First 5 moves (main line) per opening – used to show position on main board and filter courses. Format: array of { white, black }.
+// Edit this data in docs/opening-moves-data.md then copy here.
+const OPENING_FIRST_5_MOVES = {
+  "Alapin": [
+    { white: 'e4', black: 'c5' },
+    { white: 'c3', black: 'd5' },
+    { white: 'exd5', black: 'Qxd5' },
+    { white: 'd4', black: 'Nf6' },
+    { white: 'Nf3', black: 'e6' }
+  ],
+  "Against 1. c4 & 1. Nf3": [
+    { white: 'c4', black: 'e5' },
+    { white: 'Nc3', black: 'Nf6' },
+    { white: 'Nf3', black: 'Nc6' },
+    { white: 'g3', black: 'd5' },
+    { white: 'cxd5', black: 'Nxd5' }
+  ],
+  "Caro-Kann Defense": [
+    { white: 'e4', black: 'c6' },
+    { white: 'd4', black: 'd5' },
+    { white: 'Nc3', black: 'dxe4' },
+    { white: 'Nxe4', black: 'Bf5' },
+    { white: 'Ng3', black: 'Bg6' }
+  ],
+  "English Opening": [
+    { white: 'c4', black: 'e5' },
+    { white: 'Nc3', black: 'Nf6' },
+    { white: 'Nf3', black: 'Nc6' },
+    { white: 'g3', black: 'Bb4' },
+    { white: 'Bg2', black: 'O-O' }
+  ],
+  "Four Knights": [
+    { white: 'e4', black: 'e5' },
+    { white: 'Nf3', black: 'Nc6' },
+    { white: 'Nc3', black: 'Nf6' },
+    { white: 'Bb5', black: 'Bb4' },
+    { white: 'O-O', black: 'O-O' }
+  ],
+  "French Defense": [
+    { white: 'e4', black: 'e6' },
+    { white: 'd4', black: 'd5' },
+    { white: 'Nd2', black: 'Nf6' },
+    { white: 'e5', black: 'Nfd7' },
+    { white: 'Bd3', black: 'c5' }
+  ],
+  "Fried Liver": [
+    { white: 'e4', black: 'e5' },
+    { white: 'Nf3', black: 'Nc6' },
+    { white: 'Bc4', black: 'Nf6' },
+    { white: 'Ng5', black: 'd5' },
+    { white: 'exd5', black: 'Nxd5' }
+  ],
+  "Italian Game": [
+    { white: 'e4', black: 'e5' },
+    { white: 'Nf3', black: 'Nc6' },
+    { white: 'Bc4', black: 'Bc5' },
+    { white: 'c3', black: 'Nf6' },
+    { white: 'd4', black: 'exd4' }
+  ],
+  "King's Indian Defense": [
+    { white: 'd4', black: 'Nf6' },
+    { white: 'c4', black: 'g6' },
+    { white: 'Nc3', black: 'Bg7' },
+    { white: 'e4', black: 'd6' },
+    { white: 'Nf3', black: 'O-O' }
+  ],
+  "London System": [
+    { white: 'd4', black: 'd5' },
+    { white: 'Bf4', black: 'Nf6' },
+    { white: 'e3', black: 'e6' },
+    { white: 'Nf3', black: 'c5' },
+    { white: 'c3', black: 'Nc6' }
+  ],
+  "Nimzo-Indian Defense": [
+    { white: 'd4', black: 'Nf6' },
+    { white: 'c4', black: 'e6' },
+    { white: 'Nc3', black: 'Bb4' },
+    { white: 'Qc2', black: 'O-O' },
+    { white: 'a3', black: 'Bxc3+' }
+  ],
+  "Open Sicilian": [
+    { white: 'e4', black: 'c5' },
+    { white: 'Nf3', black: 'd6' },
+    { white: 'd4', black: 'cxd4' },
+    { white: 'Nxd4', black: 'Nf6' },
+    { white: 'Nc3', black: 'a6' }
+  ],
+  "Petroff Defense": [
+    { white: 'e4', black: 'e5' },
+    { white: 'Nf3', black: 'Nf6' },
+    { white: 'Nxe5', black: 'd6' },
+    { white: 'Nf3', black: 'Nxe4' },
+    { white: 'd4', black: 'd5' }
+  ],
+  "Pirc Defense": [
+    { white: 'e4', black: 'd6' },
+    { white: 'd4', black: 'Nf6' },
+    { white: 'Nc3', black: 'g6' },
+    { white: 'f4', black: 'Bg7' },
+    { white: 'Nf3', black: 'O-O' }
+  ],
+  "Queen's Gambit": [
+    { white: 'd4', black: 'd5' },
+    { white: 'c4', black: 'e6' },
+    { white: 'Nc3', black: 'Nf6' },
+    { white: 'Bg5', black: 'Be7' },
+    { white: 'e3', black: 'O-O' }
+  ],
+  "Queen's Gambit Accepted": [
+    { white: 'd4', black: 'd5' },
+    { white: 'c4', black: 'dxc4' },
+    { white: 'e3', black: 'e5' },
+    { white: 'Bxc4', black: 'exd4' },
+    { white: 'exd4', black: 'Nf6' }
+  ],
+  "Queen's Gambit Declined": [
+    { white: 'd4', black: 'd5' },
+    { white: 'c4', black: 'e6' },
+    { white: 'Nc3', black: 'Nf6' },
+    { white: 'Bg5', black: 'Be7' },
+    { white: 'e3', black: 'O-O' }
+  ],
+  "Ruy Lopez": [
+    { white: 'e4', black: 'e5' },
+    { white: 'Nf3', black: 'Nc6' },
+    { white: 'Bb5', black: 'a6' },
+    { white: 'Ba4', black: 'Nf6' },
+    { white: 'O-O', black: 'Be7' }
+  ],
+  "Scandinavian Defense": [
+    { white: 'e4', black: 'd5' },
+    { white: 'exd5', black: 'Qxd5' },
+    { white: 'Nc3', black: 'Qa5' },
+    { white: 'd4', black: 'Nf6' },
+    { white: 'Nf3', black: 'Bf5' }
+  ],
+  "Scotch": [
+    { white: 'e4', black: 'e5' },
+    { white: 'Nf3', black: 'Nc6' },
+    { white: 'd4', black: 'exd4' },
+    { white: 'Nxd4', black: 'Bc5' },
+    { white: 'Be3', black: 'Qf6' }
+  ],
+  "Sicilian Defense": [
+    { white: 'e4', black: 'c5' },
+    { white: 'Nf3', black: 'd6' },
+    { white: 'd4', black: 'cxd4' },
+    { white: 'Nxd4', black: 'Nf6' },
+    { white: 'Nc3', black: 'a6' }
+  ],
 }
 
 // One card per unique opening name (first occurrence wins for first move / cover). Full raw rows stored on card for later.
@@ -146,6 +337,9 @@ const openingCourseCards = (() => {
     const firstMove = row.firstMove
     const title = key === row.name ? row.name : key
     const description = OPENING_DESCRIPTIONS[title] ?? `${title} — ${firstMove}`
+    // Use opening moves data for cover, fallback to firstMove string
+    const cover = coverPiecesFromOpening(title)
+    const frequencyPercent = parseFloat(String(row.frequency || '0').replace('%', '')) || 0
     cards.push({
       id: id++,
       title,
@@ -153,7 +347,8 @@ const openingCourseCards = (() => {
       description,
       linesCount: 12,
       type: row.color,
-      coverPieces: coverPiecesFromFirstMove(firstMove),
+      frequencyPercent,
+      coverPieces: cover.length ? cover : coverPiecesFromFirstMove(firstMove),
       _meta: OPENING_COURSES_RAW.filter((r) => openingNameKey(r.name) === key),
     })
   }
@@ -167,7 +362,7 @@ const linesFilterOptions = [
 const linesFilterValue = ref('all')
 
 // Progress under course card – derived from actual section moves (chapters/lines)
-const progressLearned = computed(() =>
+const progressCompleted = computed(() =>
   courseSections.value.reduce((sum, s) => sum + getSectionChapterProgress(s).completed, 0)
 )
 const progressTotal = computed(() =>
@@ -175,9 +370,14 @@ const progressTotal = computed(() =>
 )
 /** Total number of lines in the course (for "X lines" display). */
 const courseTotalLines = computed(() => progressTotal.value)
+/** Number of moves not yet completed (to learn). Shown under header when > 0. */
+const movesToLearn = computed(() => Math.max(0, progressTotal.value - progressCompleted.value))
 const progressPercent = computed(() =>
-  progressTotal.value > 0 ? Math.min(100, (progressLearned.value / progressTotal.value) * 100) : 0
+  progressTotal.value > 0 ? Math.min(100, (progressCompleted.value / progressTotal.value) * 100) : 0
 )
+/** V7 course card completion bar: rounded percentage (0–100) and fill width in px (track 192px). */
+const completionPercentRounded = computed(() => Math.round(progressPercent.value))
+const completionFillWidthPx = computed(() => Math.min(100, progressPercent.value) * 192 / 100)
 
 // Mastery bar: level out of 8 sections (fill 3 sections = Level 3)
 const masteryLevel = ref(1)
@@ -190,6 +390,23 @@ const masteryPercent = computed(() =>
 const showLessonActions = ref(true)
 
 // Practice button badge uses practiceReadyCount (computed from sectionMoves)
+
+// Tabs under course card: Content | Stats (Stats = Progress + Mastery)
+const courseTabsActive = ref('content')
+
+// Stats tab: 3 cards – Learned (completed lines), Reviewed (lines with level), Mastered (lock icon, 0 for now)
+const statsLearnedCount = computed(() => progressCompleted.value)
+const statsReviewedCount = computed(() =>
+  courseSections.value.reduce((sum, s) => {
+    const moves = getSectionMovesForDisplay(s)
+    return sum + moves.filter((m) => m.completed && m.level).length
+  }, 0)
+)
+const statsCards = computed(() => [
+  { label: 'Learned', value: String(statsLearnedCount.value), change: '' },
+  { label: 'Reviewed', value: String(statsReviewedCount.value), change: '' },
+  { label: 'Mastered', value: '0', showLock: true }
+])
 
 // More button: show/hide additional mastery stats (8 Mastery Level items)
 const showMoreStats = ref(false)
@@ -207,7 +424,7 @@ const masteryLevelItems = computed(() => {
   const counts = masteryVariationCountByLevel.value
   return [
     { level: 'L1', title: 'Rookie', counter: counts.L1, locked: false },
-    { level: 'L2', title: 'Keen Learner', counter: counts.L2, locked: false },
+    { level: 'L2', title: 'Keen Courser', counter: counts.L2, locked: false },
     { level: 'L3', title: 'Apprentice', counter: null, locked: true },
     { level: 'L4', title: 'Rank Riser', counter: null, locked: true },
     { level: 'L5', title: 'Booked Up', counter: null, locked: true },
@@ -217,7 +434,8 @@ const masteryLevelItems = computed(() => {
   ]
 })
 
-// Section expand/collapse (accordion)
+// Section expand/collapse (accordion) – kept for later; set useAccordionChapters to true to restore
+const useAccordionChapters = ref(false)
 const expandedSectionIds = ref(new Set())
 function toggleSection(sectionId) {
   v3ReleasedUntilSectionId.value = null
@@ -263,6 +481,10 @@ function toggleSection(sectionId) {
 }
 function isSectionExpanded(sectionId) {
   return expandedSectionIds.value.has(sectionId)
+}
+/** When false (default): all chapters shown as headers, always open. When true: accordion (one open at a time). */
+function isSectionOpen(sectionId) {
+  return useAccordionChapters.value ? isSectionExpanded(sectionId) : true
 }
 
 // Panel view: 'courses' (course card, sections, lines) or 'line' (single Line screen, content empty for now)
@@ -1113,6 +1335,11 @@ function getMovesForLine(section, move) {
   const key = `${baseId}-${move.id}`
   return lineMovesByKey[key] ?? defaultLineMoves
 }
+
+/** Number of (full) moves in a single line – for "# moves" on the line card (not section total). */
+function getLineMoveCount(section, move) {
+  return getMovesForLine(section, move).length
+}
 const lineViewMoves = ref([...defaultLineMoves])
 const selectedPly = ref({ moveIndex: 0, side: 'white' })
 
@@ -1273,7 +1500,7 @@ function selectPreviousPly() {
 
 /** Chapter (line) counts for a section – derived from actual moves so progress bar and counter match. */
 function getSectionChapterProgress(section) {
-  const moves = getSectionMoves(section)
+  const moves = getSectionMovesForDisplay(section)
   const total = moves.length
   const completed = moves.filter((m) => m.completed).length
   return { completed, total }
@@ -1349,9 +1576,9 @@ const sectionMovesV24 = {
     { id: '1', text: 'Introduction', completed: true, info: true },
   ],
   'learning-the-game': [
-    { id: '1', text: 'Learning the Board: Ranks', completed: true, quiz: true, level: 'L2' },
-    { id: '2', text: 'Learning the Board: Files', completed: true, quiz: true, level: 'L2' },
-    { id: '3', text: 'Learning the Board: Diagonals', completed: true, quiz: true, level: 'L2' },
+    { id: '1', text: 'The Board: Ranks', completed: true, quiz: true, level: 'L2' },
+    { id: '2', text: 'The Board: Files', completed: true, quiz: true, level: 'L2' },
+    { id: '3', text: 'The Board: Diagonals', completed: true, quiz: true, level: 'L2' },
     { id: '4', text: 'Getting to Know the Squares #1', completed: true, quiz: true, level: 'L2' },
     { id: '5', text: 'Getting to Know the Squares #2', completed: true, quiz: true, level: 'L2' },
     { id: '6', text: 'Getting to Know the Squares #3', completed: true, quiz: true, level: 'L2' },
@@ -1377,7 +1604,7 @@ const sectionMovesV24 = {
     { id: '4', text: "Danny's Ten Opening Rules", completed: true, info: true },
     { id: '5', text: 'Leave the Queen at Home!', completed: true },
     { id: '6', text: 'Early Castling in the Ruy Lopez', completed: true },
-    { id: '7', text: "Learn the Queen's Gambit", completed: true },
+    { id: '7', text: "The Queen's Gambit", completed: true },
     { id: '8', text: "Don't Try Scholar's Mate!", completed: true },
     { id: '9', text: 'Breaking Principles When Necessary', completed: true },
     { id: '10', text: 'Review #1', completed: false },
@@ -1503,7 +1730,7 @@ const sectionMovesV23 = {
   ],
 }
 
-const sectionMoves = computed(() => (isVideoV2_4.value ? sectionMovesV24 : sectionMovesV23))
+const sectionMoves = computed(() => (isVideoV2_4OrV5.value ? sectionMovesV24 : sectionMovesV23))
 
 // Informational line content (key: sectionId-moveId). Coach message + body HTML for info-only lines.
 const infoLineContentByKey = {
@@ -1512,7 +1739,7 @@ const infoLineContentByKey = {
     bodyHtml: `<p>Chess is a fun and beautiful game that everyone can enjoy. While Chess.com is where you practice and play, Chessable is the place where you can learn and improve your game with courses for all levels and interests.</p>
 <p>This is a crash course for players just starting out. Welcome to the very beginning of your chess journey!</p>
 <p>Chess International Master and Chess.com Chief Chess Officer Danny Rensch is here to guide you through the very basics of the game.</p>
-<p><strong>You will learn:</strong></p>
+<p><strong>You will study:</strong></p>
 <p>♟️ The language of chess and how we identify pieces, squares and other elements of a chess board.</p>
 <p>♟️ How each piece moves</p>
 <p>♟️ How to play good moves in the Opening (the first phase of the game)</p>
@@ -1521,7 +1748,7 @@ const infoLineContentByKey = {
 <p>♟️ Fundamental strategic concepts to help guide your play</p>
 <p>♟️ Checkmating techniques in the endgame, such as how to checkmate your opponent with only a king and queen</p>
 <p>...and more!</p>
-<p>To study this course, simply hit the Learn button and start learning! You can read the text in each variation, repeat the concepts demonstrated to you by MoveTrainer to ensure you understand it, and watch the video in each chapter to digest Danny's expert instruction.</p>
+<p>To study this course, simply hit the Course button and start the course! You can read the text in each variation, repeat the concepts demonstrated to you by MoveTrainer to ensure you understand it, and watch the video in each chapter to digest Danny's expert instruction.</p>
 <p>At the end of each chapter there are 3 Review variations which will test your understanding of the material in each chapter.</p>
 <p>By the end of this course, you will understand chess better than most of your friends and family and 99% of everyone who has ever played the game. Who knows, you may be very well be on your way to chess mastery!</p>
 <p>We wish you all the best in your chess journey. Don't forget that all work and no play makes you a dull chess player. Play on Chess.com! Building experience is just as important to improvement as building knowledge. So without further ado, let's dive in!</p>`,
@@ -1592,7 +1819,7 @@ const infoLineContentByKey = {
     moveExplanations: [
       'A phenomenal first move - controlling central squares and opening lines for development of the bishop and queen.',
       'If you are allowed, it\'s usually a good idea to take the center with both pawns! This opens lines for the dark-squared bishop and controls more key central squares.',
-      'Developing your pieces is essential, as you will learn in my 10 opening rules. The knight moves towards the center, controlling key central squares.',
+      'Developing your pieces is essential, as you will study in my 10 opening rules. The knight moves towards the center, controlling key central squares.',
       'The queen\'s knight develops towards the center.',
       'Likewise, the queen\'s knight moves towards the center, controlling the central e4 and d5-squares. The knights are ideally placed.',
       'An active square for the bishop, playing a role in controlling the center and allowing room for White to castle kingside.',
@@ -1649,7 +1876,7 @@ const infoLineContentByKey = {
   'the-endgame-3': {
     coachMessage: 'Read through this line and arrow through the moves.',
     bodyHtml: `<p>Endgame Checkmates: The Rook Mate. With only a king and rook left, you can force checkmate by driving the enemy king to the edge of the board. The two rooks (or rook and king) work together to shrink the space available to the enemy king until it is checkmated.</p>
-<p>This is one of the most important endgame patterns to learn. Let's see how it's done.</p>`,
+<p>This is one of the most important endgame patterns to study. Let's see how it's done.</p>`,
     hasMoves: true,
   },
   'the-endgame-7': {
@@ -1684,7 +1911,7 @@ const infoLineContentByKey = {
   },
   'bringing-it-together-1': {
     coachMessage: 'Read through this line and arrow through the moves.',
-    bodyHtml: `<p>Congratulations! By getting this far in the course, you've learned a heck of a lot about chess:</p>
+    bodyHtml: `<p>Congratulations! By getting this far in the course, you've studied a heck of a lot about chess:</p>
 <ul>
 <li>♟️ The rules of the game and the language of chess</li>
 <li>♟️ How to play good opening moves</li>
@@ -1705,7 +1932,7 @@ const infoLineContentByKey = {
 <p>Here's what we recommend to keep improving:</p>
 <p><strong>Keep practicing tactics!</strong> Tactics are the keys to winning chess games. For your next Chessable course, we recommend 1001 Chess Exercises For Beginners where popular streamer, Fiona Steil-Antoni will introduce and guide you through every tactic you need to know! You can practice Chess.com's Puzzles feature or through many Chessable courses.</p>
 <p><strong>Study other Chessable courses.</strong> There are courses on virtually every part of the game, from openings to endgames, taught by the best players and coaches in the world. Check out more courses using the link below.</p>
-<p><strong>Play games!</strong> It's important to put what you learn into practice. Chess is very much like a sport - it's not just about what you know, it's also about keeping sharp and putting your skills to the test! You can play games live on Chess.com or against bots.</p>
+<p><strong>Play games!</strong> It's important to put what you study into practice. Chess is very much like a sport - it's not just about what you know, it's also about keeping sharp and putting your skills to the test! You can play games live on Chess.com or against bots.</p>
 <p>And most of all, <strong>have fun!</strong> Chess is full of wild, elegant, exciting, creative, and endless possibilities no matter what your level - remember to enjoy the journey!</p>
 <p><em>Note: If you'd like to study this course again, for optimal functionality, we recommend using the Delete My Progress option in Chapter Options before doing so.</em></p>`,
     hasMoves: true,
@@ -1718,7 +1945,7 @@ const quizLineContentByKey = {
     coachTitle: 'Play the correct move',
     coachBody: 'White to play',
     bodyHtml: `<p>Squares on a chess board can be divided and understood according to ranks (side to side), files (up and down) and diagonals. Let's talk about ranks. There are 8 ranks on a chess board numbered from 1-8.</p>
-<p>Here we see a lone queen sitting on the 3rd rank. We will learn about her highness when we talk about the pieces. For now, to get a better feel for the board, let's try moving her all the way across the 3rd rank to the other side.</p>`,
+<p>Here we see a lone queen sitting on the 3rd rank. We will study her highness when we talk about the pieces. For now, to get a better feel for the board, let's try moving her all the way across the 3rd rank to the other side.</p>`,
     readModeCaption: 'The queen shuffles all the way to the other side along the 3rd rank.',
   },
   'learning-the-game-2': {
@@ -1880,10 +2107,10 @@ const infoLineContentCurrent = computed(() => {
 const lineReadModeBodyByKey = {
   'learning-the-game-1': {
     bodyHtml: `<p>Squares on a chess board can be divided and understood according to ranks (side to side), files (up and down) and diagonals. Let's talk about ranks. There are 8 ranks on a chess board numbered from 1-8.</p>
-<p>Here we see a lone queen sitting on the 3rd rank. We will learn about her highness when we talk about the pieces. For now, to get a better feel for the board, let's try moving her all the way across the 3rd rank to the other side.</p>`,
+<p>Here we see a lone queen sitting on the 3rd rank. We will study her highness when we talk about the pieces. For now, to get a better feel for the board, let's try moving her all the way across the 3rd rank to the other side.</p>`,
   },
   'the-opening-5': {
-    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+    bodyHtml: `<p>Let's study what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
 <p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
 <p>One of Black's most common replies, following suit by occupying the center with a pawn right away.</p>
 <p>White lunges forward with a second pawn towards the center of the board, and threatens to capture Black's d-pawn!</p>
@@ -1892,7 +2119,7 @@ const lineReadModeBodyByKey = {
   },
   'the-opening-6': {
     bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
-<p>Let's see if you can learn and remember the first moves of this ancient opening.</p>
+<p>Let's see if you can study and remember the first moves of this ancient opening.</p>
 <p>A perfect move; controlling the center and making way for the queen and bishop.</p>
 <p>As we've already seen, this move does many things:</p>
 <ol>
@@ -1905,7 +2132,7 @@ const lineReadModeBodyByKey = {
 <p>This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times. In addition to developing a piece and preparing to castle, the point of this move is to attack Black's knight – an important defender of Black's center. In this way, this bishop move indirectly controls the center!</p>`,
   },
   'the-opening-7': {
-    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+    bodyHtml: `<p>Let's study what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
 <p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
 <p>One of Black's most common replies, following suit by occupying the center with a pawn right away.</p>
 <p>White lunges forward with a second pawn towards the center of the board, and threatens to capture Black's d-pawn!</p>
@@ -1917,13 +2144,13 @@ const lineReadModeBodyByKey = {
 <p>A strong first move, occupying the center, stopping white from playing d4 next, and facilitating kingside development.</p>
 <p>White brings out the queen as early as move 2, threatening to win our central pawn. So, we defend it by developing a piece. Remember, it's important to notice and react appropriately to your opponent's threats.</p>
 <p>White is trying to checkmate us on the f7 square. If we don't defend, next would end the game and we would lose.</p>
-<p>Let's learn how to defend against this popular try at the beginner level.</p>
+<p>Let's study how to defend against this popular try at the beginner level.</p>
 <p>White is going for Scholar's Mate with Queen to f7 next, which we saw in the first lesson. This can be a quick way to catch unwitting opponents off guard. If Black isn't careful and plays something like 3...Nf6 attacking the queen, White would be able to give checkmate already on move four with 4. Qxf7#. But we see White's threat and are ready to punish them for breaking the opening rules.</p>
 <p>...g6 defends against the checkmate threat on f7, and forces White to waste another move on the queen, otherwise she will be captured.</p>`,
   },
   'the-opening-9': {
     bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
-<p>Let's see if you can learn and remember the first moves of this ancient opening.</p>
+<p>Let's see if you can study and remember the first moves of this ancient opening.</p>
 <p>A perfect move; controlling the center and making way for the queen and bishop.</p>
 <p>As we've already seen, this move does many things:</p>
 <ol>
@@ -1936,7 +2163,7 @@ const lineReadModeBodyByKey = {
 <p>This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times. In addition to developing a piece and preparing to castle, the point of this move is to attack Black's knight – an important defender of Black's center. In this way, this bishop move indirectly controls the center!</p>`,
   },
   'the-opening-10': {
-    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+    bodyHtml: `<p>Let's study what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
 <p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
 <p>One of Black's most common replies, following suit by occupying the center with a pawn right away.</p>
 <p>White lunges forward with a second pawn towards the center of the board, and threatens to capture Black's d-pawn!</p>
@@ -1948,13 +2175,13 @@ const lineReadModeBodyByKey = {
 <p>A strong first move, occupying the center, stopping white from playing d4 next, and facilitating kingside development.</p>
 <p>White brings out the queen as early as move 2, threatening to win our central pawn. So, we defend it by developing a piece. Remember, it's important to notice and react appropriately to your opponent's threats.</p>
 <p>White is trying to checkmate us on the f7 square. If we don't defend, next would end the game and we would lose.</p>
-<p>Let's learn how to defend against this popular try at the beginner level.</p>
+<p>Let's study how to defend against this popular try at the beginner level.</p>
 <p>White is going for Scholar's Mate with Queen to f7 next, which we saw in the first lesson. This can be a quick way to catch unwitting opponents off guard. If Black isn't careful and plays something like 3...Nf6 attacking the queen, White would be able to give checkmate already on move four with 4. Qxf7#. But we see White's threat and are ready to punish them for breaking the opening rules.</p>
 <p>...g6 defends against the checkmate threat on f7, and forces White to waste another move on the queen, otherwise she will be captured.</p>`,
   },
   'the-opening-12': {
     bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
-<p>Let's see if you can learn and remember the first moves of this ancient opening.</p>
+<p>Let's see if you can study and remember the first moves of this ancient opening.</p>
 <p>A perfect move; controlling the center and making way for the queen and bishop.</p>
 <p>As we've already seen, this move does many things:</p>
 <ol>
@@ -2029,7 +2256,7 @@ const lineReadModeBodyByKey = {
 <p><span class="inline-ply-chip" data-move="Qxh1">2. Qxh1</span> – The queen captures the rook, winning the game. This is the infamous endgame skewer: the king was forced to move, exposing the piece behind it.</p>`,
   },
   'the-endgame-1': {
-    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+    bodyHtml: `<p>Let's study what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
 <p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop.</p>
 <p>One of Black's most common replies, following suit by occupying the center with a pawn right away.</p>
 <p>White lunges forward with a second pawn towards the center of the board, and threatens to capture Black's d-pawn!</p>
@@ -2038,7 +2265,7 @@ const lineReadModeBodyByKey = {
   },
   'the-endgame-2': {
     bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
-<p>Let's see if you can learn and remember the first moves of this ancient opening.</p>
+<p>Let's see if you can study and remember the first moves of this ancient opening.</p>
 <p>A perfect move; controlling the center and making way for the queen and bishop.</p>
 <p>As we've already seen, this move does many things:</p>
 <ol>
@@ -2097,10 +2324,10 @@ const lineReadModeBodyByKey = {
   },
   'the-endgame-12': {
     bodyHtml: `<p>Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early.</p>
-<p>Let's see if you can learn and remember the first moves of this ancient opening. A perfect move; controlling the center and making way for the queen and bishop. Black defends. This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times.</p>`,
+<p>Let's see if you can study and remember the first moves of this ancient opening. A perfect move; controlling the center and making way for the queen and bishop. Black defends. This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times.</p>`,
   },
   'the-endgame-13': {
-    bodyHtml: `<p>Let's learn what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
+    bodyHtml: `<p>Let's study what the popular opening, the Queen's Gambit, looks like when played well by both sides!</p>
 <p>d4, like e4, is a fantastic first move. It controls the center with a pawn, and prepares the development of White's dark-squared bishop. One of Black's most common replies, following suit by occupying the center with a pawn right away. White lunges forward with a second pawn towards the center of the board. Instead, Black opts to defend their central pawn with 2...e6. This is called the Queen's Gambit Declined.</p>`,
   },
   'the-endgame-14': {
@@ -2124,7 +2351,7 @@ const lineViewInfoLineHasVideo = computed(() => {
 
 // Pool of uncompleted move titles – shuffled per section to fill section.total (0/6 → 6 items, 0/24 → 24, etc.)
 const uncompletedMoveTitles = [
-  'Learning from Proteus',
+  'From Proteus',
   'Anand, Viswanathan vs. Sokolov, Ivan (1989)',
   'Anand, Viswanathan vs. Bacrot, Etienne (2006)',
   'Sandipan, Chanda vs. Tiviakov, Sergei (2007)',
@@ -2181,10 +2408,21 @@ function getSectionMoves(section) {
   }))
 }
 
+/** Same as getSectionMoves (used for display and progress so one source of truth). */
+function getSectionMovesForDisplay(section) {
+  return getSectionMoves(section)
+}
+
+/** Number of moves not yet completed in a section (for "# moves" under line card header). */
+function getSectionMovesToLearnCount(section) {
+  const moves = getSectionMoves(section)
+  return moves.filter((m) => !m.completed).length
+}
+
 // V2.4: real course – 6 chapters (start-here removed)
 const courseSectionsV24 = [
   { id: 'intro', name: 'Introduction', completed: 0, total: 1, status: 'not_started', videoAvailable: false },
-  { id: 'learning-the-game', name: '1) Learning the Game', completed: 0, total: 20, status: 'not_started', videoAvailable: true },
+  { id: 'learning-the-game', name: '1) The Game', completed: 0, total: 20, status: 'not_started', videoAvailable: true },
   { id: 'the-opening', name: '2) The Opening', completed: 0, total: 12, status: 'not_started', videoAvailable: true },
   { id: 'tactics-strategy', name: '3) Tactics & Strategy', completed: 0, total: 8, status: 'not_started', videoAvailable: true },
   { id: 'the-endgame', name: '4) The Endgame', completed: 0, total: 14, status: 'not_started', videoAvailable: true },
@@ -2216,7 +2454,105 @@ const courseSectionsV23 = [
     }
   }),
 ]
-const courseSections = computed(() => (isVideoV2_4.value ? courseSectionsV24 : courseSectionsV23))
+const courseSections = computed(() => (isVideoV2_4OrV5.value ? courseSectionsV24 : courseSectionsV23))
+
+/** First incomplete line in the whole course (only one "next to learn"). */
+const nextToLearnRef = computed(() => {
+  for (const section of courseSections.value) {
+    const moves = getSectionMovesForDisplay(section)
+    const idx = moves.findIndex((m) => !m.completed)
+    if (idx >= 0) return { sectionId: section.id, moveId: moves[idx].id }
+  }
+  return null
+})
+
+// V7 only: tab labels – Learn (content) and Practice (stats)
+const courseTabContentLabel = computed(() => (isVideoV7.value ? 'Learn' : 'Content'))
+const courseTabStatsLabel = computed(() => (isVideoV7.value ? 'Practice' : 'Stats'))
+
+/** V7 only: sections that have at least one ready-for-review line, with moves filtered to ready only (for Practice panel). */
+const courseSectionsReadyForReview = computed(() => {
+  if (!isVideoV7.value) return []
+  return courseSections.value
+    .map((section) => {
+      const moves = getSectionMovesForDisplay(section).filter((m) => getLineType(m) === 'ready')
+      if (!moves.length) return null
+      return { ...section, readyMoves: moves }
+    })
+    .filter(Boolean)
+})
+
+// Line card covers: V4 = color piece from first move + randomized colors (no adjacent same); V5/V6 = color piece (28px) + fixed color order
+const COVER_COLOR_PAIRS = [
+  { light: 'orange-300', dark: 'orange-500' },
+  { light: 'purple-300', dark: 'purple-500' },
+  { light: 'gold-300', dark: 'gold-500' },
+  { light: 'fuchsia-300', dark: 'fuchsia-600' },
+  { light: 'aqua-400', dark: 'aqua-500' },
+  { light: 'green-400', dark: 'green-600' },
+]
+function simpleHash(str) {
+  let h = 0
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i) | 0
+  return Math.abs(h)
+}
+const PIECE_ICON_BY_SAN = {
+  R: 'piece-white-rook',
+  N: 'piece-white-knight',
+  B: 'piece-white-bishop',
+  Q: 'piece-white-queen',
+  K: 'piece-white-king',
+}
+function getPieceIconFromLineKey(key) {
+  const moves = lineMovesByKey[key]
+  const first = moves?.[0]
+  const san = (first?.white || first?.black || '').trim()
+  const c = san.charAt(0)
+  if (c && 'RNBQK'.includes(c)) return PIECE_ICON_BY_SAN[c] || 'piece-white-pawn'
+  return 'piece-white-pawn'
+}
+const lineCoverByKey = computed(() => {
+  const sections = courseSections.value
+  const out = Object.create(null)
+  const isV5OrV6 = isVideoV5OrV6.value
+  if (isV5OrV6) {
+    let colorIndex = 0
+    sections.forEach((section) => {
+      const moves = getSectionMoves(section)
+      moves.forEach((move) => {
+        const key = `${section.id}-${move.id}`
+        const pieceIcon = getPieceIconFromLineKey(key)
+        const pair = COVER_COLOR_PAIRS[colorIndex % 6]
+        colorIndex += 1
+        out[key] = { pieceIcon, lightToken: pair.light, darkToken: pair.dark }
+      })
+    })
+  } else {
+    let prevColorIndex = -1
+    sections.forEach((section) => {
+      const moves = getSectionMoves(section)
+      moves.forEach((move) => {
+        const key = `${section.id}-${move.id}`
+        const pieceIcon = getPieceIconFromLineKey(key)
+        const colorIndex = prevColorIndex < 0
+          ? Math.abs(simpleHash(key)) % 6
+          : (prevColorIndex + 1 + (simpleHash(key) % 5)) % 6
+        prevColorIndex = colorIndex
+        const pair = COVER_COLOR_PAIRS[colorIndex]
+        out[key] = { pieceIcon, lightToken: pair.light, darkToken: pair.dark }
+      })
+    })
+  }
+  return out
+})
+function getLineCoverStyle(sectionId, moveId) {
+  const c = lineCoverByKey.value[`${sectionId}-${moveId}`]
+  if (!c) return {}
+  return {
+    '--cover-light': 'var(--color-' + c.lightToken + ')',
+    '--cover-dark': 'var(--color-' + c.darkToken + ')',
+  }
+}
 
 // Count of Ready item Lines (completed moves without level) for Practice button badge
 const practiceReadyCount = computed(() => {
@@ -2229,7 +2565,7 @@ const extraDataPracticeIn = ref('1 DAY')
 const extraDataLevelBadge = ref('L1')
 const extraDataLevelName = ref('Rookie')
 const extraDataLevelBadgeNextLevel = ref('L2')
-const extraDataLevelNameNextLevel = ref('Keen Learner')
+const extraDataLevelNameNextLevel = ref('Keen Courser')
 
 /** Completed lines coach copy: practice wait time – L1 (or ready) 3 days, L2 1 week. */
 const completedLinePracticeTime = computed(() => {
@@ -2780,7 +3116,7 @@ watchEffect(() => {
     // Opening Courses V1: when a course card is selected, show first 2 moves of that opening on the board
     if (panelView.value === 'courses' && isOpeningCoursesV1.value && selectedOpeningCardId.value != null) {
       const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
-      const moves = card ? OPENING_FIRST_3_MOVES[card.title] : null
+      const moves = card ? OPENING_FIRST_5_MOVES[card.title] : null
       if (moves?.length) {
         const firstTwo = moves.slice(0, 2)
         const { fen, lastMove: last } = getPositionAtEndOfLine(firstTwo)
@@ -2804,7 +3140,12 @@ watchEffect(() => {
       return
     }
     // Courses, no hover / no opening selected: show default position
+    // BUT: if Opening V1 and user has played filter moves, keep the board at their position
     if (panelView.value === 'courses') {
+      if (isOpeningCoursesV1.value && openingFilterMoves.value.length > 0) {
+        // User is filtering by moves – don't reset board
+        return
+      }
       pieces.value = parseFEN(STARTING_FEN)
       lastMove.value = null
       selectedSquare.value = null
@@ -2879,10 +3220,13 @@ const handleSquareClick = (square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
+  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV1.value && currentQuestionIndex.value < 0
+  const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
+  const canSelectPiece = piece && (isOpeningV1FreePlay ? piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') : piece.type.startsWith('w'))
 
   // If no piece selected yet
   if (!selectedSquare.value) {
-    if (piece && piece.type.startsWith('w')) {
+    if (canSelectPiece) {
       selectedSquare.value = square
     }
     return
@@ -2894,8 +3238,8 @@ const handleSquareClick = (square) => {
     return
   }
 
-  // If clicking another white piece, select that instead
-  if (piece && piece.type.startsWith('w')) {
+  // If clicking another piece of the same side, select that instead
+  if (canSelectPiece) {
     selectedSquare.value = square
     return
   }
@@ -2910,17 +3254,11 @@ const handleSquareClick = (square) => {
     return
   }
 
-  // Default board (index -1): free play – any legal move executes
+  // Default board (index -1): free play – any legal move executes (Opening V1 uses tryMove to record filter)
   if (currentQuestionIndex.value < 0) {
-    if (!isLegalMove(from, to)) {
+    if (tryMove(from, to)) {
       selectedSquare.value = null
-      return
     }
-    const isCapture = getPieceOnSquare(to) !== undefined
-    makeMove(from, to)
-    lastMove.value = { from, to }
-    playSound(isCapture ? 'capture' : 'move')
-    selectedSquare.value = null
     return
   }
 
@@ -3169,7 +3507,13 @@ const tryMove = (from, to) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return false
 
   const movingPiece = getPieceOnSquare(from)
-  if (!movingPiece || !movingPiece.type.startsWith('w')) return false
+  if (!movingPiece) return false
+
+  // Opening V1 free play: allow the side to move (White when even moves, Black when odd)
+  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV1.value && currentQuestionIndex.value < 0
+  const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'b' : 'w'
+  const expectedPrefix = isOpeningV1FreePlay ? sideToMove : 'w'
+  if (!movingPiece.type.startsWith(expectedPrefix)) return false
 
   if (!isLegalMove(from, to)) {
     return false
@@ -3177,6 +3521,31 @@ const tryMove = (from, to) => {
 
   // Default board (index -1): free play – execute any legal move
   if (currentQuestionIndex.value < 0) {
+    // Opening V1: only allow moves that extend the filter sequence; record move and filter courses
+    if (isOpeningV1FreePlay) {
+      // Clear any card preview/animation when user makes a move
+      clearOpeningCardPreviewTimeout()
+      clearOpeningAutoMove()
+      selectedOpeningCardId.value = null
+      const chess = new Chess()
+      const filterMoves = openingFilterMoves.value
+      for (const m of filterMoves) {
+        const ok = chess.move(m.san)
+        if (!ok) break
+      }
+      const result = chess.move({ from, to })
+      if (!result) return false
+      const san = result.san
+      const n = filterMoves.length
+      const moveNum = Math.floor(n / 2) + 1
+      const display = n % 2 === 0 ? `${moveNum}.${san}` : `${moveNum}...${san}`
+      openingFilterMoves.value = [...filterMoves, { san, display }]
+      const isCapture = getPieceOnSquare(to) !== undefined
+      makeMove(from, to)
+      lastMove.value = { from, to }
+      playSound(isCapture ? 'capture' : 'move')
+      return true
+    }
     const isCapture = getPieceOnSquare(to) !== undefined
     makeMove(from, to)
     lastMove.value = { from, to }
@@ -3250,8 +3619,13 @@ const handleDragStart = (event, square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
-  if (!piece || !piece.type.startsWith('w')) return
-  
+  if (!piece) return
+  // Opening V1 free play: allow the side to move (White when 0,2,4... moves; Black when 1,3,5...)
+  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV1.value && currentQuestionIndex.value < 0
+  const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
+  const canMove = isOpeningV1FreePlay ? piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') : piece.type.startsWith('w')
+  if (!canMove) return
+
   // Prevent default drag behavior
   event.preventDefault()
   
@@ -3347,36 +3721,137 @@ const handleRetry = () => {
 }
 
 // V2: video visible by default, one per chapter, not sticky
-const isVideoV2 = computed(() => route.path === '/learn/v2')
+const isVideoV2 = computed(() => route.path === '/courses/v2')
 // V2.2: same as V2 but play button toggles to pause and makes that video sticky. Opening Courses V1 uses same layout.
-const isVideoV2_2 = computed(() => route.path === '/learn/v2.2' || route.path === '/learn/opening-courses-v1')
-const isOpeningCoursesV1 = computed(() => (route && route.path) === '/learn/opening-courses-v1')
+const isVideoV2_2 = computed(() => route.path === '/courses/v2.2' || route.path === '/courses/opening-courses-v1' || route.path === '/learn/opening-courses-v1')
+const isOpeningCoursesV1 = computed(() => (route && route.path) === '/courses/opening-courses-v1' || (route && route.path) === '/learn/opening-courses-v1')
+/** Defer opening-courses-v1 layout until after first paint to avoid Error -102 (renderer crash). */
+const openingV1Ready = ref(false)
+let openingV1ReadyTimer = null
+watch(isOpeningCoursesV1, (isV1) => {
+  if (openingV1ReadyTimer) {
+    clearTimeout(openingV1ReadyTimer)
+    openingV1ReadyTimer = null
+  }
+  if (!isV1) {
+    openingV1Ready.value = false
+    return
+  }
+  openingV1Ready.value = false
+  openingV1ReadyTimer = setTimeout(() => {
+    openingV1ReadyTimer = null
+    openingV1Ready.value = true
+  }, 200)
+}, { immediate: true })
 const selectedOpeningCardId = ref(null)
+// True when the selected card is currently hovered (pointer over it) – board does not reset while true
+const selectedOpeningCardHovered = ref(false)
+// Ignore pointerleave for a short time after selection (browsers often fire leave on click/focus)
+const OPENING_CARD_IGNORE_UNHOVER_MS = 400
+let openingCardSelectionTime = 0
 function toggleOpeningCardSelection(cardId) {
-  selectedOpeningCardId.value = selectedOpeningCardId.value === cardId ? null : cardId
+  const newId = selectedOpeningCardId.value === cardId ? null : cardId
+  selectedOpeningCardId.value = newId
+  if (newId != null) {
+    selectedOpeningCardHovered.value = true
+    openingCardSelectionTime = Date.now()
+  } else {
+    selectedOpeningCardHovered.value = false
+  }
+}
+function isOpeningCardSelected(cardId) {
+  return selectedOpeningCardId.value === cardId
 }
 
 // Opening Courses V1: search panel state (Figma 74-23788)
 const openingSearchQuery = ref('')
-const openingSortBy = ref('type') // 'name' | 'lines' | 'type'
+// Opening V1: move sequence from board – filters courses; each item { san, display } e.g. { san: 'e4', display: '1.e4' }
+const openingFilterMoves = ref([])
+// Keyword tags from search (Enter): filter by title/description containing each
+const openingKeywordTags = ref([])
+const openingSortBy = ref('type') // 'name' | 'lines' | 'type' | 'popular'
 const openingSortOpen = ref(false)
-// Hide filter strip on scroll down, show on scroll up (scroll-direction header)
-const openingFilterStripHidden = ref(false)
-const lastOpeningScrollTop = ref(0)
+// Opening V1: scroll-linked search bar – searchY in px clamped to [-H, 0]; searchY -= delta on scroll (no boolean).
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)) }
+const openingSearchY = ref(0)
+const openingSearchH = ref(92)
+const openingSearchRef = ref(null)
+const openingV1ScrollWrapRef = ref(null)
+let lastOpeningScrollTop = 0
+
+function measureOpeningSearchH() {
+  requestAnimationFrame(() => {
+    const el = openingSearchRef.value
+    if (el) {
+      openingSearchH.value = el.offsetHeight || 92
+      openingSearchY.value = clamp(openingSearchY.value, -openingSearchH.value, 0)
+    }
+  })
+}
 const openingSortLabel = computed(() => {
   if (openingSortBy.value === 'lines') return 'Lines'
   if (openingSortBy.value === 'type') return 'Type'
+  if (openingSortBy.value === 'popular') return 'Popular'
   return 'Name'
 })
+
+// Convert flat list of SANs to pairs for getPositionAtEndOfLine: [{ white, black }, ...]
+function filterMovesToPairs(sans) {
+  const pairs = []
+  for (let i = 0; i < sans.length; i++) {
+    if (i % 2 === 0) pairs.push({ white: sans[i], black: '' })
+    else pairs[pairs.length - 1].black = sans[i]
+  }
+  return pairs
+}
+
+// Position (FEN + lastMove) after playing openingFilterMoves
+function getPositionFromFilterMoves(filterMoves) {
+  if (!filterMoves?.length) return { fen: STARTING_FEN, lastMove: null }
+  const sans = filterMoves.map((m) => m.san)
+  const pairs = filterMovesToPairs(sans)
+  return getPositionAtEndOfLine(pairs)
+}
+
+// True if course's first moves match the filter sequence
+function courseMatchesMoveSequence(card, filterMoves) {
+  if (!filterMoves?.length) return true
+  const filterSans = filterMoves.map((m) => m.san)
+  const courseMoves = OPENING_FIRST_5_MOVES[card.title]
+  const courseSans = courseMoves
+    ? courseMoves.flatMap((p) => [p.white, p.black].filter(Boolean))
+    : (() => {
+        const m = (card.firstMove || '').match(/\d+\.\s*(\S+)/)
+        return m ? [m[1]] : []
+      })()
+  if (courseSans.length < filterSans.length) return false
+  return filterSans.every((san, i) => courseSans[i] === san)
+}
+
 const openingCoursesFiltered = computed(() => {
   const q = (openingSearchQuery.value || '').trim().toLowerCase()
   let list = q ? openingCourseCards.filter((c) => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q)) : [...openingCourseCards]
+  const filterMoves = openingFilterMoves.value
+  if (filterMoves.length) {
+    list = list.filter((c) => courseMatchesMoveSequence(c, filterMoves))
+  }
+  const keywords = openingKeywordTags.value
+  if (keywords.length) {
+    const lower = keywords.map((k) => (k || '').toLowerCase())
+    list = list.filter((c) => {
+      const t = (c.title || '').toLowerCase()
+      const d = (c.description || '').toLowerCase()
+      return lower.every((kw) => t.includes(kw) || d.includes(kw))
+    })
+  }
   if (openingSortBy.value === 'name') {
     list = list.slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''))
   } else if (openingSortBy.value === 'lines') {
     list = list.slice().sort((a, b) => (b.linesCount ?? 0) - (a.linesCount ?? 0))
   } else if (openingSortBy.value === 'type') {
     list = list.slice().sort((a, b) => (a.type || '').localeCompare(b.type || ''))
+  } else if (openingSortBy.value === 'popular') {
+    list = list.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
   }
   return list
 })
@@ -3384,54 +3859,158 @@ function onOpeningFiltersClick() {
   // TODO: open filters modal/sheet
 }
 
-// Opening Courses V1: scroll listener – hide filter strip on scroll down, show on scroll up (guarded to avoid -102)
-function onOpeningContentScroll() {
-  try {
-    const el = coursesContentRef.value
-    if (!el || !isOpeningCoursesV1.value) return
-    const current = typeof el.scrollTop === 'number' ? el.scrollTop : 0
-    if (current > lastOpeningScrollTop.value && current > 60) {
-      openingFilterStripHidden.value = true
-    } else if (current < lastOpeningScrollTop.value) {
-      openingFilterStripHidden.value = false
-    }
-    lastOpeningScrollTop.value = current
-  } catch (_) {}
+// Remove move at index and all after; sync board to new position
+function removeOpeningFilterMoveAt(index) {
+  clearOpeningCardPreviewTimeout()
+  clearOpeningAutoMove()
+  selectedOpeningCardId.value = null
+  const next = openingFilterMoves.value.slice(0, index)
+  openingFilterMoves.value = next
+  const { fen, lastMove: last } = getPositionFromFilterMoves(next)
+  pieces.value = parseFEN(fen)
+  lastMove.value = last
+  selectedSquare.value = null
+  checkmateHighlight.value = null
 }
-watch(
-  () => [isOpeningCoursesV1.value, coursesContentRef.value],
-  ([isV1, ref]) => {
-    const el = ref
-    if (!isV1 || !el) {
-      openingFilterStripHidden.value = false
+
+// Parse search text as SAN (strip "1.", "1...", "2.", etc.)
+function parseSearchAsSan(text) {
+  const t = (text || '').trim().replace(/^\d+\.{1,3}\s*/, '')
+  return t || null
+}
+
+// On search Enter: try to add as move chip (e.g. e4 → 1.e4), else add as keyword tag
+function onOpeningSearchEnter() {
+  const q = (openingSearchQuery.value || '').trim()
+  if (!q) return
+  const san = parseSearchAsSan(q)
+  if (san) {
+    const chess = new Chess()
+    const filterMoves = openingFilterMoves.value
+    for (const m of filterMoves) {
+      const ok = chess.move(m.san)
+      if (!ok) break
+    }
+    const result = chess.move(san)
+    if (result) {
+      clearOpeningCardPreviewTimeout()
+      clearOpeningAutoMove()
+      selectedOpeningCardId.value = null
+      const n = filterMoves.length
+      const moveNum = Math.floor(n / 2) + 1
+      const display = n % 2 === 0 ? `${moveNum}.${result.san}` : `${moveNum}...${result.san}`
+      openingFilterMoves.value = [...filterMoves, { san: result.san, display }]
+      const { fen, lastMove: last } = getPositionFromFilterMoves(openingFilterMoves.value)
+      pieces.value = parseFEN(fen)
+      lastMove.value = last
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+      openingSearchQuery.value = ''
       return
     }
-    try {
-      lastOpeningScrollTop.value = el.scrollTop ?? 0
-      el.addEventListener('scroll', onOpeningContentScroll, { passive: true })
-    } catch (_) {}
-    return () => {
-      try {
-        el.removeEventListener('scroll', onOpeningContentScroll)
-      } catch (_) {}
+  }
+  // Add as keyword tag (filter by title/description)
+  if (!openingKeywordTags.value.includes(q)) {
+    openingKeywordTags.value = [...openingKeywordTags.value, q]
+  }
+  openingSearchQuery.value = ''
+}
+
+function removeOpeningKeywordTag(index) {
+  openingKeywordTags.value = openingKeywordTags.value.filter((_, i) => i !== index)
+}
+
+// Chips row: overflow state for gradient + chevron; scroll by 70% on chevron click
+const openingChipsScrollRef = ref(null)
+const chipsOverflowRight = ref(false)
+const CHIPS_SCROLL_PERCENT = 0.7
+
+function updateChipsOverflow() {
+  const el = openingChipsScrollRef.value
+  if (!el) {
+    chipsOverflowRight.value = false
+    return
+  }
+  const canScrollRight = el.scrollWidth > el.clientWidth && el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+  chipsOverflowRight.value = canScrollRight
+}
+
+function scrollChipsRight() {
+  const el = openingChipsScrollRef.value
+  if (!el || !chipsOverflowRight.value) return
+  const delta = Math.max(1, Math.floor(el.clientWidth * CHIPS_SCROLL_PERCENT))
+  el.scrollTo({ left: el.scrollLeft + delta, behavior: 'smooth' })
+}
+
+function clearAllOpeningFilters() {
+  clearOpeningCardPreviewTimeout()
+  clearOpeningAutoMove()
+  selectedOpeningCardId.value = null
+  openingFilterMoves.value = []
+  openingKeywordTags.value = []
+  const { fen, lastMove: last } = getPositionFromFilterMoves([])
+  pieces.value = parseFEN(fen)
+  lastMove.value = last
+  selectedSquare.value = null
+  checkmateHighlight.value = null
+  nextTick(updateChipsOverflow)
+}
+
+watch(
+  () => [openingFilterMoves.value.length, openingKeywordTags.value.length],
+  () => nextTick(updateChipsOverflow)
+)
+let chipsResizeObserver = null
+watch(
+  openingChipsScrollRef,
+  (el) => {
+    if (chipsResizeObserver) {
+      chipsResizeObserver.disconnect()
+      chipsResizeObserver = null
+    }
+    if (el && typeof ResizeObserver !== 'undefined') {
+      chipsResizeObserver = new ResizeObserver(() => updateChipsOverflow())
+      chipsResizeObserver.observe(el)
     }
   },
-  { immediate: true }
+  { flush: 'post' }
 )
+onUnmounted(() => {
+  if (chipsResizeObserver && openingChipsScrollRef.value) {
+    chipsResizeObserver.disconnect()
+  }
+})
+function onOpeningChipsScroll() {
+  updateChipsOverflow()
+}
 
-// Clear chapter hover when entering Opening Courses V1 so board sync uses only the selected card
+function onOpeningContentScroll() {
+  try {
+    const el = openingV1ScrollWrapRef.value
+    if (!el || !isOpeningCoursesV1.value) return
+    const st = typeof el.scrollTop === 'number' ? el.scrollTop : 0
+    const delta = st - lastOpeningScrollTop
+    openingSearchY.value = clamp(openingSearchY.value - delta, -openingSearchH.value, 0)
+    lastOpeningScrollTop = st
+  } catch (_) {
+    lastOpeningScrollTop = 0
+  }
+}
+
+// Clear chapter hover when entering Opening Courses V1; measure search bar height for scroll-linked Y
 watch(isOpeningCoursesV1, (isV1) => {
   if (isV1) {
     clearHoveredChapterLine()
+    nextTick(measureOpeningSearchH)
   }
 }, { immediate: true })
 
 // Dedicated watcher: when an opening card is selected on Opening Courses V1, sync the main board to that opening’s first 3 moves.
-// CRASH DEBUG: If the app crashes on /#/learn/opening-courses-v1 (Error Code -102), see .cursor/rules/crash-debug.mdc and check squareToPercent, playOpeningThirdMove, optional chaining for moves[2], and clearOpeningAutoMove in onUnmounted.
-// Fallback: if OPENING_FIRST_3_MOVES[card.title] is missing, build a 1-move array from card.firstMove (e.g. "1. e4" → e4).
+// If Error -102 on /#/courses/opening-courses-v1: apply .cursor/rules/opening-courses-v1-crash-102.mdc
+// Fallback: if OPENING_FIRST_5_MOVES[card.title] is missing, build a 1-move array from card.firstMove (e.g. "1. e4" → e4).
 function getOpeningMovesForCard(card) {
   if (!card) return null
-  const fromMap = OPENING_FIRST_3_MOVES[card.title]
+  const fromMap = OPENING_FIRST_5_MOVES[card.title]
   if (fromMap?.length) return fromMap
   const m = (card.firstMove || '').match(/\d+\.\s*(\S+)/)
   if (m) return [{ white: m[1], black: '' }]
@@ -3439,19 +4018,80 @@ function getOpeningMovesForCard(card) {
 }
 // Opening Courses V1: show only first 2 moves on the board.
 const OPENING_BOARD_MOVE_COUNT = 2
+// How long to show card preview before resetting board to filter position (ms)
+const OPENING_CARD_PREVIEW_DURATION_MS = 2000
+let openingCardPreviewResetTimeoutId = null
+let openingCardPreviewStartTime = null // When the preview animation finished and timer started
+
+// Reset board to current filter position (or starting position if no filter)
+function resetBoardToFilterPosition() {
+  const { fen, lastMove: last } = getPositionFromFilterMoves(openingFilterMoves.value)
+  pieces.value = parseFEN(fen)
+  lastMove.value = last
+  selectedSquare.value = null
+  checkmateHighlight.value = null
+}
+
+function clearOpeningCardPreviewTimeout() {
+  if (openingCardPreviewResetTimeoutId != null) {
+    clearTimeout(openingCardPreviewResetTimeoutId)
+    openingCardPreviewResetTimeoutId = null
+  }
+}
+
+// Start the reset timer (called after animation completes)
+function startOpeningCardResetTimer(delayMs) {
+  clearOpeningCardPreviewTimeout()
+  openingCardPreviewStartTime = Date.now()
+  // Do not start timer while selected card is hovered – board stays on preview until hover ends
+  if (!selectedOpeningCardHovered.value) {
+    openingCardPreviewResetTimeoutId = setTimeout(() => {
+      resetBoardToFilterPosition()
+    }, delayMs)
+  }
+}
+
+// Selected card hover: keep board on preview, no reset until pointer leaves
+function onOpeningCardHover(cardId) {
+  if (cardId !== selectedOpeningCardId.value) return
+  selectedOpeningCardHovered.value = true
+  clearOpeningCardPreviewTimeout()
+}
+
+// Selected card unhover: reset board now (if ≥2s elapsed) or after remaining time
+function onOpeningCardUnhover(cardId) {
+  if (cardId !== selectedOpeningCardId.value) return
+  // Ignore spurious pointerleave that can fire during/right after click
+  if (Date.now() - openingCardSelectionTime < OPENING_CARD_IGNORE_UNHOVER_MS) return
+  selectedOpeningCardHovered.value = false
+  if (openingCardPreviewStartTime == null) return
+  clearOpeningCardPreviewTimeout()
+  const elapsed = Date.now() - openingCardPreviewStartTime
+  if (elapsed >= OPENING_CARD_PREVIEW_DURATION_MS) {
+    resetBoardToFilterPosition()
+  } else {
+    const remaining = OPENING_CARD_PREVIEW_DURATION_MS - elapsed
+    openingCardPreviewResetTimeoutId = setTimeout(() => {
+      resetBoardToFilterPosition()
+    }, remaining)
+  }
+}
+
 watch(
   () => (isOpeningCoursesV1.value ? selectedOpeningCardId.value : null),
   (id) => {
     try {
       clearOpeningAutoMove()
+      clearOpeningCardPreviewTimeout()
+      openingCardPreviewStartTime = null
+      if (id == null) selectedOpeningCardHovered.value = false
       if (!isOpeningCoursesV1.value) return
+      // Card deselected: reset board to filter position (don't touch filter moves)
       if (id == null) {
-        pieces.value = parseFEN(STARTING_FEN)
-        lastMove.value = null
-        selectedSquare.value = null
-        checkmateHighlight.value = null
+        resetBoardToFilterPosition()
         return
       }
+      // Card selected: show preview, then reset board after delay (keep card selected, don't touch filter moves)
       const card = openingCourseCards.find((c) => c.id === id)
       const moves = getOpeningMovesForCard(card)
       if (moves?.length) {
@@ -3484,6 +4124,15 @@ watch(
                 openingCardAnimatingMove.value = null
               }
             }, OPENING_AUTO_MOVE_DELAY_MS)
+            // Start reset timer after animation completes (hover-aware)
+            const totalAnimTime = OPENING_AUTO_MOVE_DELAY_MS + OPENING_AUTO_MOVE_DURATION_MS
+            setTimeout(() => {
+              try {
+                startOpeningCardResetTimer(OPENING_CARD_PREVIEW_DURATION_MS)
+              } catch (_) {
+                openingCardAnimatingMove.value = null
+              }
+            }, totalAnimTime)
           } else {
             const firstTwo = moves.slice(0, OPENING_BOARD_MOVE_COUNT)
             const { fen: fenAfterTwo, lastMove: last } = getPositionAtEndOfLine(firstTwo)
@@ -3491,6 +4140,12 @@ watch(
             lastMove.value = last
             selectedSquare.value = null
             checkmateHighlight.value = null
+            // Start reset timer immediately (hover-aware)
+            try {
+              startOpeningCardResetTimer(OPENING_CARD_PREVIEW_DURATION_MS)
+            } catch (_) {
+              openingCardAnimatingMove.value = null
+            }
           }
         } catch (_) {
           pieces.value = parseFEN(STARTING_FEN)
@@ -3523,7 +4178,7 @@ const OPENING_COURSE_CARD_VARIANT = 'square-outline'
 const OPENING_COURSE_CARD_HOVER_VARIANT = 'v2'
 const v22PlayingSectionId = ref(null) // when set, this section's video shows pause and is sticky
 // V2.3: duplicate of V2.2 + sticky chapter title when expanded. V2.4: same layout, real course content.
-const isVideoV2_3OrV24 = computed(() => route.path === '/learn/v2.3' || route.path === '/learn/v2.4')
+const isVideoV2_3OrV24 = computed(() => route.path === '/courses/v2.3' || route.path === '/courses/v2.4' || route.path === '/courses/v4' || route.path === '/courses/v5' || route.path === '/courses/v6' || route.path === '/courses/v7')
 const v23PlayingSectionId = ref(null)
 const v23SectionItemRefs = ref(Object.create(null))
 function setV23SectionItemRef(sectionId, el) {
@@ -3553,7 +4208,7 @@ function setupV23ScrollListener() {
   }
 }
 
-const isVideoV3 = computed(() => route.path === '/learn/v3')
+const isVideoV3 = computed(() => route.path === '/courses/v3')
 const expandedSection = computed(() => {
   const id = [...expandedSectionIds.value][0]
   return id ? (courseSections.value.find((s) => s.id === id) ?? null) : null
@@ -3901,16 +4556,216 @@ function setupV3IntersectionObserver() {
 
 // Video section: show in panel when Video button clicked (V1); in V2 always visible per chapter
 const showVideoSection = ref(false)
+/** Set to true to hide all videos everywhere (course + line view). */
+const hideVideosForAll = true
+const showVideoSectionVisible = computed(() => !hideVideosForAll && showVideoSection.value)
 // V2.4 Ready to Practice: video hidden by default; user can turn it on via toolbar
 const readyLineVideoVisible = ref(false)
 /** Line view: video section is visible (for resize/scroll logic). V2.4 ready uses readyLineVideoVisible. */
 const lineViewVideoSectionVisible = computed(() => {
-  if (isVideoV2_4.value && currentLineType.value === 'ready') return readyLineVideoVisible.value
+  if (hideVideosForAll) return false
+  if (isVideoV2_4OrV5.value && currentLineType.value === 'ready') return readyLineVideoVisible.value
   return showVideoSection.value
 })
 const videoSectionRef = ref(null)
 const coursesContentRef = ref(null)
 const videoSectionHeightPx = ref(270) // for sticky chapter; updated when video visible or size changes
+
+// V4/V5: Scroll-linked tabs (one CSS var). Chapters are CSS-only sticky. No JS for "active" chapter.
+const COURSE_HEADER_H_PX = 0
+const courseTabsH = ref(48)
+const courseTabsWrapRef = ref(null)
+let tabsY = 0 // -tabsH to 0 (0 = fully visible)
+let lastScrollTop = 0
+let tabsStickyStartScrollTop = 0 // scrollTop at which tabs hit sticky line (layout-aware gate)
+let tabsScrollRafId = null
+function computeTabsStickyStart() {
+  const scrollEl = coursesContentRef.value
+  const tabsEl = courseTabsWrapRef.value
+  if (!scrollEl || !tabsEl || !isVideoV4OrV5OrV6.value) return
+  const scrollTop = scrollEl.scrollTop
+  const tabsRect = tabsEl.getBoundingClientRect()
+  const scrollRect = scrollEl.getBoundingClientRect()
+  tabsStickyStartScrollTop = scrollTop + (tabsRect.top - scrollRect.top)
+}
+function measureCourseTabsHeight() {
+  requestAnimationFrame(() => {
+    if (courseTabsWrapRef.value) {
+      const h = courseTabsWrapRef.value.offsetHeight || 48
+      courseTabsH.value = h
+      tabsY = clamp(tabsY, -h, 0)
+      const el = coursesContentRef.value
+      if (el && isVideoV4OrV5OrV6.value) {
+        el.style.setProperty('--tabs-h', h + 'px')
+        el.style.setProperty('--tabs-y', tabsY + 'px')
+        el.style.setProperty('--tabs-visible', (tabsY + h) + 'px')
+      }
+      computeTabsStickyStart()
+    }
+  })
+}
+function onCoursesContentScroll() {
+  if (!isVideoV4OrV5OrV6.value) return
+  if (tabsScrollRafId != null) return
+  tabsScrollRafId = requestAnimationFrame(() => {
+    tabsScrollRafId = null
+    const el = coursesContentRef.value
+    if (!el) return
+    const H = courseTabsH.value
+    const st = typeof el.scrollTop === 'number' ? el.scrollTop : 0
+    if (st < tabsStickyStartScrollTop) {
+      lastScrollTop = st
+      tabsY = 0
+      el.style.setProperty('--tabs-y', '0px')
+      el.style.setProperty('--tabs-visible', H + 'px')
+      if (courseTabsActive.value === 'content') scheduleFooterChapterUpdate()
+      if (courseTabsActive.value === 'stats') updateSectionLineMasks()
+      return
+    }
+    const delta = st - lastScrollTop
+    lastScrollTop = st
+    tabsY = clamp(tabsY - delta, -H, 0)
+    el.style.setProperty('--tabs-y', tabsY + 'px')
+    el.style.setProperty('--tabs-visible', (tabsY + H) + 'px')
+    if (courseTabsActive.value === 'content') scheduleFooterChapterUpdate()
+    if (courseTabsActive.value === 'stats') updateSectionLineMasks()
+  })
+}
+// Footer: which chapter name to show (throttled, not used for sticky)
+const currentChapterNameInFooter = ref('')
+const FOOTER_CHAPTER_TOP_THRESHOLD = 80
+let footerChapterUpdateTimer = null
+const FOOTER_CHAPTER_UPDATE_THROTTLE_MS = 150
+function scheduleFooterChapterUpdate() {
+  if (footerChapterUpdateTimer != null) return
+  footerChapterUpdateTimer = setTimeout(() => {
+    footerChapterUpdateTimer = null
+    updateCurrentChapterNameForFooter()
+  }, FOOTER_CHAPTER_UPDATE_THROTTLE_MS)
+}
+function updateCurrentChapterNameForFooter() {
+  if (!isVideoV2_4OrV5.value || !coursesContentRef.value) {
+    currentChapterNameInFooter.value = ''
+    return
+  }
+  const container = coursesContentRef.value
+  const containerRect = container.getBoundingClientRect()
+  const sections = courseSections.value
+  if (!sections.length) {
+    currentChapterNameInFooter.value = ''
+    return
+  }
+  const refs = v23SectionItemRefs.value
+  const threshold = containerRect.top + FOOTER_CHAPTER_TOP_THRESHOLD
+  let candidate = sections[0]
+  for (const section of sections) {
+    const el = refs[section.id]
+    if (!el) continue
+    const rect = el.getBoundingClientRect()
+    if (rect.top <= threshold) candidate = section
+  }
+  currentChapterNameInFooter.value = candidate.name || ''
+}
+let courseTabsScrollCleanup = null
+function setupCourseTabsScrollListener() {
+  courseTabsScrollCleanup?.()
+  courseTabsScrollCleanup = null
+  if (!coursesContentRef.value) return
+  const el = coursesContentRef.value
+  lastScrollTop = el.scrollTop
+  let addedScrollListener = false
+  let tabsResizeObserver = null
+  if (isVideoV4OrV5OrV6.value) {
+    el.style.setProperty('--header-h', COURSE_HEADER_H_PX + 'px')
+    el.style.setProperty('--tabs-h', courseTabsH.value + 'px')
+    el.style.setProperty('--tabs-y', tabsY + 'px')
+    el.style.setProperty('--tabs-visible', (tabsY + courseTabsH.value) + 'px')
+    computeTabsStickyStart()
+    el.addEventListener('scroll', onCoursesContentScroll, { passive: true })
+    addedScrollListener = true
+    tabsResizeObserver = new ResizeObserver(() => {
+      computeTabsStickyStart()
+      if (courseTabsActive.value === 'stats') requestAnimationFrame(updateSectionLineMasks)
+    })
+    tabsResizeObserver.observe(el)
+  }
+  courseTabsScrollCleanup = () => {
+    if (tabsResizeObserver && el) {
+      tabsResizeObserver.disconnect()
+      tabsResizeObserver = null
+    }
+    if (addedScrollListener && el) el.removeEventListener('scroll', onCoursesContentScroll)
+    if (tabsScrollRafId != null) {
+      cancelAnimationFrame(tabsScrollRafId)
+      tabsScrollRafId = null
+    }
+    if (footerChapterUpdateTimer != null) {
+      clearTimeout(footerChapterUpdateTimer)
+      footerChapterUpdateTimer = null
+    }
+    courseTabsScrollCleanup = null
+  }
+}
+
+// V4: line ends at last card checkmark – Learn tab uses these refs; Practice tab uses separate refs below
+const sectionLineWrapRefs = ref(Object.create(null))
+const sectionLastCardColRefs = ref(Object.create(null))
+function setSectionLineWrapRef(sectionId, el) {
+  if (el) sectionLineWrapRefs.value[sectionId] = el
+  else delete sectionLineWrapRefs.value[sectionId]
+}
+function setSectionLastCardColRef(sectionId, el) {
+  if (el) sectionLastCardColRefs.value[sectionId] = el
+  else delete sectionLastCardColRefs.value[sectionId]
+}
+// Practice tab: own refs so line mask runs independently (copy of Learn logic)
+const practiceSectionLineWrapRefs = ref(Object.create(null))
+const practiceSectionLastCardColRefs = ref(Object.create(null))
+function setPracticeSectionLineWrapRef(sectionId, el) {
+  if (el) practiceSectionLineWrapRefs.value[sectionId] = el
+  else delete practiceSectionLineWrapRefs.value[sectionId]
+}
+function setPracticeSectionLastCardColRef(sectionId, el) {
+  if (el) practiceSectionLastCardColRefs.value[sectionId] = el
+  else delete practiceSectionLastCardColRefs.value[sectionId]
+}
+function applySectionLineMask(wraps, cols) {
+  const lineTopOffset = 28
+  for (const sectionId of Object.keys(wraps)) {
+    const wrap = wraps[sectionId]
+    const lastCol = cols[sectionId]
+    const lineEl = wrap?.querySelector?.('.v23-section-timeline-wrap__line')
+    if (!lineEl) continue
+    if (!wrap || !lastCol) {
+      lineEl.style.removeProperty('top')
+      lineEl.style.removeProperty('bottom')
+      lineEl.style.removeProperty('height')
+      lineEl.style.removeProperty('--section-line-mask-end')
+      lineEl.style.removeProperty('mask-image')
+      lineEl.style.removeProperty('-webkit-mask-image')
+      continue
+    }
+    const wrapRect = wrap.getBoundingClientRect()
+    const colRect = lastCol.getBoundingClientRect()
+    const lastCheckY = colRect.top + colRect.height / 2
+    const lineTopY = wrapRect.top + lineTopOffset
+    const heightPx = Math.max(0, lastCheckY - lineTopY)
+    lineEl.style.setProperty('top', lineTopOffset + 'px')
+    lineEl.style.setProperty('bottom', 'auto')
+    lineEl.style.setProperty('height', heightPx + 'px')
+    lineEl.style.removeProperty('--section-line-mask-end')
+    lineEl.style.removeProperty('mask-image')
+    lineEl.style.removeProperty('-webkit-mask-image')
+  }
+}
+function updateSectionLineMasks() {
+  if (!isVideoV2_4OrV5.value) return
+  if (courseTabsActive.value === 'content') {
+    applySectionLineMask(sectionLineWrapRefs.value, sectionLastCardColRefs.value)
+  } else if (courseTabsActive.value === 'stats') {
+    applySectionLineMask(practiceSectionLineWrapRefs.value, practiceSectionLastCardColRefs.value)
+  }
+}
 
 const VIDEO_ASPECT = 16 / 9
 
@@ -4181,7 +5036,7 @@ function teardownVideoSectionResizeObserver() {
 
 const openVideo = () => {
   // V2.4 Ready to Practice: use separate toggle (hidden by default)
-  if (isVideoV2_4.value && panelView.value === 'line' && currentLineType.value === 'ready') {
+  if (isVideoV2_4OrV5.value && panelView.value === 'line' && currentLineType.value === 'ready') {
     readyLineVideoVisible.value = !readyLineVideoVisible.value
     return
   }
@@ -4336,6 +5191,39 @@ watch([isVideoV2_3OrV24, coursesContentRef], () => {
   setupV23ScrollListener()
 }, { immediate: true })
 
+watch([isVideoV2_4OrV5, coursesContentRef], () => {
+  setupCourseTabsScrollListener()
+  if (isVideoV2_4OrV5.value) {
+    nextTick(measureCourseTabsHeight)
+    nextTick(updateCurrentChapterNameForFooter)
+  } else {
+    currentChapterNameInFooter.value = ''
+  }
+}, { immediate: true })
+
+/* Re-run line mask when switching to Practice tab so vertical line is masked under last line card (same as Learn). */
+let practiceTabMaskTimer = null
+watch([courseTabsActive, courseSectionsReadyForReview], () => {
+  if (practiceTabMaskTimer) {
+    clearTimeout(practiceTabMaskTimer)
+    practiceTabMaskTimer = null
+  }
+  if (courseTabsActive.value === 'stats' && isVideoV2_4OrV5.value) {
+    nextTick(() => {
+      nextTick(() => {
+        requestAnimationFrame(() => {
+          updateSectionLineMasks()
+          requestAnimationFrame(updateSectionLineMasks)
+        })
+      })
+    })
+    practiceTabMaskTimer = setTimeout(() => {
+      practiceTabMaskTimer = null
+      updateSectionLineMasks()
+    }, 200)
+  }
+}, { immediate: true })
+
 onMounted(() => {
   document.addEventListener('mousemove', handleDragMove)
   document.addEventListener('mouseup', handleDragEnd)
@@ -4343,12 +5231,30 @@ onMounted(() => {
   document.addEventListener('touchend', handleDragEnd)
   nextTick(setupV3ScrollListener)
   nextTick(setupV23ScrollListener)
+  nextTick(() => requestAnimationFrame(updateSectionLineMasks))
+  if (isVideoV2_4OrV5.value) {
+    nextTick(measureCourseTabsHeight)
+    nextTick(updateCurrentChapterNameForFooter)
+  }
+})
+
+onUpdated(() => {
+  nextTick(() => requestAnimationFrame(updateSectionLineMasks))
 })
 
 onUnmounted(() => {
+  if (openingV1ReadyTimer) {
+    clearTimeout(openingV1ReadyTimer)
+    openingV1ReadyTimer = null
+  }
+  if (practiceTabMaskTimer) {
+    clearTimeout(practiceTabMaskTimer)
+    practiceTabMaskTimer = null
+  }
   clearOpeningAutoMove()
   v23ScrollCleanup?.()
   v3ScrollCleanup?.()
+  courseTabsScrollCleanup?.()
   teardownVideoSectionResizeObserver()
   document.removeEventListener('mousemove', handleDragMove)
   document.removeEventListener('mouseup', handleDragEnd)
@@ -4544,62 +5450,137 @@ onUnmounted(() => {
 
           <!-- Content: Courses view (course card, progress, sections, lines) or Line view (empty for now) -->
           <template v-if="panelView === 'courses'">
-        <!-- Opening Courses V1: coach fixed at top; filter + cards scroll. Filter hides on scroll down, slides in from behind coach on scroll up. -->
+        <!-- Opening Courses V1: coach fixed at top; filter + cards scroll. Deferred so layout only renders after first paint (avoids -102). -->
         <template v-if="isOpeningCoursesV1">
-          <div class="opening-v1-layout">
-            <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
-              <div class="coach-new-opening__inner coach-feedback">
-                <div class="coach-new-opening__coach">
-                  <div class="coach-new-opening__avatar-wrap">
-                    <img :src="baseUrl + 'icons/misc/coach-avatar-opening.png'" alt="" class="coach-new-opening__avatar" width="96" height="96" />
+          <div v-if="openingV1Ready" class="opening-v1-layout">
+            <!-- Coach only; overlay is sibling below so it’s not clipped by this wrap -->
+            <div class="opening-v1-coach-wrap">
+              <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
+                <div class="coach-new-opening__inner coach-feedback">
+                  <div class="coach-new-opening__coach">
+                    <div class="coach-new-opening__avatar-wrap">
+                      <img :src="baseUrl + 'icons/misc/coach-avatar-opening.png'" alt="" class="coach-new-opening__avatar" width="96" height="96" />
+                    </div>
+                    <div class="coach-new-opening__caret" aria-hidden="true">
+                      <img :src="baseUrl + 'icons/misc/bubble-tip-opening.png'" alt="" width="14" height="22" class="coach-new-opening__caret-img" />
+                    </div>
                   </div>
-                  <div class="coach-new-opening__caret" aria-hidden="true">
-                    <img :src="baseUrl + 'icons/misc/bubble-tip-opening.png'" alt="" width="14" height="22" class="coach-new-opening__caret-img" />
+                  <div class="coach-new-opening__message-wrap">
+                    <div class="coach-new-opening__bubble">
+                      <div class="coach-new-opening__message">
+                        <div class="coach-new-opening__message-inner">
+                          <p class="coach-new-opening__text">Make your first move or choose an opening you want to study!</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div class="coach-new-opening__message-wrap">
-                  <div class="coach-new-opening__bubble">
-                    <div class="coach-new-opening__message">
-                      <div class="coach-new-opening__message-inner">
-                        <p class="coach-new-opening__text">Make your first move or choose an opening you want to learn!</p>
+              </section>
+            </div>
+            <!-- Opening V1: one scroll container (overflow-y:auto), one search bar. Headroom: visible at top; scroll up show, scroll down hide. -->
+            <div
+              ref="openingV1ScrollWrapRef"
+              class="opening-v1-scroll-wrap"
+              @scroll.passive="onOpeningContentScroll"
+            >
+              <div
+                ref="openingSearchRef"
+                class="opening-filter opening-filter--sticky-under-coach"
+                :class="{ 'is-offscreen': openingSearchY < 0 }"
+                :style="{ '--opening-search-y': `${openingSearchY}px` }"
+                role="search"
+                aria-label="Search and filter courses"
+              >
+                <div class="opening-search-panel">
+                  <div class="opening-search-panel__row opening-search-panel__row--inputs">
+                    <div class="opening-search-panel__search">
+                      <SearchInput
+                        v-model="openingSearchQuery"
+                        placeholder="Search your courses"
+                        aria-label="Search your courses"
+                        @enter="onOpeningSearchEnter"
+                      />
+                    </div>
+                    <CcButton variant="secondary" size="medium" custom-img-src="/icons/sliders.png" class="opening-search-panel__filters-btn" @click="onOpeningFiltersClick">Filters</CcButton>
+                  </div>
+                  <div class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
+                    <div v-if="openingFilterMoves.length || openingKeywordTags.length" class="opening-chips-row" role="list" aria-label="Filter chips">
+                      <div class="opening-chips-scroll-wrap">
+                        <div
+                          ref="openingChipsScrollRef"
+                          class="opening-move-chips-scroll"
+                          role="list"
+                          tabindex="-1"
+                          @scroll="onOpeningChipsScroll"
+                        >
+                          <div class="opening-move-chips">
+                            <button
+                              v-for="(item, idx) in openingFilterMoves"
+                              :key="'move-' + idx"
+                              type="button"
+                              class="opening-move-chip"
+                              role="listitem"
+                              :aria-label="`Remove move ${item.display}`"
+                              @click="removeOpeningFilterMoveAt(idx)"
+                            >
+                              <span class="opening-move-chip__label">{{ item.display }}</span>
+                              <span class="opening-move-chip__x" aria-hidden="true">×</span>
+                            </button>
+                            <button
+                              v-for="(tag, idx) in openingKeywordTags"
+                              :key="'tag-' + idx"
+                              type="button"
+                              class="opening-move-chip opening-move-chip--keyword"
+                              role="listitem"
+                              :aria-label="`Remove tag ${tag}`"
+                              @click="removeOpeningKeywordTag(idx)"
+                            >
+                              <span class="opening-move-chip__label">{{ tag }}</span>
+                              <span class="opening-move-chip__x" aria-hidden="true">×</span>
+                            </button>
+                          </div>
+                        </div>
+                        <div v-if="chipsOverflowRight" class="opening-chips-fade" aria-hidden="true" />
+                      </div>
+                      <div class="opening-chips-actions">
+                        <button
+                          v-if="chipsOverflowRight"
+                          type="button"
+                          class="opening-chips-chevron-btn"
+                          aria-label="Scroll chips right"
+                          @click="scrollChipsRight"
+                        >
+                          <CcIcon name="arrow-chevron-right" variant="glyph" :size="16" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          class="opening-chips-clear-all"
+                          @click="clearAllOpeningFilters"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </div>
+                    <div v-else class="opening-courses-meta-panel" data-name="Course counter and filter">
+                      <span class="opening-courses-meta-panel__count text-small-bold">{{ openingCoursesFiltered.length }} Courses</span>
+                      <div class="opening-courses-meta-panel__sort">
+                        <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
+                          <span class="text-small">Sort by </span><span class="text-small-bold">{{ openingSortLabel }}</span>
+                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
+                        </button>
+                        <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
+                          <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                          <button type="button" role="option" :aria-selected="openingSortBy === 'lines'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'lines'; openingSortOpen = false">Lines</button>
+                          <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">Type</button>
+                          <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </section>
-            <div
-              ref="coursesContentRef"
-              class="opening-v1-scroll"
-            >
-              <div
-                class="opening-filter-strip"
-                :class="{ 'opening-filter-strip--hidden': openingFilterStripHidden }"
-              >
-                <div class="opening-search-panel" data-name="Opening search panel">
-                  <div class="opening-search-panel__row opening-search-panel__row--inputs">
-                    <div class="opening-search-panel__search">
-                      <SearchInput v-model="openingSearchQuery" placeholder="Search your courses" aria-label="Search your courses" />
-                    </div>
-                    <CcButton variant="secondary" size="medium" custom-img-src="/icons/sliders.png" class="opening-search-panel__filters-btn" @click="onOpeningFiltersClick">Filters</CcButton>
-                  </div>
-                </div>
-                <div class="opening-courses-meta-panel" data-name="Course counter and filter">
-                  <span class="opening-courses-meta-panel__count text-small-bold">{{ openingCoursesFiltered.length }} Courses</span>
-                  <div class="opening-courses-meta-panel__sort">
-                    <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
-                      <span class="text-small">Sort by </span><span class="text-small-bold">{{ openingSortLabel }}</span>
-                      <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
-                    </button>
-                    <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
-                      <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
-                      <button type="button" role="option" :aria-selected="openingSortBy === 'lines'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'lines'; openingSortOpen = false">Lines</button>
-                      <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">Type</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="opening-course-cards-list" data-name="Opening course cards">
+              <div class="opening-v1-scroll">
+                <div class="opening-course-cards-list" data-name="Opening course cards">
             <article
               v-for="card in openingCoursesFiltered"
               :key="card.id"
@@ -4607,7 +5588,8 @@ onUnmounted(() => {
               :class="[
                 `opening-course-card--variant-${OPENING_COURSE_CARD_VARIANT}`,
                 `opening-course-card--hover-${OPENING_COURSE_CARD_HOVER_VARIANT}`,
-                { 'opening-course-card--selected': OPENING_COURSE_CARD_VARIANT === 'full-card-outline' && selectedOpeningCardId === card.id }
+                { 'opening-course-card--selected': OPENING_COURSE_CARD_VARIANT === 'full-card-outline' && isOpeningCardSelected(card.id) },
+                { 'opening-course-card--selected-hover': isOpeningCardSelected(card.id) && selectedOpeningCardHovered }
               ]"
               data-name="Course card"
               :title="card.firstMove"
@@ -4615,13 +5597,15 @@ onUnmounted(() => {
               tabindex="0"
               @click="toggleOpeningCardSelection(card.id)"
               @keydown.enter.space.prevent="toggleOpeningCardSelection(card.id)"
+              @pointerenter="onOpeningCardHover(card.id)"
+              @pointerleave="onOpeningCardUnhover(card.id)"
             >
               <div class="opening-course-card__inner">
                 <div class="opening-course-card__content-wrap">
                   <!-- Cover wrapper: Square-outline variant outlines this only when selected (3px padding, 2px solid). -->
                   <div
                     class="opening-course-card__cover-wrap"
-                    :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && selectedOpeningCardId === card.id }"
+                    :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
                   >
                     <!-- CourseCoverBoard: from Extract Styles for AI zip – 4×4 SVG board + pieces -->
                     <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
@@ -4667,22 +5651,147 @@ onUnmounted(() => {
                 </div>
               </div>
             </article>
+                  </div>
+                </div>
               </div>
-            </div>
           </div>
+          <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
           <!-- Normal content (course card, video, sections) – not Opening Courses V1 -->
           <div
             v-else
             ref="coursesContentRef"
             class="panel-content courses-content"
-            :class="{ 'courses-content--v3': isVideoV3 }"
-            :style="isVideoV3 && v3PaddingBottomPx != null ? { paddingBottom: `${v3PaddingBottomPx}px` } : {}"
+            :class="{ 'courses-content--v3': isVideoV3, 'courses-content--v5': isVideoV5, 'courses-content--v6': isVideoV6OrV7, 'courses-content--tabs-scroll-linked': isVideoV4OrV5OrV6 }"
+            @scroll.passive="onCoursesContentScroll"
+            :style="{
+              ...(isVideoV3 && v3PaddingBottomPx != null ? { paddingBottom: `${v3PaddingBottomPx}px` } : {}),
+              ...(isVideoV4OrV5OrV6 ? { '--header-h': COURSE_HEADER_H_PX + 'px', '--tabs-h': courseTabsH + 'px' } : {})
+            }"
           >
+          <!-- V4: coach hidden (was sticky at top) -->
+          <div v-if="false" class="courses-content__coach-wrap">
+            <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
+              <div class="coach-new-opening__inner coach-feedback">
+                <div class="coach-new-opening__coach">
+                  <div class="coach-new-opening__avatar-wrap">
+                    <img :src="baseUrl + 'icons/misc/coach-avatar-opening.png'" alt="" class="coach-new-opening__avatar" width="96" height="96" />
+                  </div>
+                  <div class="coach-new-opening__caret" aria-hidden="true">
+                    <img :src="baseUrl + 'icons/misc/bubble-tip-opening.png'" alt="" width="14" height="22" class="coach-new-opening__caret-img" />
+                  </div>
+                </div>
+                <div class="coach-new-opening__message-wrap">
+                  <div class="coach-new-opening__bubble">
+                    <div class="coach-new-opening__message">
+                      <div class="coach-new-opening__message-inner">
+                        <p class="coach-new-opening__text">Let's continue — pick a chapter below to keep learning.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+          <!-- V4/V5/V6/V7: tabs at top (Learn / Practice). -->
           <div
+            v-if="!isOpeningCoursesV1 && isVideoV4OrV5OrV6"
+            ref="courseTabsWrapRef"
+            class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--top"
+          >
+            <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
+              <cc-tab-item
+                id="content"
+                :label="courseTabContentLabel"
+                :isActive="courseTabsActive === 'content'"
+                @click="courseTabsActive = 'content'"
+              />
+              <cc-tab-item
+                id="stats"
+                :label="courseTabStatsLabel"
+                :isActive="courseTabsActive === 'stats'"
+                @click="courseTabsActive = 'stats'"
+              />
+            </cc-tab-group>
+          </div>
+          <div
+            v-else-if="!isOpeningCoursesV1"
+            ref="courseTabsWrapRef"
+            class="course-tabs-wrap course-tabs-wrap--top"
+          >
+            <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
+              <cc-tab-item
+                id="content"
+                :label="courseTabContentLabel"
+                :isActive="courseTabsActive === 'content'"
+                @click="courseTabsActive = 'content'"
+              />
+              <cc-tab-item
+                id="stats"
+                :label="courseTabStatsLabel"
+                :isActive="courseTabsActive === 'stats'"
+                @click="courseTabsActive = 'stats'"
+              />
+            </cc-tab-group>
+          </div>
+          <!-- V4/V5/V6/V7: course card in same frame style as line cards (opening-course-card). V7: add completion progress bar. -->
+          <template v-if="isVideoV2_4OrV5">
+            <div v-for="course in courses" :key="course.id" class="course-card-frame" :class="{ 'course-card-frame--with-completion': isVideoV7, 'course-card-frame--v7-practice': isVideoV7 && courseTabsActive === 'stats' }">
+              <article
+                class="opening-course-card opening-course-card--hover-v1 course-card--main"
+                data-name="Course Card"
+              >
+                <div class="opening-course-card__inner">
+                  <div class="opening-course-card__content-wrap">
+                    <div class="opening-course-card__cover-wrap">
+                      <div class="course-cover course-cover--card" data-name="Cover Image" aria-hidden="true">
+                        <div class="course-cover-wrapper" aria-hidden="true">
+                          <img v-if="course.thumbnail" :src="baseUrl + course.thumbnail" class="course-cover-img" alt="" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="opening-course-card__content" :class="{ 'opening-course-card__content--v7-completion': isVideoV7, 'opening-course-card__content--v7-practice': isVideoV7 && courseTabsActive === 'stats' }">
+                      <div class="opening-course-card__title-author">
+                        <h3 class="opening-course-card__title">{{ course.title }}</h3>
+                        <p class="opening-course-card__description course-card--author">{{ course.instructor }}</p>
+                      </div>
+                      <!-- V7 only: Learn tab = course progress %, Practice tab = mastery bar + Av. Level -->
+                      <div v-if="isVideoV7 && courseTabsActive === 'content'" class="course-card-completion" data-name="Completion" role="progressbar" :aria-valuenow="completionPercentRounded" aria-valuemin="0" aria-valuemax="100" aria-label="Course completion">
+                        <div class="course-card-completion__track" data-name="Progress bar">
+                          <div class="course-card-completion__fill" data-name="Progress" :style="{ width: completionFillWidthPx + 'px' }" />
+                        </div>
+                        <p class="course-card-completion__label">{{ completionPercentRounded }}%</p>
+                      </div>
+                      <div v-else-if="isVideoV7 && courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
+                        <div class="course-card-mastery-bar" role="progressbar" :aria-valuenow="masteryLevel" :aria-valuemin="0" :aria-valuemax="masteryTotal" aria-label="Mastery level">
+                          <div class="course-card-mastery-bar__segments">
+                            <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                          </div>
+                          <div class="course-card-mastery-bar__fill" :style="{ width: masteryPercent + '%' }">
+                            <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                          </div>
+                        </div>
+                        <div class="course-card-av-level extra-data-next-level" data-name="Av. Level">
+                          <span class="extra-data-label">Av. Level:</span>
+                          <div class="extra-data-level-chip" data-name="LevelChip">
+                            <CcChip :label="extraDataLevelBadge" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                            <span class="extra-data-level-name">{{ extraDataLevelName }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </template>
+          <!-- Non-V4: original course card layout. V7: add completion progress bar on card (Learn tab). -->
+          <div
+            v-else
             v-for="course in courses"
             :key="course.id"
             class="course-cards"
+            :class="{ 'course-cards--with-completion': isVideoV7 }"
             data-name="Course Cards"
           >
             <span class="course-cards-border" aria-hidden="true" />
@@ -4697,10 +5806,32 @@ onUnmounted(() => {
               </div>
               <p class="course-author">{{ course.instructor }}</p>
             </div>
+            <!-- V7 only: Completion progress (Completion.tsx spec) – bar 192×12px + percentage label -->
+            <div
+              v-if="isVideoV7"
+              class="course-card-completion"
+              data-name="Completion"
+              role="progressbar"
+              :aria-valuenow="completionPercentRounded"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-label="Course completion"
+            >
+              <div class="course-card-completion__track" data-name="Progress bar">
+                <div
+                  class="course-card-completion__fill"
+                  data-name="Progress"
+                  :style="{ width: completionFillWidthPx + 'px' }"
+                />
+              </div>
+              <p class="course-card-completion__label">{{ completionPercentRounded }}%</p>
+            </div>
           </div>
 
+          <!-- Content tab: video + sections list -->
+          <div v-if="!isOpeningCoursesV1" v-show="courseTabsActive === 'content'" class="course-tab-panel" role="tabpanel" aria-label="Content">
           <!-- VideoSection (V1 only) – visible when Video button clicked; under course card; sticky -->
-          <section ref="videoSectionRef" v-show="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && !isVideoV3" class="video-section" data-name="VideoSection">
+          <section ref="videoSectionRef" v-show="showVideoSectionVisible && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && !isVideoV3" class="video-section" data-name="VideoSection">
             <div
               class="video-placeholder-frame"
               :class="{ 'video-placeholder-frame--dragging': isResizingVideo }"
@@ -4731,22 +5862,26 @@ onUnmounted(() => {
               <span class="video-resize-handle" />
             </div>
           </section>
+          </div>
 
-          <!-- Rest of content – hidden when video section is on (V1 only); always shown in V2; hidden on Opening Courses V1 -->
-          <template v-if="(!showVideoSection || isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24 || isVideoV3) && !isOpeningCoursesV1">
-          <!-- Progress – Figma node 2-5697 (specs: layout, spacing, typography, colors) -->
-          <div class="course-progress" data-name="Course Progress Container">
+          <!-- Stats tab: Progress + Mastery. V7 Practice: mastery is on course card; sections list same design as Learn. -->
+          <div v-show="courseTabsActive === 'stats'" class="course-tab-panel course-tab-panel--stats" :class="{ 'course-tab-panel--v7': isVideoV7 }" role="tabpanel" aria-label="Stats">
+          <!-- Progress – hidden on V7 Practice (do not delete) -->
+          <div v-if="!isVideoV7" class="course-progress" data-name="Course Progress Container">
             <div class="course-progress-header" data-name="Header">
               <span class="course-progress-title" data-name="Course Progress">Progress</span>
-              <span class="course-progress-learned">Learned: {{ progressLearned }}/{{ progressTotal }}</span>
+              <span class="course-progress-completed">Completed: {{ progressCompleted }}/{{ progressTotal }}</span>
             </div>
-            <div class="course-progress-bar-track" data-name="v6 Progress Bar" role="progressbar" :aria-valuenow="progressLearned" :aria-valuemin="0" :aria-valuemax="progressTotal" aria-label="Course progress">
+            <div class="course-progress-bar-track" data-name="v6 Progress Bar" role="progressbar" :aria-valuenow="progressCompleted" :aria-valuemin="0" :aria-valuemax="progressTotal" aria-label="Course progress">
               <div class="course-progress-bar-fill" :style="{ width: progressPercent + '%' }" />
             </div>
           </div>
 
-          <!-- Mastery bar – 8 segments, aqua fill, mint gradient overlay; Next Level (same as Line page) in header -->
-          <div class="course-progress course-progress-mastery" :class="{ 'course-progress-mastery--more-expanded': showMoreStats }" data-name="Mastery Container">
+          <!-- Stats cards: kept as local component, omitted from view (set v-if="true" to show) -->
+          <StatsCards v-if="false" :cards="statsCards" />
+
+          <!-- Mastery bar – hidden on V7 Practice (do not delete) -->
+          <div v-if="!isVideoV7" class="course-progress course-progress-mastery" data-name="Mastery Container">
             <div class="course-progress-header" data-name="Header">
               <span class="course-progress-title">Mastery</span>
               <div class="course-progress-mastery-next-level extra-data-next-level" data-name="NextLevel">
@@ -4773,88 +5908,172 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- More / Less – one button: top when collapsed ("More"), bottom when expanded ("Less") -->
-          <div class="more-container">
-            <button
-              v-show="!showMoreStats"
-              type="button"
-              class="more-btn"
-              data-name="V6 Button"
-              aria-label="More"
-              :aria-expanded="showMoreStats"
-              @click="expandMoreStats"
+          <!-- Practice Filter (Level / Variations) – hidden on V7 Practice (do not delete) -->
+          <div v-if="!isVideoV7" class="advanced-stats-header" data-name="Practice Filter">
+            <span class="advanced-stats-header-label">Level</span>
+            <span class="advanced-stats-header-label">Variations</span>
+          </div>
+          <div v-if="!isVideoV7" class="advanced-stats-variations" role="list">
+            <div
+              v-for="item in masteryLevelItems"
+              :key="item.level"
+              class="mastery-level-item"
+              :class="{ 'mastery-level-item--locked': item.locked }"
+              role="listitem"
+              data-name="MasteryLevelItemContainer"
             >
-              <span class="more-btn-text">More</span>
-              <span class="more-btn-icon" aria-hidden="true" data-name="arrow-chevron-bottom">
-                <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="more-chevron" />
-              </span>
-            </button>
-            <!-- Practice Filter (header): Level / Variations -->
-            <div v-show="showMoreStats" class="advanced-stats-header" data-name="Practice Filter">
-              <span class="advanced-stats-header-label">Level</span>
-              <span class="advanced-stats-header-label">Variations</span>
-            </div>
-            <!-- Variations list (L1 Rookie, etc.) -->
-            <div v-show="showMoreStats" class="advanced-stats-variations" role="list">
-              <div
-                v-for="item in masteryLevelItems"
-                :key="item.level"
-                class="mastery-level-item"
-                :class="{ 'mastery-level-item--locked': item.locked }"
-                role="listitem"
-                data-name="MasteryLevelItemContainer"
-              >
-                <div class="mastery-level-item-left">
-                  <CcChip
-                    v-if="!item.locked"
-                    :label="item.level"
-                    color="aqua"
-                    :is-uppercase="false"
-                    label-class="mastery-level-chip-label"
-                  />
-                  <CcChip
-                    v-else
-                    :label="item.level"
-                    color="gray"
-                    variant="translucent"
-                    :is-uppercase="false"
-                    label-class="mastery-level-chip-label"
-                  />
-                  <span class="mastery-level-title">{{ item.title }}</span>
-                </div>
-                <div class="mastery-level-counter-wrap">
-                  <template v-if="item.locked">
-                    <span class="mastery-level-lock" aria-hidden="true">
-                      <CcIcon name="tool-lock-blank" variant="glyph" :size="20" class="mastery-level-lock-icon" />
-                    </span>
-                  </template>
-                  <template v-else>
-                    <span class="mastery-level-counter">{{ item.counter }}</span>
-                  </template>
-                </div>
+              <div class="mastery-level-item-left">
+                <CcChip
+                  v-if="!item.locked"
+                  :label="item.level"
+                  color="aqua"
+                  :is-uppercase="false"
+                  label-class="mastery-level-chip-label"
+                />
+                <CcChip
+                  v-else
+                  :label="item.level"
+                  color="gray"
+                  variant="translucent"
+                  :is-uppercase="false"
+                  label-class="mastery-level-chip-label"
+                />
+                <span class="mastery-level-title">{{ item.title }}</span>
               </div>
-            </div>
-            <!-- Less button – under advanced stats (variations list) when expanded -->
-            <div ref="lessButtonContainerRef" v-show="showMoreStats" class="advanced-stats-expanded" data-name="AdvancedStatsExpanded">
-              <div class="more-btn-wrap-bottom">
-                <button
-                  type="button"
-                  class="more-btn"
-                  data-name="V6 Button"
-                  aria-label="Less"
-                  aria-expanded="true"
-                  @click="showMoreStats = false"
-                >
-                  <span class="more-btn-text">Less</span>
-                  <span class="more-btn-icon" aria-hidden="true">
-                    <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="more-chevron more-chevron-expanded" />
+              <div class="mastery-level-counter-wrap">
+                <template v-if="item.locked">
+                  <span class="mastery-level-lock" aria-hidden="true">
+                    <CcIcon name="tool-lock-blank" variant="glyph" :size="20" class="mastery-level-lock-icon" />
                   </span>
-                </button>
+                </template>
+                <template v-else>
+                  <span class="mastery-level-counter">{{ item.counter }}</span>
+                </template>
               </div>
             </div>
           </div>
+
+          <!-- V7 only: Ready for review – copy Learn tab structure exactly (sticky chapters, vertical line masked at last card) -->
+          <template v-if="isVideoV7 && courseSectionsReadyForReview.length && courseTabsActive === 'stats'">
+            <div class="sections-list">
+              <div
+                v-for="(section, sectionIndex) in courseSectionsReadyForReview"
+                :key="section.id"
+                class="section-item"
+                :data-section-id="section.id"
+                :ref="(el) => setV23SectionItemRef(section.id, el)"
+              >
+                <div class="v23-section-sticky-wrap">
+                  <!-- Same as Learn: timeline wrap + line; use Practice refs so line ends at last check -->
+                  <div
+                    class="v23-section-timeline-wrap v23-section-timeline-wrap--v4 v23-section-timeline-wrap--v6"
+                    :ref="(el) => setPracticeSectionLineWrapRef(section.id, el)"
+                  >
+                    <div class="v23-section-timeline-wrap__line" aria-hidden="true" />
+                    <div
+                      class="chapter-v2 chapter-v2--header chapter-v2--sticky-title-v23 chapter-v2--no-accordion chapter-v2--v4-timeline chapter-v2--v6-timeline-right"
+                      data-name="Chapter V2"
+                    >
+                      <span class="chapter-v2-border" aria-hidden="true" />
+                      <div class="chapter-progress-name">
+                        <div class="chapter-content">
+                          <span class="chapter-title">{{ section.name }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="v23-expandable v23-expandable--open">
+                      <!-- Same as Learn: v22-chapter-video-block then Transition then move-list-wrap -->
+                      <div class="v22-chapter-video-block">
+                      </div>
+                      <Transition name="chapter-moves">
+                        <div v-if="section.readyMoves.length" class="move-list-wrap">
+                          <div class="chapter-line-cards-list-wrapper">
+                            <div
+                              class="opening-course-cards-list chapter-line-cards-list"
+                              role="list"
+                              data-name="Lines"
+                              aria-label="Ready lines"
+                            >
+                              <article
+                                v-for="(move, lineIndex) in section.readyMoves"
+                                :key="`${section.id}-${move.id}`"
+                                class="opening-course-card opening-course-card--hover-v1 chapter-line-card chapter-line-card--v6-timeline-right chapter-line-card--v7-practice move-item--inactive"
+                                :class="[
+                                  lineIndex === section.readyMoves.length - 1 && 'chapter-line-card--last'
+                                ]"
+                                role="listitem"
+                                data-name="Line"
+                                :data-move-id="`${section.id}-${move.id}`"
+                              >
+                                <div
+                                  class="chapter-line-card__body"
+                                  role="button"
+                                  tabindex="0"
+                                  :title="move.text"
+                                  @click="openLine(section, move)"
+                                  @mouseenter="setHoveredChapterLine(section, move)"
+                                  @mouseleave="clearHoveredChapterLine()"
+                                  @keydown.enter.space.prevent="openLine(section, move)"
+                                >
+                                  <div class="opening-course-card__inner">
+                                    <div class="opening-course-card__content-wrap">
+                                      <div class="opening-course-card__cover-wrap">
+                                        <div
+                                          class="chapter-line-card__intro-cover chapter-line-card__intro-cover--v6 chapter-line-card__intro-cover--v7-practice"
+                                          aria-hidden="true"
+                                        >
+                                          <CcIcon
+                                            :name="move.info ? 'document-book-open' : move.quiz ? 'game-type-puzzle' : 'document-book-open'"
+                                            variant="glyph"
+                                            :size="20"
+                                            class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--v6"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div class="opening-course-card__content">
+                                        <div class="chapter-line-card__header-row">
+                                          <div class="chapter-line-card__title-wrap">
+                                            <h3 class="opening-course-card__title">{{ move.text }}</h3>
+                                            <CcChip
+                                              v-if="move.info"
+                                              label="INFO"
+                                              color="gray"
+                                              variant="translucent"
+                                              :is-uppercase="false"
+                                              label-class="move-item-info-chip-label chapter-line-card__info-chip-inline"
+                                            />
+                                          </div>
+                                          <div class="chapter-line-card__header-indicators" />
+                                        </div>
+                                        <p v-if="getLineMoveCount(section, move) > 0" class="chapter-line-card__moves-count">{{ getLineMoveCount(section, move) }} moves</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div
+                                  class="chapter-line-card__timeline-col"
+                                  aria-hidden="true"
+                                  :ref="lineIndex === section.readyMoves.length - 1 ? (el => setPracticeSectionLastCardColRef(section.id, el)) : undefined"
+                                >
+                                  <span class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6">
+                                  </span>
+                                </div>
+                              </article>
+                            </div>
+                          </div>
+                        </div>
+                      </Transition>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </template>
 
+          </div>
+
+          <!-- Content tab: lines row (hidden) + sections list -->
+          <div v-show="courseTabsActive === 'content'" class="course-tab-panel" role="tabpanel" aria-label="Content">
           <div v-show="false" class="course-lines-row">
             <span class="course-lines-count">{{ courseTotalLines }} lines</span>
             <div class="show-all" data-name="Show All" aria-label="Show lines">
@@ -4878,8 +6097,8 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Sections list – V3: all visible + scroll sticky; V2/V1: accordion; hidden on Opening Courses V1 -->
-          <div v-if="!isOpeningCoursesV1" class="sections-list">
+          <!-- Sections list – V3: all visible + scroll sticky; V2/V1: accordion; hidden on Opening Courses V1. v-if so refs (line mask) only from visible tab when V7. -->
+          <div v-if="!isOpeningCoursesV1 && (courseTabsActive === 'content' || !isVideoV7)" class="sections-list">
             <div
               v-for="(section, sectionIndex) in courseSections"
               :key="section.id"
@@ -4922,7 +6141,7 @@ onUnmounted(() => {
                     </button>
                   </div>
                   <!-- Video under each chapter – hidden for "The Games..." (id: games) only -->
-                  <section v-if="showVideoSection && section.videoAvailable" class="video-section video-section--inline" :data-name="`VideoSection-${section.id}`">
+                  <section v-if="showVideoSectionVisible && section.videoAvailable" class="video-section video-section--inline" :data-name="`VideoSection-${section.id}`">
                     <div
                       class="video-placeholder-frame"
                       :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px', backgroundColor: '#000000' }"
@@ -4985,22 +6204,43 @@ onUnmounted(() => {
                   </div>
                 </div>
               </template>
-              <!-- V2/V1: accordion – expand to show video + lines -->
+              <!-- V2/V1: accordion (useAccordionChapters=true) or all chapters as headers, always open (default) -->
               <template v-else>
-                <!-- V2.3: always use wrap so collapse can animate smoothly (no layout jump when next chapter touches) -->
+                <!-- V2.3: chapter as button (accordion) or div (header only) -->
                 <div v-if="isVideoV2_3OrV24" class="v23-section-sticky-wrap">
-                  <button
-                    type="button"
-                    class="chapter-v2"
-                    :class="{ 'chapter-v2--sticky-title-v23': isSectionExpanded(section.id) }"
+                  <!-- V2.3/V4: wrapper for layout; V4 draws one vertical line from chapter checkmark down through cards (masked at last card) -->
+                  <div
+                    class="v23-section-timeline-wrap"
+                    :class="{ 'v23-section-timeline-wrap--v4': isVideoV2_4OrV5, 'v23-section-timeline-wrap--v6': isVideoV6OrV7 }"
+                    :ref="isVideoV2_4OrV5 ? (el => setSectionLineWrapRef(section.id, el)) : undefined"
+                  >
+                    <div v-if="isVideoV2_4OrV5" class="v23-section-timeline-wrap__line" aria-hidden="true" />
+                  <component
+                    :is="useAccordionChapters ? 'button' : 'div'"
+                    :type="useAccordionChapters ? 'button' : undefined"
+                    class="chapter-v2 chapter-v2--header"
+                    :class="[
+                      { 'chapter-v2--sticky-title-v23': isSectionOpen(section.id), 'chapter-v2--no-accordion': !useAccordionChapters },
+                      isVideoV2_4OrV5 && 'chapter-v2--v4-timeline',
+                      isVideoV6OrV7 && 'chapter-v2--v6-timeline-right'
+                    ]"
                     data-name="Chapter V2"
-                    :aria-expanded="isSectionExpanded(section.id)"
-                    @click="toggleSection(section.id)"
+                    :aria-expanded="useAccordionChapters ? isSectionExpanded(section.id) : undefined"
+                    @click="useAccordionChapters ? toggleSection(section.id) : undefined"
                   >
                     <span class="chapter-v2-border" aria-hidden="true" />
+                    <!-- V4: one big progress in timeline column so line runs behind it -->
+                    <div v-if="isVideoV2_4OrV5" class="chapter-v2__timeline-col" aria-hidden="true">
+                      <ProgressCircle
+                        :key="`progress-${section.id}`"
+                        :progress="getSectionProgressPercent(section)"
+                        :size="24"
+                        class="chapter-v2__timeline-progress"
+                      />
+                    </div>
                     <div class="chapter-progress-name">
                       <div class="chapter-content">
-                        <span class="chapter-progress-icon" aria-hidden="true">
+                        <span v-if="!isVideoV2_4OrV5" class="chapter-progress-icon" aria-hidden="true">
                           <ProgressCircle
                             :key="`progress-${section.id}`"
                             :progress="getSectionProgressPercent(section)"
@@ -5011,22 +6251,22 @@ onUnmounted(() => {
                       </div>
                       <div class="chapter-variations">
                         <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
-                        <span class="chapter-chevron-wrap" aria-hidden="true">
+                        <span v-if="useAccordionChapters" class="chapter-chevron-wrap" aria-hidden="true">
                           <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
                         </span>
                       </div>
                     </div>
-                  </button>
+                  </component>
                   <div
                     class="v23-expandable"
-                    :class="{ 'v23-expandable--open': isSectionExpanded(section.id) }"
+                    :class="{ 'v23-expandable--open': isSectionOpen(section.id) }"
                   >
                     <div
                       class="v22-chapter-video-block"
-                      :class="{ 'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id) }"
+                      :class="{ 'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id), 'v22-chapter-video-block--v23-sticky-title': isVideoV2_3OrV24 && isSectionOpen(section.id) }"
                     >
                       <section
-                        v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24) && showVideoSection && section.videoAvailable && isSectionExpanded(section.id)"
+                        v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24) && showVideoSectionVisible && section.videoAvailable && isSectionOpen(section.id)"
                         class="video-section video-section--inline"
                         :data-name="`VideoSection-${section.id}`"
                       >
@@ -5051,12 +6291,181 @@ onUnmounted(() => {
                         </div>
                       </section>
                     </div>
-                    <Transition name="chapter-moves">
+                <Transition name="chapter-moves">
+                  <div
+                    v-if="isSectionOpen(section.id) && getSectionMovesForDisplay(section).length"
+                    class="move-list-wrap"
+                  >
+                    <!-- V4/V5/V6: lines as opening-course-card style cards; line is drawn by v23-section-timeline-wrap above -->
+                    <div v-if="isVideoV2_4OrV5" class="chapter-line-cards-list-wrapper">
                       <div
-                        v-if="isSectionExpanded(section.id) && getSectionMoves(section).length"
-                        class="move-list-wrap"
+                        class="opening-course-cards-list chapter-line-cards-list"
+                        role="list"
+                        data-name="Lines"
+                        aria-label="Lines"
                       >
-                      <div class="move-list" role="list" data-name="Lines" aria-label="Lines">
+                      <article
+                        v-for="(move, lineIndex) in getSectionMovesForDisplay(section)"
+                        :key="`${section.id}-${move.id}`"
+                        class="opening-course-card opening-course-card--hover-v1 chapter-line-card"
+                        :class="[
+                          { 'move-item--inactive': !move.completed },
+                          lineIndex === getSectionMovesForDisplay(section).length - 1 && 'chapter-line-card--last',
+                          isVideoV6OrV7 && 'chapter-line-card--v6-timeline-right'
+                        ]"
+                        role="listitem"
+                        data-name="Line"
+                        :data-move-id="`${section.id}-${move.id}`"
+                      >
+                        <!-- Body first in DOM (V6: timeline-col on right via row-reverse) -->
+                        <div
+                          class="chapter-line-card__body"
+                          role="button"
+                          tabindex="0"
+                          :title="move.text"
+                          @click="openLine(section, move)"
+                          @mouseenter="setHoveredChapterLine(section, move)"
+                          @mouseleave="clearHoveredChapterLine()"
+                          @keydown.enter.space.prevent="openLine(section, move)"
+                        >
+                        <div class="opening-course-card__inner">
+                          <div class="opening-course-card__content-wrap">
+                            <!-- Cover (icon) first (all the way left), then content (title, chips) -->
+                            <div class="opening-course-card__cover-wrap">
+                              <!-- V6: 40×40 cover, glyph 20×20 – book (info), puzzle (quiz); incomplete: white 4% bg / 30% icon; completed: green translucent bg + green icon -->
+                              <div
+v-if="isVideoV6OrV7"
+                                class="chapter-line-card__intro-cover chapter-line-card__intro-cover--v6"
+                                  :class="{
+                                  'chapter-line-card__intro-cover--v6-incomplete': !move.completed,
+                                  'chapter-line-card__intro-cover--v6-completed': move.completed
+                                }"
+                                aria-hidden="true"
+                              >
+                                <CcIcon
+                                  :name="move.info ? 'document-book-open' : move.quiz ? 'game-type-puzzle' : 'document-book-open'"
+                                  variant="glyph"
+                                  :size="20"
+                                  class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--v6"
+                                />
+                              </div>
+                              <!-- V4/V5: two-tone cover + piece from first move; colors randomized, no adjacent same -->
+                              <div
+                                v-else-if="lineCoverByKey[`${section.id}-${move.id}`]"
+                                class="chapter-line-card__intro-cover chapter-line-card__line-cover"
+                                :class="{ 'chapter-line-card__line-cover--incomplete': !move.completed }"
+                                aria-hidden="true"
+                                :style="getLineCoverStyle(section.id, move.id)"
+                              >
+                                <div class="chapter-line-card__intro-cover-dark" />
+                                <div class="chapter-line-card__intro-cover-light">
+                                  <div class="chapter-line-card__intro-cover-light-inner">
+                                    <img
+                                      v-if="move.quiz"
+                                      :src="baseUrl + 'icons/misc/quiz-dice.png'"
+                                      alt=""
+                                      class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--img"
+                                      width="32"
+                                      height="32"
+                                      aria-hidden="true"
+                                    />
+                                    <CcIcon
+                                      v-else-if="isVideoV5OrV6"
+                                      :name="lineCoverByKey[`${section.id}-${move.id}`]?.pieceIcon || 'piece-white-pawn'"
+                                      variant="color"
+                                      :customSize="28"
+                                      class="chapter-line-card__intro-cover-icon"
+                                    />
+                                    <CcIcon
+                                      v-else
+                                      :name="lineCoverByKey[`${section.id}-${move.id}`]?.pieceIcon || 'piece-white-rook'"
+                                      variant="color"
+                                      :customSize="32"
+                                      class="chapter-line-card__intro-cover-icon"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                              <!-- Fallback: board thumbnail when no cover config (e.g. V3) -->
+                              <div
+                                v-else
+                                class="course-cover-board chapter-line-card__board"
+                                aria-hidden="true"
+                              >
+                                <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
+                                  <g id="course-cover-board-grid">
+                                    <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                  </g>
+                                </svg>
+                              </div>
+                            </div>
+                            <div class="opening-course-card__content">
+                              <div class="chapter-line-card__header-row">
+                                <div class="chapter-line-card__title-wrap">
+                                  <h3 class="opening-course-card__title">{{ move.text }}</h3>
+                                  <CcChip
+                                    v-if="move.info"
+                                    label="INFO"
+                                    color="gray"
+                                    variant="translucent"
+                                    :is-uppercase="false"
+                                    label-class="move-item-info-chip-label chapter-line-card__info-chip-inline"
+                                  />
+                                </div>
+                                <div class="chapter-line-card__header-indicators">
+                                  <CcChip
+                                    v-if="move.completed && move.level && !isVideoV6OrV7"
+                                    :label="move.level"
+                                    color="aqua"
+                                    variant="translucent"
+                                    :is-uppercase="false"
+                                    label-class="move-item-level-chip-label"
+                                  />
+                                  <!-- Ready for review dot hidden on line items -->
+                                </div>
+                              </div>
+                              <p v-if="getLineMoveCount(section, move) > 0" class="chapter-line-card__moves-count">{{ getLineMoveCount(section, move) }} moves</p>
+                            </div>
+                          </div>
+                        </div>
+                        </div>
+                        <!-- Timeline col after body in DOM (V6: appears on right) -->
+                        <div
+                          class="chapter-line-card__timeline-col"
+                          aria-hidden="true"
+                          :ref="lineIndex === getSectionMovesForDisplay(section).length - 1 ? (el => setSectionLastCardColRef(section.id, el)) : undefined"
+                        >
+                          <span
+                            class="chapter-line-card__timeline-node"
+                            :class="{
+                              'chapter-line-card__timeline-node--completed': move.completed,
+                              'chapter-line-card__timeline-node--v6': isVideoV6OrV7,
+                              'chapter-line-card__timeline-node--next-to-learn': isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id
+                            }"
+                          >
+                            <img v-if="move.completed" :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="chapter-line-card__timeline-node-icon" width="13" height="13" aria-hidden="true" />
+                          </span>
+                        </div>
+                      </article>
+                      </div>
+                    </div>
+                    <!-- V2.3 and others: original move-item list -->
+                    <div v-else class="move-list" role="list" data-name="Lines" aria-label="Lines">
                         <div
                           v-for="move in getSectionMoves(section)"
                           :key="`${section.id}-${move.id}`"
@@ -5102,6 +6511,7 @@ onUnmounted(() => {
                   </div>
                 </Transition>
                   </div>
+                  </div>
                 </div>
                 <!-- V2.2 only (no wrap): same structure without v23-section-sticky-wrap -->
                 <template v-else>
@@ -5109,20 +6519,22 @@ onUnmounted(() => {
                   class="v22-chapter-video-block"
                   :class="{
                     'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id),
-                    'v22-chapter-video-block--v23-sticky-title': isVideoV2_3OrV24 && isSectionExpanded(section.id)
+                    'v22-chapter-video-block--v23-sticky-title': isVideoV2_3OrV24 && isSectionOpen(section.id)
                   }"
                 >
-                  <button
-                    type="button"
-                    class="chapter-v2"
+                  <component
+                    :is="useAccordionChapters ? 'button' : 'div'"
+                    :type="useAccordionChapters ? 'button' : undefined"
+                    class="chapter-v2 chapter-v2--header"
                     :class="{
-                      'chapter-v2--sticky-under-video': showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionExpanded(section.id),
-                      'chapter-v2--sticky-title-v23': isVideoV2_3OrV24 && isSectionExpanded(section.id)
+                      'chapter-v2--sticky-under-video': showVideoSectionVisible && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionOpen(section.id),
+                      'chapter-v2--sticky-title-v23': isVideoV2_3OrV24 && isSectionOpen(section.id),
+                      'chapter-v2--no-accordion': !useAccordionChapters
                     }"
-                    :style="showVideoSection && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionExpanded(section.id) ? { '--sticky-under-video-top': videoSectionHeightPx + 'px' } : undefined"
+                    :style="showVideoSectionVisible && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionOpen(section.id) ? { '--sticky-under-video-top': videoSectionHeightPx + 'px' } : undefined"
                     data-name="Chapter V2"
-                    :aria-expanded="isSectionExpanded(section.id)"
-                    @click="toggleSection(section.id)"
+                    :aria-expanded="useAccordionChapters ? isSectionExpanded(section.id) : undefined"
+                    @click="useAccordionChapters ? toggleSection(section.id) : undefined"
                   >
                     <span class="chapter-v2-border" aria-hidden="true" />
                     <div class="chapter-progress-name">
@@ -5138,14 +6550,14 @@ onUnmounted(() => {
                       </div>
                       <div class="chapter-variations">
                         <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
-                        <span class="chapter-chevron-wrap" aria-hidden="true">
+                        <span v-if="useAccordionChapters" class="chapter-chevron-wrap" aria-hidden="true">
                           <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
                         </span>
                       </div>
                     </div>
-                  </button>
+                  </component>
                   <section
-                    v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24) && showVideoSection && section.videoAvailable && isSectionExpanded(section.id)"
+                    v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24) && showVideoSectionVisible && section.videoAvailable && isSectionOpen(section.id)"
                     class="video-section video-section--inline"
                     :data-name="`VideoSection-${section.id}`"
                   >
@@ -5172,7 +6584,7 @@ onUnmounted(() => {
                 </div>
                 <Transition name="chapter-moves">
                   <div
-                    v-if="isSectionExpanded(section.id) && getSectionMoves(section).length"
+                    v-if="isSectionOpen(section.id) && getSectionMoves(section).length"
                     class="move-list-wrap"
                   >
                     <div class="move-list" role="list" data-name="Lines" aria-label="Lines">
@@ -5225,23 +6637,24 @@ onUnmounted(() => {
             </div>
           </div>
           </div>
+          </div>
           </template>
           <template v-else-if="panelView === 'line'">
           <div class="panel-content courses-content line-view-content" :class="`line-view-content--${currentLineType}`">
-            <!-- COMPLETED LINES SCREEN – design for lines with level (e.g. L1, L2). Learn mode: copy only. Read mode: body + Move Comp + caption. -->
+            <!-- COMPLETED LINES SCREEN – design for lines with level (e.g. L1, L2). Course mode: copy only. Read mode: body + Move Comp + caption. -->
             <template v-if="currentLineType === 'completed'">
               <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
                   <div class="coach-new-inner">
                     <img :src="baseUrl + 'icons/misc/time-rapid.png'" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
                     <div class="coach-new-message">
-                      <p class="coach-new-body">You've learned this line already. Come back in {{ completedLinePracticeTime }} to practice.</p>
+                      <p class="coach-new-body">You've completed this line already. Come back in {{ completedLinePracticeTime }} to practice.</p>
                     </div>
                   </div>
                 </div>
               </section>
               <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
-                <!-- Learn mode (default): only the instructional copy, no Move Comp -->
+                <!-- Course mode (default): only the instructional copy, no Move Comp -->
                 <template v-if="!isLineReadMode">
                   <div v-if="isQuizLine && quizLineContentCurrent?.bodyHtml" class="info-line-body-wrap" @click="onInlinePlyChipClick">
                     <div class="info-line-body cc-paragraph-medium" v-html="quizLineContentCurrent.bodyHtml" />
@@ -5252,7 +6665,7 @@ onUnmounted(() => {
                 </template>
                 <!-- Read mode: body + Move Comp + caption -->
                 <template v-else>
-                  <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                  <section ref="lineViewVideoSectionRef" v-show="showVideoSectionVisible" class="video-section" data-name="VideoSection">
                     <div
                       class="video-placeholder-frame"
                       :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
@@ -5325,7 +6738,7 @@ onUnmounted(() => {
                 </template>
               </div>
             </template>
-            <!-- READY LINES SCREEN – hand-with-pawn (color by side to move), copy, CTA Practice (primary) + Learn Again (secondary) -->
+            <!-- READY LINES SCREEN – hand-with-pawn (color by side to move), copy, CTA Practice (primary) + Course Again (secondary) -->
             <template v-else-if="currentLineType === 'ready'">
               <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
@@ -5338,7 +6751,7 @@ onUnmounted(() => {
                 </div>
               </section>
               <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
-                <section ref="lineViewVideoSectionRef" v-show="isVideoV2_4 ? readyLineVideoVisible : showVideoSection" class="video-section" data-name="VideoSection">
+                <section ref="lineViewVideoSectionRef" v-show="showVideoSectionVisible" class="video-section" data-name="VideoSection">
                   <div
                     class="video-placeholder-frame"
                     :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
@@ -5398,7 +6811,7 @@ onUnmounted(() => {
                 </div>
               </div>
             </template>
-            <!-- INFORMATIONAL LINES SCREEN – coach + video + text body + moves (table or inline); single Continue Learning button -->
+            <!-- INFORMATIONAL LINES SCREEN – coach + video + text body + moves (table or inline); single Continue Course button -->
             <template v-else-if="currentLineType === 'info'">
               <section v-if="!isLineReadMode" class="coach-new" data-name="CoachNew">
                 <div class="coach-new-card" data-name="Quiz">
@@ -5411,7 +6824,7 @@ onUnmounted(() => {
                 </div>
               </section>
               <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
-                <section ref="lineViewVideoSectionRef" v-show="showVideoSection && lineViewInfoLineHasVideo" class="video-section" :class="{ 'video-section--inline': currentLineType === 'info' }" data-name="VideoSection">
+                <section ref="lineViewVideoSectionRef" v-show="showVideoSectionVisible && lineViewInfoLineHasVideo" class="video-section" :class="{ 'video-section--inline': currentLineType === 'info' }" data-name="VideoSection">
                   <div
                     class="video-placeholder-frame"
                     :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
@@ -5522,12 +6935,12 @@ onUnmounted(() => {
                 </template>
               </div>
             </template>
-            <!-- UNCOMPLETED LINES SCREEN – read mode (no coach, video + content/moves) or default (coach + video/moves or quiz learn) -->
+            <!-- UNCOMPLETED LINES SCREEN – read mode (no coach, video + content/moves) or default (coach + video/moves or quiz course) -->
             <template v-else>
               <!-- Read mode ON: no coach; for quiz = video + content + move + caption; else video + moves -->
               <template v-if="isLineReadMode">
                 <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
-                  <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                  <section ref="lineViewVideoSectionRef" v-show="showVideoSectionVisible" class="video-section" data-name="VideoSection">
                     <div
                       class="video-placeholder-frame"
                       :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
@@ -5620,20 +7033,20 @@ onUnmounted(() => {
                   </div>
                 </div>
               </template>
-              <!-- Default uncompleted: hand-with-pawn (white/black by side to move), copy, CTA Learn + Practice disabled -->
+              <!-- Default uncompleted: hand-with-pawn (white/black by side to move), copy, CTA Course + Practice disabled -->
               <template v-else>
                 <section class="coach-new" data-name="CoachNew">
                   <div class="coach-new-card" data-name="Quiz">
                     <div class="coach-new-inner">
                       <img :src="baseUrl + 'icons/misc/' + uncompletedLineCoachIcon" alt="" class="coach-new-icon" width="32" height="32" aria-hidden="true" />
                       <div class="coach-new-message">
-                        <p class="coach-new-body">Let's learn this line together.</p>
+                        <p class="coach-new-body">Let's study this line together.</p>
                       </div>
                     </div>
                   </div>
                 </section>
                 <div ref="lineViewScrollBodyRef" class="line-view-scroll-body">
-                  <section ref="lineViewVideoSectionRef" v-show="showVideoSection" class="video-section" data-name="VideoSection">
+                  <section ref="lineViewVideoSectionRef" v-show="showVideoSectionVisible" class="video-section" data-name="VideoSection">
                     <div
                       class="video-placeholder-frame"
                       :class="{ 'video-placeholder-frame--dragging': lineViewIsResizingVideo }"
@@ -5749,12 +7162,12 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
-          <!-- Buttons footer: Continue / Practice – Chapter and Lines; Read mode: Back + Continue; Opening Courses V1: Start Learning only -->
+          <!-- Buttons footer: Continue / Practice – Chapter and Lines; Read mode: Back + Continue; Opening Courses V1: Start Course only -->
           <section class="footer-section footer-section-actions" data-name="ButtonsFooter">
-            <!-- Opening Courses V1 (courses view): single CTA Start Learning -->
+            <!-- Opening Courses V1 (courses view): single CTA Start Course -->
             <div v-if="isOpeningCoursesV1 && panelView === 'courses'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-full">
-                <CcButton variant="primary" size="large" class="footer-btn-full">Start Learning</CcButton>
+                <CcButton variant="primary" size="large" class="footer-btn-full">Start Course</CcButton>
               </div>
             </div>
             <!-- Read mode ON: Back (S) exits read mode + nav; Continue (P) -->
@@ -5764,17 +7177,17 @@ onUnmounted(() => {
                 <CcButton variant="primary" size="large" class="footer-btn-equal" @click="hasNextLine ? goToNextLine() : backToCourses()">Continue</CcButton>
               </div>
             </div>
-            <!-- Completed lines: Learn Again (secondary) + Practice (disabled, no badge) -->
+            <!-- Completed lines: Course Again (secondary) + Practice (disabled, no badge) -->
             <div v-else-if="panelView === 'line' && currentLineType === 'completed'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-split">
-                <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn Again</CcButton>
+                <CcButton variant="secondary" size="large" class="footer-btn-equal">Course Again</CcButton>
                 <CcButton variant="primary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
               </div>
             </div>
-            <!-- Ready lines: Learn Again (left) + Practice (primary, right) -->
+            <!-- Ready lines: Course Again (left) + Practice (primary, right) -->
             <div v-else-if="panelView === 'line' && currentLineType === 'ready'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-split">
-                <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn Again</CcButton>
+                <CcButton variant="secondary" size="large" class="footer-btn-equal">Course Again</CcButton>
                 <CcButton variant="primary" size="large" class="footer-btn-equal">Practice</CcButton>
               </div>
             </div>
@@ -5784,10 +7197,10 @@ onUnmounted(() => {
                 <CcButton variant="secondary" size="large" class="footer-btn-full" @click="handleHint">Hint</CcButton>
               </div>
             </div>
-            <!-- Uncompleted lines: Learn (primary/green) + Practice (secondary, disabled, no badge) -->
+            <!-- Uncompleted lines: Course (primary/green) + Practice (secondary, disabled, no badge) -->
             <div v-else-if="panelView === 'line' && currentLineType === 'uncompleted'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-split">
-                <CcButton variant="primary" size="large" class="footer-btn-equal">Learn</CcButton>
+                <CcButton variant="primary" size="large" class="footer-btn-equal">Course</CcButton>
                 <CcButton variant="secondary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
               </div>
             </div>
@@ -5843,8 +7256,8 @@ onUnmounted(() => {
               <button type="button" class="footer-icon-btn" aria-label="More options">
                 <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
               </button>
-              <button type="button" class="footer-icon-btn" :aria-label="(isVideoV2_4 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSection) ? 'Hide video' : 'Show video'" :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && selectedLine?.section?.id === 'intro' || isQuizLine)" @click="openVideo">
-                <CcIcon :name="(isVideoV2_4 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSection) ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
+              <button type="button" class="footer-icon-btn" :aria-label="(isVideoV2_4OrV5 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSectionVisible) ? 'Hide video' : 'Show video'" :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && selectedLine?.section?.id === 'intro' || isQuizLine)" @click="openVideo">
+                <CcIcon :name="(isVideoV2_4OrV5 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSectionVisible) ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
               </button>
               <button
                 v-if="panelView === 'line' && currentLineType !== 'info' && currentLineType !== 'ready'"
@@ -6625,7 +8038,7 @@ body {
   overflow: visible;
 }
 
-/* Courses view – scrollable body (header and both footer sections stay fixed) */
+/* Courses view – scrollable body (header and both footer sections stay fixed); smooth scroll */
 .courses-content {
   flex: 1;
   min-height: 0;
@@ -6635,7 +8048,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  scroll-behavior: smooth;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* V4: sticky coach at top of courses content; higher z so scrolling chapters pass behind it */
+.courses-content__coach-wrap {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.courses-content__coach-wrap .coach-new-opening--fixed {
+  color: inherit;
 }
 
 /* Opening Courses V1: CoachNew container (Figma 62-6423) */
@@ -6747,8 +8172,15 @@ body {
   margin: 0;
 }
 
-/* Opening Courses V1: coach fixed at top; filter + cards scroll. Filter hides on scroll down, slides in from behind coach on scroll up. */
+/* Placeholder while opening-courses-v1 defers layout (avoids -102) */
+.opening-v1-placeholder {
+  flex: 1;
+  min-height: 120px;
+  background: var(--color-bg-base, #1a1918);
+}
+/* Opening Courses V1: overlay anchors to this (sibling of coach + scroll) so no ancestor clips it */
 .opening-v1-layout {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -6758,35 +8190,71 @@ body {
 .coach-new-opening--fixed {
   flex-shrink: 0;
   position: relative;
-  z-index: 2;
+  z-index: 10;
+  background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(26, 25, 24, 1) 100%);
+  background-clip: unset;
+  -webkit-background-clip: unset;
+  color: transparent;
 }
-.opening-v1-scroll {
+.opening-v1-coach-wrap {
+  flex-shrink: 0;
+  z-index: 10;
+  background-image: linear-gradient(0deg, rgba(255, 255, 255, 1) 0%, rgba(0, 0, 0, 1) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-color: unset;
+  color: transparent;
+}
+/* Opening V1: scroll-linked – sticky, transform from --opening-search-y (px), no transition */
+.opening-filter {
+  width: 100%;
+  height: fit-content;
+  flex-shrink: 0;
+  background-color: rgba(39, 37, 34, 1);
+  box-shadow: none;
+}
+.opening-filter--sticky-under-coach {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  will-change: transform;
+  transform: translateY(var(--opening-search-y, 0));
+  transition: none;
+}
+.opening-filter--sticky-under-coach.is-offscreen {
+  pointer-events: none;
+}
+/* Only this element scrolls in the middle region; min-height: 0 critical in flex so it gets a real height */
+.opening-v1-scroll-wrap {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-}
-.opening-v1-scroll .opening-filter-strip {
-  position: sticky;
-  top: 0;
   z-index: 1;
-  transition: transform 0.25s ease-out;
-  background: var(--color-bg-base, #1a1918);
-  flex-shrink: 0;
 }
-.opening-v1-scroll .opening-filter-strip--hidden {
-  transform: translateY(-100%);
+.opening-v1-scroll {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: visible;
+  height: auto;
+  max-height: none;
 }
 
 /* Opening Courses V1: search panel (Figma 74-23788) – search input, Filters button, count, Sort by */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8, 8px);
+  gap: 8px;
   width: 100%;
-  padding: var(--space-16, 16px) var(--space-16, 16px) 2px;
+  height: fit-content;
+  padding: 0 16px 4px;
   flex-shrink: 0;
+  box-shadow: none;
+  background-color: rgba(39, 37, 34, 1);
 }
 .opening-search-panel__row {
   display: flex;
@@ -6796,6 +8264,8 @@ body {
 }
 .opening-search-panel__row--inputs {
   gap: var(--space-8, 8px);
+  padding-left: 4px;
+  padding-right: 4px;
 }
 .opening-search-panel__row--meta {
   justify-content: space-between;
@@ -6806,6 +8276,132 @@ body {
 }
 .opening-search-panel__filters-btn {
   flex-shrink: 0;
+}
+/* Single slot: min heights for chips vs meta; height fits content so edits don’t clip */
+.opening-meta-slot {
+  width: 100%;
+  min-height: 22px;
+  height: auto;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding-left: 4px;
+  padding-right: 4px;
+  flex-shrink: 0;
+}
+.opening-meta-slot--with-chips {
+  min-height: 30px;
+}
+/* Chips row: scrollable left + fixed right (chevron + Clear all); height fits content */
+.opening-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  min-height: 28px;
+  height: auto;
+  flex-shrink: 0;
+}
+.opening-chips-scroll-wrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.opening-move-chips-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.opening-move-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+.opening-move-chips-scroll:focus {
+  outline: none;
+}
+/* Fade gradient when more chips exist to the right (behind fixed actions) */
+.opening-chips-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, rgba(39, 37, 34, 1));
+}
+.opening-chips-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 4px);
+  padding-left: var(--space-8, 8px);
+  background: rgba(39, 37, 34, 1);
+}
+.opening-chips-chevron-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-2, 4px);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+.opening-chips-chevron-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+}
+.opening-chips-clear-all {
+  padding: 4px 0;
+  border: none;
+  background: none;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.opening-chips-clear-all:hover {
+  color: rgba(255, 255, 255, 0.95);
+}
+.opening-move-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-8, 8px);
+  padding: 0;
+  min-width: min-content;
+}
+.opening-move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius-2, 4px);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+  border: none;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.opening-move-chip:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.opening-move-chip__x {
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.85;
 }
 /* Search panel: system font only (no heading/Chess Sans) */
 .opening-search-panel__count {
@@ -6870,17 +8466,20 @@ body {
   background: var(--color-bg-subtlest, rgba(255, 255, 255, 0.08));
 }
 
-/* Opening Courses V1: course counter + filter panel (Chapter-page style – right over contents list) */
+/* Opening Courses V1: course counter + filter (shown when no chips; same height as chips row) */
 .opening-courses-meta-panel {
   width: 100%;
-  min-height: 40px;
+  min-height: 28px;
+  height: auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-8, 8px);
   background: unset;
-  padding: 0 var(--space-16, 16px) var(--space-8, 8px);
+  padding: 0;
+  margin-bottom: 4px;
   flex-shrink: 0;
+  color: rgba(0, 0, 0, 0);
 }
 /* DS text styles: text-small (12px/16px, 400), text-small-bold (12px/16px, 600) */
 .opening-courses-meta-panel__count.text-small-bold {
@@ -6891,6 +8490,8 @@ body {
 }
 .opening-courses-meta-panel__count {
   flex-shrink: 0;
+  padding-left: 2px;
+  padding-right: 2px;
   color: rgba(255, 255, 255, 0.5);
 }
 .opening-courses-meta-panel__sort-btn .text-small {
@@ -6919,7 +8520,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 4px 0;
   background: none;
   border: none;
   border-radius: 6px;
@@ -6939,16 +8540,19 @@ body {
   left: auto;
 }
 
-/* Opening Courses V1: course cards list (AI specs – design tokens) */
+/* Opening Courses V1: course cards list – no overflow/height so only .opening-v1-scroll-wrap scrolls */
 .opening-course-cards-list {
   display: flex;
   flex-direction: column;
   gap: 0;
   width: 100%;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  overflow: visible;
+  height: auto;
+  max-height: none;
 }
 /* Main container (Card). States: default (no bg), hover (--color-bg-subtlest), selected (variant-specific). */
 .opening-course-card {
@@ -6998,15 +8602,23 @@ body {
   background: var(--color-bg-subtlest);
 }
 
+/* Selected + hover: board stays on preview until pointer leaves; show active state */
+.opening-course-card--selected-hover {
+  background: var(--color-bg-subtlest);
+}
+
 /* Variant: Square-outline – selected state outlines only the cover (see .opening-course-card__cover-wrap--selected). */
 /* Card has no box-shadow when selected; hover/default same as above. */
 
-/* Cover wrapper: 3px padding; Square-outline puts 2px solid outline here when selected. */
+/* Cover wrapper: always 3px padding + 2px outline space so size is identical selected/unselected (no shift). */
 .opening-course-card__cover-wrap {
   padding: 3px;
   border-radius: calc(var(--radius-xs, 2px) + 3px);
   flex-shrink: 0;
   transition: box-shadow 0.15s ease;
+  overflow: visible;
+  /* Reserve space for outline so layout doesn’t shift: transparent 2px when unselected */
+  box-shadow: 0 0 0 2px transparent;
 }
 .opening-course-card__cover-wrap--selected {
   box-shadow: 0 0 0 2px var(--color-border-success, var(--color-green-300, #81B64C));
@@ -7022,8 +8634,7 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 2px;
-  padding-bottom: 0;
+  padding: 4px 12px;
   width: 100%;
 }
 /* Opening thumbnail: wraps CourseCoverBoard (96×96), --radius-xs (2px) */
@@ -7076,16 +8687,21 @@ body {
   object-fit: contain;
   flex-shrink: 0;
 }
-/* Content section: --size-24 height, space-between, flex 1 0 0 */
+/* Content section: padding 12px, gap 4px, fit-content height, centered */
 .opening-course-card__content {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 4px;
   flex: 1 0 0;
-  height: 96px;
+  height: fit-content;
   min-width: 1px;
   min-height: 1px;
+  padding: 0;
+  background: unset;
+  background-color: unset;
+  box-shadow: none;
   position: relative;
 }
 .opening-course-card__title-author {
@@ -7113,7 +8729,7 @@ body {
   min-width: 0;
 }
 /* Description: --text-xs (12px), --leading-4, --text-tertiary (50% white). System font only (no Inter). */
-/* Description: max 3 lines then truncate with ellipsis. Keep for responsive so longer copy doesn’t overflow. */
+/* Description: max 2 lines then truncate with ellipsis. Keep for responsive so longer copy doesn’t overflow. */
 .opening-course-card__description {
   font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 12px;
@@ -7125,8 +8741,8 @@ body {
   flex-shrink: 0;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
 }
 /* Properties + DS CcChip. cc-text-* = System font; Chess Sans only for headings (see .cursor/rules/design-system.mdc). */
@@ -7138,13 +8754,524 @@ body {
   gap: 8px;
   width: 100%;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 .opening-course-card__properties :deep(.cc-chip-fg) {
   font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  font-size: 12px;
 }
 /* DS gray chip translucent: bg = --color-bg-subtle (dark: transparent-white-10). Ensure chip uses DS token. */
 .opening-course-card__properties :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent) {
   background-color: var(--color-bg-subtle);
+}
+
+/* V4: section-level timeline wrap – one vertical line per chapter: chapter check → last card check */
+.v23-section-timeline-wrap {
+  --timeline-col-width: 32px;
+  --timeline-center-offset: calc(12px + var(--timeline-col-width) / 2);
+  --v23-chapter-row-height: 56px; /* used so line starts at center of chapter row (the check) */
+  position: relative;
+}
+.v23-section-timeline-wrap__line {
+  position: absolute;
+  left: var(--timeline-center-offset);
+  /* Start at chapter's check (vertical center of chapter row), end at last card check (mask set by JS) */
+  top: calc(var(--v23-chapter-row-height, 56px) / 2);
+  bottom: 12px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-border-subtlest, rgba(255, 255, 255, 0.15));
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 0;
+  /* Mask so line ends at last card checkmark (--section-line-mask-end set by updateSectionLineMasks) */
+  --section-line-mask-end: 100%;
+  mask-image: linear-gradient(to bottom, black 0, black var(--section-line-mask-end), transparent var(--section-line-mask-end));
+  -webkit-mask-image: linear-gradient(to bottom, black 0, black var(--section-line-mask-end), transparent var(--section-line-mask-end));
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+}
+/* Chapter row V4: align timeline column with cards list (12px padding then 32px col) */
+/* V4 chapter header: align with timeline, no sticky background, consistent padding/margin (override sticky-title) */
+.chapter-v2--v4-timeline {
+  padding-left: 12px;
+  padding-right: 16px;
+  padding-bottom: 16px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  background: unset;
+  background-color: unset;
+}
+.chapter-v2--v4-timeline:hover,
+.chapter-v2--v4-timeline[aria-expanded="true"] {
+  background: unset;
+  background-color: unset;
+}
+/* V4/V5/V6: CSS-only sticky, top = header + tabs-visible. V2.4: top = --course-chapter-sticky-top (production). */
+.chapter-v2--sticky-title-v23.chapter-v2--v4-timeline,
+.chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline {
+  z-index: 5;
+  padding: 12px;
+  margin: 0;
+  min-height: 56px;
+  justify-content: center;
+  background: rgba(50, 48, 46, 1) !important;
+  background-color: rgba(50, 48, 46, 1) !important;
+  border: none;
+  box-shadow: none;
+}
+.courses-content.courses-content--tabs-scroll-linked .chapter-v2--sticky-title-v23.chapter-v2--v4-timeline,
+.courses-content.courses-content--tabs-scroll-linked .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline {
+  top: calc(var(--header-h, 0) + var(--tabs-visible, 0));
+  will-change: transform;
+  contain: paint;
+}
+.courses-content:not(.courses-content--tabs-scroll-linked) .chapter-v2--sticky-title-v23.chapter-v2--v4-timeline,
+.courses-content:not(.courses-content--tabs-scroll-linked) .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline {
+  top: var(--course-chapter-sticky-top, 0);
+}
+.courses-content.courses-content--tabs-scroll-linked.courses-content--v6 .chapter-v2--sticky-title-v23.chapter-v2--v6-timeline-right {
+  top: calc(var(--header-h, 0) + var(--tabs-visible, 0));
+  will-change: transform;
+  contain: paint;
+}
+.chapter-v2--sticky-title-v23.chapter-v2--v4-timeline:hover,
+.chapter-v2--sticky-title-v23.chapter-v2--v4-timeline[aria-expanded="true"],
+.chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline:hover,
+.chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline[aria-expanded="true"] {
+  background: rgba(50, 48, 46, 1) !important;
+  background-color: rgba(50, 48, 46, 1) !important;
+}
+.chapter-v2__timeline-col {
+  flex-shrink: 0;
+  width: var(--timeline-col-width, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.chapter-v2__timeline-progress {
+  position: relative;
+  z-index: 1;
+}
+
+/* ========== V6: timeline on the right ========== */
+.v23-section-timeline-wrap--v6 .v23-section-timeline-wrap__line {
+  left: auto;
+  right: calc(12px + var(--timeline-col-width, 32px) / 2);
+  margin-left: 0;
+  margin-right: -1px;
+}
+.chapter-v2--v6-timeline-right {
+  flex-direction: row-reverse;
+}
+/* V6: body first in DOM, timeline-col second → normal row order gives body left, checks right */
+.chapter-line-card--v6-timeline-right {
+  flex-direction: row;
+  padding: 0;
+}
+/* V6: force article padding to 0 and smaller radius (override .opening-course-card / .chapter-line-card) */
+.courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right {
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-radius: 3px;
+}
+.courses-content--v6 .chapter-line-card__timeline-node--v6 {
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  min-height: 13px;
+}
+.courses-content--v6 .chapter-line-card__timeline-node--v6.chapter-line-card__timeline-node--completed {
+  background: transparent;
+  border-color: transparent;
+}
+.courses-content--v6 .chapter-line-card__timeline-node--v6 .chapter-line-card__timeline-node-icon {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+/* Next-to-learn line: bright green-200 outline + glow */
+.courses-content--v6 .chapter-line-card__timeline-node--next-to-learn {
+  outline: 2px solid var(--color-green-200, #B2E068);
+  outline-offset: 0;
+  box-shadow: 0 0 0 2px var(--color-green-200, #B2E068), 0 0 8px 2px var(--color-green-200, #B2E068);
+}
+.courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  gap: 0;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+/* First section (e.g. Introduction): 8px vertical list padding */
+.courses-content--v6 .section-item:first-child .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.courses-content--v6 .chapter-v2--v4-timeline.chapter-v2--v6-timeline-right {
+  padding-left: 16px;
+  padding-right: 12px;
+}
+
+/* Wrapper: inherits timeline vars when used without section wrap (e.g. list-only); line lives in v23-section-timeline-wrap for V4 */
+.chapter-line-cards-list-wrapper {
+  --timeline-col-width: 32px;
+  --timeline-center-offset: calc(12px + var(--timeline-col-width) / 2); /* list padding-left + half column */
+  position: relative;
+}
+.chapter-line-cards-list-wrapper__line {
+  position: absolute;
+  left: var(--timeline-center-offset);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-border-subtlest, rgba(255, 255, 255, 0.15));
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 0;
+}
+/* Chapter Page V4: lines as opening-course-card style; override base list padding/margin/background */
+.chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 12px;
+  padding-right: 12px;
+  gap: 0;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  background: unset;
+  background-color: unset;
+}
+.chapter-line-cards-list {
+  position: relative;
+  gap: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 12px;
+  padding-right: 12px;
+  z-index: 1;
+}
+.chapter-line-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 0;
+  padding-right: 0;
+}
+.chapter-line-card--last {
+  padding-bottom: 8px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  background: unset;
+  background-color: unset;
+}
+.chapter-line-card__timeline-col {
+  position: relative;
+  flex-shrink: 0;
+  width: var(--timeline-col-width, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+/* Nodes sit on top of the line (line passes through their center); 16px size */
+.chapter-line-card__timeline-node {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
+  background: var(--color-bg-primary, #312e2b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+.chapter-line-card__timeline-node--completed {
+  border-color: var(--color-border-success, var(--color-green-300, #81B64C));
+  background: var(--color-border-success, var(--color-green-300, #81B64C));
+}
+.chapter-line-card__timeline-node-icon {
+  color: var(--color-text-inverse, #fff);
+}
+/* Card body only: interactive area; hover/click apply here, not to the timeline (V4 default) */
+.chapter-line-card__body {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: background-color 0.15s ease;
+  background: var(--color-bg-subtlest);
+}
+.chapter-line-card__body:hover {
+  background: var(--color-bg-subtlest);
+}
+.chapter-line-card__body:focus-visible {
+  outline: 2px solid var(--color-aqua-300, #26C2A3);
+  outline-offset: 2px;
+}
+/* Card hover must not apply to the row (article); only body gets hover */
+.chapter-line-card.opening-course-card--hover-v1:hover {
+  background: transparent;
+}
+/* Chapter line card: content wrap (V4 default: 12px padding, gap 10px) */
+.chapter-line-card .opening-course-card__content-wrap {
+  padding: 12px;
+  gap: 10px;
+}
+/* Chapter line card: board thumbnail 64×64 (opening cards use 96×96) */
+.chapter-line-card__board.course-cover-board {
+  --size-chess-board-cover: 64px;
+  width: 64px;
+  height: 64px;
+}
+/* Introduction line card (V4): DS two-tone cover 56×56 (light 52px + dark strip) + piece/icon */
+.chapter-line-card__intro-cover {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+/* Uncompleted lines: white 20% background, no colored bands, icon at 40% opacity */
+.chapter-line-card__line-cover--incomplete {
+  background: rgba(255, 255, 255, 0.2);
+}
+.chapter-line-card__line-cover--incomplete .chapter-line-card__intro-cover-dark {
+  display: none;
+}
+.chapter-line-card__line-cover--incomplete .chapter-line-card__intro-cover-light {
+  background: transparent;
+}
+.chapter-line-card__line-cover--incomplete .chapter-line-card__intro-cover-icon {
+  opacity: 0.4;
+}
+/* Dark band: full 56×56 behind (V4). Light band: 52px tall on top. */
+.chapter-line-card__intro-cover-dark {
+  position: absolute;
+  inset: 0;
+  background: var(--cover-dark, var(--color-green-600, #305730));
+  border-radius: 3px;
+  z-index: 0;
+}
+.chapter-line-card__intro-cover-light {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 56px;
+  height: 52px;
+  background: var(--cover-light, var(--color-green-400, #5D9948));
+  border-radius: 3px;
+  z-index: 1;
+}
+.chapter-line-card__intro-cover-light-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 56px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+.chapter-line-card__intro-cover-icon {
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.25));
+}
+.chapter-line-card .opening-course-card__content {
+  height: fit-content;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+}
+/* ========== V5/V6: line card overrides (48×48 cover, no body bg, content-wrap padding 0 margin 8, icon in light band) ========== */
+.courses-content--v5 .chapter-line-card__body,
+.courses-content--v6 .chapter-line-card__body {
+  background: unset;
+  background-color: unset;
+}
+.courses-content--v5 .chapter-line-card .opening-course-card__content-wrap,
+.courses-content--v6 .chapter-line-card .opening-course-card__content-wrap {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  gap: 10px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+.courses-content--v5 .chapter-line-card__intro-cover,
+.courses-content--v6 .chapter-line-card__intro-cover {
+  width: 48px;
+  height: 48px;
+}
+.courses-content--v5 .chapter-line-card__intro-cover-dark,
+.courses-content--v6 .chapter-line-card__intro-cover-dark {
+  inset: auto;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: 48px;
+}
+.courses-content--v5 .chapter-line-card__intro-cover-light,
+.courses-content--v6 .chapter-line-card__intro-cover-light {
+  width: 48px;
+  height: 44px;
+  overflow: hidden;
+}
+.courses-content--v5 .chapter-line-card__intro-cover-light-inner,
+.courses-content--v6 .chapter-line-card__intro-cover-light-inner {
+  width: 100%;
+  height: 100%;
+}
+.courses-content--v5 .chapter-line-card__intro-cover-icon--img,
+.courses-content--v6 .chapter-line-card__intro-cover-icon--img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+.courses-content--v5 .chapter-line-card .opening-course-card__content,
+.courses-content--v6 .chapter-line-card .opening-course-card__content {
+  background: unset;
+  background-color: unset;
+}
+
+/* ========== V6 only: 40×40 cover, glyph 20×20 (book/puzzle), incomplete vs completed ========== */
+.courses-content--v6 .chapter-line-card__intro-cover--v6 {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  padding: 0;
+  padding-left: 0;
+  padding-right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.courses-content--v6 .chapter-line-card__intro-cover--v6-incomplete {
+  background: rgba(255, 255, 255, 0.04);
+}
+.courses-content--v6 .chapter-line-card__intro-cover--v6-incomplete .chapter-line-card__intro-cover-icon--v6 {
+  opacity: 0.3;
+  color: var(--color-text-primary-white, #ffffff);
+}
+.courses-content--v6 .chapter-line-card__intro-cover--v6-completed {
+  background: rgba(48, 87, 48, 0.25);
+}
+.courses-content--v6 .chapter-line-card__intro-cover--v6-completed .chapter-line-card__intro-cover-icon--v6 {
+  color: var(--color-green-300, #81B64C);
+}
+.courses-content--v6 .chapter-line-card .opening-course-card__content-wrap {
+  gap: 10px;
+  padding: 0;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+.courses-content--v6 .chapter-line-card__intro-cover--v6 .chapter-line-card__intro-cover-icon--v6 {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+/* Line item title: use chapter-style typography (swapped with chapter title) */
+.chapter-line-card .opening-course-card__title {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 0.72);
+}
+.chapter-line-card.move-item--inactive .opening-course-card__title {
+  color: var(--color-text-tertiary, rgba(255, 255, 255, 0.5));
+}
+/* Header row: title (left) + L1/L2 chip or Ready dot or INFO (top right) on one line */
+.chapter-line-card__header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.chapter-line-card__title-wrap {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chapter-line-card__title-wrap .opening-course-card__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.chapter-line-card__title-wrap :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent) {
+  background-color: var(--color-bg-subtle);
+}
+.chapter-line-card__title-wrap :deep(.move-item-info-chip-label) {
+  font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif) !important;
+  font-size: 12px !important;
+}
+.chapter-line-card__title-wrap :deep(.cc-chip-fg) {
+  font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  font-size: 12px;
+}
+.chapter-line-card__header-indicators {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+/* Under line card header: "# moves" (text/x-small), when section has moves; subtler color */
+.chapter-line-card__moves-count {
+  margin: 0;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: var(--text-xs, 12px);
+  line-height: var(--leading-4, 16px);
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+}
+/* Restore chip design: same as opening-course-card__properties + move-item-level/info chip labels */
+.chapter-line-card__header-indicators :deep(.cc-chip-fg) {
+  font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  font-size: 12px;
+}
+.chapter-line-card__header-indicators :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent) {
+  background-color: var(--color-bg-subtle);
+}
+.chapter-line-card__header-indicators :deep(.cc-chip-component.cc-chip-aqua) {
+  --chip-translucent-fg: var(--color-aqua-300, #26C2A3);
+}
+.chapter-line-card__header-indicators :deep(.move-item-level-chip-label),
+.chapter-line-card__header-indicators :deep(.move-item-info-chip-label) {
+  font-family: var(--font-family-system) !important;
+  font-size: 12px !important;
+}
+.chapter-line-card__ready-dot-wrap {
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Line view: outer container does not scroll; coach stays fixed, only .line-view-scroll-body scrolls */
@@ -7424,7 +9551,209 @@ body {
   min-height: 0;
 }
 
-/* Course Cards – spec: main container, border, cover, title + author */
+/* V4: course card in same frame as line cards (align padding, same card look). z-index so card scrolls above sticky tabs on initial scroll. */
+.course-card-frame {
+  position: relative;
+  z-index: 16;
+  padding: 12px 12px 0 12px;
+  width: 100%;
+  height: fit-content;
+  background-color: rgba(33, 31, 28, 1);
+  color: rgba(33, 31, 28, 1);
+}
+.course-card--main {
+  background: rgba(33, 31, 28, 1);
+  border-radius: 7px;
+  cursor: default;
+  padding: 0;
+}
+.opening-course-card.course-card--main:hover {
+  background: rgba(33, 31, 28, 1);
+}
+.opening-course-card.course-card--main .opening-course-card__content-wrap {
+  padding: 2px;
+  gap: 8px;
+}
+.opening-course-card.course-card--main .opening-course-card__content {
+  padding: 2px;
+  gap: 8px;
+  background: unset;
+  background-color: unset;
+}
+.course-cover--card {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+/* V7: course card cover 80×80 – image and all frames (wrap, cover, wrapper) */
+.course-card-frame--with-completion {
+  padding-bottom: 12px;
+}
+.course-card-frame--with-completion .opening-course-card__cover-wrap {
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.course-card-frame--with-completion .course-cover--card {
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+}
+.course-card-frame--with-completion .course-cover-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 3px;
+}
+.course-card-frame--with-completion .course-cover-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+/* V7 content: height 80px, width 100%, no padding, flex-start, gap 0 (overrides .course-card--main padding 2px / gap 8px) */
+.course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion {
+  padding: 0;
+  width: 100%;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  overflow: hidden;
+  gap: 8px;
+}
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .opening-course-card__title-author {
+  min-height: 40px;
+  height: 100%;
+  flex: 1 1 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 4px;
+  padding-bottom: 0;
+}
+/* Truncate long title/author so progress bar stays aligned */
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .opening-course-card__title,
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card--author {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-completion,
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-mastery-row {
+  flex-shrink: 0;
+  margin-top: 0;
+  flex-basis: auto;
+}
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-completion {
+  padding-bottom: 0;
+  justify-content: flex-start;
+  width: 100%;
+  gap: 8px;
+}
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-mastery-row {
+  padding-bottom: 0;
+  gap: 8px;
+  height: 16px;
+  justify-content: flex-start;
+}
+/* V7 Practice tab only: content block 80px height, width 100%, flex-start, 8px gap (overrides .course-card--main padding 2px / gap 8px) */
+.course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion.opening-course-card__content--v7-practice {
+  padding: 0;
+  padding-bottom: 0;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  justify-content: flex-start;
+  width: 100%;
+  gap: 8px;
+}
+/* V7 Practice tab: mastery bar + Av. Level on course card (same size as course progress bar) */
+.course-card-mastery-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  margin-top: 0;
+  height: 16px;
+}
+.course-card-mastery-bar {
+  width: 192px;
+  min-width: 192px;
+  height: 12px;
+  position: relative;
+  border-radius: 15px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+.course-card-mastery-bar__segments {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  pointer-events: none;
+  z-index: 2;
+}
+.course-card-mastery-bar__segment {
+  flex: 1 0 0;
+  min-width: 1px;
+  min-height: 1px;
+  border-right: 1px solid #22201E;
+  box-sizing: border-box;
+}
+.course-card-mastery-bar__segment:last-child {
+  border-right: none;
+}
+.course-card-mastery-bar__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-top-left-radius: 15px;
+  border-bottom-left-radius: 15px;
+  background: linear-gradient(180deg, rgba(98, 246, 202, 0.5) 0%, rgba(98, 246, 202, 0) 100%), linear-gradient(180deg, var(--color-aqua-300, #26C2A3) 0%, var(--color-aqua-400, #109888) 100%);
+  transition: width 0.2s ease;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.course-card-mastery-bar__fill-gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.course-card-av-level {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.course-card-av-level .extra-data-label {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.72);
+}
+.course-card--author {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.72));
+}
+
+/* Course Cards – spec: main container, border, cover, title + author (non-V4) */
 .course-cards {
   display: flex;
   align-items: flex-start;
@@ -7507,6 +9836,50 @@ body {
   font-weight: 600;
   line-height: 16px;
   color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+/* V7 course card: Completion progress bar (Completion.tsx spec) – 192×12px track, green fill, percentage label */
+.course-cards--with-completion {
+  flex-wrap: wrap;
+}
+.course-card-completion {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  flex-basis: 100%;
+  flex-shrink: 0;
+  margin-top: 12px;
+}
+.course-card-completion__track {
+  background: rgba(255, 255, 255, 0.1);
+  height: 12px;
+  width: 192px;
+  min-width: 192px;
+  border-radius: 15px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.course-card-completion__fill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 12px;
+  background: #81b64c;
+  border-radius: 20px;
+}
+.course-card-completion__label {
+  margin: 0;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.72);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
   flex-shrink: 0;
 }
 
@@ -7647,6 +10020,266 @@ body {
   z-index: 1;
 }
 
+/* V4/V5: scroll-linked tabs. One sticky tabs bar; JS sets --tabs-y (scroll delta). Chapters stick below header + tabs-visible. */
+.course-tabs-wrap {
+  width: 100%;
+  flex-shrink: 0;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.course-tabs-wrap--scroll-linked {
+  position: sticky;
+  top: var(--header-h, 0);
+  z-index: 15;
+  will-change: transform;
+  transform: translateY(var(--tabs-y, 0));
+  transition: none;
+  background-color: rgba(33, 31, 28, 1);
+  backface-visibility: hidden;
+  contain: paint;
+}
+/* List chapter rows: same background when sticky (V4/V5) */
+.courses-content.courses-content--tabs-scroll-linked .section-item .chapter-v2--v4-timeline,
+.courses-content.courses-content--tabs-scroll-linked .section-item .chapter-v2--no-accordion.chapter-v2--v4-timeline {
+  background: rgba(50, 48, 46, 1);
+  background-color: rgba(50, 48, 46, 1);
+}
+.courses-content.courses-content--tabs-scroll-linked .section-item .chapter-v2--v4-timeline:hover,
+.courses-content.courses-content--tabs-scroll-linked .section-item .chapter-v2--no-accordion.chapter-v2--v4-timeline:hover {
+  background: rgba(50, 48, 46, 1) !important;
+  background-color: rgba(50, 48, 46, 1) !important;
+}
+.courses-content.courses-content--tabs-scroll-linked.courses-content--v6 .section-item .chapter-v2--v4-timeline.chapter-v2--v6-timeline-right,
+.courses-content.courses-content--tabs-scroll-linked.courses-content--v6 .section-item .chapter-v2--no-accordion.chapter-v2--v4-timeline.chapter-v2--v6-timeline-right {
+  background: rgba(50, 48, 46, 1);
+  background-color: rgba(50, 48, 46, 1);
+}
+
+/* DS tabs (cc-tab-group): full width, 48px height */
+.course-tabs-ds {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  background-clip: unset;
+  -webkit-background-clip: unset;
+  color: rgba(39, 37, 34, 1);
+}
+/* Stats tab button: 48px height (override DS default 56px) */
+#tab-stats.cc-tab-item-component,
+.course-tabs-ds .cc-tab-item-component#tab-stats {
+  height: 48px;
+}
+/* Tab labels: DS text-medium-bold (14px / 16px, weight 600) instead of x-large-bold */
+.course-tabs-ds .cc-tab-item-label {
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.course-tab-panel {
+  margin-top: 0;
+}
+.course-tab-panel--stats {
+  padding-top: 12px;
+}
+/* V7 Practice: same vertical start as Learn tab (no extra top padding), chapter/section design matches Learn */
+.course-tab-panel--stats.course-tab-panel--v7 {
+  padding-top: 0;
+}
+/* Ensure Practice tab sections use same layout as Learn (courses-content--v6 styles apply; this reinforces chapter row padding) */
+.course-tab-panel--stats.course-tab-panel--v7 .sections-list {
+  margin: 0;
+  padding: 0;
+}
+.course-tab-panel--stats.course-tab-panel--v7 .section-item .chapter-v2--v6-timeline-right {
+  padding-left: 16px;
+  padding-right: 12px;
+}
+.course-tab-panel--stats.course-tab-panel--v7 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  gap: 0;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.course-tab-panel--stats.course-tab-panel--v7 .section-item:first-child .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* V7 Practice tab: compact mastery row – 192×12 segmented bar (same as course progress size) + Av. Level on the right */
+.practice-compact-mastery-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.practice-mastery-bar {
+  width: 192px;
+  min-width: 192px;
+  height: 12px;
+  position: relative;
+  border-radius: 15px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+.practice-mastery-bar__segments {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  pointer-events: none;
+  z-index: 2;
+}
+.practice-mastery-bar__segment {
+  flex: 1 0 0;
+  min-width: 1px;
+  min-height: 1px;
+  border-right: 1px solid #22201E;
+  box-sizing: border-box;
+}
+.practice-mastery-bar__segment:last-child {
+  border-right: none;
+}
+.practice-mastery-bar__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-top-left-radius: 15px;
+  border-bottom-left-radius: 15px;
+  background: linear-gradient(180deg, rgba(98, 246, 202, 0.5) 0%, rgba(98, 246, 202, 0) 100%), linear-gradient(180deg, var(--color-aqua-300, #26C2A3) 0%, var(--color-aqua-400, #109888) 100%);
+  transition: width 0.2s ease;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.practice-mastery-bar__fill-gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.practice-av-level {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.practice-av-level .extra-data-label {
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* V7 Practice panel: line cover – bg #62F6CA 10%, icon Aqua-300 (DS); lines use incomplete style */
+.course-tab-panel--stats .chapter-line-card__intro-cover--v7-practice {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 3px;
+  background: rgba(98, 246, 202, 0.1);
+}
+.course-tab-panel--stats .chapter-line-card__intro-cover--v7-practice .chapter-line-card__intro-cover-icon--v6 {
+  color: var(--color-aqua-300, #26C2A3);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+/* Stats cards row: 3 cards in a row, fill width, stack when responsive */
+.stats-cards-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 0 16px 12px;
+}
+.stats-card {
+  flex: 1 1 0;
+  min-width: 80px;
+  background-color: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+.stats-card__label {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  margin: 0;
+  flex-shrink: 0;
+}
+.stats-card__value-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 40px;
+  overflow: clip;
+  border-radius: 3px;
+  flex-shrink: 0;
+  width: 100%;
+}
+.stats-card__value {
+  font-family: 'Chess Sans', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 32px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  flex-shrink: 0;
+  font-feature-settings: 'liga' 0;
+}
+.stats-card__change-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.stats-card__change {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 16px;
+  color: #81b64c;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* V6 only: stats card label – left align, medium weight, system font */
+.courses-content.courses-content--v6 .stats-cards-row {
+  padding-top: 8px;
+}
+.courses-content.courses-content--v6 .course-progress.course-progress-mastery {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.courses-content.courses-content--v6 .stats-card__label {
+  text-align: left;
+  font-weight: 500;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+/* V6 only: stats card change – system font */
+.courses-content.courses-content--v6 .stats-card__change {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.stats-card__lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.stats-card__lock-icon {
+  color: var(--icon-disabled, rgba(255, 255, 255, 0.4));
+}
+
 /* Progress – Figma node 2-5697 (exact spec: layout, spacing, typography, colors) */
 .course-progress {
   display: flex;
@@ -7673,7 +10306,7 @@ body {
   color: rgba(255, 255, 255, 0.85);
   flex: none;
 }
-.course-progress-learned {
+.course-progress-completed {
   font-family: var(--font-family-system, system-ui, -apple-system, sans-serif);
   font-size: 12px;
   font-weight: 600;
@@ -7966,7 +10599,7 @@ body {
   filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.2));
 }
 
-/* Title (e.g. Keen Learner) */
+/* Title (e.g. Keen Courser) */
 .mastery-level-title {
   flex: 1 0 0;
   min-width: 1px;
@@ -8127,6 +10760,26 @@ body {
 .chapter-v2[aria-expanded="true"] {
   background: var(--chapter-selected-bg, #353330);
 }
+/* Header-only mode (no accordion): chapter row is not clickable; no background, no side margins */
+.chapter-v2--no-accordion {
+  cursor: default;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 16px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  background: unset;
+  background-color: unset;
+}
+.chapter-v2--no-accordion:hover {
+  background: unset;
+  background-color: unset;
+}
+/* No-accordion: keep sticky chapter at top; only remove accordion-only styling (e.g. underline) */
+.chapter-v2--no-accordion .chapter-v2-border {
+  border-bottom: none;
+}
 /* When video is visible and this chapter is expanded: stick row right under the video; solid subtler look so content doesn’t show through */
 .chapter-v2--sticky-under-video {
   position: sticky;
@@ -8143,7 +10796,7 @@ body {
 .chapter-v2--sticky-title-v23 {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 5;
   background: var(--chapter-selected-bg, #353330);
   box-shadow: 0 1px 0 var(--color-border-subtlest, rgba(255, 255, 255, 0.08));
 }
@@ -8194,10 +10847,11 @@ body {
   flex: 1 0 0;
   min-width: 1px;
   min-height: 1px;
+  font-family: var(--font-family-heading, 'Chess Sans', sans-serif);
   font-weight: 600;
   font-size: 14px;
-  line-height: 20px;
-  color: rgba(255, 255, 255, 0.72);
+  line-height: 16px;
+  color: var(--color-text-primary, rgba(255, 255, 255, 0.85));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: pre-wrap;
@@ -8423,7 +11077,8 @@ body {
   transform: scale(1); /* 6×6 with 2px radius */
 }
 
-/* Footer frame – bg/opaque; z 10 so footer stacks above scroll-up icon */
+/* Footer frame – overlays bottom of panel so content scrolls behind the dissolve; z 10 above content, below modals.
+   No background-color: gradient-only so transparent at top shows content behind, not a solid fill. */
 .panel-footer-frame {
   flex-shrink: 0;
   position: relative;
@@ -8431,7 +11086,7 @@ body {
   background-color: var(--color-bg-opaque);
 }
 
-/* Footer container – overlay 000 14% */
+/* Footer container – overlay 000 14% from 24px down so the frame’s top dissolve is visible */
 .panel-footer-container {
   flex-shrink: 0;
   position: relative;
@@ -8610,6 +11265,13 @@ body {
   width: 100%;
 }
 /* Buttons footer: 2px top when 3rd footer present; 12px when 3rd footer absent (via --no-icon-footer) */
+/* V4 courses: chapter name above CTA (same font as header "Courses") */
+.footer-chapter-name {
+  margin-bottom: var(--space-2, 8px);
+  text-align: left;
+  max-height: none;
+}
+
 .footer-section-actions {
   justify-content: center;
   padding: 12px;

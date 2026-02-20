@@ -1,6 +1,6 @@
 <script setup>
 import BoardPlaceholder from './components/BoardPlaceholder.vue'
-import LearnPanel from './components/LearnPanel.vue'
+import CoursesPanel from './components/CoursesPanel.vue'
 </script>
 
 <template>
@@ -10,13 +10,13 @@ import LearnPanel from './components/LearnPanel.vue'
       <div class="nav-placeholder">Nav</div>
     </aside>
 
-    <!-- Center: board – Juicy Learn style (ranks, grid, files, turn) -->
+    <!-- Center: board – Courses style (ranks, grid, files, turn) -->
     <main class="panel board-panel" aria-label="Chess board">
       <BoardPlaceholder />
     </main>
 
-    <!-- Right: Learn panel – Juicy Learn structure (turn, question, challenge progress) -->
-    <LearnPanel />
+    <!-- Right: Courses panel – Courses structure (turn, question, challenge progress) -->
+    <CoursesPanel />
   </div>
 </template>
 

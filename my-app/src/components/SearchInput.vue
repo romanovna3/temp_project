@@ -16,6 +16,7 @@
             autocomplete="off"
             @focus="onFocus"
             @blur="onBlur"
+            @keydown.enter.prevent="emit('enter')"
           />
         </div>
       </div>
@@ -34,7 +35,7 @@ const props = defineProps({
   ariaLabel: { type: String, default: 'Search' },
 })
 
-const emit = defineEmits(['update:modelValue', 'focus', 'blur'])
+const emit = defineEmits(['update:modelValue', 'focus', 'blur', 'enter'])
 
 const inputRef = ref(null)
 const isFocused = ref(false)

@@ -17,11 +17,12 @@ export default defineConfig({
   define: {
     __BUILD_TIME__: JSON.stringify(getBuildTime()),
   },
-  // Use root in dev so http://127.0.0.1:5173/ loads the app; set VITE_BASE for deploy (e.g. /temp_project/my-app/)
-  base: process.env.VITE_BASE || (process.env.NODE_ENV === 'development' ? '/' : '/temp_project/my-app/'),
+  // Default base '/' so dev and preview load at root; set VITE_BASE for deploy (e.g. /temp_project/my-app/)
+  base: process.env.VITE_BASE || '/',
   server: {
-    host: '127.0.0.1',
+    host: true, // listen on 0.0.0.0 so both 127.0.0.1 and localhost work
     port: 5173,
+    strictPort: false, // use next port if 5173 is taken
     open: true,
   },
 })
