@@ -41,12 +41,7 @@ jobs:
           VITE_BASE: /${{ github.event.repository.name }}/
           CI: true
 
-      - name: Inject base path into index for SPA redirect (404 → hash URL)
-        run: |
-          BASE="/${{ github.event.repository.name }}/"
-          sed -i "s|__GITHUB_PAGES_BASE__|$BASE|g" my-app/dist/index.html
-
-      # SPA fallback: GitHub Pages serves 404.html for unknown paths so direct links (e.g. /courses/v8) work
+      # SPA fallback: GitHub Pages serves 404.html for unknown paths so /repo/courses/v8 loads the app and Vue Router (history mode) shows the correct page
       - name: Copy index to 404
         run: cp my-app/dist/index.html my-app/dist/404.html
 

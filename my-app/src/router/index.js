@@ -1,9 +1,9 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
-// Hash history so routes work without a server (e.g. opening index.html locally or static hosting).
-// Use http://127.0.0.1:5173/#/ for home and http://127.0.0.1:5173/#/courses/opening-courses-v1 for Opening Courses.
+// History mode so path-based URLs work on GitHub Pages (404.html serves the app for all paths).
+// Locally: base '/'. Production: base '/temp_project/' so URLs are e.g. .../temp_project/courses/v8
 const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'index', component: () => import('../views/Index.vue') },
     { path: '/courses', name: 'courses', component: () => import('../views/Courses.vue') },
@@ -17,6 +17,7 @@ const router = createRouter({
     { path: '/courses/v5', name: 'courses-v5', component: () => import('../views/Courses.vue') },
     { path: '/courses/v6', name: 'courses-v6', component: () => import('../views/Courses.vue') },
     { path: '/courses/v7', name: 'courses-v7', component: () => import('../views/Courses.vue') },
+    { path: '/courses/v8', name: 'courses-v8', component: () => import('../views/Courses.vue') },
     { path: '/courses/v3', name: 'courses-v3', component: () => import('../views/Courses.vue') },
   ],
 })
@@ -28,7 +29,7 @@ router.beforeEach((to, _from, next) => {
   if (path.includes('%2F') || path.includes('%2f')) {
     path = path.replace(/%2[fF]/g, '/')
   }
-  // Normalize leading double (or multiple) slashes to single slash (e.g. #//learn/... → #/learn/...)
+  // Normalize leading double (or multiple) slashes to single slash
   if (path.startsWith('//')) {
     path = '/' + path.replace(/^\/+/, '')
   }
