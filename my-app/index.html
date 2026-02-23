@@ -11,6 +11,21 @@
       window.chesscom = window.chesscom || { features: [], settings: {} };
       window.context = window.context || {};
     </script>
+    <!-- SPA fallback: when GitHub Pages serves 404.html for e.g. /temp_project/courses/v8, redirect to hash URL so the router shows the correct page -->
+    <script>
+      (function() {
+        var p = window.location.pathname;
+        var m = p.match(/^\/([^/]+)\/?/);
+        if (!m) return;
+        var base = '/' + m[1] + '/';
+        if (p === base || p === base.replace(/\/$/, '') || p === base + 'index.html') return;
+        if (p.indexOf(base) !== 0) return;
+        var pathAfterBase = p.slice(base.length).replace(/^\/+/, '');
+        if (!pathAfterBase) return;
+        var hashPath = '/' + pathAfterBase;
+        window.location.replace(base.replace(/\/?$/, '') + '/#' + hashPath);
+      })();
+    </script>
     <style>
       html { box-sizing: border-box; font-size: 62.5%; }
       *, *::before, *::after { box-sizing: inherit; }
