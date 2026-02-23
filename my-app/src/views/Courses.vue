@@ -6,6 +6,7 @@ import { CcButton, CcChip, CcIconButton, CcIcon, CcTabGroup, CcTabItem } from '@
 import SearchInput from '../components/SearchInput.vue'
 import ProgressCircle from '../components/ProgressCircle.vue'
 import StatsCards from '../components/StatsCards.vue'
+import AquaCtaButton from '../components/AquaCtaButton.vue'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -28,11 +29,13 @@ const isVideoV2_4 = computed(() => route.path === '/courses/v4')
 const isVideoV5 = computed(() => route.path === '/courses/v5')
 const isVideoV6 = computed(() => route.path === '/courses/v6')
 const isVideoV7 = computed(() => route.path === '/courses/v7')
-const isVideoV6OrV7 = computed(() => isVideoV6.value || isVideoV7.value)
-const isVideoV2_4OrV5 = computed(() => isVideoV2_4.value || isVideoV5.value || isVideoV6.value || isVideoV7.value)
-const isVideoV5OrV6 = computed(() => isVideoV5.value || isVideoV6.value || isVideoV7.value)
+const isVideoV8 = computed(() => route.path === '/courses/v8')
+const isVideoV7OrV8 = computed(() => isVideoV7.value || isVideoV8.value)
+const isVideoV6OrV7 = computed(() => isVideoV6.value || isVideoV7OrV8.value)
+const isVideoV2_4OrV5 = computed(() => isVideoV2_4.value || isVideoV5.value || isVideoV6.value || isVideoV7OrV8.value)
+const isVideoV5OrV6 = computed(() => isVideoV5.value || isVideoV6.value || isVideoV7OrV8.value)
 // V4/V5/V6/V7: scroll-linked tabs, new sticky. V2.4 is a separate view (CoursesV24.vue).
-const isVideoV4OrV5OrV6 = computed(() => route.path === '/courses/v4' || route.path === '/courses/v5' || route.path === '/courses/v6' || route.path === '/courses/v7')
+const isVideoV4OrV5OrV6 = computed(() => route.path === '/courses/v4' || route.path === '/courses/v5' || route.path === '/courses/v6' || route.path === '/courses/v7' || route.path === '/courses/v8')
 
 // Courses data – V2.3 legacy, V2.4/V4/V5/V6 real course (right panel – Courses view)
 const coursesV23 = [
@@ -394,19 +397,37 @@ const showLessonActions = ref(true)
 // Tabs under course card: Content | Stats (Stats = Progress + Mastery)
 const courseTabsActive = ref('content')
 
-// Stats tab: 3 cards – Learned (completed lines), Reviewed (lines with level), Mastered (lock icon, 0 for now)
-const statsLearnedCount = computed(() => progressCompleted.value)
-const statsReviewedCount = computed(() =>
-  courseSections.value.reduce((sum, s) => {
-    const moves = getSectionMovesForDisplay(s)
-    return sum + moves.filter((m) => m.completed && m.level).length
-  }, 0)
-)
-const statsCards = computed(() => [
-  { label: 'Learned', value: String(statsLearnedCount.value), change: '' },
-  { label: 'Reviewed', value: String(statsReviewedCount.value), change: '' },
-  { label: 'Mastered', value: '0', showLock: true }
-])
+// Stats tab: 4 cards – completed variations by type (Informational, Trainable, Tactics/Puzzle, Alternatives)
+/** Classify a variation (move) into stats card type from its flags and text */
+function getVariationType(move) {
+  if (!move || typeof move !== 'object') return 'alternatives'
+  const text = (move.text || '').toLowerCase()
+  if (move.info === true) return 'informational'
+  if (/tactics|puzzle|quiz/.test(text)) return 'tactics'
+  if (move.quiz === true && /practice|review/.test(text)) return 'trainable'
+  if (move.quiz === true) return 'trainable'
+  return 'alternatives'
+}
+
+const statsCardsByType = computed(() => {
+  const counts = { informational: 0, trainable: 0, tactics: 0, alternatives: 0 }
+  courseSections.value.forEach((section) => {
+    const moves = getSectionMovesForDisplay(section)
+    moves.forEach((move) => {
+      if (!move.completed) return
+      const type = getVariationType(move)
+      if (counts[type] !== undefined) counts[type]++
+    })
+  })
+  return [
+    { label: 'Informational', value: String(counts.informational), change: '+3' },
+    { label: 'Trainable', value: String(counts.trainable), change: '+7' },
+    { label: 'Tactics/Puzzle', value: String(counts.tactics), change: '', showLock: true },
+    { label: 'Alternatives', value: String(counts.alternatives), change: '+1' },
+  ]
+})
+
+const statsCards = computed(() => statsCardsByType.value)
 
 // More button: show/hide additional mastery stats (8 Mastery Level items)
 const showMoreStats = ref(false)
@@ -417,6 +438,13 @@ function expandMoreStats() {
     lessButtonContainerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   })
 }
+
+// V7/V8: stats icon click – expand Stats (Learn: stats cards; Practice: levels panel)
+const statsPanelExpanded = ref(false)
+function toggleStatsPanel() {
+  statsPanelExpanded.value = !statsPanelExpanded.value
+}
+
 // AdvancedStatsExpanded: L1–L2 active with actual variation counts (L2 = cumulative); L3–L8 locked with lock icon
 const masteryVariationCountByLevel = computed(() => ({ L1: 8, L2: 6 }))
 
@@ -2474,12 +2502,12 @@ const nextToLearnRef = computed(() => {
 })
 
 // V7 only: tab labels – Learn (content) and Practice (stats)
-const courseTabContentLabel = computed(() => (isVideoV7.value ? 'Learn' : 'Content'))
-const courseTabStatsLabel = computed(() => (isVideoV7.value ? 'Practice' : 'Stats'))
+const courseTabContentLabel = computed(() => (isVideoV7OrV8.value ? 'Learn' : 'Content'))
+const courseTabStatsLabel = computed(() => (isVideoV7OrV8.value ? 'Practice' : 'Stats'))
 
 /** V7 only: sections that have at least one ready-for-review line, with moves filtered to ready only (for Practice panel). */
 const courseSectionsReadyForReview = computed(() => {
-  if (!isVideoV7.value) return []
+  if (!isVideoV7OrV8.value) return []
   return courseSections.value
     .map((section) => {
       const moves = getSectionMovesForDisplay(section).filter((m) => getLineType(m) === 'ready')
@@ -2491,7 +2519,7 @@ const courseSectionsReadyForReview = computed(() => {
 
 /** V7 Practice tab: sections with ready and/or completed lines; each section has practiceMoves: { move, practiceType: 'ready'|'completed' } (ready first, then completed). */
 const courseSectionsForPractice = computed(() => {
-  if (!isVideoV7.value) return []
+  if (!isVideoV7OrV8.value) return []
   return courseSections.value
     .map((section) => {
       const all = getSectionMovesForDisplay(section)
@@ -2521,6 +2549,72 @@ function simpleHash(str) {
   for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i) | 0
   return Math.abs(h)
 }
+
+/** V8 only: line cover icon. INFO → circle-fill-info (no chip). Others → deterministic sequence with runs (same icon repeated) and more Trainable (~35%, similar to INFO). */
+const LINE_COVER_ICONS_V8 = ['document-book-open', 'game-type-puzzle', 'arrow-fork-vertical', 'board-simple-pawn']
+/** Weights for non-INFO: Reference 21%, Puzzle 22%, Alternative 21%, Trainable 36% */
+const LINE_COVER_WEIGHTS_V8 = [21, 22, 21, 36] // sum 100
+/** Alternative icon must not be used for lines that appear in Practice (ready/completed). */
+const LINE_COVER_ICON_INDEX_ALTERNATIVE = 2
+const LINE_COVER_ICON_INDEX_TRAINABLE = 3
+
+const lineCoverIconByKeyV8 = computed(() => {
+  const out = Object.create(null)
+  if (!isVideoV8.value) return out
+  const sections = courseSections.value
+  const REUSE_PERCENT = 45 // 45% chance to repeat previous icon (creates runs of 2–3+)
+  sections.forEach((section) => {
+    const moves = getSectionMovesForDisplay(section)
+    let prevIcon = null
+    moves.forEach((move, i) => {
+      const key = `${section.id}-${move.id}`
+      if (move.info) {
+        out[key] = 'circle-fill-info'
+        prevIcon = null
+        return
+      }
+      // The Board: Files – always trainable icon (line is practiceable).
+      if (section.id === 'learning-the-game' && move.id === '2') {
+        out[key] = 'board-simple-pawn'
+        prevIcon = 'board-simple-pawn'
+        return
+      }
+      const seed = simpleHash(`${section.id}-${i}-${move.id}`)
+      const reuseRoll = seed % 100
+      if (prevIcon !== null && reuseRoll < REUSE_PERCENT) {
+        out[key] = prevIcon
+      } else {
+        const pickRoll = simpleHash(`${key}-v8`) % 100
+        let acc = 0
+        let chosen = 0
+        for (let w = 0; w < LINE_COVER_WEIGHTS_V8.length; w++) {
+          acc += LINE_COVER_WEIGHTS_V8[w]
+          if (pickRoll < acc) {
+            chosen = w
+            break
+          }
+        }
+        // Alternative lines cannot be trained; never use ALT icon for lines that appear in Practice.
+        const inPractice = move.completed === true
+        if (inPractice && chosen === LINE_COVER_ICON_INDEX_ALTERNATIVE) {
+          chosen = LINE_COVER_ICON_INDEX_TRAINABLE
+        }
+        prevIcon = LINE_COVER_ICONS_V8[chosen]
+        out[key] = prevIcon
+      }
+    })
+  })
+  return out
+})
+
+function getLineCoverIconV8(section, move) {
+  if (move?.info) return 'circle-fill-info'
+  // The Board: Files – always trainable icon.
+  if (section?.id === 'learning-the-game' && move?.id === '2') return 'board-simple-pawn'
+  const key = `${section?.id ?? ''}-${move?.id ?? ''}`
+  return lineCoverIconByKeyV8.value[key] ?? LINE_COVER_ICONS_V8[0]
+}
+
 const PIECE_ICON_BY_SAN = {
   R: 'piece-white-rook',
   N: 'piece-white-knight',
@@ -4203,7 +4297,7 @@ const OPENING_COURSE_CARD_VARIANT = 'square-outline'
 const OPENING_COURSE_CARD_HOVER_VARIANT = 'v2'
 const v22PlayingSectionId = ref(null) // when set, this section's video shows pause and is sticky
 // V2.3: duplicate of V2.2 + sticky chapter title when expanded. V2.4: same layout, real course content.
-const isVideoV2_3OrV24 = computed(() => route.path === '/courses/v2.3' || route.path === '/courses/v2.4' || route.path === '/courses/v4' || route.path === '/courses/v5' || route.path === '/courses/v6' || route.path === '/courses/v7')
+const isVideoV2_3OrV24 = computed(() => route.path === '/courses/v2.3' || route.path === '/courses/v2.4' || route.path === '/courses/v4' || route.path === '/courses/v5' || route.path === '/courses/v6' || route.path === '/courses/v7' || route.path === '/courses/v8')
 const v23PlayingSectionId = ref(null)
 const v23SectionItemRefs = ref(Object.create(null))
 function setV23SectionItemRef(sectionId, el) {
@@ -4582,7 +4676,7 @@ function setupV3IntersectionObserver() {
 // Video section: show in panel when Video button clicked (V1); in V2 always visible per chapter
 const showVideoSection = ref(false)
 /** Set to true to hide all videos everywhere (course + line view). */
-const hideVideosForAll = true
+const hideVideosForAll = false
 const showVideoSectionVisible = computed(() => !hideVideosForAll && showVideoSection.value)
 // V2.4 Ready to Practice: video hidden by default; user can turn it on via toolbar
 const readyLineVideoVisible = ref(false)
@@ -4630,6 +4724,9 @@ function measureCourseTabsHeight() {
   })
 }
 function onCoursesContentScroll() {
+  if (isVideoV7OrV8.value && statsPanelExpanded.value) {
+    statsPanelExpanded.value = false
+  }
   if (!isVideoV4OrV5OrV6.value) return
   if (tabsScrollRafId != null) return
   tabsScrollRafId = requestAnimationFrame(() => {
@@ -4796,13 +4893,13 @@ const VIDEO_ASPECT = 16 / 9
 
 // Three formats only: large (default), small, none (collapsed under course card)
 const VIDEO_FORMATS = Object.freeze({
-  large: { height: 220, width: null }, // width from container aspect
+  large: { height: 250, width: null }, // width from container aspect
   small: { height: 112, width: 198 },
   none: { height: 0, width: 0 }
 })
 const videoFormat = ref('large')
 
-const VIDEO_LARGE_H = 220
+const VIDEO_LARGE_H = 250
 const VIDEO_SMALL_H = 112
 const isResizingVideo = ref(false)
 const videoDragPreviewHeight = ref(null)
@@ -5078,9 +5175,9 @@ function toggleV23VideoPlay(sectionId) {
   v23PlayingSectionId.value = v23PlayingSectionId.value === sectionId ? null : sectionId
 }
 
-// V2 / V2.2 / V2.3: show video by default (per-chapter blocks rendered below each chapter)
-watch([isVideoV2, isVideoV2_2, isVideoV2_3OrV24, isVideoV3], ([v2, v22, v23, v3]) => {
-  if (v2 || v22 || v23 || v3) showVideoSection.value = true
+// V2 / V2.2 / V2.3 / V6 / V7 / V8: show video by default (per-chapter blocks on Learn tab)
+watch([isVideoV2, isVideoV2_2, isVideoV2_3OrV24, isVideoV3, isVideoV6OrV7], ([v2, v22, v23, v3, v67]) => {
+  if (v2 || v22 || v23 || v3 || v67) showVideoSection.value = true
 }, { immediate: true })
 
 // Line view only: attach scroll listener to shrink video when user scrolls (if content is scrollable)
@@ -5249,7 +5346,31 @@ watch([courseTabsActive, courseSectionsForPractice], () => {
   }
 }, { immediate: true })
 
+/** When switching tabs: Practice or Learn → scroll to top (so returning to Learn shows top, not previous scroll); close stats panel. */
+watch(courseTabsActive, (active) => {
+  statsPanelExpanded.value = false
+  if (!isVideoV4OrV5OrV6.value || !coursesContentRef.value) return
+  if (active === 'stats' || active === 'content') {
+    nextTick(() => {
+      if (coursesContentRef.value) coursesContentRef.value.scrollTop = 0
+    })
+  }
+})
+
 onMounted(() => {
+  if (isVideoV6OrV7.value && courseTabsActive.value === 'content' && nextToLearnRef.value) {
+    function scrollToNextToLearn() {
+      if (!coursesContentRef.value) return
+      const card = coursesContentRef.value.querySelector('.chapter-line-card--next-to-learn')
+      if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        scrollToNextToLearn()
+        if (!coursesContentRef.value) setTimeout(scrollToNextToLearn, 100)
+      })
+    })
+  }
   document.addEventListener('mousemove', handleDragMove)
   document.addEventListener('mouseup', handleDragEnd)
   document.addEventListener('touchmove', handleDragMove, { passive: false })
@@ -5687,7 +5808,7 @@ onUnmounted(() => {
             v-else
             ref="coursesContentRef"
             class="panel-content courses-content courses-content--line-items-no-click"
-            :class="{ 'courses-content--v3': isVideoV3, 'courses-content--v5': isVideoV5, 'courses-content--v6': isVideoV6OrV7, 'courses-content--tabs-scroll-linked': isVideoV4OrV5OrV6 }"
+            :class="{ 'courses-content--v3': isVideoV3, 'courses-content--v5': isVideoV5, 'courses-content--v6': isVideoV6OrV7, 'courses-content--v8': isVideoV8, 'courses-content--tabs-scroll-linked': isVideoV4OrV5OrV6 }"
             @scroll.passive="onCoursesContentScroll"
             :style="{
               ...(isVideoV3 && v3PaddingBottomPx != null ? { paddingBottom: `${v3PaddingBottomPx}px` } : {}),
@@ -5734,6 +5855,7 @@ onUnmounted(() => {
               <cc-tab-item
                 id="stats"
                 :label="courseTabStatsLabel"
+                :badge="isVideoV8 ? String(practiceReadyCount) : undefined"
                 :isActive="courseTabsActive === 'stats'"
                 @click="courseTabsActive = 'stats'"
               />
@@ -5754,6 +5876,7 @@ onUnmounted(() => {
               <cc-tab-item
                 id="stats"
                 :label="courseTabStatsLabel"
+                :badge="isVideoV8 ? String(practiceReadyCount) : undefined"
                 :isActive="courseTabsActive === 'stats'"
                 @click="courseTabsActive = 'stats'"
               />
@@ -5761,7 +5884,7 @@ onUnmounted(() => {
           </div>
           <!-- V4/V5/V6/V7: course card in same frame style as line cards (opening-course-card). V7: add completion progress bar. -->
           <template v-if="isVideoV2_4OrV5">
-            <div v-for="course in courses" :key="course.id" class="course-card-frame" :class="{ 'course-card-frame--with-completion': isVideoV7, 'course-card-frame--v7-practice': isVideoV7 && courseTabsActive === 'stats' }">
+            <div v-for="course in courses" :key="course.id" class="course-card-frame" :class="{ 'course-card-frame--with-completion': isVideoV7OrV8, 'course-card-frame--v7-practice': isVideoV7OrV8 && courseTabsActive === 'stats' }">
               <article
                 class="opening-course-card opening-course-card--hover-v1 course-card--main"
                 data-name="Course Card"
@@ -5775,34 +5898,53 @@ onUnmounted(() => {
                         </div>
                       </div>
                     </div>
-                    <div class="opening-course-card__content" :class="{ 'opening-course-card__content--v7-completion': isVideoV7, 'opening-course-card__content--v7-practice': isVideoV7 && courseTabsActive === 'stats' }">
+                    <div class="opening-course-card__content" :class="{ 'opening-course-card__content--v7-completion': isVideoV7OrV8, 'opening-course-card__content--v7-practice': isVideoV7OrV8 && courseTabsActive === 'stats' }">
                       <div class="opening-course-card__title-author">
                         <h3 class="opening-course-card__title">{{ course.title }}</h3>
                         <p class="opening-course-card__description course-card--author">{{ course.instructor }}</p>
                       </div>
-                      <!-- V7 only: Learn tab = course progress %, Practice tab = mastery bar + Av. Level -->
-                      <div v-if="isVideoV7 && courseTabsActive === 'content'" class="course-card-completion" data-name="Completion" role="progressbar" :aria-valuenow="completionPercentRounded" aria-valuemin="0" aria-valuemax="100" aria-label="Course completion">
-                        <div class="course-card-completion__track" data-name="Progress bar">
-                          <div class="course-card-completion__fill" data-name="Progress" :style="{ width: completionFillWidthPx + 'px' }" />
+                      <!-- V7 only: Learn = completion bar + %; Practice = mastery bar + Mastery (same row alignment on both) -->
+                      <div v-if="isVideoV7OrV8 && courseTabsActive === 'content'" class="course-card-mastery-row" data-name="Progress">
+                        <div class="course-card-mastery-group">
+                          <div
+                            class="course-card-completion course-card-completion--in-mastery-row"
+                            data-name="Completion"
+                            role="progressbar"
+                            :aria-valuenow="completionPercentRounded"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-label="Course completion"
+                          >
+                            <div class="course-card-completion__track" data-name="Progress bar">
+                              <div class="course-card-completion__fill" data-name="Progress" :style="{ width: completionFillWidthPx + 'px' }" />
+                            </div>
+                            <p class="course-card-completion__label">{{ completionPercentRounded }}%</p>
+                          </div>
                         </div>
-                        <p class="course-card-completion__label">{{ completionPercentRounded }}%</p>
+                        <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
+                          <CcIcon name="graph-bars-statistics" variant="glyph" :size="20" class="footer-icon" />
+                        </button>
                       </div>
-                      <div v-else-if="isVideoV7 && courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
-                        <div class="course-card-mastery-bar" role="progressbar" :aria-valuenow="masteryLevel" :aria-valuemin="0" :aria-valuemax="masteryTotal" aria-label="Mastery level">
-                          <div class="course-card-mastery-bar__segments">
-                            <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                      <div v-else-if="isVideoV7OrV8 && courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
+                        <div class="course-card-mastery-group">
+                          <div class="course-card-mastery-bar" role="progressbar" :aria-valuenow="masteryLevel" :aria-valuemin="0" :aria-valuemax="masteryTotal" aria-label="Mastery level">
+                            <div class="course-card-mastery-bar__segments">
+                              <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                            </div>
+                            <div class="course-card-mastery-bar__fill" :style="{ width: masteryPercent + '%' }">
+                              <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                            </div>
                           </div>
-                          <div class="course-card-mastery-bar__fill" :style="{ width: masteryPercent + '%' }">
-                            <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                          <div class="course-card-av-level extra-data-next-level" data-name="Mastery">
+                            <span class="extra-data-label">Mastery:</span>
+                            <div class="extra-data-level-chip" data-name="LevelChip">
+                              <CcChip :label="extraDataLevelBadge" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                            </div>
                           </div>
                         </div>
-                        <div class="course-card-av-level extra-data-next-level" data-name="Av. Level">
-                          <span class="extra-data-label">Av. Level:</span>
-                          <div class="extra-data-level-chip" data-name="LevelChip">
-                            <CcChip :label="extraDataLevelBadge" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
-                            <span class="extra-data-level-name">{{ extraDataLevelName }}</span>
-                          </div>
-                        </div>
+                        <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
+                          <CcIcon name="graph-bars-statistics" variant="glyph" :size="20" class="footer-icon" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -5816,7 +5958,7 @@ onUnmounted(() => {
             v-for="course in courses"
             :key="course.id"
             class="course-cards"
-            :class="{ 'course-cards--with-completion': isVideoV7 }"
+            :class="{ 'course-cards--with-completion': isVideoV7OrV8 }"
             data-name="Course Cards"
           >
             <span class="course-cards-border" aria-hidden="true" />
@@ -5831,30 +5973,105 @@ onUnmounted(() => {
               </div>
               <p class="course-author">{{ course.instructor }}</p>
             </div>
-            <!-- V7 only: Completion progress (Completion.tsx spec) – bar 192×12px + percentage label -->
-            <div
-              v-if="isVideoV7"
-              class="course-card-completion"
-              data-name="Completion"
-              role="progressbar"
-              :aria-valuenow="completionPercentRounded"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              aria-label="Course completion"
-            >
-              <div class="course-card-completion__track" data-name="Progress bar">
+            <!-- V7 only: completion bar + % + stats icon (same row/alignment as Practice) -->
+            <div v-if="isVideoV7OrV8" class="course-card-mastery-row" data-name="Progress">
+              <div class="course-card-mastery-group">
                 <div
-                  class="course-card-completion__fill"
-                  data-name="Progress"
-                  :style="{ width: completionFillWidthPx + 'px' }"
-                />
+                  class="course-card-completion course-card-completion--in-mastery-row"
+                  data-name="Completion"
+                  role="progressbar"
+                  :aria-valuenow="completionPercentRounded"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-label="Course completion"
+                >
+                  <div class="course-card-completion__track" data-name="Progress bar">
+                    <div
+                      class="course-card-completion__fill"
+                      data-name="Progress"
+                      :style="{ width: completionFillWidthPx + 'px' }"
+                    />
+                  </div>
+                  <p class="course-card-completion__label">{{ completionPercentRounded }}%</p>
+                </div>
               </div>
-              <p class="course-card-completion__label">{{ completionPercentRounded }}%</p>
+              <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
+                <CcIcon name="graph-bars-statistics" variant="glyph" :size="20" class="footer-icon" />
+              </button>
             </div>
           </div>
 
-          <!-- Content tab: video + sections list -->
-          <div v-if="!isOpeningCoursesV1" v-show="courseTabsActive === 'content'" class="course-tab-panel" role="tabpanel" aria-label="Content">
+          <!-- ToC area: overlay (when stats open) + drawer wrap + Content tab sections (overlay covers only this, not course card) -->
+          <div class="stats-overlay-toc-wrap">
+            <!-- V7/V8: darker overlay over ToC only (not course card) when stats drawer open; click to close -->
+            <div
+              v-if="isVideoV7OrV8 && statsPanelExpanded"
+              class="stats-drawer-overlay"
+              aria-hidden="true"
+              @click="toggleStatsPanel"
+            ></div>
+          <!-- Drawer wrap: contains drawer and both tab panels -->
+          <div class="stats-drawer-wrap">
+            <!-- V7/V8: stats drawer – Learn: stats cards; Practice: levels list (no big mastery bar) -->
+            <div v-if="isVideoV7OrV8 && statsPanelExpanded" class="stats-drawer" role="dialog" aria-label="Stats">
+              <div class="stats-drawer__inner">
+                <!-- Stats Header (hidden for later use) -->
+                <div class="course-progress-header stats-drawer__title stats-drawer__title--hidden" data-name="Stats Header" aria-hidden="true">
+                  <span class="course-progress-title">{{ courseTabsActive === 'stats' ? 'Mastery stats' : 'Stats' }}</span>
+                </div>
+              <template v-if="courseTabsActive === 'content'">
+                <StatsCards :cards="statsCards" />
+              </template>
+              <template v-else-if="courseTabsActive === 'stats'">
+                <div class="advanced-stats-header stats-drawer__header" data-name="Practice Filter">
+                  <span class="advanced-stats-header-label">Level</span>
+                  <span class="advanced-stats-header-label">Variations</span>
+                </div>
+                <div class="advanced-stats-variations" role="list">
+                  <div
+                    v-for="item in masteryLevelItems"
+                    :key="item.level"
+                    class="mastery-level-item"
+                    :class="{ 'mastery-level-item--locked': item.locked }"
+                    role="listitem"
+                    data-name="MasteryLevelItemContainer"
+                  >
+                    <div class="mastery-level-item-left">
+                      <CcChip
+                        v-if="!item.locked"
+                        :label="item.level"
+                        color="aqua"
+                        :is-uppercase="false"
+                        label-class="mastery-level-chip-label"
+                      />
+                      <CcChip
+                        v-else
+                        :label="item.level"
+                        color="gray"
+                        variant="translucent"
+                        :is-uppercase="false"
+                        label-class="mastery-level-chip-label"
+                      />
+                      <span class="mastery-level-title">{{ item.title }}</span>
+                    </div>
+                    <div class="mastery-level-counter-wrap">
+                      <template v-if="item.locked">
+                        <span class="mastery-level-lock" aria-hidden="true">
+                          <CcIcon name="tool-lock-blank" variant="glyph" :size="20" class="mastery-level-lock-icon" />
+                        </span>
+                      </template>
+                      <template v-else>
+                        <span class="mastery-level-counter">{{ item.counter }}</span>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              </div>
+            </div>
+
+          <!-- Content tab: video + sections list (inside drawer wrap so overlay covers it) -->
+          <div v-if="!isOpeningCoursesV1" v-show="courseTabsActive === 'content'" class="course-tab-panel" :class="{ 'course-tab-panel--drawer-open': statsPanelExpanded }" role="tabpanel" aria-label="Content">
           <!-- VideoSection (V1 only) – visible when Video button clicked; under course card; sticky -->
           <section ref="videoSectionRef" v-show="showVideoSectionVisible && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && !isVideoV3" class="video-section" data-name="VideoSection">
             <div
@@ -5890,9 +6107,9 @@ onUnmounted(() => {
           </div>
 
           <!-- Stats tab: Progress + Mastery. V7 Practice: mastery is on course card; sections list same design as Learn. -->
-          <div v-show="courseTabsActive === 'stats'" class="course-tab-panel course-tab-panel--stats" :class="{ 'course-tab-panel--v7': isVideoV7 }" role="tabpanel" aria-label="Stats">
+          <div v-show="courseTabsActive === 'stats'" class="course-tab-panel course-tab-panel--stats" :class="{ 'course-tab-panel--v7': isVideoV7OrV8, 'course-tab-panel--drawer-open': statsPanelExpanded }" role="tabpanel" aria-label="Stats">
           <!-- Progress – hidden on V7 Practice (do not delete) -->
-          <div v-if="!isVideoV7" class="course-progress" data-name="Course Progress Container">
+          <div v-if="!isVideoV7OrV8" class="course-progress" data-name="Course Progress Container">
             <div class="course-progress-header" data-name="Header">
               <span class="course-progress-title" data-name="Course Progress">Progress</span>
               <span class="course-progress-completed">Completed: {{ progressCompleted }}/{{ progressTotal }}</span>
@@ -5902,11 +6119,11 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Stats cards: kept as local component, omitted from view (set v-if="true" to show) -->
+          <!-- Stats cards: only in drawer on Learn (removed from inline) -->
           <StatsCards v-if="false" :cards="statsCards" />
 
-          <!-- Mastery bar – hidden on V7 Practice (do not delete) -->
-          <div v-if="!isVideoV7" class="course-progress course-progress-mastery" data-name="Mastery Container">
+          <!-- Mastery bar – hidden on V7/V8 (drawer shows levels only, no big bar); non-V7: always show -->
+          <div v-if="!isVideoV7OrV8" class="course-progress course-progress-mastery" data-name="Mastery Container">
             <div class="course-progress-header" data-name="Header">
               <span class="course-progress-title">Mastery</span>
               <div class="course-progress-mastery-next-level extra-data-next-level" data-name="NextLevel">
@@ -5933,12 +6150,12 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Practice Filter (Level / Variations) – hidden on V7 Practice (do not delete) -->
-          <div v-if="!isVideoV7" class="advanced-stats-header" data-name="Practice Filter">
+          <!-- Practice Filter (Level / Variations) – only in drawer on V7/V8 Practice; non-V7: always show here -->
+          <div v-if="!isVideoV7OrV8" class="advanced-stats-header" data-name="Practice Filter">
             <span class="advanced-stats-header-label">Level</span>
             <span class="advanced-stats-header-label">Variations</span>
           </div>
-          <div v-if="!isVideoV7" class="advanced-stats-variations" role="list">
+          <div v-if="!isVideoV7OrV8" class="advanced-stats-variations" role="list">
             <div
               v-for="item in masteryLevelItems"
               :key="item.level"
@@ -5979,7 +6196,7 @@ onUnmounted(() => {
           </div>
 
           <!-- V7 only: Practice tab – Ready + Completed lines, color-coded; vertical line masked at last card -->
-          <template v-if="isVideoV7 && courseSectionsForPractice.length && courseTabsActive === 'stats'">
+          <template v-if="isVideoV7OrV8 && courseSectionsForPractice.length && courseTabsActive === 'stats'">
             <div class="sections-list">
               <div
                 v-for="(section, sectionIndex) in courseSectionsForPractice"
@@ -6050,7 +6267,7 @@ onUnmounted(() => {
                                           aria-hidden="true"
                                         >
                                           <CcIcon
-                                            :name="item.move.info ? 'document-book-open' : 'game-type-puzzle'"
+                                            :name="isVideoV8 ? getLineCoverIconV8(section, item.move) : (item.move.info ? 'document-book-open' : 'game-type-puzzle')"
                                             variant="glyph"
                                             :size="20"
                                             class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--v6"
@@ -6062,7 +6279,7 @@ onUnmounted(() => {
                                           <div class="chapter-line-card__title-wrap">
                                             <h3 class="opening-course-card__title">{{ item.move.text }}</h3>
                                             <CcChip
-                                              v-if="item.move.info"
+                                              v-if="item.move.info && !isVideoV8"
                                               label="INFO"
                                               color="gray"
                                               variant="translucent"
@@ -6119,6 +6336,9 @@ onUnmounted(() => {
 
           </div>
 
+          </div>
+          <!-- /stats-drawer-wrap -->
+
           <!-- Content tab: lines row (hidden) + sections list -->
           <div v-show="courseTabsActive === 'content'" class="course-tab-panel" role="tabpanel" aria-label="Content">
           <div v-show="false" class="course-lines-row">
@@ -6145,7 +6365,7 @@ onUnmounted(() => {
           </div>
 
           <!-- Sections list – V3: all visible + scroll sticky; V2/V1: accordion; hidden on Opening Courses V1. v-if so refs (line mask) only from visible tab when V7. -->
-          <div v-if="!isOpeningCoursesV1 && (courseTabsActive === 'content' || !isVideoV7)" class="sections-list">
+          <div v-if="!isOpeningCoursesV1 && (courseTabsActive === 'content' || !isVideoV7OrV8)" class="sections-list">
             <div
               v-for="(section, sectionIndex) in courseSections"
               :key="section.id"
@@ -6226,7 +6446,7 @@ onUnmounted(() => {
                               </span>
                               <span class="move-item-text">{{ move.text }}</span>
                             </div>
-                            <span v-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                            <span v-if="move.info && !isVideoV8" class="move-item-info-wrap" aria-hidden="true">
                               <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
                             </span>
                             <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
@@ -6310,7 +6530,7 @@ onUnmounted(() => {
                       :class="{ 'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id), 'v22-chapter-video-block--v23-sticky-title': isVideoV2_3OrV24 && isSectionOpen(section.id) }"
                     >
                       <section
-                        v-if="(isVideoV2 || isVideoV2_2 || isVideoV2_3OrV24) && showVideoSectionVisible && section.videoAvailable && isSectionOpen(section.id)"
+                        v-if="(isVideoV2 || isVideoV2_2 || (isVideoV2_3OrV24 && !isVideoV6OrV7)) && showVideoSectionVisible && section.videoAvailable && isSectionOpen(section.id)"
                         class="video-section video-section--inline"
                         :data-name="`VideoSection-${section.id}`"
                       >
@@ -6335,6 +6555,26 @@ onUnmounted(() => {
                         </div>
                       </section>
                     </div>
+                    <!-- V6/V7/V8 Learn tab: one video per chapter, scrollable (no sticky) -->
+                    <section
+                      v-if="isVideoV6OrV7 && courseTabsActive === 'content' && showVideoSectionVisible && section.videoAvailable && isSectionOpen(section.id)"
+                      class="video-section video-section--inline video-section--scrollable"
+                      :data-name="`VideoSection-${section.id}`"
+                    >
+                      <div
+                        class="video-placeholder-frame"
+                        :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px', backgroundColor: '#000000' }"
+                      >
+                        <button
+                          v-if="videoFormat !== 'none'"
+                          type="button"
+                          class="video-play-button"
+                          aria-label="Play video"
+                        >
+                          <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
+                        </button>
+                      </div>
+                    </section>
                 <Transition name="chapter-moves">
                   <div
                     v-if="isSectionOpen(section.id) && getSectionMovesForDisplay(section).length"
@@ -6355,7 +6595,8 @@ onUnmounted(() => {
                         :class="[
                           { 'move-item--inactive': !move.completed },
                           lineIndex === getSectionMovesForDisplay(section).length - 1 && 'chapter-line-card--last',
-                          isVideoV6OrV7 && 'chapter-line-card--v6-timeline-right'
+                          isVideoV6OrV7 && 'chapter-line-card--v6-timeline-right',
+                          isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id && 'chapter-line-card--next-to-learn'
                         ]"
                         role="listitem"
                         data-name="Line"
@@ -6381,7 +6622,7 @@ v-if="isVideoV6OrV7"
                                 aria-hidden="true"
                               >
                                 <CcIcon
-                                  :name="move.info ? 'document-book-open' : 'game-type-puzzle'"
+                                  :name="isVideoV8 ? getLineCoverIconV8(section, move) : (move.info ? 'document-book-open' : 'game-type-puzzle')"
                                   variant="glyph"
                                   :size="20"
                                   class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--v6"
@@ -6457,7 +6698,7 @@ v-if="isVideoV6OrV7"
                                 <div class="chapter-line-card__title-wrap">
                                   <h3 class="opening-course-card__title">{{ move.text }}</h3>
                                   <CcChip
-                                    v-if="move.info"
+                                    v-if="move.info && !isVideoV8"
                                     label="INFO"
                                     color="gray"
                                     variant="translucent"
@@ -6524,7 +6765,7 @@ v-if="isVideoV6OrV7"
                                 </span>
                                 <span class="move-item-text">{{ move.text }}</span>
                               </div>
-                              <span v-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                              <span v-if="move.info && !isVideoV8" class="move-item-info-wrap" aria-hidden="true">
                                 <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
                               </span>
                               <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
@@ -6643,7 +6884,7 @@ v-if="isVideoV6OrV7"
                               </span>
                               <span class="move-item-text">{{ move.text }}</span>
                             </div>
-                            <span v-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                            <span v-if="move.info && !isVideoV8" class="move-item-info-wrap" aria-hidden="true">
                               <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
                             </span>
                             <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
@@ -6670,6 +6911,8 @@ v-if="isVideoV6OrV7"
           </div>
           </div>
           </div>
+          </div>
+          <!-- /stats-overlay-toc-wrap -->
           </template>
           <template v-else-if="panelView === 'line'">
           <div class="panel-content courses-content line-view-content" :class="`line-view-content--${currentLineType}`">
@@ -7266,10 +7509,22 @@ v-if="isVideoV6OrV7"
                   </div>
                 </template>
                 <template v-else>
-                  <!-- Continue (secondary) + Practice (primary with badge) -->
+                                    <!-- Learn (secondary) + Practice (aqua with badge) -->
                   <div class="footer-buttons-row footer-buttons-row-split">
-                    <CcButton variant="secondary" size="large" class="footer-btn-equal">Continue</CcButton>
-                    <button type="button" class="v6-btn-practice-all cc-button-component cc-button-primary cc-button-large cc-bg-primary footer-btn-equal" data-name="V6 Button" aria-label="Practice">
+                    <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn</CcButton>
+                    <AquaCtaButton
+                      v-if="isVideoV8"
+                      label="Practice"
+                      :badge="practiceReadyCount"
+                      class="footer-btn-equal"
+                    />
+                    <button
+                      v-else
+                      type="button"
+                      class="v6-btn-practice-all cc-button-component cc-button-primary cc-button-large cc-bg-primary footer-btn-equal"
+                      data-name="V6 Button"
+                      aria-label="Practice"
+                    >
                       <span class="v6-btn-practice-all-text">Practice</span>
                       <span class="v6-btn-practice-all-badge-frame">
                         <span class="v6-btn-practice-all-badge">
@@ -8931,15 +9186,33 @@ body {
   height: 13px;
   display: block;
 }
-/* Next-to-learn line: 11×11 node, bright green-200 outline + glow */
+/* Next-to-learn line: 8×8 node, brand green outline + glow (70% intensity) */
 .courses-content--v6 .chapter-line-card__timeline-node--next-to-learn {
-  width: 11px;
-  height: 11px;
-  min-width: 11px;
-  min-height: 11px;
-  outline: 2px solid var(--color-green-200, #B2E068);
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  outline: 2px solid #81B64C;
   outline-offset: 0;
-  box-shadow: 0 0 0 2px var(--color-green-200, #B2E068), 0 0 8px 2px var(--color-green-200, #B2E068);
+  box-shadow: 0 0 0 2px #81B64C, 0 0 8px 2px rgba(129, 182, 76, 0.7);
+}
+/* Next-to-learn card: green vertical bar on the left (full height of card, aligned to main container left edge) */
+.courses-content--v6 .chapter-line-card--next-to-learn {
+  position: relative;
+}
+/* Next-to-learn line: same font color as completed lines (override inactive dimming) */
+.courses-content--v6 .chapter-line-card--next-to-learn .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.72);
+}
+.courses-content--v6 .chapter-line-card--next-to-learn::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #81B64C;
+  pointer-events: none;
 }
 .courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
   gap: 0;
@@ -9254,6 +9527,9 @@ body {
 }
 .chapter-line-card.move-item--inactive .opening-course-card__title {
   color: var(--color-text-tertiary, rgba(255, 255, 255, 0.5));
+}
+.courses-content--v6 .chapter-line-card.move-item--inactive.chapter-line-card--next-to-learn .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.72);
 }
 /* Practice tab: same header/title color as Learn tab (don’t dim Ready lines) */
 /* Practice tab: 72% opacity on all line card text (title, moves count, etc.) */
@@ -9680,22 +9956,21 @@ body {
   object-fit: cover;
   border-radius: 3px;
 }
-/* V7 content: height 80px, width 100%, no padding, flex-start, gap 0 (overrides .course-card--main padding 2px / gap 8px) */
+/* V7 content: height 80px (matches cover), title/author at top, progress row at bottom (baseline-aligned with cover) */
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion {
   padding: 0;
   width: 100%;
+  min-width: 0;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: flex-start;
-  overflow: hidden;
+  overflow: visible;
   gap: 8px;
 }
 .course-card-frame--with-completion .opening-course-card__content--v7-completion .opening-course-card__title-author {
-  min-height: 40px;
-  height: 100%;
-  flex: 1 1 0;
+  flex: 0 0 auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -9717,38 +9992,93 @@ body {
   margin-top: 0;
   flex-basis: auto;
 }
+.course-card-completion-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  flex-shrink: 0;
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+/* Learn tab: 1px bottom margin, progress row aligns with cover baseline */
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-completion-row {
+  margin-bottom: 1px;
+}
+.course-card-completion-row .course-card-completion {
+  flex: 0 0 auto;
+  width: fit-content;
+  min-width: 0;
+  margin-top: 0;
+}
 .course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-completion {
   padding-bottom: 0;
   justify-content: flex-start;
-  width: 100%;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 0;
   gap: 8px;
 }
 .course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-mastery-row {
   padding-bottom: 0;
   gap: 8px;
-  height: 16px;
-  justify-content: flex-start;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
 }
-/* V7 Practice tab only: content block 80px height, width 100%, flex-start, 8px gap (overrides .course-card--main padding 2px / gap 8px) */
+/* Course card Stats icon – same style as footer icon buttons; align to right so it stays inside the card */
+.course-card-completion-row .course-card-stats-icon,
+.course-card-mastery-row .course-card-stats-icon {
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  justify-content: center;
+  align-items: center;
+  background: rgba(33, 31, 28, 1);
+  padding: 0;
+}
+/* V7 Practice tab only: same 80px height, space-between so mastery row sits at bottom (cover baseline) */
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion.opening-course-card__content--v7-practice {
   padding: 0;
   padding-bottom: 0;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
-  justify-content: flex-start;
+  justify-content: space-between;
   width: 100%;
   gap: 8px;
+  overflow: visible;
 }
-/* V7 Practice tab: mastery bar + Av. Level on course card (same size as course progress bar) */
+/* V7 Practice tab: mastery bar + Mastery on course card (same size as course progress bar) */
 .course-card-mastery-row {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 8px;
   width: 100%;
+  min-width: 0;
   margin-top: 0;
-  height: 16px;
+  height: 24px;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+/* Container so progress bar and mastery level are aligned vertically (same row, aligned) */
+.course-card-mastery-group {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  height: 20px;
 }
 .course-card-mastery-bar {
   width: 192px;
@@ -9759,6 +10089,7 @@ body {
   overflow: hidden;
   background: rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  margin-bottom: 2px;
 }
 .course-card-mastery-bar__segments {
   position: absolute;
@@ -9802,11 +10133,19 @@ body {
   gap: 6px;
   flex-shrink: 0;
 }
+.course-card-mastery-group .course-card-av-level {
+  justify-content: center;
+  align-items: center;
+}
 .course-card-av-level .extra-data-label {
   font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 12px;
   line-height: 16px;
   color: rgba(255, 255, 255, 0.72);
+}
+.course-card-mastery-group .extra-data-label {
+  margin-bottom: 0;
+  padding-top: 3px;
 }
 .course-card--author {
   margin: 0;
@@ -9915,6 +10254,12 @@ body {
   flex-shrink: 0;
   margin-top: 12px;
 }
+.course-card-completion--in-mastery-row {
+  margin-top: 0;
+  width: fit-content;
+  flex-basis: auto;
+  align-items: center;
+}
 .course-card-completion__track {
   background: rgba(255, 255, 255, 0.1);
   height: 12px;
@@ -9961,6 +10306,10 @@ body {
 .video-section--inline {
   position: static;
   z-index: 0;
+}
+/* V6/V7/V8 Learn tab: per-chapter video scrolls with content (no sticky) */
+.video-section--scrollable {
+  position: static;
 }
 /* V2.2: one sticky block (chapter + video) sticks under header when video is playing */
 .v22-chapter-video-block {
@@ -10126,19 +10475,102 @@ body {
   -webkit-background-clip: unset;
   color: rgba(39, 37, 34, 1);
 }
-/* Stats tab button: 48px height (override DS default 56px) */
-#tab-stats.cc-tab-item-component,
-.course-tabs-ds .cc-tab-item-component#tab-stats {
+/* Stats tab button: 48px height (override DS default 56px); system font, 5px gap */
+.course-tabs-ds :deep(#tab-stats.cc-tab-item-component),
+.course-tabs-ds :deep(.cc-tab-item-component#tab-stats) {
   height: 48px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  gap: 5px;
 }
-/* Tab labels: DS text-medium-bold (14px / 16px, weight 600) instead of x-large-bold */
-.course-tabs-ds .cc-tab-item-label {
+/* Tab labels: DS text-medium-bold (14px / 16px, weight 600); system font */
+.course-tabs-ds :deep(.cc-tab-item-label) {
   font-size: 14px;
   line-height: 16px;
   font-weight: 600;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+/* Practice tab badge: 12px, system font, 30px radius (pill), aqua like L1/L2 chips */
+.course-tabs-ds :deep(.cc-tab-item-component#tab-stats .cc-tab-item-badge) {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  border-radius: 30px;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  border-bottom-right-radius: 30px;
+  border-bottom-left-radius: 30px;
+  min-width: 14px;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  color: var(--color-aqua-300, #26C2A3) !important;
+  background-color: rgba(38, 194, 163, 0.2) !important;
 }
 .course-tab-panel {
   margin-top: 0;
+}
+/* V7/V8: stats drawer – overlay over TOC + drawer on top */
+.stats-drawer-wrap {
+  position: relative;
+}
+/* ToC wrap: overlay covers only this (not course card); needs position relative and flex to fill below card */
+.stats-overlay-toc-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+.stats-drawer-overlay {
+  position: absolute;
+  inset: 0;
+  bottom: calc(-1 * (var(--space-16, 16px) + 12px));
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.stats-drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 11;
+  background: rgba(33, 31, 28, 1);
+  padding: 0 0 8px 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  box-shadow: none;
+  border-radius: 0 0 10px 10px;
+  margin-bottom: 0;
+}
+.stats-drawer__inner {
+  padding: 0 0 8px 0;
+  background-color: rgba(33, 31, 28, 1);
+}
+.stats-drawer__title {
+  margin-bottom: 8px;
+  margin-left: 16px;
+  margin-right: 16px;
+  justify-content: center;
+  align-items: center;
+}
+.stats-drawer__title .course-progress-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+/* Stats Header: hidden for later use; remove --hidden to show (must override .course-progress-header) */
+.stats-drawer .stats-drawer__title.stats-drawer__title--hidden {
+  display: none;
+}
+.stats-drawer__header {
+  margin-bottom: 8px;
+}
+/* Stats icon lighter when drawer is open (5% white overlay on icon) */
+.course-card-stats-icon.stats-icon--active {
+  background: rgba(255, 255, 255, 0.05);
 }
 .course-tab-panel--stats {
   padding-top: 12px;
@@ -10168,7 +10600,7 @@ body {
   padding-bottom: 8px;
 }
 
-/* V7 Practice tab: compact mastery row – 192×12 segmented bar (same as course progress size) + Av. Level on the right */
+/* V7 Practice tab: compact mastery row – 192×12 segmented bar (same as course progress size) + Mastery on the right */
 .practice-compact-mastery-row {
   display: flex;
   align-items: center;
@@ -10280,94 +10712,9 @@ body {
   fill: currentColor;
 }
 
-/* Stats cards row: 3 cards in a row, fill width, stack when responsive */
-.stats-cards-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: 100%;
-  padding: 0 16px 12px;
-}
-.stats-card {
-  flex: 1 1 0;
-  min-width: 80px;
-  background-color: rgba(255, 255, 255, 0.02);
-  border-radius: 3px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: stretch;
-}
-.stats-card__label {
-  font-family: var(--font-family-system, system-ui, sans-serif);
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 16px;
-  color: rgba(255, 255, 255, 0.5);
-  text-align: center;
-  margin: 0;
-  flex-shrink: 0;
-}
-.stats-card__value-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  min-width: 40px;
-  overflow: clip;
-  border-radius: 3px;
-  flex-shrink: 0;
-  width: 100%;
-}
-.stats-card__value {
-  font-family: 'Chess Sans', sans-serif;
-  font-weight: 700;
-  font-size: 28px;
-  line-height: 32px;
-  color: rgba(255, 255, 255, 0.85);
-  margin: 0;
-  flex-shrink: 0;
-  font-feature-settings: 'liga' 0;
-}
-.stats-card__change-wrap {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-.stats-card__change {
-  font-family: var(--font-family-system, system-ui, sans-serif);
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 16px;
-  color: #81b64c;
-  margin: 0;
-  flex-shrink: 0;
-}
-
-/* V6 only: stats card label – left align, medium weight, system font */
-.courses-content.courses-content--v6 .stats-cards-row {
-  padding-top: 8px;
-}
 .courses-content.courses-content--v6 .course-progress.course-progress-mastery {
   padding-top: 12px;
   padding-bottom: 12px;
-}
-.courses-content.courses-content--v6 .stats-card__label {
-  text-align: left;
-  font-weight: 500;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-/* V6 only: stats card change – system font */
-.courses-content.courses-content--v6 .stats-card__change {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-.stats-card__lock {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.stats-card__lock-icon {
-  color: var(--icon-disabled, rgba(255, 255, 255, 0.4));
 }
 
 /* Progress – Figma node 2-5697 (exact spec: layout, spacing, typography, colors) */
@@ -11518,7 +11865,7 @@ body {
 }
 
 
-/* Practice All – Primary Large (DS) + badge; uses cc-button-component cc-button-primary cc-button-large cc-bg-primary for all states */
+/* Practice All – Primary Large (DS) + badge for V6/V7; V8 uses aqua variant below */
 .v6-btn-practice-all-text {
   flex-shrink: 0;
 }
@@ -11553,7 +11900,27 @@ body {
   background: var(--bg-badge-light, rgba(255, 255, 255, 0.72));
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
 }
-
+/* V8 only: aqua Practice button (DS colors, same pattern as green primary) */
+.courses-content--v8 .v6-btn-practice-all {
+  background-color: var(--color-aqua-400, #109888) !important;
+  color: #fff !important;
+}
+.courses-content--v8 .v6-btn-practice-all:hover {
+  background-color: var(--color-aqua-500, #10777C) !important;
+  color: #fff !important;
+}
+.courses-content--v8 .v6-btn-practice-all:active {
+  background-color: var(--color-aqua-600, #09505F) !important;
+  color: #fff !important;
+}
+/* Aqua Practice button: badge uses light bg + dark aqua number (V8 only) */
+.courses-content--v8 .v6-btn-practice-all .v6-btn-practice-all-badge {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+.courses-content--v8 .v6-btn-practice-all .v6-btn-practice-all-badge-text {
+  color: var(--color-aqua-600, #09505F);
+}
 /* Badge text – heading-label: Chess Sans 12px/16px bold, 0.05em, uppercase */
 .v6-btn-practice-all-badge-text {
   position: relative;

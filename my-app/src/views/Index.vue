@@ -19,6 +19,7 @@ const folderItems = [
   { path: '/courses/v2.3', title: 'Chapter Page V2.3', versionKey: 'v23' },
   { path: '/courses/v2.4', title: 'Chapter Page V2.4', versionKey: 'v24' },
   { path: '/courses/v3', title: 'Chapter Page V3', versionKey: 'v3' },
+  { path: '/courses/v7', title: 'Chapter Page V7', versionKey: 'v7' },
 ]
 const folderItemsCount = computed(() => folderItems.length)
 
@@ -47,6 +48,7 @@ const versionLastEdited = {
   v5: buildTime,
   v6: buildTime,
   v7: buildTime,
+  v8: buildTime,
 }
 
 function getEditedAgo(isoString) {
@@ -149,7 +151,7 @@ function editedAgoFor(version) {
             </div>
           </template>
 
-          <!-- Main view: "Chapter page" headline + V2.4 and V7 only (production) -->
+          <!-- Main view: "Chapter page" headline + V2.4 and V8 only (V7 is in Previous versions folder) -->
           <template v-else>
             <h2 class="index-section__title">Chapter page</h2>
             <div class="project-cards">
@@ -195,9 +197,9 @@ function editedAgoFor(version) {
                 class="project-card"
                 role="button"
                 tabindex="0"
-                @click="router.push('/courses/v7')"
-                @keydown.enter="router.push('/courses/v7')"
-                @keydown.space.prevent="router.push('/courses/v7')"
+                @click="router.push('/courses/v8')"
+                @keydown.enter="router.push('/courses/v8')"
+                @keydown.space.prevent="router.push('/courses/v8')"
               >
                 <div class="project-card__upper">
                   <div class="project-card__pattern" aria-hidden="true" />
@@ -210,7 +212,7 @@ function editedAgoFor(version) {
                         width="32"
                         height="32"
                       />
-                      <h2 class="project-card__title">Chapter Page V7</h2>
+                      <h2 class="project-card__title">Chapter Page V8</h2>
                     </div>
                   </div>
                 </div>
@@ -223,8 +225,8 @@ function editedAgoFor(version) {
                       </svg>
                     </span>
                     <div class="project-card__footer-labels">
-                      <span class="project-card__footer-title">Chapter Page V7</span>
-                      <span class="project-card__footer-time">{{ editedAgoFor('v7') }}</span>
+                      <span class="project-card__footer-title">Chapter Page V8</span>
+                      <span class="project-card__footer-time">{{ editedAgoFor('v8') }}</span>
                     </div>
                   </div>
                 </div>
