@@ -3,6 +3,7 @@
  * V6 Button (Aqua - Enabled State)
  * Primary action button with aqua/teal gradient, multi-layer shadows, and optional notification badge.
  * Spec: Figma V6 Button – gradient background, 10px radius, 4-layer inset shadow, Chess Sans Bold, badge #10777c.
+ * Required by Courses.vue and CoursesV9.vue (footer Design A/B).
  */
 defineProps({
   label: { type: String, default: 'Practice' },
