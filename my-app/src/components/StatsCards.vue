@@ -20,9 +20,24 @@ defineProps({
       :class="{ 'stats-card--lock': card.showLock }"
       data-name="Stats"
     >
-      <p class="stats-card__label">{{ card.label }}</p>
+      <div class="stats-card__label-row">
+        <CcIcon
+          v-if="card.icon"
+          :name="card.icon"
+          variant="glyph"
+          :size="12"
+          class="stats-card__label-icon"
+          aria-hidden="true"
+        />
+        <p class="stats-card__label">{{ card.label }}</p>
+      </div>
       <div class="stats-card__value-row" data-name="Rank">
-        <p v-if="!card.showLock" class="stats-card__value">{{ card.value }}</p>
+        <template v-if="!card.showLock">
+          <div class="stats-card__value-baseline">
+            <span class="stats-card__value">{{ card.value }}</span>
+            <span v-if="card.total != null" class="stats-card__total"> / {{ card.total }}</span>
+          </div>
+        </template>
         <span v-else class="stats-card__lock" aria-hidden="true">
           <CcIcon name="tool-lock-blank" variant="glyph" :size="20" class="stats-card__lock-icon" />
         </span>
@@ -53,6 +68,20 @@ defineProps({
   gap: 4px;
   align-items: stretch;
 }
+.stats-card__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.stats-card__label-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin: 3px 0;
+  color: rgba(255, 255, 255, 0.5);
+}
 .stats-card__label {
   font-family: var(--font-family-system, system-ui, -apple-system, BlinkMacSystemFont, sans-serif);
   font-weight: 500;
@@ -73,6 +102,12 @@ defineProps({
   flex-shrink: 0;
   width: 100%;
 }
+.stats-card__value-baseline {
+  display: flex;
+  align-items: baseline;
+  flex-shrink: 0;
+  gap: 4px;
+}
 .stats-card__value {
   font-family: 'Chess Sans', sans-serif;
   font-weight: 700;
@@ -82,6 +117,15 @@ defineProps({
   margin: 0;
   flex-shrink: 0;
   font-feature-settings: 'liga' 0;
+}
+.stats-card__total {
+  font-family: var(--font-family-system, system-ui, -apple-system, BlinkMacSystemFont, sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+  flex-shrink: 0;
 }
 .stats-card__change-wrap {
   display: flex;

@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUpdated, onUnmounted, nextTick, provide, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import { Chess } from 'chess.js'
-import { CcButton, CcChip, CcIconButton, CcIcon, CcTabGroup, CcTabItem } from '@chesscom/design-system'
+import { CcButton, CcChip, CcIconButton, CcIcon, CcTabGroup, CcTabItem, CcTooltip } from '@chesscom/design-system'
 import SearchInput from '../components/SearchInput.vue'
 import ProgressCircle from '../components/ProgressCircle.vue'
 import StatsCards from '../components/StatsCards.vue'
@@ -429,20 +429,22 @@ function getVariationType(move) {
 }
 
 const statsCardsByType = computed(() => {
-  const counts = { informational: 0, trainable: 0, tactics: 0, alternatives: 0 }
+  const completed = { informational: 0, trainable: 0, tactics: 0, alternatives: 0 }
+  const totals = { informational: 0, trainable: 0, tactics: 0, alternatives: 0 }
   courseSections.value.forEach((section) => {
     const moves = getSectionMovesForDisplay(section)
     moves.forEach((move) => {
-      if (!move.completed) return
       const type = getVariationType(move)
-      if (counts[type] !== undefined) counts[type]++
+      if (totals[type] !== undefined) totals[type]++
+      if (!move.completed) return
+      if (completed[type] !== undefined) completed[type]++
     })
   })
   const cards = [
-    { label: 'Informational', value: counts.informational, change: '+3' },
-    { label: 'Trainable', value: counts.trainable, change: '+7' },
-    { label: 'Tactics/Puzzle', value: counts.tactics, change: '' },
-    { label: 'Alternatives', value: counts.alternatives, change: '+1' },
+    { label: 'Informational', value: completed.informational, total: totals.informational, change: '+3', icon: 'circle-fill-info' },
+    { label: 'Trainable', value: completed.trainable, total: totals.trainable, change: '+7', icon: 'board-simple-pawn' },
+    { label: 'Tactics/Puzzle', value: completed.tactics, total: totals.tactics, change: '', icon: 'game-type-puzzle' },
+    { label: 'Alternatives', value: completed.alternatives, total: totals.alternatives, change: '+1', icon: 'arrow-fork-vertical' },
   ]
   return cards.map((card) => {
     const value = card.value
@@ -450,8 +452,10 @@ const statsCardsByType = computed(() => {
     return {
       label: card.label,
       value: String(value),
+      total: card.total,
       change: isZero ? '' : card.change,
       showLock: isZero || card.showLock || false,
+      icon: card.icon,
     }
   })
 })
@@ -461,11 +465,19 @@ const statsCards = computed(() => statsCardsByType.value)
 /** Stats drawer: new-course shows reset (all zeros, all with lock icon, no change numbers). */
 const displayStatsCards = computed(() => {
   if (scenarioPreset.value !== 'new-course') return statsCardsByType.value
+  const totals = { informational: 0, trainable: 0, tactics: 0, alternatives: 0 }
+  courseSections.value.forEach((section) => {
+    const moves = getSectionMovesForDisplay(section)
+    moves.forEach((move) => {
+      const type = getVariationType(move)
+      if (totals[type] !== undefined) totals[type]++
+    })
+  })
   return [
-    { label: 'Informational', value: '0', change: '', showLock: true },
-    { label: 'Trainable', value: '0', change: '', showLock: true },
-    { label: 'Tactics/Puzzle', value: '0', change: '', showLock: true },
-    { label: 'Alternatives', value: '0', change: '', showLock: true },
+    { label: 'Informational', value: '0', total: totals.informational, change: '', showLock: true, icon: 'circle-fill-info' },
+    { label: 'Trainable', value: '0', total: totals.trainable, change: '', showLock: true, icon: 'board-simple-pawn' },
+    { label: 'Tactics/Puzzle', value: '0', total: totals.tactics, change: '', showLock: true, icon: 'game-type-puzzle' },
+    { label: 'Alternatives', value: '0', total: totals.alternatives, change: '', showLock: true, icon: 'arrow-fork-vertical' },
   ]
 })
 
@@ -516,10 +528,6 @@ const viewportPresetOptions = [
   { value: 'default', label: 'Desktop L' },
   { value: 'narrow', label: 'Desktop S' },
   { value: 'mobile', label: 'Mobile' },
-]
-const designVersionOptions = [
-  { value: 'A', label: 'Design A' },
-  { value: 'B', label: 'Design B' },
 ]
 const scenarioPresetOptions = [
   { value: 'practice-and-learn', label: 'Learn & Practice' },
@@ -638,9 +646,6 @@ const panelView = ref('courses')
 const viewportPreset = ref('default')
 
 const isNarrowOrMobileViewport = computed(() => viewportPreset.value === 'narrow' || viewportPreset.value === 'mobile')
-
-// Design version: 'A' = current (multiple CTAs), 'B' = single CTA in footer (Learn on Learn tab, Practice on Practice tab)
-const designVersion = ref('A')
 
 // Scenario preset for footer demo: 'nothing-to-learn' | 'nothing-to-practice' | 'practice-and-learn' | 'new-course'
 const scenarioPreset = ref('practice-and-learn')
@@ -1504,9 +1509,9 @@ const defaultLineMoves = [
   { number: 3, white: 'Bb5', black: 'a6' },
 ]
 function getMovesForLine(section, move) {
-  if (!section?.id || !move?.id) return defaultLineMoves
+  if (!section?.id || move?.id == null) return defaultLineMoves
   const baseId = String(section.id).replace(/-2$/, '')
-  const key = `${baseId}-${move.id}`
+  const key = `${baseId}-${String(move.id)}`
   return lineMovesByKey[key] ?? defaultLineMoves
 }
 
@@ -1519,8 +1524,11 @@ const selectedPly = ref({ moveIndex: 0, side: 'white' })
 
 /** Chapter page: hovered line for board preview (only for non-ready lines; ready = hidden). */
 const hoveredChapterLine = ref(null) // { section, move } | null
-const HOVER_BOARD_PREVIEW_DELAY_MS = 180
+const HOVER_BOARD_PREVIEW_DELAY_MS = 120
+/** Delay before clearing hover on mouseleave – avoids reset when moving from line to line. */
+const HOVER_CLEAR_DELAY_MS = 150
 let hoveredChapterLineDelayTimer = null
+let hoveredChapterLineClearTimer = null
 
 /** Build FEN and lastMove for the position *after* the selected ply (selected = this move is highlighted; show board after it). */
 function getPositionAfterPly(moves, selectedPlyVal) {
@@ -1544,7 +1552,7 @@ function getPositionAfterPly(moves, selectedPlyVal) {
   }
 }
 
-/** Position at end of a line (for chapter-page hover preview). Never throws. */
+/** Position at end of a line (for chapter-page hover preview). Uses latest move for now; spec: use key move when available (see docs/toc-line-hover-board-preview.md). Never throws. */
 function getPositionAtEndOfLine(moves) {
   try {
     if (!moves?.length) return { fen: STARTING_FEN, lastMove: null }
@@ -1556,7 +1564,45 @@ function getPositionAtEndOfLine(moves) {
   }
 }
 
+/** Section id for "The Game" chapter – hover shows only the first move's piece on its square (empty board + one piece). */
+const LEARNING_THE_GAME_SECTION_ID = 'learning-the-game'
+
+/**
+ * Parse the first move of a line to get piece type and destination square.
+ * Used for "The Game" chapter: show only that piece on the board (hide all others).
+ * Returns { type: 'wq'|'br'|... (color+piece), square: 'e4' } or null.
+ */
+function getFirstMovePieceAndSquare(moves) {
+  try {
+    if (!moves?.length) return null
+    const first = moves[0]
+    const san = ((first?.white || first?.black || '').trim().replace(/[+#]$/, '') || '').trim()
+    if (!san) return null
+    const isWhite = Boolean(first?.white)
+    const color = isWhite ? 'w' : 'b'
+    // Destination square: last [a-h][1-8] (or before = for promotion, e.g. e8=Q)
+    const squareMatch = san.match(/([a-h][1-8])(?:=[QRBN])?[+#]?$/)
+    const square = squareMatch ? squareMatch[1] : null
+    if (!square) return null
+    // Piece: Q,R,B,N,K or pawn (P)
+    let piece = 'p'
+    if (/^[KQRBN]/.test(san)) {
+      piece = san[0].toLowerCase()
+    } else if (/^[a-h]/.test(san) && san.includes('=')) {
+      const promMatch = san.match(/=([QRBN])/)
+      piece = promMatch ? promMatch[1].toLowerCase() : 'p'
+    }
+    return { type: `${color}${piece}`, square }
+  } catch {
+    return null
+  }
+}
+
 function setHoveredChapterLine(section, move) {
+  if (hoveredChapterLineClearTimer) {
+    clearTimeout(hoveredChapterLineClearTimer)
+    hoveredChapterLineClearTimer = null
+  }
   if (!section || !move) {
     if (hoveredChapterLineDelayTimer) {
       clearTimeout(hoveredChapterLineDelayTimer)
@@ -1565,7 +1611,6 @@ function setHoveredChapterLine(section, move) {
     hoveredChapterLine.value = null
     return
   }
-  if (getLineType(move) === 'ready') return // hidden moves – don't preview
   if (hoveredChapterLineDelayTimer) clearTimeout(hoveredChapterLineDelayTimer)
   hoveredChapterLineDelayTimer = setTimeout(() => {
     hoveredChapterLineDelayTimer = null
@@ -1578,7 +1623,11 @@ function clearHoveredChapterLine() {
     clearTimeout(hoveredChapterLineDelayTimer)
     hoveredChapterLineDelayTimer = null
   }
-  hoveredChapterLine.value = null
+  if (hoveredChapterLineClearTimer) clearTimeout(hoveredChapterLineClearTimer)
+  hoveredChapterLineClearTimer = setTimeout(() => {
+    hoveredChapterLineClearTimer = null
+    hoveredChapterLine.value = null
+  }, HOVER_CLEAR_DELAY_MS)
 }
 
 function isPlySelected(moveIndex, side) {
@@ -1713,6 +1762,14 @@ function getPracticeReadyLineLevelLabel(move) {
   if (!move) return null
   if (move.level) return move.level
   return getReadyLineLevelChip(move)
+}
+
+/** Practice tab ready line: level title for tooltip (e.g. "Rookie" for L1). */
+function getPracticeReadyLevelTitle(move) {
+  const label = getPracticeReadyLineLevelLabel(move)
+  if (!label) return ''
+  const item = masteryLevelItems.value.find((m) => m.level === label)
+  return item?.title ?? label
 }
 
 // Line view screen type: completed vs ready vs uncompleted (separate designs, don’t mix)
@@ -3520,7 +3577,30 @@ watchEffect(() => {
       checkmateHighlight.value = null
       return
     }
-    // Opening Courses V1: when a course card is selected, show first 2 moves of that opening on the board
+    // Chapter page / Opening Courses: hovered line preview (checked first so hover wins over selected card)
+    if (panelView.value === 'courses' && hoveredChapterLine.value) {
+      const { section, move } = hoveredChapterLine.value
+      const moves = getMovesForLine(section, move)
+      // "The Game" chapter: show only the first move's piece on its square (empty board + one piece)
+      const sectionId = String(section?.id || '').replace(/-2$/, '')
+      if (sectionId === LEARNING_THE_GAME_SECTION_ID) {
+        const single = getFirstMovePieceAndSquare(moves)
+        if (single) {
+          pieces.value = [single]
+          lastMove.value = null
+          selectedSquare.value = null
+          checkmateHighlight.value = null
+          return
+        }
+      }
+      const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
+      pieces.value = parseFEN(fen)
+      lastMove.value = last
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+      return
+    }
+    // Opening Courses V1: when a course card is selected (and no line hover), show first 2 moves of that opening
     if (panelView.value === 'courses' && isOpeningCoursesV1.value && selectedOpeningCardId.value != null) {
       const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
       const moves = card ? OPENING_FIRST_5_MOVES[card.title] : null
@@ -3533,18 +3613,6 @@ watchEffect(() => {
         checkmateHighlight.value = null
         return
       }
-    }
-    // Chapter page: hovered line preview (non–Opening Courses or no card selected)
-    if (panelView.value === 'courses' && hoveredChapterLine.value) {
-      const { section, move } = hoveredChapterLine.value
-      if (getLineType(move) === 'ready') return
-      const moves = getMovesForLine(section, move)
-      const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
-      pieces.value = parseFEN(fen)
-      lastMove.value = last
-      selectedSquare.value = null
-      checkmateHighlight.value = null
-      return
     }
     // Courses, no hover / no opening selected: show default position
     // BUT: if Opening V1 and user has played filter moves, keep the board at their position
@@ -5043,7 +5111,10 @@ function onCoursesContentScroll() {
       varsTarget.style.setProperty('--tabs-y', '0px')
       varsTarget.style.setProperty('--tabs-visible', H + 'px')
       if (courseTabsActive.value === 'content') scheduleFooterChapterUpdate()
-      if (courseTabsActive.value === 'stats') updateSectionLineMasks()
+      if (courseTabsActive.value === 'stats') {
+        updateSectionLineMasks()
+        updatePracticeSectionVisibility()
+      }
       return
     }
     const delta = st - lastScrollTop
@@ -5052,7 +5123,10 @@ function onCoursesContentScroll() {
     varsTarget.style.setProperty('--tabs-y', tabsY + 'px')
     varsTarget.style.setProperty('--tabs-visible', (tabsY + H) + 'px')
     if (courseTabsActive.value === 'content') scheduleFooterChapterUpdate()
-    if (courseTabsActive.value === 'stats') updateSectionLineMasks()
+    if (courseTabsActive.value === 'stats') {
+      updateSectionLineMasks()
+      updatePracticeSectionVisibility()
+    }
   })
 }
 // Footer: which chapter name to show (throttled, not used for sticky)
@@ -5183,6 +5257,33 @@ function setPracticeSectionLineWrapRef(sectionId, el) {
 function setPracticeSectionLastCardColRef(sectionId, el) {
   if (el) practiceSectionLastCardColRefs.value[sectionId] = el
   else delete practiceSectionLastCardColRefs.value[sectionId]
+}
+
+/** Practice-in tooltip: only show when the full chapter (section) is visible in the scroll area. */
+const practiceSectionFullyVisibleIds = ref(new Set())
+function updatePracticeSectionVisibility() {
+  if (!isVideoV9.value || courseTabsActive.value !== 'stats') return
+  const container = v9ScrollRef.value
+  const sections = courseSectionsForPractice.value
+  const refs = v23SectionItemRefs.value
+  if (!container || !sections?.length) {
+    practiceSectionFullyVisibleIds.value = new Set()
+    return
+  }
+  const containerRect = container.getBoundingClientRect()
+  const visible = new Set()
+  for (const section of sections) {
+    const el = refs[section.id]
+    if (!el) continue
+    const sectionRect = el.getBoundingClientRect()
+    if (sectionRect.top >= containerRect.top && sectionRect.bottom <= containerRect.bottom) {
+      visible.add(section.id)
+    }
+  }
+  practiceSectionFullyVisibleIds.value = visible
+}
+function isPracticeSectionFullyVisible(sectionId) {
+  return practiceSectionFullyVisibleIds.value.has(sectionId)
 }
 function applySectionLineMask(wraps, cols) {
   const lineTopOffset = 28
@@ -5686,6 +5787,7 @@ watch([courseTabsActive, courseSectionsForPractice], () => {
         requestAnimationFrame(() => {
           updateSectionLineMasks()
           requestAnimationFrame(updateSectionLineMasks)
+          if (isVideoV9.value) updatePracticeSectionVisibility()
         })
       })
     })
@@ -5742,6 +5844,7 @@ watch(courseTabsActive, (active) => {
   if (active === 'stats') {
     learnTabFirstOpenHideFlash.value = false
     if (scrollEl) learnTabSavedScrollTop.value = scrollEl.scrollTop
+    if (isVideoV9.value) nextTick(updatePracticeSectionVisibility)
   }
   if (scrollEl && active === 'content' && scenarioPreset.value === 'practice-and-learn') {
     practiceTabSavedScrollTop.value = scrollEl.scrollTop
@@ -5851,14 +5954,6 @@ onUnmounted(() => {
           v-model="viewportPreset"
           :options="viewportPresetOptions"
           aria-label="Viewport size"
-        />
-      </div>
-      <span class="viewport-preset-bar__separator" aria-hidden="true" />
-      <div class="viewport-preset-bar__group">
-        <PresetBarSelect
-          v-model="designVersion"
-          :options="designVersionOptions"
-          aria-label="Design version"
         />
       </div>
       <span class="viewport-preset-bar__separator" aria-hidden="true" />
@@ -6546,7 +6641,7 @@ onUnmounted(() => {
             </div>
           </div>
           </template>
-          <template v-if="isVideoV9"><div ref="v9ScrollRef" class="courses-content--v9-scroll" @scroll.passive="onCoursesContentScroll">
+          <template v-if="isVideoV9"><div ref="v9ScrollRef" class="courses-content courses-content--v9-scroll courses-content--line-items-no-click" @scroll.passive="onCoursesContentScroll">
           <!-- ToC area: overlay + drawer + tab panels. V9: inside scroll only. -->
           <div class="stats-overlay-toc-wrap">
             <!-- V7/V8: darker overlay over ToC only (not course card) when stats drawer open; click to close -->
@@ -6808,10 +6903,12 @@ onUnmounted(() => {
                                 role="listitem"
                                 data-name="Line"
                                 :data-move-id="`${section.id}-${item.move.id}`"
+                                @mouseenter="setHoveredChapterLine(section, item.move)"
+                                @mouseleave="clearHoveredChapterLine()"
                               >
                                 <div
                                   class="chapter-line-card__body chapter-line-card__body--no-click"
-                                  :title="(scenarioPreset === 'nothing-to-practice' && item.practiceInLabel) ? 'Practice in: ' + item.practiceInLabel : item.move.text"
+                                  :title="!(item.practiceType === 'completed' && item.practiceInLabel) ? item.move.text : undefined"
                                 >
                                   <div class="opening-course-card__inner">
                                     <div class="opening-course-card__content-wrap">
@@ -6841,24 +6938,60 @@ onUnmounted(() => {
                                               :is-uppercase="false"
                                               label-class="move-item-info-chip-label chapter-line-card__info-chip-inline"
                                             />
-                                            <CcChip
-                                              v-if="item.practiceType === 'ready' && getPracticeReadyLineLevelLabel(item.move)"
-                                              :label="getPracticeReadyLineLevelLabel(item.move)"
-                                              color="aqua"
-                                              variant="translucent"
-                                              :is-uppercase="false"
-                                              label-class="move-item-info-chip-label chapter-line-card__info-chip-inline"
-                                            />
-                                            <CcChip
-                                              v-if="item.practiceType === 'completed'"
-                                              label=""
-                                              icon="time-clock"
-                                              color="gray"
-                                              variant="translucent"
-                                              :is-uppercase="false"
-                                              class="chapter-line-card__practice-in-chip"
-                                              aria-label="Practice in"
-                                            />
+                                            <template v-if="item.practiceType === 'ready' && getPracticeReadyLineLevelLabel(item.move)">
+                                              <span class="chapter-line-card__level-chip-wrap">
+                                                <CcChip
+                                                  :label="getPracticeReadyLineLevelLabel(item.move)"
+                                                  color="aqua"
+                                                  variant="translucent"
+                                                  :is-uppercase="false"
+                                                  label-class="move-item-info-chip-label chapter-line-card__info-chip-inline"
+                                                />
+                                                <CcTooltip
+                                                  for-previous-element
+                                                  class="practice-in-tooltip-no-fade"
+                                                  :delay="0"
+                                                  position="top"
+                                                  anchor="center"
+                                                >
+                                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                                </CcTooltip>
+                                              </span>
+                                            </template>
+                                            <template v-if="item.practiceType === 'completed'">
+                                              <span class="chapter-line-card__practice-in-chip-wrap">
+                                                <CcChip
+                                                  label=""
+                                                  icon="time-clock"
+                                                  color="gray"
+                                                  variant="translucent"
+                                                  :is-uppercase="false"
+                                                  class="chapter-line-card__practice-in-chip"
+                                                  aria-label="Practice in"
+                                                />
+                                                <CcTooltip
+                                                  v-if="item.practiceInLabel"
+                                                  for-previous-element
+                                                  class="practice-in-tooltip-no-fade"
+                                                  :delay="0"
+                                                  position="top"
+                                                  anchor="center"
+                                                >
+                                                  <div class="extra-data-practice-in practice-in-tooltip__content">
+                                                    <span class="extra-data-label">Practice in:</span>
+                                                    <CcChip
+                                                      :label="item.practiceInLabel"
+                                                      icon="time-clock"
+                                                      color="gray"
+                                                      variant="translucent"
+                                                      :is-uppercase="true"
+                                                      label-class="extra-data-time-chip-label"
+                                                      class="extra-data-time-chip"
+                                                    />
+                                                  </div>
+                                                </CcTooltip>
+                                              </span>
+                                            </template>
                                           </div>
                                           <div class="chapter-line-card__header-indicators" />
                                         </div>
@@ -6992,6 +7125,8 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -7156,6 +7291,8 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <!-- Body first in DOM (V6: timeline-col on right via row-reverse) -->
                         <div
@@ -7311,6 +7448,8 @@ v-if="isVideoV6OrV7"
                           role="listitem"
                           data-name="Line"
                           :data-move-id="`${section.id}-${move.id}`"
+                          @mouseenter="setHoveredChapterLine(section, move)"
+                          @mouseleave="clearHoveredChapterLine()"
                         >
                           <div class="move-item-content">
                             <div class="move-item-inner">
@@ -7430,6 +7569,8 @@ v-if="isVideoV6OrV7"
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -8043,143 +8184,64 @@ v-if="isVideoV6OrV7"
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container">
-                <!-- Design B: single CTA – Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter on both tabs; New Course / Nothing to practice: Learn (green) on Learn tab, Practice (disabled) on Practice tab -->
-                <template v-if="designVersion === 'B'">
-                  <div class="footer-buttons-row footer-buttons-row-full">
-                    <template v-if="scenarioEffectivePracticeCount === 0">
-                      <CcButton
-                        v-if="courseTabsActive === 'content'"
-                        variant="primary"
-                        size="large"
-                        class="footer-btn-full"
-                      >
-                        Learn
-                      </CcButton>
-                      <CcButton
-                        v-else-if="courseTabsActive === 'stats'"
-                        variant="secondary"
-                        size="large"
-                        disabled
-                        class="footer-btn-full"
-                      >
-                        Practice
-                      </CcButton>
-                    </template>
-                    <AquaCtaButton
-                      v-else-if="scenarioShowOnlyPractice && (isVideoV8 || isVideoV9)"
-                      label="Practice"
-                      :badge="scenarioEffectivePracticeCount"
-                      class="footer-btn-full"
-                    />
+                <!-- Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Practice (disabled) on Practice tab -->
+                <div class="footer-buttons-row footer-buttons-row-full">
+                  <template v-if="scenarioEffectivePracticeCount === 0">
                     <CcButton
-                      v-else-if="scenarioShowOnlyPractice"
-                      variant="primary"
-                      size="large"
-                      class="footer-btn-full"
-                    >
-                      Practice
-                    </CcButton>
-                    <CcButton
-                      v-else-if="courseTabsActive === 'content'"
+                      v-if="courseTabsActive === 'content'"
                       variant="primary"
                       size="large"
                       class="footer-btn-full"
                     >
                       Learn
                     </CcButton>
-                    <AquaCtaButton
-                      v-else-if="courseTabsActive === 'stats' && (isVideoV8 || isVideoV9)"
-                      label="Practice"
-                      :badge="scenarioEffectivePracticeCount"
-                      class="footer-btn-full"
-                    />
                     <CcButton
                       v-else-if="courseTabsActive === 'stats'"
-                      variant="primary"
+                      variant="secondary"
                       size="large"
+                      disabled
                       class="footer-btn-full"
                     >
                       Practice
                     </CcButton>
-                  </div>
-                </template>
-                <!-- Design A: current version (Continue+Practice or Learn+Practice) -->
-                <template v-else-if="designVersion === 'A'">
-                <template v-if="questionState === 'solution' && currentQuestionIndex >= totalChallenges - 1">
-                  <div class="footer-buttons-row footer-buttons-row-full">
-                    <CcButton variant="primary" size="large" :icon="{ name: 'arrow-line-right', variant: 'glyph' }" @click="handleComplete" class="footer-btn-full">Complete</CcButton>
-                  </div>
-                </template>
-                <template v-else-if="questionState === 'wrong'">
-                  <!-- Quiz line: single Hint (secondary) instead of Solution + Retry -->
-                  <div v-if="isQuizLine" class="footer-buttons-row footer-buttons-row-full">
-                    <CcButton variant="secondary" size="large" class="footer-btn-full" @click="handleHint">Hint</CcButton>
-                  </div>
-                  <div v-else class="footer-buttons-row footer-buttons-row-split">
-                    <CcButton variant="secondary" size="large" :icon="{ name: 'circle-fill-question', variant: 'glyph' }" @click="showSolution">Solution</CcButton>
-                    <CcButton variant="danger" size="large" :icon="{ name: 'arrow-spin-undo', variant: 'glyph' }" @click="handleRetry">Retry</CcButton>
-                  </div>
-                </template>
-                <template v-else-if="scenarioEffectivePracticeCount === 0">
-                  <!-- Nothing to practice / New course: Learn (green) + Practice (disabled, grey, no badge) -->
-                  <div class="footer-buttons-row footer-buttons-row-split">
-                    <CcButton variant="primary" size="large" class="footer-btn-equal">Learn</CcButton>
-                    <CcButton variant="secondary" size="large" disabled class="footer-btn-equal">Practice</CcButton>
-                  </div>
-                </template>
-                <template v-else-if="scenarioShowOnlyPractice">
-                  <!-- Nothing to learn: Learn disabled secondary + Practice teal with counter -->
-                  <div class="footer-buttons-row footer-buttons-row-split">
-                    <CcButton variant="secondary" size="large" disabled class="footer-btn-equal">Learn</CcButton>
-                    <AquaCtaButton
-                      v-if="isVideoV8 || isVideoV9"
-                      label="Practice"
-                      :badge="scenarioEffectivePracticeCount"
-                      class="footer-btn-equal"
-                    />
-                    <button
-                      v-else
-                      type="button"
-                      class="v6-btn-practice-all cc-button-component cc-button-primary cc-button-large cc-bg-primary footer-btn-equal"
-                      data-name="V6 Button"
-                      aria-label="Practice"
-                    >
-                      <span class="v6-btn-practice-all-text">Practice</span>
-                      <span class="v6-btn-practice-all-badge-frame">
-                        <span class="v6-btn-practice-all-badge">
-                          <span class="v6-btn-practice-all-badge-text">{{ scenarioEffectivePracticeCount }}</span>
-                        </span>
-                      </span>
-                    </button>
-                  </div>
-                </template>
-                <template v-else>
-                                    <!-- Learn (secondary) + Practice (aqua with badge) -->
-                  <div class="footer-buttons-row footer-buttons-row-split">
-                    <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn</CcButton>
-                    <AquaCtaButton
-                      v-if="isVideoV8 || isVideoV9"
-                      label="Practice"
-                      :badge="scenarioEffectivePracticeCount"
-                      class="footer-btn-equal"
-                    />
-                    <button
-                      v-else
-                      type="button"
-                      class="v6-btn-practice-all cc-button-component cc-button-primary cc-button-large cc-bg-primary footer-btn-equal"
-                      data-name="V6 Button"
-                      aria-label="Practice"
-                    >
-                      <span class="v6-btn-practice-all-text">Practice</span>
-                      <span class="v6-btn-practice-all-badge-frame">
-                        <span class="v6-btn-practice-all-badge">
-                          <span class="v6-btn-practice-all-badge-text">{{ scenarioEffectivePracticeCount }}</span>
-                        </span>
-                      </span>
-                    </button>
-                  </div>
-                </template>
-                </template>
+                  </template>
+                  <AquaCtaButton
+                    v-else-if="scenarioShowOnlyPractice && (isVideoV8 || isVideoV9)"
+                    label="Practice"
+                    :badge="scenarioEffectivePracticeCount"
+                    class="footer-btn-full"
+                  />
+                  <CcButton
+                    v-else-if="scenarioShowOnlyPractice"
+                    variant="primary"
+                    size="large"
+                    class="footer-btn-full"
+                  >
+                    Practice
+                  </CcButton>
+                  <CcButton
+                    v-else-if="courseTabsActive === 'content'"
+                    variant="primary"
+                    size="large"
+                    class="footer-btn-full"
+                  >
+                    Learn
+                  </CcButton>
+                  <AquaCtaButton
+                    v-else-if="courseTabsActive === 'stats' && (isVideoV8 || isVideoV9)"
+                    label="Practice"
+                    :badge="scenarioEffectivePracticeCount"
+                    class="footer-btn-full"
+                  />
+                  <CcButton
+                    v-else-if="courseTabsActive === 'stats'"
+                    variant="primary"
+                    size="large"
+                    class="footer-btn-full"
+                  >
+                    Practice
+                  </CcButton>
+                </div>
             </div>
           </section>
 
@@ -8266,9 +8328,44 @@ body {
   font-family: 'Chess Sans', system-ui, sans-serif;
   user-select: none;
 }
+/* DS gray-1000 (extends design system gray scale) */
+:root {
+  --color-gray-1000: #1A1816;
+}
 /* color/bg/progress-completed-gradient – progress bar fill (DS may add later) */
 .dark-mode {
   --color-bg-progress-completed-gradient: linear-gradient(0deg, var(--color-green-500, #45753C) 0%, var(--color-green-300, #81B64C) 100%);
+}
+/* Practice-in tooltip (DS overlay): gray-1000, no shadow, smooth fade, chip bg white 10% */
+.cc-tooltip-component.practice-in-tooltip-no-fade {
+  --tooltipBackground: var(--color-gray-1000);
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-content {
+  transition: opacity 0.2s var(--motion-ease-out-gentle) !important;
+  transition-property: opacity !important;
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-content.cc-tooltip-visible {
+  opacity: 1 !important;
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner {
+  background-color: var(--color-gray-1000) !important;
+  box-shadow: none !important;
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner .cc-chip-component {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner .extra-data-time-chip .cc-chip-fg,
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner .extra-data-time-chip .extra-data-time-chip-label {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner .cc-icon {
+  color: rgba(255, 255, 255, 0.8);
+}
+/* Practice in: label and Ready for Practice! – same font size in both tooltips */
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner .practice-in-tooltip__content .extra-data-label,
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner .practice-in-tooltip__ready-text {
+  font-size: 12px;
+  line-height: 16px;
 }
 </style>
 
@@ -9931,7 +10028,7 @@ body {
   height: 13px;
   display: block;
 }
-/* Next-to-learn line: 8×8 node, brand green outline + glow (70% intensity) */
+/* Next-to-learn line: 8×8 node, brand green outline (no glow) */
 .courses-content--v6 .chapter-line-card__timeline-node--next-to-learn {
   width: 8px;
   height: 8px;
@@ -9939,7 +10036,6 @@ body {
   min-height: 8px;
   outline: 2px solid #81B64C;
   outline-offset: 0;
-  box-shadow: 0 0 0 2px #81B64C, 0 0 8px 2px rgba(129, 182, 76, 0.7);
 }
 /* Next-to-learn card: green vertical bar on the left (full height of card, aligned to main container left edge) */
 .courses-content--v6 .chapter-line-card--next-to-learn {
@@ -10084,11 +10180,42 @@ body {
   outline-offset: 2px;
 }
 /* Line items are non-clickable (no open line page) */
+/* Line items: non-clickable but hover shows board preview – use pointer to show hover feedback */
+.courses-content--line-items-no-click .chapter-line-card {
+  cursor: pointer;
+}
 .chapter-line-card__body--no-click {
-  cursor: default;
+  cursor: pointer;
 }
 .chapter-line-card__body--no-click:focus-visible {
   outline: none;
+}
+.chapter-line-card__body--tooltip-wrap {
+  position: relative;
+  overflow: visible;
+}
+/* Practice-in tooltip slot content layout (DS tooltip provides bubble + arrow) */
+.practice-in-tooltip__content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.95);
+}
+.practice-in-tooltip__content .extra-data-label {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.65);
+}
+.practice-in-tooltip__content .extra-data-time-chip {
+  flex-shrink: 0;
+}
+/* Ready for Practice! tooltip: same font style as "Practice in:" label on completed-line tooltip, system font */
+.practice-in-tooltip__ready-text {
+  font-family: var(--font-family-system, system-ui, -apple-system, sans-serif);
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
 }
 /* Card hover must not apply to the row (article); only body gets hover */
 .chapter-line-card.opening-course-card--hover-v1:hover {
@@ -11564,6 +11691,14 @@ body {
 }
 
 /* V7 Practice: grey watch chip – icon only (same time-clock as footer Practice in chip) */
+.chapter-line-card__level-chip-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.chapter-line-card__practice-in-chip-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+}
 .chapter-line-card__practice-in-chip {
   flex-shrink: 0;
 }
@@ -12242,11 +12377,11 @@ body {
 }
 /* Line items are non-clickable (no open line page) */
 .courses-content--line-items-no-click .move-item {
-  cursor: default;
+  cursor: pointer;
 }
 .courses-content--line-items-no-click .move-item:hover,
 .courses-content--line-items-no-click .move-item:hover .move-item-content {
-  background: transparent;
+  background: var(--bg-hover-subtle, rgba(255, 255, 255, 0.04));
 }
 
 .move-item-content {

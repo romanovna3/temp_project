@@ -50,6 +50,7 @@ const versionLastEdited = {
   v7: buildTime,
   v8: buildTime,
   v9: buildTime,
+  openingV1: buildTime,
 }
 
 function getEditedAgo(isoString) {
@@ -195,6 +196,7 @@ function editedAgoFor(version) {
                 </div>
               </article>
               <article
+                v-if="false"
                 class="project-card"
                 role="button"
                 tabindex="0"
@@ -272,6 +274,51 @@ function editedAgoFor(version) {
               </article>
             </div>
           </template>
+        </section>
+
+        <!-- Opening Courses section: hidden on index page -->
+        <section v-if="false" class="index-section">
+          <h2 class="index-section__title">Opening Courses</h2>
+          <div class="project-cards">
+            <article
+              class="project-card"
+              role="button"
+              tabindex="0"
+              @click="router.push('/courses/opening-courses-v1')"
+              @keydown.enter="router.push('/courses/opening-courses-v1')"
+              @keydown.space.prevent="router.push('/courses/opening-courses-v1')"
+            >
+              <div class="project-card__upper">
+                <div class="project-card__pattern" aria-hidden="true" />
+                <div class="project-card__meta">
+                  <div class="project-card__head">
+                    <img
+                      src="/icons/book-mark-aqua.png"
+                      alt=""
+                      class="project-card__icon"
+                      width="32"
+                      height="32"
+                    />
+                    <h2 class="project-card__title">Opening Courses V1</h2>
+                  </div>
+                </div>
+              </div>
+              <div class="project-card__lower">
+                <div class="project-card__footer-left">
+                  <span class="project-card__footer-icon" aria-hidden="true" title="Open">
+                    <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="M12 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                  <div class="project-card__footer-labels">
+                    <span class="project-card__footer-title">Opening Courses V1</span>
+                    <span class="project-card__footer-time">{{ editedAgoFor('openingV1') }}</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
         </section>
 
       </main>
