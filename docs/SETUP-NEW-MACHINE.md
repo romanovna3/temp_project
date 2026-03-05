@@ -240,7 +240,20 @@ Example structure (merge with any existing `mcpServers`):
 
 **Common mistake:** Adding a server only in the project’s `.cursor/mcp.json` but the server needing a **global** config (e.g. API keys in `~/.cursor/mcp.json`). If an MCP is documented as “user-level,” configure it in Cursor Settings or `~/.cursor/mcp.json`.
 
-### 5.5 Restart Cursor after MCP changes
+### 5.5 Chess.com Design System MCP: fix 401 Unauthorized
+
+If the **chesscom-design-system** MCP shows `401 Unauthorized` when fetching `@chesscom/design-system-mcp` from GitHub Packages:
+
+1. **Set npm auth** (Part 2): run `npm config set //npm.pkg.github.com/:_authToken YOUR_TOKEN` with a GitHub PAT that has **read:packages**.
+2. **Install the MCP package locally** so Cursor doesn’t need to fetch it at startup:
+   ```bash
+   cd my-app
+   npm install
+   ```
+   This installs `@chesscom/design-system-mcp` (and other deps). The project’s MCP config runs the server from `my-app`’s `node_modules`, so no fetch happens when Cursor starts the MCP.
+3. **Restart Cursor** and check **Settings → MCP** again.
+
+### 5.6 Restart Cursor after MCP changes
 
 After changing `.cursor/mcp.json` or global MCP settings, **restart Cursor** so it reloads MCP servers. Then check **Cursor Settings → MCP** to see that the servers show as connected or running.
 

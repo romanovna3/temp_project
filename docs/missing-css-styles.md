@@ -12,7 +12,7 @@ CSS variables and styles we define in the app because they are not (yet) in the 
 |--------------|------------|--------------------|------|
 | `--color-bg-progress-completed-gradient` | Progress bar fill (course progress, Figma node 2-5697) | `linear-gradient(0deg, var(--color-green-500, #45753C) 0%, var(--color-green-300, #81B64C) 100%)` | Defined in `my-app/src/App.vue` unscoped `.dark-mode`. Fill also uses gradient + shadow inline. |
 | `--color-elevation-foreground-dark-only` | Progress bar fill box-shadow (Button/Icon/button-icon-shadow) | Fallback: `rgba(0, 0, 0, 0.20)` | Used as `var(--color-elevation-foreground-dark-only, rgba(0, 0, 0, 0.20))`. Add to DS if missing. |
-| `--size-small` | Filter label, Progress "Learned", section row typography | Fallback: `12px` | Used as `var(--size-small, 12px)`. Add to DS or design tokens if desired. |
+| `--size-small` | Filter label, Progress "Completed", section row typography | Fallback: `12px` | Used as `var(--size-small, 12px)`. Add to DS or design tokens if desired. |
 | `--line-height-small` | Same as above | Fallback: `16px` | Used as `var(--line-height-small, 16px)`. Add to DS or design tokens if desired. |
 
 ---

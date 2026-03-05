@@ -1,6 +1,6 @@
-# Course Content V2.4 – Learn Mode & Read Mode
+# Course Content V2.4 – Course Mode & Read Mode
 
-This document is the **single source of truth** for all chapter and line copy. Use it to restore content if chats or code are lost. Each line has **Learn mode** (coach + body when learning) and **Read mode** (body shown below moves when read-mode is on).
+This document is the **single source of truth** for all chapter and line copy. Use it to restore content if chats or code are lost. Each line has **Course mode** (coach + body when learning) and **Read mode** (body shown below moves when read-mode is on).
 
 **Key format:** `sectionId-moveId` (e.g. `learning-the-game-1`).
 
@@ -10,7 +10,7 @@ This document is the **single source of truth** for all chapter and line copy. U
 
 ### 1. Introduction — `intro-1`
 - **Type:** info  
-- **Learn mode**
+- **Course mode**
   - **Coach message:** Read through this line and arrow through the moves.
   - **Body HTML:** (full intro course copy – see below)
 - **Read mode:** [None – intro has no move list]
@@ -29,7 +29,7 @@ This document is the **single source of truth** for all chapter and line copy. U
 <p>♟️ Fundamental strategic concepts to help guide your play</p>
 <p>♟️ Checkmating techniques in the endgame, such as how to checkmate your opponent with only a king and queen</p>
 <p>...and more!</p>
-<p>To study this course, simply hit the Learn button and start learning! You can read the text in each variation, repeat the concepts demonstrated to you by MoveTrainer to ensure you understand it, and watch the video in each chapter to digest Danny's expert instruction.</p>
+<p>To study this course, simply hit the Course button and start the course! You can read the text in each variation, repeat the concepts demonstrated to you by MoveTrainer to ensure you understand it, and watch the video in each chapter to digest Danny's expert instruction.</p>
 <p>At the end of each chapter there are 3 Review variations which will test your understanding of the material in each chapter.</p>
 <p>By the end of this course, you will understand chess better than most of your friends and family and 99% of everyone who has ever played the game. Who knows, you may be very well be on your way to chess mastery!</p>
 <p>We wish you all the best in your chess journey. Don't forget that all work and no play makes you a dull chess player. Play on Chess.com! Building experience is just as important to improvement as building knowledge. So without further ado, let's dive in!</p>
@@ -37,11 +37,11 @@ This document is the **single source of truth** for all chapter and line copy. U
 
 ---
 
-## 2) Learning the Game (`learning-the-game`)
+## 2) The Game (`learning-the-game`)
 
-### 1. Learning the Board: Ranks — `learning-the-game-1`
+### 1. The Board: Ranks — `learning-the-game-1`
 - **Type:** quiz  
-- **Learn mode**
+- **Course mode**
   - **Coach title:** Play the correct move  
   - **Coach body:** White to play  
   - **Body HTML:** Squares on a chess board can be divided and understood according to ranks (side to side), files (up and down) and diagonals. Let's talk about ranks. There are 8 ranks on a chess board numbered from 1-8. Here we see a lone queen sitting on the 3rd rank. We will learn about her highness when we talk about the pieces. For now, to get a better feel for the board, let's try moving her all the way across the 3rd rank to the other side.
@@ -49,12 +49,12 @@ This document is the **single source of truth** for all chapter and line copy. U
   - **Caption:** The queen shuffles all the way to the other side along the 3rd rank.
   - **Body (below moves):** [Missing – add Read mode body for Ranks here]
 
-### 2. Learning the Board: Files — `learning-the-game-2`
+### 2. The Board: Files — `learning-the-game-2`
 - **Type:** quiz  
 - **Learn mode:** Coach title: Play the correct move. Coach body: White to play. Body: Files are the sets of squares that go up and down on a chess board. There are 8 of them, lettered from a to h. Here, a queen sits on the d-file. Let's move her all the way down to the other side of the d-file.
 - **Read mode:** Caption: I think you have the hang of it. | Body below moves: [Missing]
 
-### 3. Learning the Board: Diagonals — `learning-the-game-3`
+### 3. The Board: Diagonals — `learning-the-game-3`
 - **Type:** quiz  
 - **Learn mode:** Coach: Play the correct move / White to play. Body: There are lots of diagonals of varying sizes on a chess board. Here, the queen sits on the a1-h8 diagonal. Let's move her along it to the other side - the h8-square.
 - **Read mode:** Caption: Note that all squares on a given diagonal must be of the same color - light or dark. | Body below moves: [Missing]
@@ -176,7 +176,7 @@ This document is the **single source of truth** for all chapter and line copy. U
 ### 6. Early Castling in the Ruy Lopez — `the-opening-6`
 - **Read mode body:** Now let's see one of the oldest and most common openings at all levels: the Ruy Lopez, or Spanish opening. Pay special attention to how opening principles are observed, especially rule #5 – castling the king early. Let's see if you can learn and remember the first moves of this ancient opening. A perfect move; controlling the center and making way for the queen and bishop. As we've already seen, this move does many things: Develops a piece; Controls the center; Brings the king one move closer to castling to safety; Attacks a pawn! Black defends. This is the starting position of the Ruy Lopez Opening which has been played hundreds of thousands of times. In addition to developing a piece and preparing to castle, the point of this move is to attack Black's knight – an important defender of Black's center. In this way, this bishop move indirectly controls the center!
 
-### 7. Learn the Queen's Gambit — `the-opening-7`
+### 7. The Queen's Gambit — `the-opening-7`
 - **Read mode body:** (Same as the-opening-5 – Queen's Gambit Declined copy.)
 
 ### 8. Don't Try Scholar's Mate! — `the-opening-8`
@@ -198,7 +198,7 @@ This document is the **single source of truth** for all chapter and line copy. U
 
 ## 4) Tactics & Strategy (`tactics-strategy`)
 
-All 8 lines have **Read mode body** only (no info/quiz Learn mode content in codebase).
+All 8 lines have **Read mode body** only (no info/quiz Course mode content in codebase).
 
 ### 1. Tactics: Double Attack #1 — `tactics-strategy-1`
 - **Read mode body:** For our first tactic, let's examine the double attack, also called a fork. A double attack is when one piece attacks two enemy pieces at the same time. In this position, the rook can attack both the enemy bishop and knight because they are sitting on the same rank! 1. Rf7 — Rook to f7 double attacks the bishop and knight, and Black cannot save them both. This means on the next move, White can capture one of them.
@@ -236,7 +236,7 @@ All 8 lines have **Read mode body** only (no info/quiz Learn mode content in cod
 
 ### 3. Endgame Checkmates: The Rook Mate — `the-endgame-3`
 - **Type:** info  
-- **Learn mode:** Coach: Read through this line and arrow through the moves. Body: Endgame Checkmates: The Rook Mate. With only a king and rook left, you can force checkmate by driving the enemy king to the edge of the board. The two rooks (or rook and king) work together to shrink the space available to the enemy king until it is checkmated. This is one of the most important endgame patterns to learn. Let's see how it's done.
+- **Learn mode:** Coach: Read through this line and arrow through the moves. Body: Endgame Checkmates: The Rook Mate. With only a king and rook left, you can force checkmate by driving the enemy king to the edge of the board. The two rooks (or rook and king) work together to shrink the space available to the enemy king until it is checkmated. This is one of the most important endgame patterns to study. Let's see how it's done.
 - **Read mode body:** (Double-attack/fork placeholder – likely needs real rook-mate copy.)
 
 ### 4. The Rook Mate - Practice — `the-endgame-4`
@@ -286,5 +286,5 @@ All 8 lines have **Read mode body** only (no info/quiz Learn mode content in cod
 | `lineReadModeBodyByKey` | Read mode **body below the move list** (bodyHtml) |
 
 **Missing in this doc (to add later):**  
-- Full Read mode body copy for every **Learning the Game** line (only captions exist in code; `lineReadModeBodyByKey` has no `learning-the-game-*` entries).  
+- Full Read mode body copy for every **The Game** line (only captions exist in code; `lineReadModeBodyByKey` has no `learning-the-game-*` entries).  
 - Correct endgame-specific copy for **the-endgame-1** through **the-endgame-14** where placeholder text is currently used.

@@ -184,4 +184,91 @@ const checkIconSize = computed(() => Math.max(12, Math.round(props.size * (2 / 3
 
 ---
 
+## Opening course card (V1)
+
+**Context:** Opening Courses V1 course list (`Courses.vue`, `.opening-v1-scroll`). Card shows cover, title, description, and “N Lines” chip.
+
+### Description truncation when headline wraps to 2 lines
+
+When the card **headline (title) wraps to two lines**, the description line-clamp is reduced so the card height stays balanced:
+
+- **Desktop S (narrow):** description truncates after **1 line** (class `opening-course-card--title-two-lines` applied via JS when `title.scrollHeight > lineHeight * 1.3`).
+- **Mobile:** description truncates after **2 lines** (otherwise 3 lines when headline is 1 line).
+
+Measurement runs on mount, when the filtered list changes, on window resize, and when the viewport preset changes (e.g. switching to Desktop S). Implemented in `measureOpeningCardTitleLines()` and CSS under `.app.app--viewport-narrow` / `.app.app--viewport-mobile` with `.opening-course-card--title-two-lines`.
+
+### Selected card hover
+
+Selected card does **not** change background on hover (no `--color-bg-subtlest`); only unselected cards get a background on hover. The board preview stays on the selected card until pointer leaves.
+
+---
+
+## Color Picker V1 (Pick Your Color)
+
+**File:** `my-app/src/components/PickYourColor.vue`  
+**Local name:** `color-picker-V1`  
+**Figma:** Pick your color (trigger node 208:20483), Black king icon (node 208:20656).
+
+Dropdown to select piece color: “play for white” or “play for black”. Trigger shows current choice (king icon + label + chevron); panel opens **above** the trigger with two options. Selected option shows a green **mark-check** glyph on the right.
+
+### Props
+
+| Prop         | Type    | Default   | Description                                  |
+|--------------|---------|-----------|----------------------------------------------|
+| `modelValue` | String  | `'white'` | `'white'` \| `'black'`; v-model binding     |
+| `disabled`  | Boolean | false     | Disables trigger and prevents open           |
+
+### Usage
+
+```vue
+<PickYourColor v-model="openingPlaySide" class="pick-your-color-wrap" />
+```
+
+### Trigger (closed state)
+
+- **Layout:** Flex row, `gap: 8px`, `padding: 5px`, `border-radius: 3px`, `min-height: 40px`.
+- **Background:** Transparent (no background).
+- **Icon:** 24×24px king (white or black). White king: 3 layers from Figma (base, dark, light) or fallback SVG. Black king: 3 layers from Figma (node 208:20656) or fallback SVG.
+- **Label:** 14px, font-weight 600, line-height 16px, `color: rgba(255,255,255,1)`, `opacity: 0.72`. Text: “play for white” / “play for black”.
+- **Chevron:** 12×12px, down when closed; `opacity: 0.72`. Rotates 180° when panel open.
+- **Hover/focus (trigger):** Label and chevron only → `opacity: 0.85`. Icons and background unchanged.
+
+### Dropdown panel
+
+- **Position:** Above trigger: `bottom: 100%`, `left: -8px`, `margin-bottom: 4px`.
+- **Size:** `width: 200px` (fixed).
+- **Padding:** `4px 0` (vertical only).
+- **Background:** `#1f1e1d`.
+- **Border:** `1px solid rgba(255, 255, 255, 0.15)`.
+- **Border radius:** `6px`.
+- **Shadow:** `0 -4px 12px rgba(0, 0, 0, 0.4)` (upward).
+- **z-index:** 100.
+
+### Dropdown options
+
+- **Layout:** Flex row per option, `gap: 8px`, `width: 100%`, `max-width: 100%`, `min-width: 0`, `padding: 5px 12px`.
+- **Background:** Transparent (no option background).
+- **Icon:** Same 24×24 king as trigger (white or black, same Figma/fallback).
+- **Label:** Same as trigger: 14px, 600, white, `opacity: 0.72`. Hover/focus: **label only** → `opacity: 0.85` (icons do not change on hover).
+- **Selected:** Green check on the right: **mark-check** glyph (DS), `variant="glyph"`, `size="16"`, color `var(--color-border-focus, #81b64c)`. Check container: `margin-left: auto` so it sits at the right edge of the panel.
+
+### Icon assets (Figma MCP)
+
+- **White king:** base, dark, light (node 208:20483).
+- **Black king:** base, dark, light (node 208:20656).
+- **Chevron:** single asset. All have `@error` fallback to inline SVG where needed.
+
+### Dependencies
+
+- `@chesscom/design-system` – `CcIcon` (glyph: `mark-check` for selected option).
+- Vue 3 (ref, computed, onMounted, onUnmounted).
+
+### Accessibility
+
+- Trigger: `aria-label="Select piece color"`, `aria-haspopup="listbox"`, `:aria-expanded`, `:aria-controls` when open.
+- Panel: `role="listbox"`, `aria-label="Piece color options"`.
+- Options: `role="option"`, `:aria-selected`. Keyboard: Enter/Space to open; Arrow Up/Down to change; Escape to close; click outside to close.
+
+---
+
 *Add more Courses local components below as needed.*

@@ -52,7 +52,7 @@ Edits applied on top of design system or Figma defaults. Use this list when sync
 - **AdvancedStatsExpanded** (when `showMoreStats`): Main container `.advanced-stats-expanded` (flex column, align start, full width).
   - **Practice Filter (header):** `.advanced-stats-header` – background `--bg-header-dark` (black 14%), flex space-between, padding 12px 16px; column labels “Level” and “Variations” – System font Semi Bold 14px/16px, `--text-tertiary` (white 50%).
   - **Variations container:** `.advanced-stats-variations` – flex column, gap 8px, padding 12px vertical (no horizontal); contains 8 Mastery Level items.
-  - **Mastery level items (L1–L8):** L1 Rookie (120), L2 Keen Learner (100), L3 Apprentice (80), L4 Rank Riser (68), L5 Booked Up (54), L6 Expert (1) – active: DS CcChip aqua + counter. L7 Encyclopaedic, L8 Master – **locked:** row `opacity: 0.4`, disabled chip (bg white 10%, text white 72%), lock icon (20×20, white 40%, drop shadow) instead of counter.
+  - **Mastery level items (L1–L8):** L1 Rookie (120), L2 Keen Courser (100), L3 Apprentice (80), L4 Rank Riser (68), L5 Booked Up (54), L6 Expert (1) – active: DS CcChip aqua + counter. L7 Encyclopaedic, L8 Master – **locked:** row `opacity: 0.4`, disabled chip (bg white 10%, text white 72%), lock icon (20×20, white 40%, drop shadow) instead of counter.
   - **Less Stats:** `.less-stats-section` – padding 4px top 8px bottom; button “Less Stats” + chevron (arrow-chevron-bottom with `scaleY(-1)`); System Semi Bold 14px, `--text-secondary`, text shadow; chevron 16×16, `--icon-tertiary`, drop shadow; click sets `showMoreStats = false`.
 - **Mastery level chip (active):** DS `CcChip` with `color="aqua"`, `:is-uppercase="false"`, `label-class="mastery-level-chip-label"`. Edits: `--chip-translucent-fg` → `--color-aqua-300` (#26C2A3); label font `--font-family-system`.
 - **Mastery level item layout:** Row gap 16px, padding 2px 16px; left panel (chip + title) `flex: 1 0 0`, counter or lock right-aligned; title 14px semibold `--text-secondary`; counter Chess Sans Bold 17px/20px `--text-primary`.
@@ -66,7 +66,7 @@ Edits applied on top of design system or Figma defaults. Use this list when sync
 
 - **Show All filter:** “Show” + select + triangle icon; layout and typography per Figma (Frame 238011).
 - **Course cards:** Cover 80×80, 3px radius; title Chess Sans Bold 14px; author/count system font; border-bottom decoration.
-- **Progress bar:** Track + fill with `--color-bg-progress-completed-gradient`; Learned count in header.
+- **Progress bar:** Track + fill with `--color-bg-progress-completed-gradient`; Completed count in header.
 - **Mastery bar:** Segmented track (8 segments), aqua/mint fill and gradient overlay; no “Learned” text in header.
 
 ---
@@ -74,7 +74,7 @@ Edits applied on top of design system or Figma defaults. Use this list when sync
 ## Data / state used by the variant
 
 - `courses`, `courseSections`, `masteryLevelItems` (8 items: level, title, counter or null, locked boolean; L7/L8 locked).
-- `progressLearned`, `progressTotal`, `progressPercent`; `masteryLevel`, `masteryTotal`, `masteryPercent`.
+- `progressCompleted`, `progressTotal`, `progressPercent`; `masteryLevel`, `masteryTotal`, `masteryPercent`.
 - `showMoreStats` (More expand/collapse), `expandedSectionIds` (section accordion), `linesFilterValue`, `showLessonActions`, `practiceAllBadgeCount`.
 
 ---
