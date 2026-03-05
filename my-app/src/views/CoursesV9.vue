@@ -4247,7 +4247,7 @@ const openingSearchQuery = ref('')
 const openingFilterMoves = ref([])
 // Keyword tags from search (Enter): filter by title/description containing each
 const openingKeywordTags = ref([])
-const openingSortBy = ref('type') // 'name' | 'lines' | 'type' | 'popular'
+const openingSortBy = ref('popular') // 'name' | 'lines' | 'type' | 'popular'
 const openingSortOpen = ref(false)
 // Opening V1: scroll-linked search bar – searchY in px clamped to [-H, 0]; searchY -= delta on scroll (no boolean).
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)) }
