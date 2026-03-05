@@ -276,8 +276,8 @@ function editedAgoFor(version) {
           </template>
         </section>
 
-        <!-- Opening Courses section: hidden on index page -->
-        <section v-if="false" class="index-section">
+        <!-- Opening Courses section -->
+        <section class="index-section">
           <h2 class="index-section__title">Opening Courses</h2>
           <div class="project-cards">
             <article
