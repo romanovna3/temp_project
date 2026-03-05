@@ -459,8 +459,15 @@ const selectedOpeningHasBothColors = computed(() => {
   const hasBlack = list.some((c) => c.openingKey === card.openingKey && c.type === 'Black')
   return hasWhite && hasBlack
 })
-/** True when selected card is not started (color not yet chosen for this course). Color picker shown only then; started/completed cards do not show picker. */
+/** True when selected card is not started (color not yet chosen for this course). Used for Returning User sort/state. */
 const selectedOpeningCardIsNotStarted = computed(() => selectedOpeningCard.value != null && !isOpeningCardStarted(selectedOpeningCard.value))
+/** True when we should show the color picker: New User always (for selected card); Returning User only when card is not started. */
+const selectedOpeningShowsColorPicker = computed(() => {
+  const card = selectedOpeningCard.value
+  if (!card) return false
+  if (openingV1ScenarioPreset.value === 'new-user') return true
+  return !isOpeningCardStarted(card)
+})
 // Restore scroll position and selected card when returning from an OC course page (sessionStorage key).
 const OPENING_COURSES_V1_RETURN_STATE_KEY = 'openingCoursesV1ReturnState'
 // Global preset bar (viewport + scenario) shared between Opening list and Course page so selection persists when navigating.
@@ -8607,9 +8614,9 @@ v-if="isVideoV6OrV7"
                 </button>
               </div>
             </div>
-            <!-- Opening Courses V1 (courses view): color selector when card selected and not started; then CTA Start Course or Continue. -->
-            <div v-else-if="isOpeningCoursesV1 && panelView === 'courses'" class="footer-buttons-container" :class="{ 'footer-buttons-container--cta-only': !selectedOpeningCardId || !selectedOpeningCardIsNotStarted }">
-              <div v-if="selectedOpeningCardId && selectedOpeningCardIsNotStarted" class="footer-buttons-row footer-buttons-row-full footer-buttons-row--pick-color">
+            <!-- Opening Courses V1 (courses view): color picker when card selected (New User: always; Returning User: only when not started); CTA: New User always Start Course; Returning User: Practice if completed, Continue if started, Start Course if not started. -->
+            <div v-else-if="isOpeningCoursesV1 && panelView === 'courses'" class="footer-buttons-container" :class="{ 'footer-buttons-container--cta-only': !selectedOpeningCardId || !selectedOpeningShowsColorPicker }">
+              <div v-if="selectedOpeningShowsColorPicker" class="footer-buttons-row footer-buttons-row-full footer-buttons-row--pick-color">
                 <PickYourColor
                   v-model="openingPlaySide"
                   :play-side-only="selectedOpeningHasBothColors ? undefined : (selectedOpeningCard?.type === 'White' ? 'white' : selectedOpeningCard?.type === 'Black' ? 'black' : undefined)"
@@ -8618,7 +8625,7 @@ v-if="isVideoV6OrV7"
               </div>
               <div class="footer-buttons-row footer-buttons-row-full">
                 <AquaCtaButton
-                  v-if="selectedOpeningCard && isOpeningCardCompleted(selectedOpeningCard)"
+                  v-if="selectedOpeningCard && isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardCompleted(selectedOpeningCard)"
                   label="Practice"
                   :badge="getOpeningCardStartedData(selectedOpeningCard)?.reviewCount ?? 0"
                   class="footer-btn-full"
