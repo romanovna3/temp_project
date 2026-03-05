@@ -523,7 +523,8 @@ function toggleStatsPanel() {
   }
 }
 
-// Preset bar dropdown options (for custom select)
+// Preset bar dropdown options (for custom select). Viewport hidden when SHOW_VIEWPORT_PRESET_IN_BAR is false; see docs/opening-courses-viewport-preset.md
+const SHOW_VIEWPORT_PRESET_IN_BAR = false
 const viewportPresetOptions = [
   { value: 'default', label: 'Desktop L' },
   { value: 'narrow', label: 'Desktop S' },
@@ -644,8 +645,10 @@ const panelView = ref('courses')
 
 // Viewport preset for responsiveness testing: 'default' | 'narrow' | 'mobile'
 const viewportPreset = ref('default')
+/** When viewport preset is hidden, layout always uses L (default). */
+const effectiveViewportPreset = computed(() => (SHOW_VIEWPORT_PRESET_IN_BAR ? viewportPreset.value : 'default'))
 
-const isNarrowOrMobileViewport = computed(() => viewportPreset.value === 'narrow' || viewportPreset.value === 'mobile')
+const isNarrowOrMobileViewport = computed(() => effectiveViewportPreset.value === 'narrow' || effectiveViewportPreset.value === 'mobile')
 
 // Scenario preset for footer demo: 'nothing-to-learn' | 'nothing-to-practice' | 'practice-and-learn' | 'new-course'
 const scenarioPreset = ref('practice-and-learn')
@@ -3248,7 +3251,10 @@ function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite) {
       }
     } catch (_) {}
     try {
-      playSound(isCapture ? 'capture' : 'move')
+      const boardSection = document.querySelector('.board-section')
+      if (boardSection && getComputedStyle(boardSection).display !== 'none') {
+        playSound(isCapture ? 'capture' : 'move')
+      }
     } catch (_) {}
     // Show last-move highlight immediately when the piece “leaves” the square (start of slide)
     lastMove.value = { from, to }
@@ -5329,7 +5335,7 @@ const VIDEO_ASPECT = 16 / 9
 const VIDEO_PANEL_WIDTH_DEFAULT = 460
 const VIDEO_PANEL_WIDTH_NARROW = 300
 const videoViewportScale = computed(() => {
-  if (viewportPreset.value === 'narrow' || viewportPreset.value === 'mobile') {
+  if (effectiveViewportPreset.value === 'narrow' || effectiveViewportPreset.value === 'mobile') {
     return VIDEO_PANEL_WIDTH_NARROW / VIDEO_PANEL_WIDTH_DEFAULT
   }
   return 1
@@ -5946,17 +5952,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app dark-mode" :class="[`app--viewport-${viewportPreset}`]">
-    <!-- Viewport preset bar for responsiveness testing (custom dropdowns: panel opens below, dark) -->
+  <div class="app dark-mode" :class="[`app--viewport-${effectiveViewportPreset}`]">
+    <!-- Viewport preset bar for responsiveness testing. Viewport hidden when SHOW_VIEWPORT_PRESET_IN_BAR is false; see docs/opening-courses-viewport-preset.md -->
     <div class="viewport-preset-bar" role="toolbar" aria-label="Viewport and version preset">
-      <div class="viewport-preset-bar__group">
+      <div v-if="SHOW_VIEWPORT_PRESET_IN_BAR" class="viewport-preset-bar__group">
         <PresetBarSelect
           v-model="viewportPreset"
           :options="viewportPresetOptions"
           aria-label="Viewport size"
         />
       </div>
-      <span class="viewport-preset-bar__separator" aria-hidden="true" />
+      <span v-if="SHOW_VIEWPORT_PRESET_IN_BAR" class="viewport-preset-bar__separator" aria-hidden="true" />
       <div class="viewport-preset-bar__group">
         <PresetBarSelect
           v-model="scenarioPreset"
@@ -6346,7 +6352,7 @@ onUnmounted(() => {
                       <p class="opening-course-card__description">{{ card.description }}</p>
                     </div>
                     <div class="opening-course-card__properties">
-                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" />
+                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" />
                     </div>
                   </div>
                 </div>
