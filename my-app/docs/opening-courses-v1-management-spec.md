@@ -64,11 +64,11 @@ We support three scenarios, selectable from a **preset bar** at the top of the s
 When the user **selects a course card** (and that course is **not** started), the footer shows:
 
 - **Color picker** (White/Black):
-  - **Two-color courses** (e.g. Italian Game): **Dropdown** with chevron; user picks “Play for white” or “Play for black.” Default is **White**.
+  - **Two-color courses** (e.g. Italian Game): **Dropdown** with chevron; user picks “Play For White” or “Play For Black.” Default is **White**.
   - **Single-color courses** (e.g. Queen’s Gambit Accepted – one color only): **Indicator only** (no dropdown, no chevron), showing the one available color.
 - **Primary button:** “Start Course” (or “Continue” for already started courses). Disabled when no card is selected.
 
-**Product decision:** Color choice is clear for two-color openings; for single-color we only show an indicator to avoid unnecessary interaction. Sentence-style labels (“Play for white” / “Play for black”) and consistent styling keep the footer easy to scan.
+**Product decision:** Color choice is clear for two-color openings; for single-color we only show an indicator to avoid unnecessary interaction. Sentence-style labels (“Play For White” / “Play For Black”) and consistent styling keep the footer easy to scan.
 
 ---
 

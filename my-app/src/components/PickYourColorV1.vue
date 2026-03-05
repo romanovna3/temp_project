@@ -95,8 +95,8 @@ const imgChevronUrl = 'https://www.figma.com/api/mcp/asset/89a655e1-387b-4a48-a2
 const imgChevronError = ref(false)
 
 const options = [
-  { value: 'white', label: 'play for white' },
-  { value: 'black', label: 'play for black' },
+  { value: 'white', label: 'Play For White' },
+  { value: 'black', label: 'Play For Black' },
 ]
 
 const normalizedValue = computed(() =>
@@ -105,7 +105,7 @@ const normalizedValue = computed(() =>
 
 const labelText = computed(() => {
   const opt = options.find((o) => o.value === normalizedValue.value)
-  return opt ? opt.label : 'play for white'
+  return opt ? opt.label : 'Play For White'
 })
 
 const isOpen = ref(false)
