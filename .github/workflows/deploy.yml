@@ -19,6 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check NPM_TOKEN
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "::error::NPM_TOKEN secret is not set. Add it in repo Settings → Secrets and variables → Actions. PAT needs read:packages (and repo if @chesscom is private). See docs/SETUP-NEW-MACHINE.md"
+            exit 1
+          fi
+          echo "NPM_TOKEN is set."
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
