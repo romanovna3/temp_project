@@ -1361,9 +1361,9 @@ const defaultLineMoves = [
   { number: 3, white: 'Bb5', black: 'a6' },
 ]
 function getMovesForLine(section, move) {
-  if (!section?.id || !move?.id) return defaultLineMoves
+  if (!section?.id || move?.id == null) return defaultLineMoves
   const baseId = String(section.id).replace(/-2$/, '')
-  const key = `${baseId}-${move.id}`
+  const key = `${baseId}-${String(move.id)}`
   return lineMovesByKey[key] ?? defaultLineMoves
 }
 
@@ -1376,8 +1376,10 @@ const selectedPly = ref({ moveIndex: 0, side: 'white' })
 
 /** Chapter page: hovered line for board preview (only for non-ready lines; ready = hidden). */
 const hoveredChapterLine = ref(null) // { section, move } | null
-const HOVER_BOARD_PREVIEW_DELAY_MS = 180
+const HOVER_BOARD_PREVIEW_DELAY_MS = 120
+const HOVER_CLEAR_DELAY_MS = 150
 let hoveredChapterLineDelayTimer = null
+let hoveredChapterLineClearTimer = null
 
 /** Build FEN and lastMove for the position *after* the selected ply (selected = this move is highlighted; show board after it). */
 function getPositionAfterPly(moves, selectedPlyVal) {
@@ -1413,7 +1415,36 @@ function getPositionAtEndOfLine(moves) {
   }
 }
 
+const LEARNING_THE_GAME_SECTION_ID = 'learning-the-game'
+function getFirstMovePieceAndSquare(moves) {
+  try {
+    if (!moves?.length) return null
+    const first = moves[0]
+    const san = ((first?.white || first?.black || '').trim().replace(/[+#]$/, '') || '').trim()
+    if (!san) return null
+    const isWhite = Boolean(first?.white)
+    const color = isWhite ? 'w' : 'b'
+    const squareMatch = san.match(/([a-h][1-8])(?:=[QRBN])?[+#]?$/)
+    const square = squareMatch ? squareMatch[1] : null
+    if (!square) return null
+    let piece = 'p'
+    if (/^[KQRBN]/.test(san)) {
+      piece = san[0].toLowerCase()
+    } else if (/^[a-h]/.test(san) && san.includes('=')) {
+      const promMatch = san.match(/=([QRBN])/)
+      piece = promMatch ? promMatch[1].toLowerCase() : 'p'
+    }
+    return { type: `${color}${piece}`, square }
+  } catch {
+    return null
+  }
+}
+
 function setHoveredChapterLine(section, move) {
+  if (hoveredChapterLineClearTimer) {
+    clearTimeout(hoveredChapterLineClearTimer)
+    hoveredChapterLineClearTimer = null
+  }
   if (!section || !move) {
     if (hoveredChapterLineDelayTimer) {
       clearTimeout(hoveredChapterLineDelayTimer)
@@ -1422,7 +1453,6 @@ function setHoveredChapterLine(section, move) {
     hoveredChapterLine.value = null
     return
   }
-  if (getLineType(move) === 'ready') return // hidden moves – don't preview
   if (hoveredChapterLineDelayTimer) clearTimeout(hoveredChapterLineDelayTimer)
   hoveredChapterLineDelayTimer = setTimeout(() => {
     hoveredChapterLineDelayTimer = null
@@ -1435,7 +1465,11 @@ function clearHoveredChapterLine() {
     clearTimeout(hoveredChapterLineDelayTimer)
     hoveredChapterLineDelayTimer = null
   }
-  hoveredChapterLine.value = null
+  if (hoveredChapterLineClearTimer) clearTimeout(hoveredChapterLineClearTimer)
+  hoveredChapterLineClearTimer = setTimeout(() => {
+    hoveredChapterLineClearTimer = null
+    hoveredChapterLine.value = null
+  }, HOVER_CLEAR_DELAY_MS)
 }
 
 function isPlySelected(moveIndex, side) {
@@ -2906,7 +2940,10 @@ function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite) {
       }
     } catch (_) {}
     try {
-      playSound(isCapture ? 'capture' : 'move')
+      const boardSection = document.querySelector('.board-section')
+      if (boardSection && getComputedStyle(boardSection).display !== 'none') {
+        playSound(isCapture ? 'capture' : 'move')
+      }
     } catch (_) {}
     // Show last-move highlight immediately when the piece “leaves” the square (start of slide)
     lastMove.value = { from, to }
@@ -3235,7 +3272,29 @@ watchEffect(() => {
       checkmateHighlight.value = null
       return
     }
-    // Opening Courses V1: when a course card is selected, show first 2 moves of that opening on the board
+    // Chapter page / Opening Courses: hovered line preview (checked first so hover wins over selected card)
+    if (panelView.value === 'courses' && hoveredChapterLine.value) {
+      const { section, move } = hoveredChapterLine.value
+      const moves = getMovesForLine(section, move)
+      const sectionId = String(section?.id || '').replace(/-2$/, '')
+      if (sectionId === LEARNING_THE_GAME_SECTION_ID) {
+        const single = getFirstMovePieceAndSquare(moves)
+        if (single) {
+          pieces.value = [single]
+          lastMove.value = null
+          selectedSquare.value = null
+          checkmateHighlight.value = null
+          return
+        }
+      }
+      const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
+      pieces.value = parseFEN(fen)
+      lastMove.value = last
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+      return
+    }
+    // Opening Courses V1: when a course card is selected (and no line hover), show first 2 moves of that opening
     if (panelView.value === 'courses' && isOpeningCoursesV1.value && selectedOpeningCardId.value != null) {
       const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
       const moves = card ? OPENING_FIRST_5_MOVES[card.title] : null
@@ -3248,18 +3307,6 @@ watchEffect(() => {
         checkmateHighlight.value = null
         return
       }
-    }
-    // Chapter page: hovered line preview (non–Opening Courses or no card selected)
-    if (panelView.value === 'courses' && hoveredChapterLine.value) {
-      const { section, move } = hoveredChapterLine.value
-      if (getLineType(move) === 'ready') return
-      const moves = getMovesForLine(section, move)
-      const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
-      pieces.value = parseFEN(fen)
-      lastMove.value = last
-      selectedSquare.value = null
-      checkmateHighlight.value = null
-      return
     }
     // Courses, no hover / no opening selected: show default position
     // BUT: if Opening V1 and user has played filter moves, keep the board at their position
@@ -5790,7 +5837,7 @@ onUnmounted(() => {
                       <p class="opening-course-card__description">{{ card.description }}</p>
                     </div>
                     <div class="opening-course-card__properties">
-                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" />
+                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" />
                     </div>
                   </div>
                 </div>
@@ -6252,6 +6299,8 @@ onUnmounted(() => {
                                 role="listitem"
                                 data-name="Line"
                                 :data-move-id="`${section.id}-${item.move.id}`"
+                                @mouseenter="setHoveredChapterLine(section, item.move)"
+                                @mouseleave="clearHoveredChapterLine()"
                               >
                                 <div
                                   class="chapter-line-card__body chapter-line-card__body--no-click"
@@ -6436,6 +6485,8 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -6600,6 +6651,8 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <!-- Body first in DOM (V6: timeline-col on right via row-reverse) -->
                         <div
@@ -6755,6 +6808,8 @@ v-if="isVideoV6OrV7"
                           role="listitem"
                           data-name="Line"
                           :data-move-id="`${section.id}-${move.id}`"
+                          @mouseenter="setHoveredChapterLine(section, move)"
+                          @mouseleave="clearHoveredChapterLine()"
                         >
                           <div class="move-item-content">
                             <div class="move-item-inner">
@@ -6874,6 +6929,8 @@ v-if="isVideoV6OrV7"
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -9336,9 +9393,12 @@ body {
   outline: 2px solid var(--color-aqua-300, #26C2A3);
   outline-offset: 2px;
 }
-/* Line items are non-clickable (no open line page) */
+/* Line items: non-clickable but hover shows board preview – use pointer to show hover feedback */
+.courses-content--line-items-no-click .chapter-line-card {
+  cursor: pointer;
+}
 .chapter-line-card__body--no-click {
-  cursor: default;
+  cursor: pointer;
 }
 .chapter-line-card__body--no-click:focus-visible {
   outline: none;
@@ -11370,11 +11430,11 @@ body {
 }
 /* Line items are non-clickable (no open line page) */
 .courses-content--line-items-no-click .move-item {
-  cursor: default;
+  cursor: pointer;
 }
 .courses-content--line-items-no-click .move-item:hover,
 .courses-content--line-items-no-click .move-item:hover .move-item-content {
-  background: transparent;
+  background: var(--bg-hover-subtle, rgba(255, 255, 255, 0.04));
 }
 
 .move-item-content {
