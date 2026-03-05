@@ -6047,9 +6047,9 @@ onUnmounted(() => {
               />
             </div>
           </div>
-          <!-- Opening Courses V1: centered hint overlay (pulse; dissolves when user grabs a piece) -->
+          <!-- Opening Courses V1: board overlay message hidden (was "Drag a piece to explore openings") -->
           <div
-            v-if="panelView === 'courses' && isOpeningCoursesV1 && !openingHintDismissed && selectedOpeningCardId == null"
+            v-if="false"
             class="opening-board-hint"
             :class="{ 'opening-board-hint--dissolving': isDragging }"
             aria-hidden="true"
