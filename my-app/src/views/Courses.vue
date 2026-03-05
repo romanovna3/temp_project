@@ -1,12 +1,16 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUpdated, onUnmounted, nextTick, provide, watchEffect } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Chess } from 'chess.js'
-import { CcButton, CcChip, CcIconButton, CcIcon, CcTabGroup, CcTabItem } from '@chesscom/design-system'
+import { CcButton, CcChip, CcIconButton, CcIcon, CcTabGroup, CcTabItem, CcTooltip } from '@chesscom/design-system'
 import SearchInput from '../components/SearchInput.vue'
 import ProgressCircle from '../components/ProgressCircle.vue'
 import StatsCards from '../components/StatsCards.vue'
 import AquaCtaButton from '../components/AquaCtaButton.vue'
+import PresetBarSelect from '../components/PresetBarSelect.vue'
+import OpeningCoursePage from './OpeningCoursePage.vue'
+import PickYourColor from '../components/PickYourColor.vue'
+import AquaBadge from '../components/AquaBadge.vue'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -25,6 +29,7 @@ const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
 
 // Version: V2.3 = legacy content (14 sections), V2.4 = real course (7 chapters). V5/V6 = same layout as V4 but different line-card styling.
 const route = useRoute()
+const router = useRouter()
 const isVideoV2_4 = computed(() => route.path === '/courses/v4')
 const isVideoV5 = computed(() => route.path === '/courses/v5')
 const isVideoV6 = computed(() => route.path === '/courses/v6')
@@ -46,39 +51,41 @@ const coursesV24 = [
 ]
 const courses = computed(() => (isVideoV2_4OrV5.value ? coursesV24 : coursesV23))
 
-// Opening Courses V1: raw rows from Opening Courses spec (stored for later use).
-// Columns: Opening Name | Color | First move | Against | Frequency Played
+// Opening Courses V1: raw rows from Opening Courses spec.
+// Source: https://www.notion.so/Courses-319a84a510a980fba32afaee9bcc4110
+// Columns: Opening Name | Color | First move | Against | Frequency | Course number (1 = single color, use Color; 2 = both colors, dropdown default White)
 const OPENING_COURSES_RAW = [
-  { name: 'Italian Game', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
-  { name: 'Ruy Lopez', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
-  { name: 'Scotch', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
-  { name: 'Four Knights', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
-  { name: 'Fried Liver', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%' },
-  { name: 'Scandinavian Defense', color: 'White', firstMove: '1. e4', against: 'Scandi', frequency: '11%' },
-  { name: 'Petroff Defense', color: 'White', firstMove: '1. e4', against: 'Petroff', frequency: '9%' },
-  { name: 'Open Sicilian', color: 'White', firstMove: '1. e4', against: 'Sicilian', frequency: '7%' },
-  { name: 'Alapin', color: 'White', firstMove: '1. e4', against: 'Sicilian', frequency: '7%' },
-  { name: 'French Defense', color: 'White', firstMove: '1. e4', against: 'French', frequency: '6%' },
-  { name: 'Caro-Kann Defense', color: 'White', firstMove: '1. e4', against: 'Caro-Kann', frequency: '4%' },
-  { name: 'London System', color: 'White', firstMove: '1. d4', against: 'Anything', frequency: '100%' },
-  { name: "Queen's Gambit", color: 'White', firstMove: '1. d4', against: '1… d5', frequency: '56%' },
-  { name: 'English Opening', color: 'White', firstMove: '1. c4', against: 'Anything', frequency: '100%' },
-  { name: 'Italian Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '14%' },
-  { name: 'Ruy Lopez', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '6%' },
-  { name: 'Four Knights Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '7%' },
-  { name: 'Scotch Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '5%' },
-  { name: 'Sicilian Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
-  { name: 'Scandinavian Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
-  { name: 'Petroff Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '37%' },
-  { name: 'French Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
-  { name: 'Caro-Kann Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
-  { name: 'Pirc Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%' },
-  { name: "Queen's Gambit Accepted", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '5%' },
-  { name: "Queen's Gambit Declined", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '5%' },
-  { name: 'London System', color: 'Black', firstMove: '1. d4', against: '1. d4, 2. Bf4', frequency: '4%' },
-  { name: 'Nimzo-Indian Defense', color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '4%' },
-  { name: "King's Indian Defense", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '4%' },
-  { name: 'Against 1. c4 & 1. Nf3', color: 'Black', firstMove: '1. c4 & 1. Nf3', against: '1. c4 & 1. Nf3', frequency: '5%' },
+  { name: 'Italian Game', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%', courseNumber: 2 },
+  { name: 'Ruy Lopez', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%', courseNumber: 2 },
+  { name: 'Scotch', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%', courseNumber: 2 },
+  { name: 'Four Knights', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%', courseNumber: 2 },
+  { name: 'Fried Liver', color: 'White', firstMove: '1. e4', against: '1… e5, 2. Nf3', frequency: '34%', courseNumber: 2 },
+  { name: 'Scandinavian Defense', color: 'White', firstMove: '1. e4', against: 'Scandi', frequency: '11%', courseNumber: 2 },
+  { name: 'Petroff Defense', color: 'White', firstMove: '1. e4', against: 'Petroff', frequency: '9%', courseNumber: 2 },
+  { name: 'Open Sicilian', color: 'White', firstMove: '1. e4', against: 'Sicilian', frequency: '7%', courseNumber: 1 },
+  { name: 'Alapin', color: 'White', firstMove: '1. e4', against: 'Sicilian', frequency: '7%', courseNumber: 1 },
+  { name: 'French Defense', color: 'White', firstMove: '1. e4', against: 'French', frequency: '6%', courseNumber: 2 },
+  { name: 'Caro-Kann Defense', color: 'White', firstMove: '1. e4', against: 'Caro-Kann', frequency: '4%', courseNumber: 2 },
+  { name: 'London System', color: 'White', firstMove: '1. d4', against: 'Anything', frequency: '100%', courseNumber: 2 },
+  { name: "Queen's Gambit", color: 'White', firstMove: '1. d4', against: '1… d5', frequency: '56%', courseNumber: 2 },
+  { name: 'English Opening', color: 'White', firstMove: '1. c4', against: 'Anything', frequency: '100%', courseNumber: 1 },
+  { name: 'Italian Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '14%', courseNumber: 2 },
+  { name: 'Ruy Lopez', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '6%', courseNumber: 2 },
+  { name: 'Four Knights Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '7%', courseNumber: 2 },
+  { name: 'Scotch Game', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '5%', courseNumber: 2 },
+  { name: 'Sicilian Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%', courseNumber: 1 },
+  { name: 'Scandinavian Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%', courseNumber: 2 },
+  { name: 'Petroff Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '37%', courseNumber: 2 },
+  { name: 'French Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%', courseNumber: 2 },
+  { name: 'Caro-Kann Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%', courseNumber: 2 },
+  { name: 'Pirc Defense', color: 'Black', firstMove: '1. e4', against: '1. e4', frequency: '66%', courseNumber: 1 },
+  { name: "Queen's Gambit Accepted", color: 'White', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '5%', courseNumber: 1 },
+  { name: "Queen's Gambit Accepted", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '5%', courseNumber: 1 },
+  { name: "Queen's Gambit Declined", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '5%', courseNumber: 1 },
+  { name: 'London System', color: 'Black', firstMove: '1. d4', against: '1. d4, 2. Bf4', frequency: '4%', courseNumber: 2 },
+  { name: 'Nimzo-Indian Defense', color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '4%', courseNumber: 1 },
+  { name: "King's Indian Defense", color: 'Black', firstMove: '1. d4', against: '1. d4, 2. c4', frequency: '4%', courseNumber: 1 },
+  { name: 'Against 1. c4 & 1. Nf3', color: 'Black', firstMove: '1. c4 & 1. Nf3', against: '1. c4 & 1. Nf3', frequency: '5%', courseNumber: 1 },
 ]
 
 // Cover pieces for 4×4 center (c3–f6). col 0–3 = c–f, row 0–3 = ranks 6–3.
@@ -150,6 +157,10 @@ function openingNameKey(name) {
   if (name === 'Four Knights Game') return 'Four Knights'
   if (name === 'Scotch Game') return 'Scotch'
   return name
+}
+// URL slug from opening title (e.g. "Sicilian Defense" → "sicilian-defense").
+function openingSlug(title) {
+  return (title || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 }
 
 // Descriptions from opening course transcriptions. Kept to ~2 lines for card layout.
@@ -328,35 +339,173 @@ const OPENING_FIRST_5_MOVES = {
   ],
 }
 
-// One card per unique opening name (first occurrence wins for first move / cover). Full raw rows stored on card for later.
+// Two courses per opening (white and black). One card per row; same opening name can appear twice (White + Black).
+// courseNumber from raw: 2 = both colors (dropdown, default White); 1 = single color (indicator from Color column).
 const openingCourseCards = (() => {
-  const seen = new Set()
   const cards = []
   let id = 1
   for (const row of OPENING_COURSES_RAW) {
     const key = openingNameKey(row.name)
-    if (seen.has(key)) continue
-    seen.add(key)
     const firstMove = row.firstMove
     const title = key === row.name ? row.name : key
     const description = OPENING_DESCRIPTIONS[title] ?? `${title} — ${firstMove}`
-    // Use opening moves data for cover, fallback to firstMove string
     const cover = coverPiecesFromOpening(title)
     const frequencyPercent = parseFloat(String(row.frequency || '0').replace('%', '')) || 0
+    const courseNumber = row.courseNumber === 1 ? 1 : 2
     cards.push({
       id: id++,
+      slug: openingSlug(title) + (row.color === 'Black' ? '-black' : '-white'),
       title,
       firstMove,
       description,
-      linesCount: 12,
+      linesCount: Math.floor(Math.random() * 5) + 6, // 6–10 inclusive per card
       type: row.color,
+      openingKey: key,
       frequencyPercent,
       coverPieces: cover.length ? cover : coverPiecesFromFirstMove(firstMove),
-      _meta: OPENING_COURSES_RAW.filter((r) => openingNameKey(r.name) === key),
+      courseNumber,
+      _meta: OPENING_COURSES_RAW.filter((r) => openingNameKey(r.name) === key && r.color === row.color),
     })
   }
   return cards
 })()
+
+// Returning User: which (openingKey, color) are started; review count and progress % for started cards. openingKey uses openingNameKey (e.g. Scotch Game → Scotch).
+// Completed course: progressPercent 100, reviewCount = total lines (all lines available for practice); shows green "Completed" chip.
+const RETURNING_USER_STARTED = {
+  'French Defense': { White: { progressPercent: 100, reviewCount: 10 }, Black: null },
+  'London System': { White: { progressPercent: 45, reviewCount: 6 }, Black: { progressPercent: 40, reviewCount: 5 } },
+  'Italian Game': { White: { progressPercent: 30, reviewCount: 4 }, Black: null },
+  'Scandinavian Defense': { White: null, Black: { progressPercent: 25, reviewCount: 3 } },
+}
+/** Display order for started courses: French Defense White first, then Italian, London White, London Black, Scandinavian Black. */
+const STARTED_COURSES_ORDER = [
+  ['French Defense', 'White'],
+  ['Italian Game', 'White'],
+  ['London System', 'White'],
+  ['London System', 'Black'],
+  ['Scandinavian Defense', 'Black'],
+]
+function isOpeningCardStarted(card) {
+  if (!card?.openingKey) return false
+  const byColor = RETURNING_USER_STARTED[card.openingKey]
+  if (!byColor) return false
+  const data = byColor[card.type]
+  return data != null
+}
+function getOpeningCardStartedData(card) {
+  if (!card?.openingKey) return null
+  const byColor = RETURNING_USER_STARTED[card.openingKey]
+  if (!byColor) return null
+  return byColor[card.type] ?? null
+}
+/** True when course is "Completed": 100% progress, all lines available for practice (green Completed chip). */
+function isOpeningCardCompleted(card) {
+  const data = getOpeningCardStartedData(card)
+  if (!data) return false
+  return data.progressPercent === 100 && (data.reviewCount ?? 0) >= (card.linesCount ?? 10)
+}
+function getStartedCourseSortRank(card) {
+  const idx = STARTED_COURSES_ORDER.findIndex(([key, color]) => card.openingKey === key && card.type === color)
+  return idx >= 0 ? idx : 999
+}
+function isOpeningFullyStarted(openingKey) {
+  const byColor = RETURNING_USER_STARTED[openingKey]
+  if (!byColor) return false
+  return (byColor.White != null && byColor.Black != null)
+}
+/** True when this opening has both White and Black rows in the list (e.g. Queen's Gambit Accepted). */
+function openingHasBothSides(openingKey) {
+  if (!openingKey) return false
+  let hasWhite = false
+  let hasBlack = false
+  for (const row of OPENING_COURSES_RAW) {
+    if (openingNameKey(row.name) !== openingKey) continue
+    if (row.color === 'White') hasWhite = true
+    if (row.color === 'Black') hasBlack = true
+    if (hasWhite && hasBlack) return true
+  }
+  return false
+}
+
+// Opening course page (after Start Course): same variation list for all openings for now (V9-style section + lines)
+const OPENING_COURSE_VARIATIONS = [
+  'Winawer Variation',
+  'Retreat Variation',
+  'Retreat Variation with ...cxd4',
+  'Black Trades Too Early',
+  'Black Blocks the c-pawn',
+  'Classical Variation',
+  'Classical Variation with ...Ne4',
+  'Rubinstein Variation',
+  'Rubinstein Variation with 4...Nf6',
+  'Sideline with 3...c5?',
+]
+const selectedOpeningCard = computed(() =>
+  selectedOpeningCardId.value != null
+    ? openingCourseCards.find((c) => c.id === selectedOpeningCardId.value) ?? null
+    : null
+)
+/** List used for "both colors present" check: New User = all filtered; Returning User B = current tab list. */
+const selectedOpeningListForColors = computed(() =>
+  openingV1ScenarioPreset.value === 'new-user' ? openingCoursesFiltered.value : openingV1RubCourseList.value
+)
+/** True when the opening has both colors in that list (show full color picker). courseNumber 2 + both White and Black in list. For courseNumber 1 we show indicator only (Color column). */
+const selectedOpeningHasBothColors = computed(() => {
+  const card = selectedOpeningCard.value
+  if (!card?.openingKey || card.courseNumber !== 2) return false
+  const list = selectedOpeningListForColors.value
+  const hasWhite = list.some((c) => c.openingKey === card.openingKey && c.type === 'White')
+  const hasBlack = list.some((c) => c.openingKey === card.openingKey && c.type === 'Black')
+  return hasWhite && hasBlack
+})
+/** True when selected card is not started (color not yet chosen for this course). Color picker shown only then; started/completed cards do not show picker. */
+const selectedOpeningCardIsNotStarted = computed(() => selectedOpeningCard.value != null && !isOpeningCardStarted(selectedOpeningCard.value))
+// Restore scroll position and selected card when returning from an OC course page (sessionStorage key).
+const OPENING_COURSES_V1_RETURN_STATE_KEY = 'openingCoursesV1ReturnState'
+// Global preset bar (viewport + scenario) shared between Opening list and Course page so selection persists when navigating.
+const OPENING_COURSES_V1_PRESET_BAR_KEY = 'openingCoursesV1PresetBar'
+
+const OPENING_COURSES_V1_STARTED_STATE_KEY = 'openingCoursesV1StartedState'
+
+function openOpeningCourse() {
+  if (selectedOpeningCardId.value == null) return
+  const card = selectedOpeningCard.value
+  if (!card) return
+  const scrollEl = openingV1ScrollWrapRef.value
+  const scrollTop = scrollEl != null && typeof scrollEl.scrollTop === 'number' ? scrollEl.scrollTop : 0
+  try {
+    sessionStorage.setItem(OPENING_COURSES_V1_RETURN_STATE_KEY, JSON.stringify({
+      scrollTop,
+      selectedOpeningCardId: selectedOpeningCardId.value,
+      playSide: openingPlaySide.value,
+    }))
+    sessionStorage.setItem(OPENING_COURSES_V1_PRESET_BAR_KEY, JSON.stringify({
+      viewportPreset: viewportPreset.value,
+      scenarioPreset: openingV1ScenarioPreset.value,
+    }))
+    const startedData = isReturningUserScenario(openingV1ScenarioPreset.value) ? getOpeningCardStartedData(card) : null
+    if (startedData) {
+      sessionStorage.setItem(OPENING_COURSES_V1_STARTED_STATE_KEY, JSON.stringify({
+        reviewCount: startedData.reviewCount,
+        progressPercent: startedData.progressPercent,
+      }))
+    } else {
+      sessionStorage.removeItem(OPENING_COURSES_V1_STARTED_STATE_KEY)
+    }
+  } catch (_) {
+    // ignore quota / private mode
+  }
+  const isLearn = route.path.startsWith('/learn/')
+  if (openingSlug(card.title) === 'sicilian-defense') {
+    router.push(isLearn ? { path: '/learn/sicilian-defense' } : { path: '/courses/sicilian-defense' }).catch(() => {})
+  } else {
+    router.push({ name: isLearn ? 'learn-opening-courses-oc-course' : 'courses-opening-courses-oc-course', params: { courseId: String(card.id) } }).catch(() => {})
+  }
+}
+function backFromOpeningCourse() {
+  panelView.value = 'courses'
+}
 
 // Lines filter options (label only the value – "Show " is separate)
 const linesFilterOptions = [
@@ -561,9 +710,10 @@ function backToCourses() {
   })
 }
 
-/** Header back button: on line view always go back to chapter (courses) page; works for all line types (info, quiz, completed, ready, uncompleted). */
+/** Header back button: on line view go back to chapter; on opening-course view go back to cards. */
 function onHeaderBackClick() {
   if (panelView.value === 'line') backToCourses()
+  else if (panelView.value === 'opening-course') backFromOpeningCourse()
 }
 
 /** V2.3 Line view: prev/next line for headline chevrons; can cross chapter boundaries */
@@ -1358,9 +1508,9 @@ const defaultLineMoves = [
   { number: 3, white: 'Bb5', black: 'a6' },
 ]
 function getMovesForLine(section, move) {
-  if (!section?.id || !move?.id) return defaultLineMoves
+  if (!section?.id || move?.id == null) return defaultLineMoves
   const baseId = String(section.id).replace(/-2$/, '')
-  const key = `${baseId}-${move.id}`
+  const key = `${baseId}-${String(move.id)}`
   return lineMovesByKey[key] ?? defaultLineMoves
 }
 
@@ -1373,8 +1523,10 @@ const selectedPly = ref({ moveIndex: 0, side: 'white' })
 
 /** Chapter page: hovered line for board preview (only for non-ready lines; ready = hidden). */
 const hoveredChapterLine = ref(null) // { section, move } | null
-const HOVER_BOARD_PREVIEW_DELAY_MS = 180
+const HOVER_BOARD_PREVIEW_DELAY_MS = 120
+const HOVER_CLEAR_DELAY_MS = 150
 let hoveredChapterLineDelayTimer = null
+let hoveredChapterLineClearTimer = null
 
 /** Build FEN and lastMove for the position *after* the selected ply (selected = this move is highlighted; show board after it). */
 function getPositionAfterPly(moves, selectedPlyVal) {
@@ -1398,7 +1550,7 @@ function getPositionAfterPly(moves, selectedPlyVal) {
   }
 }
 
-/** Position at end of a line (for chapter-page hover preview). Never throws. */
+/** Position at end of a line (for chapter-page hover preview). Uses latest move for now; spec: use key move when available (see docs/toc-line-hover-board-preview.md). Never throws. */
 function getPositionAtEndOfLine(moves) {
   try {
     if (!moves?.length) return { fen: STARTING_FEN, lastMove: null }
@@ -1410,7 +1562,43 @@ function getPositionAtEndOfLine(moves) {
   }
 }
 
+/** Section id for "The Game" chapter – hover shows only the first move's piece on its square (empty board + one piece). */
+const LEARNING_THE_GAME_SECTION_ID = 'learning-the-game'
+
+/**
+ * Parse the first move of a line to get piece type and destination square.
+ * Used for "The Game" chapter: show only that piece on the board (hide all others).
+ * Returns { type: 'wq'|'br'|..., square: 'e4' } or null.
+ */
+function getFirstMovePieceAndSquare(moves) {
+  try {
+    if (!moves?.length) return null
+    const first = moves[0]
+    const san = ((first?.white || first?.black || '').trim().replace(/[+#]$/, '') || '').trim()
+    if (!san) return null
+    const isWhite = Boolean(first?.white)
+    const color = isWhite ? 'w' : 'b'
+    const squareMatch = san.match(/([a-h][1-8])(?:=[QRBN])?[+#]?$/)
+    const square = squareMatch ? squareMatch[1] : null
+    if (!square) return null
+    let piece = 'p'
+    if (/^[KQRBN]/.test(san)) {
+      piece = san[0].toLowerCase()
+    } else if (/^[a-h]/.test(san) && san.includes('=')) {
+      const promMatch = san.match(/=([QRBN])/)
+      piece = promMatch ? promMatch[1].toLowerCase() : 'p'
+    }
+    return { type: `${color}${piece}`, square }
+  } catch {
+    return null
+  }
+}
+
 function setHoveredChapterLine(section, move) {
+  if (hoveredChapterLineClearTimer) {
+    clearTimeout(hoveredChapterLineClearTimer)
+    hoveredChapterLineClearTimer = null
+  }
   if (!section || !move) {
     if (hoveredChapterLineDelayTimer) {
       clearTimeout(hoveredChapterLineDelayTimer)
@@ -1419,7 +1607,6 @@ function setHoveredChapterLine(section, move) {
     hoveredChapterLine.value = null
     return
   }
-  if (getLineType(move) === 'ready') return // hidden moves – don't preview
   if (hoveredChapterLineDelayTimer) clearTimeout(hoveredChapterLineDelayTimer)
   hoveredChapterLineDelayTimer = setTimeout(() => {
     hoveredChapterLineDelayTimer = null
@@ -1432,7 +1619,11 @@ function clearHoveredChapterLine() {
     clearTimeout(hoveredChapterLineDelayTimer)
     hoveredChapterLineDelayTimer = null
   }
-  hoveredChapterLine.value = null
+  if (hoveredChapterLineClearTimer) clearTimeout(hoveredChapterLineClearTimer)
+  hoveredChapterLineClearTimer = setTimeout(() => {
+    hoveredChapterLineClearTimer = null
+    hoveredChapterLine.value = null
+  }, HOVER_CLEAR_DELAY_MS)
 }
 
 function isPlySelected(moveIndex, side) {
@@ -2858,6 +3049,14 @@ const draggedFrom = ref(null)
 const dragPosition = ref({ x: 0, y: 0 })
 const boardRef = ref(null)
 
+// Opening Courses V1: hint dismissed after first drag (card-selection watch is below, after selectedOpeningCardId is defined)
+const openingHintDismissed = ref(false)
+watch(isDragging, (dragging) => {
+  if (dragging && isOpeningCoursesV1.value) {
+    setTimeout(() => { openingHintDismissed.value = true }, 320)
+  }
+})
+
 // Opening Courses V1: auto-play White's 3rd move after showing position after 2 moves (with sound + slide animation)
 let openingAutoMoveTimeoutId = null
 const openingCardAnimatingMove = ref(null) // { from, to, pieceType } when sliding the piece
@@ -2903,7 +3102,10 @@ function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite) {
       }
     } catch (_) {}
     try {
-      playSound(isCapture ? 'capture' : 'move')
+      const boardSection = document.querySelector('.board-section')
+      if (boardSection && getComputedStyle(boardSection).display !== 'none') {
+        playSound(isCapture ? 'capture' : 'move')
+      }
     } catch (_) {}
     // Show last-move highlight immediately when the piece “leaves” the square (start of slide)
     lastMove.value = { from, to }
@@ -3232,7 +3434,29 @@ watchEffect(() => {
       checkmateHighlight.value = null
       return
     }
-    // Opening Courses V1: when a course card is selected, show first 2 moves of that opening on the board
+    // Chapter page / Opening Courses: hovered line preview (checked first so hover wins over selected card)
+    if (panelView.value === 'courses' && hoveredChapterLine.value) {
+      const { section, move } = hoveredChapterLine.value
+      const moves = getMovesForLine(section, move)
+      const sectionId = String(section?.id || '').replace(/-2$/, '')
+      if (sectionId === LEARNING_THE_GAME_SECTION_ID) {
+        const single = getFirstMovePieceAndSquare(moves)
+        if (single) {
+          pieces.value = [single]
+          lastMove.value = null
+          selectedSquare.value = null
+          checkmateHighlight.value = null
+          return
+        }
+      }
+      const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
+      pieces.value = parseFEN(fen)
+      lastMove.value = last
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+      return
+    }
+    // Opening Courses V1: when a course card is selected (and no line hover), show first 2 moves of that opening
     if (panelView.value === 'courses' && isOpeningCoursesV1.value && selectedOpeningCardId.value != null) {
       const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
       const moves = card ? OPENING_FIRST_5_MOVES[card.title] : null
@@ -3245,18 +3469,6 @@ watchEffect(() => {
         checkmateHighlight.value = null
         return
       }
-    }
-    // Chapter page: hovered line preview (non–Opening Courses or no card selected)
-    if (panelView.value === 'courses' && hoveredChapterLine.value) {
-      const { section, move } = hoveredChapterLine.value
-      if (getLineType(move) === 'ready') return
-      const moves = getMovesForLine(section, move)
-      const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
-      pieces.value = parseFEN(fen)
-      lastMove.value = last
-      selectedSquare.value = null
-      checkmateHighlight.value = null
-      return
     }
     // Courses, no hover / no opening selected: show default position
     // BUT: if Opening V1 and user has played filter moves, keep the board at their position
@@ -3842,8 +4054,19 @@ const handleRetry = () => {
 // V2: video visible by default, one per chapter, not sticky
 const isVideoV2 = computed(() => route.path === '/courses/v2')
 // V2.2: same as V2 but play button toggles to pause and makes that video sticky. Opening Courses V1 uses same layout.
-const isVideoV2_2 = computed(() => route.path === '/courses/v2.2' || route.path === '/courses/opening-courses-v1' || route.path === '/learn/opening-courses-v1')
-const isOpeningCoursesV1 = computed(() => (route && route.path) === '/courses/opening-courses-v1' || (route && route.path) === '/learn/opening-courses-v1')
+const isVideoV2_2 = computed(() => route.path === '/courses/v2.2' || isOpeningCoursesV1.value)
+// Match decoded path; also match when hash is encoded (#%2Flearn%2Fopening-courses-v1) so -102 is avoided
+const isOpeningCoursesV1 = computed(() => {
+  if (!route?.path) return false
+  const p = route.path
+  if (p === '/courses/opening-courses-v1' || p === '/learn/opening-courses-v1') return true
+  try {
+    const decoded = decodeURIComponent(p)
+    return decoded === '/courses/opening-courses-v1' || decoded === '/learn/opening-courses-v1'
+  } catch {
+    return false
+  }
+})
 /** Defer opening-courses-v1 layout until after first paint to avoid Error -102 (renderer crash). */
 const openingV1Ready = ref(false)
 let openingV1ReadyTimer = null
@@ -3862,9 +4085,106 @@ watch(isOpeningCoursesV1, (isV1) => {
     openingV1Ready.value = true
   }, 200)
 }, { immediate: true })
+
+// Opening Courses V1: coach bubble typewriter on first load (full text in DOM for layout; reveal by character)
+const OPENING_V1_COACH_BUBBLE_TEXT = 'Start by making a move on the board, or pick an opening to study.'
+const coachBubbleChars = computed(() => OPENING_V1_COACH_BUBBLE_TEXT.split(''))
+const coachBubbleTypedText = ref('')
+const coachBubbleTypedLength = computed(() => coachBubbleTypedText.value.length)
+const hasPlayedCoachTypewriter = ref(false)
+let coachTypewriterTimer = null
+watch([openingV1Ready, isOpeningCoursesV1], ([ready, isV1]) => {
+  if (!isV1 || !ready) {
+    if (coachTypewriterTimer) {
+      clearInterval(coachTypewriterTimer)
+      coachTypewriterTimer = null
+    }
+    coachBubbleTypedText.value = ''
+    return
+  }
+  if (hasPlayedCoachTypewriter.value) {
+    coachBubbleTypedText.value = OPENING_V1_COACH_BUBBLE_TEXT
+    return
+  }
+  nextTick(() => {
+    let index = 0
+    coachBubbleTypedText.value = ''
+    const CHAR_DELAY_MS = 24
+    coachTypewriterTimer = setInterval(() => {
+      index += 1
+      coachBubbleTypedText.value = OPENING_V1_COACH_BUBBLE_TEXT.slice(0, index)
+      if (index >= OPENING_V1_COACH_BUBBLE_TEXT.length) {
+        if (coachTypewriterTimer) clearInterval(coachTypewriterTimer)
+        coachTypewriterTimer = null
+        hasPlayedCoachTypewriter.value = true
+      }
+    }, CHAR_DELAY_MS)
+  })
+})
+
+// Opening Courses V1: viewport and scenario preset bar (same UX as V9). Initialize from storage so Back from Course page doesn't flash L layout.
+function getInitialOpeningV1PresetBar() {
+  try {
+    if (typeof sessionStorage === 'undefined') return { viewportPreset: 'default', scenarioPreset: 'new-user' }
+    const raw = sessionStorage.getItem(OPENING_COURSES_V1_PRESET_BAR_KEY)
+    if (!raw) return { viewportPreset: 'default', scenarioPreset: 'new-user' }
+    const preset = JSON.parse(raw)
+    const v = preset?.viewportPreset
+    const s = preset?.scenarioPreset
+    return {
+      viewportPreset: v && ['default', 'narrow', 'mobile'].includes(v) ? v : 'default',
+      scenarioPreset: s && ['new-user', 'returning-user', 'returning-user-b'].includes(s) ? s : 'new-user',
+    }
+  } catch (_) {
+    return { viewportPreset: 'default', scenarioPreset: 'new-user' }
+  }
+}
+const _initialOpeningV1Preset = getInitialOpeningV1PresetBar()
+/** When false, viewport dropdown is hidden and L (default) is used. See docs/opening-courses-viewport-preset.md to re-enable. */
+const SHOW_VIEWPORT_PRESET_IN_BAR = false
+const viewportPresetOptions = [
+  { value: 'default', label: 'Desktop L' },
+  { value: 'narrow', label: 'Desktop S' },
+  { value: 'mobile', label: 'Mobile' },
+]
+const openingV1ScenarioPresetOptions = [
+  { value: 'new-user', label: 'New User' },
+  { value: 'returning-user', label: 'Returning User A' },
+  { value: 'returning-user-b', label: 'Returning User B' },
+]
+/** True when scenario is any "returning user" variant (A or B – same behavior). */
+function isReturningUserScenario(val) {
+  return val === 'returning-user' || val === 'returning-user-b'
+}
+const viewportPreset = ref(_initialOpeningV1Preset.viewportPreset)
+/** When viewport preset is hidden, layout always uses L (default). */
+const effectiveViewportPreset = computed(() => (SHOW_VIEWPORT_PRESET_IN_BAR ? viewportPreset.value : 'default'))
+const openingV1ScenarioPreset = ref(_initialOpeningV1Preset.scenarioPreset)
+/** RUB only: active tab 'my-openings' | 'all' */
+const openingV1RubActiveTab = ref('my-openings')
+/** Meta panel count: New User = filtered; RUB = started or rest by tab */
+const openingV1ScenarioMetaCount = computed(() => {
+  if (openingV1ScenarioPreset.value === 'returning-user-b') {
+    return openingV1RubActiveTab.value === 'my-openings' ? openingCoursesStartedList.value.length : openingCoursesRestList.value.length
+  }
+  return openingCoursesFiltered.value.length
+})
+/** RUB only: list for active tab (started or rest) */
+const openingV1RubCourseList = computed(() =>
+  openingV1RubActiveTab.value === 'my-openings' ? openingCoursesStartedList.value : openingCoursesRestList.value
+)
+
 const selectedOpeningCardId = ref(null)
 // True when the selected card is currently hovered (pointer over it) – board does not reset while true
 const selectedOpeningCardHovered = ref(false)
+/** Opening V1: play side for selected card (used by color picker in footer; can be passed when starting course) */
+const openingPlaySide = ref('white')
+watch(selectedOpeningCard, (card) => {
+  if (card) openingPlaySide.value = card.courseNumber === 2 ? 'white' : (card.type === 'Black' ? 'black' : 'white')
+}, { immediate: true })
+watch(selectedOpeningCardId, (id) => {
+  if (id != null && isOpeningCoursesV1.value) openingHintDismissed.value = true
+})
 // Ignore pointerleave for a short time after selection (browsers often fire leave on click/focus)
 const OPENING_CARD_IGNORE_UNHOVER_MS = 400
 let openingCardSelectionTime = 0
@@ -3897,13 +4217,36 @@ const openingSearchH = ref(92)
 const openingSearchRef = ref(null)
 const openingV1ScrollWrapRef = ref(null)
 let lastOpeningScrollTop = 0
+// RUB: scroll-linked tabs (same pattern as course Learn/Practice tabs)
+const openingV1RubTabsWrapRef = ref(null)
+const openingTabsY = ref(0)
+const openingTabsH = ref(48)
+let lastOpeningTabsScrollTop = 0
+let openingTabsStickyStartScrollTop = 0
+
+/** When headline wraps to 2 lines, description line-clamp is reduced (1 line on Desktop S, 2 on mobile). */
+function measureOpeningCardTitleLines() {
+  const wrap = openingV1ScrollWrapRef.value
+  if (!wrap) return
+  const cards = wrap.querySelectorAll('.opening-course-card')
+  cards.forEach((card) => {
+    const title = card.querySelector('.opening-course-card__title')
+    if (!title) return
+    const style = getComputedStyle(title)
+    const lineHeight = parseFloat(style.lineHeight) || (parseFloat(style.fontSize) || 14) * (16 / 14)
+    const twoLines = title.scrollHeight > lineHeight * 1.3
+    card.classList.toggle('opening-course-card--title-two-lines', twoLines)
+  })
+}
 
 function measureOpeningSearchH() {
   requestAnimationFrame(() => {
     const el = openingSearchRef.value
+    const wrap = openingV1ScrollWrapRef.value
     if (el) {
       openingSearchH.value = el.offsetHeight || 92
       openingSearchY.value = clamp(openingSearchY.value, -openingSearchH.value, 0)
+      if (wrap) wrap.style.setProperty('--opening-search-h', openingSearchH.value + 'px')
     }
   })
 }
@@ -3972,8 +4315,62 @@ const openingCoursesFiltered = computed(() => {
   } else if (openingSortBy.value === 'popular') {
     list = list.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
   }
+  if (isReturningUserScenario(openingV1ScenarioPreset.value)) {
+    list = list.slice().sort((a, b) => {
+      const aStarted = isOpeningCardStarted(a)
+      const bStarted = isOpeningCardStarted(b)
+      if (aStarted && !bStarted) return -1
+      if (!aStarted && bStarted) return 1
+      if (!aStarted && !bStarted) return 0
+      return getStartedCourseSortRank(a) - getStartedCourseSortRank(b)
+    })
+  }
   return list
 })
+
+/** Returning user: started courses only (for "My Openings" section). */
+const openingCoursesStartedList = computed(() => {
+  if (!isReturningUserScenario(openingV1ScenarioPreset.value)) return []
+  return openingCoursesFiltered.value.filter((c) => isOpeningCardStarted(c))
+})
+/** Returning user: non-started courses only (for "All Openings" section). Each card is per color; once started it is in My Openings only. Both colors can be started for openings with two courses; only the other color remains in All Openings until started. */
+const openingCoursesRestList = computed(() => {
+  if (!isReturningUserScenario(openingV1ScenarioPreset.value)) return []
+  return openingCoursesFiltered.value.filter((c) => !isOpeningCardStarted(c))
+})
+
+watch(openingCoursesFiltered, () => {
+  nextTick(() => requestAnimationFrame(measureOpeningCardTitleLines))
+}, { flush: 'post' })
+
+watch(viewportPreset, () => {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(measureOpeningCardTitleLines)
+      setTimeout(measureOpeningCardTitleLines, 80)
+    })
+  })
+  try {
+    sessionStorage.setItem(OPENING_COURSES_V1_PRESET_BAR_KEY, JSON.stringify({
+      viewportPreset: viewportPreset.value,
+      scenarioPreset: openingV1ScenarioPreset.value,
+    }))
+  } catch (_) {
+    // ignore
+  }
+})
+
+watch(openingV1ScenarioPreset, () => {
+  try {
+    sessionStorage.setItem(OPENING_COURSES_V1_PRESET_BAR_KEY, JSON.stringify({
+      viewportPreset: viewportPreset.value,
+      scenarioPreset: openingV1ScenarioPreset.value,
+    }))
+  } catch (_) {
+    // ignore
+  }
+})
+
 function onOpeningFiltersClick() {
   // TODO: open filters modal/sheet
 }
@@ -4103,6 +4500,33 @@ function onOpeningChipsScroll() {
   updateChipsOverflow()
 }
 
+function computeOpeningTabsStickyStart() {
+  /* User B tabs are fixed under coach; no scroll-linked behavior */
+  if (openingV1ScenarioPreset.value === 'returning-user-b') return
+  const scrollEl = openingV1ScrollWrapRef.value
+  const tabsEl = openingV1RubTabsWrapRef.value
+  if (!scrollEl || !tabsEl) return
+  const scrollTop = scrollEl.scrollTop
+  const tabsRect = tabsEl.getBoundingClientRect()
+  const scrollRect = scrollEl.getBoundingClientRect()
+  openingTabsStickyStartScrollTop = scrollTop + (tabsRect.top - scrollRect.top) - openingSearchH.value
+}
+function measureOpeningTabsH() {
+  requestAnimationFrame(() => {
+    const wrap = openingV1RubTabsWrapRef.value
+    if (!wrap) return
+    /* User B: tabs are fixed under coach, no transform */
+    if (openingV1ScenarioPreset.value === 'returning-user-b') return
+    const h = wrap.offsetHeight || 48
+    openingTabsH.value = h
+    openingTabsY.value = clamp(openingTabsY.value, -h, 0)
+    const el = openingV1ScrollWrapRef.value
+    if (el) {
+      el.style.setProperty('--opening-tabs-y', openingTabsY.value + 'px')
+      computeOpeningTabsStickyStart()
+    }
+  })
+}
 function onOpeningContentScroll() {
   try {
     const el = openingV1ScrollWrapRef.value
@@ -4111,16 +4535,83 @@ function onOpeningContentScroll() {
     const delta = st - lastOpeningScrollTop
     openingSearchY.value = clamp(openingSearchY.value - delta, -openingSearchH.value, 0)
     lastOpeningScrollTop = st
+    /* User B: tabs are fixed under coach, no scroll-linked transform */
+    lastOpeningTabsScrollTop = st
   } catch (_) {
     lastOpeningScrollTop = 0
+    lastOpeningTabsScrollTop = 0
   }
 }
 
-// Clear chapter hover when entering Opening Courses V1; measure search bar height for scroll-linked Y
+// Clear chapter hover when entering Opening Courses V1; measure search bar height only after layout is mounted (avoids -102)
 watch(isOpeningCoursesV1, (isV1) => {
-  if (isV1) {
-    clearHoveredChapterLine()
-    nextTick(measureOpeningSearchH)
+  if (isV1) clearHoveredChapterLine()
+}, { immediate: true })
+watch([isOpeningCoursesV1, openingV1Ready], ([isV1, ready]) => {
+  if (isV1 && ready) nextTick(measureOpeningSearchH)
+}, { immediate: true })
+watch([isOpeningCoursesV1, openingV1ScenarioPreset], ([isV1, preset]) => {
+  if (isV1 && preset === 'returning-user-b') {
+    nextTick(() => {
+      measureOpeningTabsH()
+      computeOpeningTabsStickyStart()
+    })
+  }
+}, { immediate: true })
+
+// Restore scroll position and selected card when returning from an OC course page (Back from chapter).
+// Also restore global preset bar (viewport + scenario) so it stays in sync with Course page.
+watch([isOpeningCoursesV1, openingV1Ready], ([isV1, ready]) => {
+  if (!isV1 || !ready) return
+  // Restore global preset bar from Course page (or previous session)
+  try {
+    const presetRaw = sessionStorage.getItem(OPENING_COURSES_V1_PRESET_BAR_KEY)
+    if (presetRaw) {
+      const preset = JSON.parse(presetRaw)
+      if (preset && typeof preset.viewportPreset === 'string' && ['default', 'narrow', 'mobile'].includes(preset.viewportPreset)) {
+        viewportPreset.value = preset.viewportPreset
+      }
+      if (preset && typeof preset.scenarioPreset === 'string' && ['new-user', 'returning-user', 'returning-user-b'].includes(preset.scenarioPreset)) {
+        openingV1ScenarioPreset.value = preset.scenarioPreset
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+  let raw
+  try {
+    raw = sessionStorage.getItem(OPENING_COURSES_V1_RETURN_STATE_KEY)
+  } catch (_) {
+    return
+  }
+  if (!raw) return
+  try {
+    sessionStorage.removeItem(OPENING_COURSES_V1_RETURN_STATE_KEY)
+  } catch (_) {
+    // ignore
+  }
+  let state
+  try {
+    state = JSON.parse(raw)
+  } catch (_) {
+    return
+  }
+  if (state == null || typeof state !== 'object') return
+  const { scrollTop: savedScrollTop, selectedOpeningCardId: savedCardId } = state
+  if (savedCardId != null) {
+    const card = openingCourseCards.find((c) => c.id === savedCardId || c.id === Number(savedCardId))
+    if (card) selectedOpeningCardId.value = card.id
+  }
+  if (typeof savedScrollTop === 'number' && savedScrollTop >= 0) {
+    nextTick(() => {
+      nextTick(() => {
+        const el = openingV1ScrollWrapRef.value
+        if (el && typeof el.scrollTop === 'number') {
+          el.scrollTop = Math.min(savedScrollTop, el.scrollHeight - el.clientHeight)
+          lastOpeningScrollTop = el.scrollTop
+        }
+      })
+    })
   }
 }, { immediate: true })
 
@@ -5382,13 +5873,20 @@ onMounted(() => {
     nextTick(measureCourseTabsHeight)
     nextTick(updateCurrentChapterNameForFooter)
   }
+  nextTick(() => requestAnimationFrame(measureOpeningCardTitleLines))
+  window.addEventListener('resize', onOpeningCardTitleLinesResize)
 })
+
+function onOpeningCardTitleLinesResize() {
+  requestAnimationFrame(measureOpeningCardTitleLines)
+}
 
 onUpdated(() => {
   nextTick(() => requestAnimationFrame(updateSectionLineMasks))
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', onOpeningCardTitleLinesResize)
   if (openingV1ReadyTimer) {
     clearTimeout(openingV1ReadyTimer)
     openingV1ReadyTimer = null
@@ -5410,7 +5908,26 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app dark-mode">
+  <div class="app dark-mode" :class="[isOpeningCoursesV1 ? `app--viewport-${effectiveViewportPreset}` : '', isOpeningCoursesV1 ? 'app--with-preset-bar' : '']">
+    <!-- Opening Courses V1: viewport and scenario preset bar (same placement as V9). Viewport hidden when SHOW_VIEWPORT_PRESET_IN_BAR is false; see docs/opening-courses-viewport-preset.md -->
+    <div v-if="isOpeningCoursesV1" class="viewport-preset-bar" role="toolbar" aria-label="Viewport and scenario preset">
+      <div v-if="SHOW_VIEWPORT_PRESET_IN_BAR" class="viewport-preset-bar__group">
+        <PresetBarSelect
+          v-model="viewportPreset"
+          :options="viewportPresetOptions"
+          aria-label="Viewport size"
+        />
+      </div>
+      <span v-if="SHOW_VIEWPORT_PRESET_IN_BAR" class="viewport-preset-bar__separator" aria-hidden="true" />
+      <div class="viewport-preset-bar__group">
+        <PresetBarSelect
+          v-model="openingV1ScenarioPreset"
+          :options="openingV1ScenarioPresetOptions"
+          aria-label="Scenario"
+        />
+      </div>
+    </div>
+    <div :class="{ 'app-body': isOpeningCoursesV1 }">
     <div class="layout">
       <!-- Left: Chessboard -->
       <div class="board-section">
@@ -5523,7 +6040,17 @@ onUnmounted(() => {
               />
             </div>
           </div>
-        
+          <!-- Opening Courses V1: centered hint overlay (pulse; dissolves when user grabs a piece) -->
+          <div
+            v-if="panelView === 'courses' && isOpeningCoursesV1 && !openingHintDismissed && selectedOpeningCardId == null"
+            class="opening-board-hint"
+            :class="{ 'opening-board-hint--dissolving': isDragging }"
+            aria-hidden="true"
+          >
+            <div class="opening-board-hint__pill">
+              <span class="opening-board-hint__text">Drag a piece to explore openings</span>
+            </div>
+          </div>
         </div>
         
         <!-- Dragged piece (follows cursor) -->
@@ -5552,15 +6079,15 @@ onUnmounted(() => {
               <button
                 type="button"
                 class="sidebar-header-back"
-                :aria-label="panelView === 'line' ? 'Back to chapter' : 'Back'"
+                :aria-label="panelView === 'line' ? 'Back to chapter' : (panelView === 'opening-course' ? 'Back to courses' : 'Back')"
                 @click="onHeaderBackClick"
               >
                 <CcIcon :name="icons.back" variant="glyph" :size="20" />
               </button>
             </div>
-            <div class="sidebar-header-title" :class="{ 'sidebar-header-title--line': panelView === 'line' }">
-              <img v-if="panelView === 'courses'" :src="baseUrl + 'icons/book-mark-aqua.png'" alt="" class="sidebar-header-icon" width="24" height="24" aria-hidden="true" />
-              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : 'Courses' }}</span>
+            <div class="sidebar-header-title" :class="{ 'sidebar-header-title--line': panelView === 'line' || panelView === 'opening-course' }">
+              <CcIcon v-if="panelView === 'courses' || panelView === 'opening-course'" name="book-stack-pawn" variant="color" :size="24" class="sidebar-header-icon" aria-hidden="true" />
+              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' || panelView === 'opening-course' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : (panelView === 'opening-course' ? (selectedOpeningCard?.title ?? 'Course') : (isOpeningCoursesV1 ? 'Openings' : 'Courses')) }}</span>
             </div>
             <div class="sidebar-header-right" aria-hidden="true" />
           </header>
@@ -5594,12 +6121,30 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <!-- Content: Courses view (course card, progress, sections, lines) or Line view (empty for now) -->
-          <template v-if="panelView === 'courses'">
+          <!-- Content: Opening course page (separate Vue – OpeningCoursePage.vue); Courses view; or Line view. Opening course changes do not affect V9. -->
+          <OpeningCoursePage
+            v-if="panelView === 'opening-course' && isOpeningCoursesV1"
+            :card="selectedOpeningCard"
+            :variations="OPENING_COURSE_VARIATIONS"
+            :base-url="baseUrl"
+            :get-piece-image="getPieceImage"
+          />
+          <template v-else-if="panelView === 'courses'">
         <!-- Opening Courses V1: coach fixed at top; filter + cards scroll. Deferred so layout only renders after first paint (avoids -102). -->
         <template v-if="isOpeningCoursesV1">
           <div v-if="openingV1Ready" class="opening-v1-layout">
-            <!-- Coach only; overlay is sibling below so it’s not clipped by this wrap -->
+            <!-- User B: tabs fixed above coach -->
+            <div
+              v-if="openingV1ScenarioPreset === 'returning-user-b'"
+              ref="openingV1RubTabsWrapRef"
+              class="opening-v1-rub-tabs-wrap opening-v1-rub-tabs-wrap--fixed"
+            >
+              <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
+                <cc-tab-item id="my-openings" label="My Openings" :isActive="openingV1RubActiveTab === 'my-openings'" @click="openingV1RubActiveTab = 'my-openings'" />
+                <cc-tab-item id="all" label="All" :isActive="openingV1RubActiveTab === 'all'" @click="openingV1RubActiveTab = 'all'" />
+              </cc-tab-group>
+            </div>
+            <!-- Coach only; overlay is sibling below so it's not clipped by this wrap -->
             <div class="opening-v1-coach-wrap">
               <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
                 <div class="coach-new-opening__inner coach-feedback">
@@ -5615,7 +6160,7 @@ onUnmounted(() => {
                     <div class="coach-new-opening__bubble">
                       <div class="coach-new-opening__message">
                         <div class="coach-new-opening__message-inner">
-                          <p class="coach-new-opening__text">Make your first move or choose an opening you want to study!</p>
+                          <p class="coach-new-opening__text"><span v-for="(char, i) in coachBubbleChars" :key="i" class="coach-new-opening__char" :class="{ 'coach-new-opening__char--visible': i < coachBubbleTypedLength }">{{ char }}</span></p>
                         </div>
                       </div>
                     </div>
@@ -5632,7 +6177,7 @@ onUnmounted(() => {
               <div
                 ref="openingSearchRef"
                 class="opening-filter opening-filter--sticky-under-coach"
-                :class="{ 'is-offscreen': openingSearchY < 0 }"
+                :class="{ 'is-offscreen': openingSearchY < 0, 'opening-filter--no-meta': openingV1ScenarioPreset === 'returning-user' }"
                 :style="{ '--opening-search-y': `${openingSearchY}px` }"
                 role="search"
                 aria-label="Search and filter courses"
@@ -5647,9 +6192,26 @@ onUnmounted(() => {
                         @enter="onOpeningSearchEnter"
                       />
                     </div>
-                    <CcButton variant="secondary" size="medium" custom-img-src="/icons/sliders.png" class="opening-search-panel__filters-btn" @click="onOpeningFiltersClick">Filters</CcButton>
+                    <!-- S and Mobile: icon-only square button; Desktop L: icon + "Filters" label -->
+                    <CcButton
+                      v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'"
+                      variant="secondary"
+                      size="medium"
+                      :custom-img-src="baseUrl + 'icons/sliders.png'"
+                      class="opening-search-panel__filters-btn"
+                      aria-label="Filters"
+                      @click="onOpeningFiltersClick"
+                    />
+                    <CcButton
+                      v-else
+                      variant="secondary"
+                      size="medium"
+                      :custom-img-src="baseUrl + 'icons/sliders.png'"
+                      class="opening-search-panel__filters-btn"
+                      @click="onOpeningFiltersClick"
+                    >Filters</CcButton>
                   </div>
-                  <div class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
+                  <div v-if="!isReturningUserScenario(openingV1ScenarioPreset) || openingV1ScenarioPreset === 'returning-user-b' || openingFilterMoves.length || openingKeywordTags.length" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
                     <div v-if="openingFilterMoves.length || openingKeywordTags.length" class="opening-chips-row" role="list" aria-label="Filter chips">
                       <div class="opening-chips-scroll-wrap">
                         <div
@@ -5707,8 +6269,8 @@ onUnmounted(() => {
                         </button>
                       </div>
                     </div>
-                    <div v-else class="opening-courses-meta-panel" data-name="Course counter and filter">
-                      <span class="opening-courses-meta-panel__count text-small-bold">{{ openingCoursesFiltered.length }} Courses</span>
+                    <div v-else-if="openingV1ScenarioPreset === 'new-user' || openingV1ScenarioPreset === 'returning-user-b'" class="opening-courses-meta-panel" data-name="Course counter and filter">
+                      <span class="opening-courses-meta-panel__count text-small-bold">{{ openingV1ScenarioMetaCount }} Courses</span>
                       <div class="opening-courses-meta-panel__sort">
                         <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
                           <span class="text-small">Sort by </span><span class="text-small-bold">{{ openingSortLabel }}</span>
@@ -5726,10 +6288,18 @@ onUnmounted(() => {
                 </div>
               </div>
               <div class="opening-v1-scroll">
-                <div class="opening-course-cards-list" data-name="Opening course cards">
-            <article
-              v-for="card in openingCoursesFiltered"
-              :key="card.id"
+                <template v-if="isReturningUserScenario(openingV1ScenarioPreset)">
+                  <!-- RUA: two sections with headers -->
+                  <template v-if="openingV1ScenarioPreset === 'returning-user'">
+                  <div class="opening-v1-section">
+                    <div class="opening-v1-section-header">
+                      <span class="opening-v1-section-header__title">My Openings</span>
+                      <span class="opening-v1-section-header__count">{{ openingCoursesStartedList.length }} courses</span>
+                    </div>
+                    <div class="opening-course-cards-list" data-name="Opening course cards">
+                      <article
+                        v-for="card in openingCoursesStartedList"
+                        :key="card.id"
               class="opening-course-card"
               :class="[
                 `opening-course-card--variant-${OPENING_COURSE_CARD_VARIANT}`,
@@ -5785,21 +6355,590 @@ onUnmounted(() => {
                     </div>
                   </div>
                   </div>
-                  <div class="opening-course-card__content">
-                    <div class="opening-course-card__title-author">
-                      <h3 class="opening-course-card__title">{{ card.title }}</h3>
-                      <p class="opening-course-card__description">{{ card.description }}</p>
+                  <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card) }">
+                    <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
+                      <div class="opening-course-card__started-header">
+                        <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                        <div class="opening-course-card__color-icon-wrap">
+                          <CcIcon
+                            :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
+                            variant="color"
+                            :size="16"
+                            class="opening-course-card__color-icon"
+                            aria-hidden="true"
+                            :title="card.type === 'White' ? 'White' : 'Black'"
+                          />
+                        </div>
+                      </div>
+                      <div class="opening-course-card__started-meta">
+                        <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
+                        <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                      </div>
+                      <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
+                        <template v-if="isOpeningCardCompleted(card)">
+                          <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Mastery:</span>
+                          <div class="opening-course-card__progress-row opening-course-card__mastery-row">
+                            <template v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'">
+                              <span class="course-card-completion__complete-label opening-course-card__progress-label-inline">Mastery:</span>
+                              <div class="extra-data-level-chip opening-course-card__level-chip" data-name="LevelChip">
+                                <CcChip label="L4" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                              </div>
+                            </template>
+                            <template v-else>
+                              <div class="course-card-mastery-bar opening-course-card__mastery-bar" role="progressbar" aria-valuenow="4" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level 4 of 8">
+                                <div class="course-card-mastery-bar__segments">
+                                  <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                </div>
+                                <div class="course-card-mastery-bar__fill" style="width: 50%">
+                                  <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                </div>
+                              </div>
+                            </template>
+                            <span class="opening-course-card__review-badge-wrap">
+                                <AquaBadge :count="getOpeningCardStartedData(card)?.reviewCount ?? 0" class="opening-course-card__review-badge" />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                </CcTooltip>
+                              </span>
+                          </div>
+                        </template>
+                        <template v-else>
+                          <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Progress:</span>
+                          <div class="opening-course-card__progress-row">
+                            <span v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
+                            <div
+                              class="course-card-completion course-card-completion--in-mastery-row opening-course-card__completion opening-course-card__completion-bar"
+                              role="progressbar"
+                              :aria-valuenow="getOpeningCardStartedData(card)?.progressPercent ?? 0"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                              aria-label="Course progress"
+                            >
+                              <div class="course-card-completion__track" data-name="Progress bar">
+                                <div class="course-card-completion__fill" data-name="Progress" :style="{ width: (getOpeningCardStartedData(card)?.progressPercent ?? 0) * 192 / 100 + 'px' }" />
+                              </div>
+                            </div>
+                            <p class="course-card-completion__label opening-course-card__progress-percent">{{ Math.round(getOpeningCardStartedData(card)?.progressPercent ?? 0) }}%</p>
+                            <span class="opening-course-card__review-badge-wrap">
+                                <AquaBadge :count="getOpeningCardStartedData(card)?.reviewCount ?? 0" class="opening-course-card__review-badge" />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                </CcTooltip>
+                              </span>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="opening-course-card__title-author">
+                        <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                        <p class="opening-course-card__description">{{ card.description }}</p>
+                      </div>
+                      <div class="opening-course-card__properties">
+                        <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+                      </article>
                     </div>
-                    <div class="opening-course-card__properties">
-                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" />
+                  </div>
+                  <div class="opening-v1-section">
+                    <div class="opening-v1-section-header">
+                      <span class="opening-v1-section-header__title">All Openings</span>
+                      <span class="opening-v1-section-header__count">{{ openingCoursesRestList.length }} courses</span>
                     </div>
+                    <div class="opening-course-cards-list" data-name="Opening course cards">
+                      <article
+                        v-for="card in openingCoursesRestList"
+                        :key="card.id"
+                        class="opening-course-card"
+                        :class="[
+                          `opening-course-card--variant-${OPENING_COURSE_CARD_VARIANT}`,
+                          `opening-course-card--hover-${OPENING_COURSE_CARD_HOVER_VARIANT}`,
+                          { 'opening-course-card--selected': OPENING_COURSE_CARD_VARIANT === 'full-card-outline' && isOpeningCardSelected(card.id) },
+                          { 'opening-course-card--selected-hover': isOpeningCardSelected(card.id) && selectedOpeningCardHovered }
+                        ]"
+                        data-name="Course card"
+                        :title="card.firstMove"
+                        role="button"
+                        tabindex="0"
+                        @click="toggleOpeningCardSelection(card.id)"
+                        @keydown.enter.space.prevent="toggleOpeningCardSelection(card.id)"
+                        @pointerenter="onOpeningCardHover(card.id)"
+                        @pointerleave="onOpeningCardUnhover(card.id)"
+                      >
+                        <div class="opening-course-card__inner">
+                          <div class="opening-course-card__content-wrap">
+                            <div
+                              class="opening-course-card__cover-wrap"
+                              :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
+                            >
+                              <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                                <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
+                                  <g id="course-cover-board-grid">
+                                    <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                  </g>
+                                </svg>
+                                <div
+                                  v-for="(piece, i) in card.coverPieces"
+                                  :key="`${card.id}-${i}-${piece.type}`"
+                                  class="course-cover-board__piece"
+                                  :style="{ '--file': piece.col, '--rank': piece.row }"
+                                >
+                                  <img :src="getPieceImage({ type: piece.type })" alt="" class="course-cover-board__piece-img" width="24" height="24" aria-hidden="true" />
+                                </div>
+                              </div>
+                            </div>
+                            <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card) }">
+                              <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
+                                <div class="opening-course-card__started-header">
+                                  <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                                  <div class="opening-course-card__color-icon-wrap">
+                                    <CcIcon
+                                      :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
+                                      variant="color"
+                                      :size="16"
+                                      class="opening-course-card__color-icon"
+                                      aria-hidden="true"
+                                      :title="card.type === 'White' ? 'White' : 'Black'"
+                                    />
+                                  </div>
+                                </div>
+                                <div class="opening-course-card__started-meta">
+                                  <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
+                                  <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                                </div>
+                                <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
+                                  <template v-if="isOpeningCardCompleted(card)">
+                                    <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Mastery:</span>
+                                    <div class="opening-course-card__progress-row opening-course-card__mastery-row">
+                                      <template v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'">
+                                        <span class="course-card-completion__complete-label opening-course-card__progress-label-inline">Mastery:</span>
+                                        <div class="extra-data-level-chip opening-course-card__level-chip" data-name="LevelChip">
+                                          <CcChip label="L4" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                                        </div>
+                                      </template>
+                                      <template v-else>
+                                        <div class="course-card-mastery-bar opening-course-card__mastery-bar" role="progressbar" aria-valuenow="4" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level 4 of 8">
+                                          <div class="course-card-mastery-bar__segments">
+                                            <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                          </div>
+                                          <div class="course-card-mastery-bar__fill" style="width: 50%">
+                                            <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                          </div>
+                                        </div>
+                                      </template>
+                                      <span class="opening-course-card__review-badge-wrap">
+                                <AquaBadge :count="getOpeningCardStartedData(card)?.reviewCount ?? 0" class="opening-course-card__review-badge" />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                </CcTooltip>
+                              </span>
+                                    </div>
+                                  </template>
+                                  <template v-else>
+                                    <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Progress:</span>
+                                    <div class="opening-course-card__progress-row">
+                                      <span v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
+                                      <div
+                                        class="course-card-completion course-card-completion--in-mastery-row opening-course-card__completion opening-course-card__completion-bar"
+                                        role="progressbar"
+                                        :aria-valuenow="getOpeningCardStartedData(card)?.progressPercent ?? 0"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                        aria-label="Course progress"
+                                      >
+                                        <div class="course-card-completion__track" data-name="Progress bar">
+                                          <div class="course-card-completion__fill" data-name="Progress" :style="{ width: (getOpeningCardStartedData(card)?.progressPercent ?? 0) * 192 / 100 + 'px' }" />
+                                        </div>
+                                      </div>
+                                      <p class="course-card-completion__label opening-course-card__progress-percent">{{ Math.round(getOpeningCardStartedData(card)?.progressPercent ?? 0) }}%</p>
+                                      <span class="opening-course-card__review-badge-wrap">
+                                <AquaBadge :count="getOpeningCardStartedData(card)?.reviewCount ?? 0" class="opening-course-card__review-badge" />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                </CcTooltip>
+                              </span>
+                                    </div>
+                                  </template>
+                                </div>
+                              </template>
+                              <template v-else>
+                                <div class="opening-course-card__title-author">
+                                  <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                                  <p class="opening-course-card__description">{{ card.description }}</p>
+                                </div>
+                                <div class="opening-course-card__properties">
+                                  <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                                </div>
+                              </template>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    </div>
+                  </div>
+                  </template>
+                  <template v-else-if="openingV1ScenarioPreset === 'returning-user-b'">
+                    <div class="opening-course-cards-list" data-name="Opening course cards">
+                      <article
+                        v-for="card in openingV1RubCourseList"
+                        :key="card.id"
+              class="opening-course-card"
+              :class="[
+                `opening-course-card--variant-${OPENING_COURSE_CARD_VARIANT}`,
+                `opening-course-card--hover-${OPENING_COURSE_CARD_HOVER_VARIANT}`,
+                { 'opening-course-card--selected': OPENING_COURSE_CARD_VARIANT === 'full-card-outline' && isOpeningCardSelected(card.id) },
+                { 'opening-course-card--selected-hover': isOpeningCardSelected(card.id) && selectedOpeningCardHovered }
+              ]"
+              data-name="Course card"
+              :title="card.firstMove"
+              role="button"
+              tabindex="0"
+              @click="toggleOpeningCardSelection(card.id)"
+              @keydown.enter.space.prevent="toggleOpeningCardSelection(card.id)"
+              @pointerenter="onOpeningCardHover(card.id)"
+              @pointerleave="onOpeningCardUnhover(card.id)"
+            >
+              <div class="opening-course-card__inner">
+                <div class="opening-course-card__content-wrap">
+                  <div
+                    class="opening-course-card__cover-wrap"
+                    :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
+                  >
+                    <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                    <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
+                      <g id="course-cover-board-grid">
+                        <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
+                        <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                        <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                      </g>
+                    </svg>
+                    <div
+                      v-for="(piece, i) in card.coverPieces"
+                      :key="`${card.id}-${i}-${piece.type}`"
+                      class="course-cover-board__piece"
+                      :style="{ '--file': piece.col, '--rank': piece.row }"
+                    >
+                      <img :src="getPieceImage({ type: piece.type })" alt="" class="course-cover-board__piece-img" width="24" height="24" aria-hidden="true" />
+                    </div>
+                  </div>
+                  </div>
+                  <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card) }">
+                    <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
+                      <div class="opening-course-card__started-header">
+                        <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                        <div class="opening-course-card__color-icon-wrap">
+                          <CcIcon
+                            :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
+                            variant="color"
+                            :size="16"
+                            class="opening-course-card__color-icon"
+                            aria-hidden="true"
+                            :title="card.type === 'White' ? 'White' : 'Black'"
+                          />
+                        </div>
+                      </div>
+                      <div class="opening-course-card__started-meta">
+                        <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
+                        <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                      </div>
+                      <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
+                        <template v-if="isOpeningCardCompleted(card)">
+                          <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Mastery:</span>
+                          <div class="opening-course-card__progress-row opening-course-card__mastery-row">
+                            <template v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'">
+                              <span class="course-card-completion__complete-label opening-course-card__progress-label-inline">Mastery:</span>
+                              <div class="extra-data-level-chip opening-course-card__level-chip" data-name="LevelChip">
+                                <CcChip label="L4" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                              </div>
+                            </template>
+                            <template v-else>
+                              <div class="course-card-mastery-bar opening-course-card__mastery-bar" role="progressbar" aria-valuenow="4" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level 4 of 8">
+                                <div class="course-card-mastery-bar__segments">
+                                  <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                </div>
+                                <div class="course-card-mastery-bar__fill" style="width: 50%">
+                                  <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                </div>
+                              </div>
+                            </template>
+                            <span class="opening-course-card__review-badge-wrap">
+                                <AquaBadge :count="getOpeningCardStartedData(card)?.reviewCount ?? 0" class="opening-course-card__review-badge" />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                </CcTooltip>
+                              </span>
+                          </div>
+                        </template>
+                        <template v-else>
+                          <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Progress:</span>
+                          <div class="opening-course-card__progress-row">
+                            <span v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
+                            <div
+                              class="course-card-completion course-card-completion--in-mastery-row opening-course-card__completion opening-course-card__completion-bar"
+                              role="progressbar"
+                              :aria-valuenow="getOpeningCardStartedData(card)?.progressPercent ?? 0"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                              aria-label="Course progress"
+                            >
+                              <div class="course-card-completion__track" data-name="Progress bar">
+                                <div class="course-card-completion__fill" data-name="Progress" :style="{ width: (getOpeningCardStartedData(card)?.progressPercent ?? 0) * 192 / 100 + 'px' }" />
+                              </div>
+                            </div>
+                            <p class="course-card-completion__label opening-course-card__progress-percent">{{ Math.round(getOpeningCardStartedData(card)?.progressPercent ?? 0) }}%</p>
+                            <span class="opening-course-card__review-badge-wrap">
+                                <AquaBadge :count="getOpeningCardStartedData(card)?.reviewCount ?? 0" class="opening-course-card__review-badge" />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                </CcTooltip>
+                              </span>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="opening-course-card__title-author">
+                        <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                        <p class="opening-course-card__description">{{ card.description }}</p>
+                      </div>
+                      <div class="opening-course-card__properties">
+                        <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                      </div>
+                    </template>
                   </div>
                 </div>
               </div>
             </article>
-                  </div>
+                    </div>
+                  </template>
+                </template>
+                <div v-else class="opening-course-cards-list" data-name="Opening course cards">
+                  <article
+                    v-for="card in openingCoursesFiltered"
+                    :key="card.id"
+                    class="opening-course-card"
+                    :class="[
+                      `opening-course-card--variant-${OPENING_COURSE_CARD_VARIANT}`,
+                      `opening-course-card--hover-${OPENING_COURSE_CARD_HOVER_VARIANT}`,
+                      { 'opening-course-card--selected': OPENING_COURSE_CARD_VARIANT === 'full-card-outline' && isOpeningCardSelected(card.id) },
+                      { 'opening-course-card--selected-hover': isOpeningCardSelected(card.id) && selectedOpeningCardHovered }
+                    ]"
+                    data-name="Course card"
+                    :title="card.firstMove"
+                    role="button"
+                    tabindex="0"
+                    @click="toggleOpeningCardSelection(card.id)"
+                    @keydown.enter.space.prevent="toggleOpeningCardSelection(card.id)"
+                    @pointerenter="onOpeningCardHover(card.id)"
+                    @pointerleave="onOpeningCardUnhover(card.id)"
+                  >
+                    <div class="opening-course-card__inner">
+                      <div class="opening-course-card__content-wrap">
+                        <div
+                          class="opening-course-card__cover-wrap"
+                          :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
+                        >
+                          <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                            <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
+                              <g id="course-cover-board-grid">
+                                <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                              </g>
+                            </svg>
+                            <div
+                              v-for="(piece, i) in card.coverPieces"
+                              :key="`${card.id}-${i}-${piece.type}`"
+                              class="course-cover-board__piece"
+                              :style="{ '--file': piece.col, '--rank': piece.row }"
+                            >
+                              <img :src="getPieceImage({ type: piece.type })" alt="" class="course-cover-board__piece-img" width="24" height="24" aria-hidden="true" />
+                            </div>
+                          </div>
+                        </div>
+                        <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card) }">
+                          <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
+                            <div class="opening-course-card__started-header">
+                              <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                              <div class="opening-course-card__color-icon-wrap">
+                                <CcIcon
+                                  :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
+                                  variant="color"
+                                  :size="16"
+                                  class="opening-course-card__color-icon"
+                                  aria-hidden="true"
+                                  :title="card.type === 'White' ? 'White' : 'Black'"
+                                />
+                              </div>
+                            </div>
+                            <div class="opening-course-card__started-meta">
+                              <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
+                              <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                            </div>
+                            <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
+                              <template v-if="isOpeningCardCompleted(card)">
+                                <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Mastery:</span>
+                                <div class="opening-course-card__progress-row opening-course-card__mastery-row">
+                                  <template v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'">
+                                    <span class="course-card-completion__complete-label opening-course-card__progress-label-inline">Mastery:</span>
+                                    <div class="extra-data-level-chip opening-course-card__level-chip" data-name="LevelChip">
+                                      <CcChip label="L4" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                                    </div>
+                                  </template>
+                                  <template v-else>
+                                    <div class="course-card-mastery-bar opening-course-card__mastery-bar" role="progressbar" aria-valuenow="4" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level 4 of 8">
+                                      <div class="course-card-mastery-bar__segments">
+                                        <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                      </div>
+                                      <div class="course-card-mastery-bar__fill" style="width: 50%">
+                                        <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                      </div>
+                                    </div>
+                                  </template>
+                                  <span class="opening-course-card__review-badge-wrap">
+                                <AquaBadge :count="getOpeningCardStartedData(card)?.reviewCount ?? 0" class="opening-course-card__review-badge" />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                </CcTooltip>
+                              </span>
+                                </div>
+                              </template>
+                              <template v-else>
+                                <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Progress:</span>
+                                <div class="opening-course-card__progress-row">
+                                  <span v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
+                                  <div
+                                    class="course-card-completion course-card-completion--in-mastery-row opening-course-card__completion opening-course-card__completion-bar"
+                                    role="progressbar"
+                                    :aria-valuenow="getOpeningCardStartedData(card)?.progressPercent ?? 0"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                    aria-label="Course progress"
+                                  >
+                                    <div class="course-card-completion__track" data-name="Progress bar">
+                                      <div class="course-card-completion__fill" data-name="Progress" :style="{ width: (getOpeningCardStartedData(card)?.progressPercent ?? 0) * 192 / 100 + 'px' }" />
+                                    </div>
+                                  </div>
+                                  <p class="course-card-completion__label opening-course-card__progress-percent">{{ Math.round(getOpeningCardStartedData(card)?.progressPercent ?? 0) }}%</p>
+                                  <span class="opening-course-card__review-badge-wrap">
+                                <AquaBadge :count="getOpeningCardStartedData(card)?.reviewCount ?? 0" class="opening-course-card__review-badge" />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <span class="practice-in-tooltip__ready-text">Ready for Practice!</span>
+                                </CcTooltip>
+                              </span>
+                                </div>
+                              </template>
+                            </div>
+                          </template>
+                          <template v-else>
+                            <div class="opening-course-card__title-author">
+                              <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                              <p class="opening-course-card__description">{{ card.description }}</p>
+                            </div>
+                            <div class="opening-course-card__properties">
+                              <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                            </div>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
                 </div>
               </div>
+            </div>
           </div>
           <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
@@ -5831,7 +6970,7 @@ onUnmounted(() => {
                   <div class="coach-new-opening__bubble">
                     <div class="coach-new-opening__message">
                       <div class="coach-new-opening__message-inner">
-                        <p class="coach-new-opening__text">Let's continue — pick a chapter below to keep learning.</p>
+                        <p class="coach-new-opening__text">Continue practicing your openings, or explore new ones by playing a move on the board.</p>
                       </div>
                     </div>
                   </div>
@@ -6253,6 +7392,8 @@ onUnmounted(() => {
                                 role="listitem"
                                 data-name="Line"
                                 :data-move-id="`${section.id}-${item.move.id}`"
+                                @mouseenter="setHoveredChapterLine(section, item.move)"
+                                @mouseleave="clearHoveredChapterLine()"
                               >
                                 <div
                                   class="chapter-line-card__body chapter-line-card__body--no-click"
@@ -6437,6 +7578,8 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -6601,6 +7744,8 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <!-- Body first in DOM (V6: timeline-col on right via row-reverse) -->
                         <div
@@ -6756,6 +7901,8 @@ v-if="isVideoV6OrV7"
                           role="listitem"
                           data-name="Line"
                           :data-move-id="`${section.id}-${move.id}`"
+                          @mouseenter="setHoveredChapterLine(section, move)"
+                          @mouseleave="clearHoveredChapterLine()"
                         >
                           <div class="move-item-content">
                             <div class="move-item-inner">
@@ -6875,6 +8022,8 @@ v-if="isVideoV6OrV7"
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
                       >
                         <div class="move-item-content">
                           <div class="move-item-inner">
@@ -7388,7 +8537,7 @@ v-if="isVideoV6OrV7"
         </div>
         <!-- Footer frame: bg/secondary; inner container has primary + overlay -->
         <div class="panel-footer-frame">
-        <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line') || isOpeningCoursesV1 }">
+        <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV1 && panelView !== 'opening-course') }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
             <!-- Completed lines: Practice in + time chip -->
@@ -7437,12 +8586,52 @@ v-if="isVideoV6OrV7"
               </div>
             </div>
           </div>
-          <!-- Buttons footer: Continue / Practice – Chapter and Lines; Read mode: Back + Continue; Opening Courses V1: Start Course only -->
+          <!-- Buttons footer: Continue / Practice – Chapter and Lines; Read mode: Back + Continue; Opening Courses V1: Start Course only; Opening course page: Learn + Practice -->
           <section class="footer-section footer-section-actions" data-name="ButtonsFooter">
-            <!-- Opening Courses V1 (courses view): single CTA Start Course -->
-            <div v-if="isOpeningCoursesV1 && panelView === 'courses'" class="footer-buttons-container">
+            <!-- Opening course page (chapter layout): Learn + Practice (same as chapter view) -->
+            <div v-if="panelView === 'opening-course'" class="footer-buttons-container">
+              <div class="footer-buttons-row footer-buttons-row-split">
+                <CcButton variant="secondary" size="large" class="footer-btn-equal">Learn</CcButton>
+                <button
+                  type="button"
+                  class="v6-btn-practice-all cc-button-component cc-button-primary cc-button-large cc-bg-primary footer-btn-equal"
+                  data-name="V6 Button"
+                  aria-label="Practice"
+                >
+                  <span class="v6-btn-practice-all-text">Practice</span>
+                  <span class="v6-btn-practice-all-badge-frame">
+                    <span class="v6-btn-practice-all-badge">
+                      <span class="v6-btn-practice-all-badge-text">0</span>
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </div>
+            <!-- Opening Courses V1 (courses view): color selector when card selected and not started; then CTA Start Course or Continue. -->
+            <div v-else-if="isOpeningCoursesV1 && panelView === 'courses'" class="footer-buttons-container" :class="{ 'footer-buttons-container--cta-only': !selectedOpeningCardId || !selectedOpeningCardIsNotStarted }">
+              <div v-if="selectedOpeningCardId && selectedOpeningCardIsNotStarted" class="footer-buttons-row footer-buttons-row-full footer-buttons-row--pick-color">
+                <PickYourColor
+                  v-model="openingPlaySide"
+                  :play-side-only="selectedOpeningHasBothColors ? undefined : (selectedOpeningCard?.type === 'White' ? 'white' : selectedOpeningCard?.type === 'Black' ? 'black' : undefined)"
+                  class="pick-your-color-wrap"
+                />
+              </div>
               <div class="footer-buttons-row footer-buttons-row-full">
-                <CcButton variant="primary" size="large" class="footer-btn-full">Start Course</CcButton>
+                <AquaCtaButton
+                  v-if="selectedOpeningCard && isOpeningCardCompleted(selectedOpeningCard)"
+                  label="Practice"
+                  :badge="getOpeningCardStartedData(selectedOpeningCard)?.reviewCount ?? 0"
+                  class="footer-btn-full"
+                  @click="openOpeningCourse"
+                />
+                <CcButton
+                  v-else
+                  variant="primary"
+                  size="large"
+                  class="footer-btn-full"
+                  :disabled="!selectedOpeningCardId"
+                  @click="openOpeningCourse"
+                >{{ selectedOpeningCard && isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(selectedOpeningCard) ? 'Continue' : 'Start Course' }}</CcButton>
               </div>
             </div>
             <!-- Read mode ON: Back (S) exits read mode + nav; Continue (P) -->
@@ -7537,8 +8726,8 @@ v-if="isVideoV6OrV7"
             </div>
           </section>
 
-          <!-- Icon footer (3rd footer): Chapter + Line (completed/ready); hidden on Line uncompleted and on Opening Courses V1 -->
-          <section v-if="(panelView === 'courses' || panelView === 'line') && !isOpeningCoursesV1" class="footer-section footer-section-toolbar" data-name="IconFooter">
+          <!-- Icon footer (3rd footer): Chapter + Line; Opening course page; hidden on Opening Courses V1 list (courses view only) -->
+          <section v-if="panelView === 'opening-course' || panelView === 'line' || (panelView === 'courses' && !isOpeningCoursesV1)" class="footer-section footer-section-toolbar" data-name="IconFooter">
             <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
               <button type="button" class="footer-icon-btn" aria-label="More options">
                 <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
@@ -7601,6 +8790,7 @@ v-if="isVideoV6OrV7"
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -7623,6 +8813,29 @@ body {
 .dark-mode {
   --color-bg-progress-completed-gradient: linear-gradient(0deg, var(--color-green-500, #45753C) 0%, var(--color-green-300, #81B64C) 100%);
 }
+/* Practice-in tooltip (Ready for Practice! on course card badge): same as chapter page – gray-1000, no shadow */
+.cc-tooltip-component.practice-in-tooltip-no-fade {
+  --tooltipBackground: var(--color-gray-1000);
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-content {
+  transition: opacity 0.2s var(--motion-ease-out-gentle) !important;
+  transition-property: opacity !important;
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-content.cc-tooltip-visible {
+  opacity: 1 !important;
+}
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner {
+  background-color: var(--color-gray-1000) !important;
+  box-shadow: none !important;
+}
+/* Ready for Practice! tooltip text: same as chapter page (practice-in-tooltip__ready-text), font opacity 72% */
+.cc-tooltip-component.practice-in-tooltip-no-fade .cc-tooltip-inner .practice-in-tooltip__ready-text {
+  font-family: var(--font-family-system, system-ui, -apple-system, sans-serif);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
 </style>
 
 <style scoped>
@@ -7635,6 +8848,51 @@ body {
   justify-content: center;
   padding: 2.4rem;
   overflow-x: auto;
+}
+
+/* When preset bar is shown (Opening Courses V1): same structure as V9 – column, full-width bar first, then app-body */
+.app.app--with-preset-bar {
+  flex-direction: column;
+  padding: 0;
+  width: 100%;
+}
+.app.app--with-preset-bar .app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.4rem;
+  overflow-x: auto;
+}
+
+/* Opening Courses V1: viewport preset bar – full width, Viewports and Scenarios */
+.viewport-preset-bar {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  height: 60px;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: rgba(0, 0, 0, 0.02);
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.viewport-preset-bar__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.viewport-preset-bar__separator {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 8px;
 }
 
 .layout {
@@ -7808,6 +9066,79 @@ body {
   overflow: hidden;
   position: relative;
 }
+
+/* Opening Courses V1: viewport preset – narrow panel 300px */
+.app.app--viewport-narrow .review-panel {
+  flex: 0 0 300px;
+  width: 300px;
+}
+
+/* Opening Courses V1: viewport preset – mobile: no board, panel only */
+.app.app--viewport-mobile .app-body {
+  min-width: 0;
+}
+.app.app--viewport-mobile .board-section,
+.app.app--viewport-mobile .board-settings {
+  display: none;
+}
+.app.app--viewport-mobile {
+  min-width: 300px;
+}
+.app.app--viewport-mobile .layout {
+  min-width: 306px;
+  height: 560px;
+}
+.app.app--viewport-mobile .review-panel {
+  flex: 0 0 300px;
+  width: 300px;
+  height: 560px;
+  border-radius: 24px;
+}
+
+/* Opening Courses V1: Desktop S and Mobile – smaller course card cover (86×86 wrap, 80×80 board) */
+.app.app--viewport-narrow .opening-course-card__cover-wrap,
+.app.app--viewport-mobile .opening-course-card__cover-wrap {
+  width: 86px;
+  height: 86px;
+  min-width: 86px;
+  min-height: 86px;
+  padding: 3px;
+}
+.app.app--viewport-narrow .opening-course-card__cover-wrap .course-cover-board,
+.app.app--viewport-mobile .opening-course-card__cover-wrap .course-cover-board {
+  --size-chess-board-cover: 80px;
+  --size-chess-square: 20px;
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+}
+.app.app--viewport-narrow .opening-course-card__cover-wrap .opening-course-card__thumbnail,
+.app.app--viewport-mobile .opening-course-card__cover-wrap .opening-course-card__thumbnail {
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+}
+
+/* Opening Courses V1: Mobile only – hide # of moves chip, truncate description at 3 lines */
+.app.app--viewport-mobile .opening-course-card__properties {
+  display: none;
+}
+.app.app--viewport-mobile .opening-course-card__description {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+/* When headline wraps to 2 lines: Desktop S (narrow) → description 1 line; Mobile → description 2 lines (otherwise 3). */
+.app.app--viewport-narrow .opening-course-card.opening-course-card--title-two-lines .opening-course-card__description {
+  -webkit-line-clamp: 1 !important;
+  line-clamp: 1 !important;
+}
+.app.app--viewport-mobile .opening-course-card.opening-course-card--title-two-lines .opening-course-card__description {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 /* Wrapper for header + content so footer stays pinned at bottom */
 .panel-main {
   flex: 1 1 0;
@@ -8356,7 +9687,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 12px 16px;
+  padding: 12px 16px 16px 16px;
   width: 100%;
   min-height: 0;
   background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(34, 32, 30, 1) 100%);
@@ -8379,7 +9710,7 @@ body {
   align-items: center;
   margin-right: -4px;
   position: relative;
-  z-index: 2;
+  z-index: 1;
   flex-shrink: 0;
 }
 .coach-new-opening__avatar-wrap {
@@ -8416,7 +9747,7 @@ body {
   min-height: 1px;
   margin-right: -4px;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   box-shadow: var(--shadow-message-bubble);
 }
 .coach-new-opening__bubble {
@@ -8458,6 +9789,13 @@ body {
   flex-shrink: 0;
   margin: 0;
 }
+/* Typewriter: full text in DOM for layout; untyped chars transparent so they take space */
+.coach-new-opening__char {
+  color: transparent;
+}
+.coach-new-opening__char--visible {
+  color: #312e2b;
+}
 
 /* Placeholder while opening-courses-v1 defers layout (avoids -102) */
 .opening-v1-placeholder {
@@ -8473,6 +9811,24 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+/* Opening Courses V1 only: card content wrap – no horizontal padding, height from content */
+.opening-v1-layout .opening-course-card__content-wrap {
+  padding-left: 0;
+  padding-right: 0;
+  height: fit-content;
+}
+/* Opening Courses V1 only: card content padding, gap, height */
+.opening-v1-layout .opening-course-card__content {
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 2px;
+  gap: 8px;
+  height: 100%;
+}
+.opening-v1-layout .opening-course-card__content.opening-course-card__content--started {
+  height: 100px;
+  min-height: 100px;
 }
 .coach-new-opening--fixed {
   flex-shrink: 0;
@@ -8497,6 +9853,8 @@ body {
   width: 100%;
   height: fit-content;
   flex-shrink: 0;
+  margin-bottom: 12px;
+  padding-bottom: 0;
   background-color: rgba(39, 37, 34, 1);
   box-shadow: none;
 }
@@ -8511,8 +9869,16 @@ body {
 .opening-filter--sticky-under-coach.is-offscreen {
   pointer-events: none;
 }
+/* Returning user: no Sort by row */
+.opening-filter--no-meta {
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+}
 /* Only this element scrolls in the middle region; min-height: 0 critical in flex so it gets a real height */
 .opening-v1-scroll-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   position: relative;
   flex: 1;
   min-height: 0;
@@ -8525,6 +9891,8 @@ body {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+  gap: 0;
+  margin-top: -16px;
   position: relative;
   overflow: visible;
   height: auto;
@@ -8535,10 +9903,12 @@ body {
 .opening-search-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   height: fit-content;
-  padding: 0 16px 4px;
+  padding: 0 16px 0;
+  margin-top: 0;
+  margin-bottom: 8px;
   flex-shrink: 0;
   box-shadow: none;
   background-color: rgba(39, 37, 34, 1);
@@ -8551,8 +9921,8 @@ body {
 }
 .opening-search-panel__row--inputs {
   gap: var(--space-8, 8px);
-  padding-left: 4px;
-  padding-right: 4px;
+  padding-left: 0;
+  padding-right: 0;
 }
 .opening-search-panel__row--meta {
   justify-content: space-between;
@@ -8564,16 +9934,37 @@ body {
 .opening-search-panel__filters-btn {
   flex-shrink: 0;
 }
+
+/* Opening Courses V1: Desktop S and Mobile – Filters as icon-only squared button */
+.app.app--viewport-narrow .opening-search-panel__filters-btn,
+.app.app--viewport-mobile .opening-search-panel__filters-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border-radius: var(--radius-md, 6px);
+}
+.app.app--viewport-narrow .opening-search-panel__filters-btn :deep(span),
+.app.app--viewport-mobile .opening-search-panel__filters-btn :deep(span) {
+  display: none;
+}
+.app.app--viewport-narrow .opening-search-panel__filters-btn :deep(img),
+.app.app--viewport-mobile .opening-search-panel__filters-btn :deep(img) {
+  margin: 0;
+  width: 20px;
+  height: 20px;
+}
+
 /* Single slot: min heights for chips vs meta; height fits content so edits don’t clip */
 .opening-meta-slot {
   width: 100%;
-  min-height: 22px;
-  height: auto;
+  min-height: 20px;
+  height: 20px;
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  padding-left: 4px;
-  padding-right: 4px;
+  padding-left: 0;
+  padding-right: 0;
   flex-shrink: 0;
 }
 .opening-meta-slot--with-chips {
@@ -8755,8 +10146,8 @@ body {
 
 /* Opening Courses V1: course counter + filter (shown when no chips; same height as chips row) */
 .opening-courses-meta-panel {
-  width: 100%;
-  min-height: 28px;
+  width: 428px;
+  min-height: 20px;
   height: auto;
   display: flex;
   align-items: center;
@@ -8764,7 +10155,7 @@ body {
   gap: var(--space-8, 8px);
   background: unset;
   padding: 0;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   flex-shrink: 0;
   color: rgba(0, 0, 0, 0);
 }
@@ -8827,6 +10218,64 @@ body {
   left: auto;
 }
 
+/* Opening Courses V1: section headers (My Openings / All Openings) – DS header xxx-small style (text/bolder) */
+.opening-v1-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+/* RUB: tabs under coach (My Openings | All) – same DS as course Learn/Practice tabs. User B: fixed under coach, over filter. */
+.opening-v1-rub-tabs-wrap {
+  width: 100%;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+/* User B: tabs fixed above coach; same bg as course page tabs (Learn/Practice) */
+.opening-v1-rub-tabs-wrap.opening-v1-rub-tabs-wrap--fixed {
+  background-color: rgba(33, 31, 28, 1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 5;
+}
+.opening-v1-rub-tabs-wrap .course-tabs-ds {
+  border-bottom: none;
+}
+.opening-v1-rub-tabs-wrap--fixed .course-tabs-ds {
+  background-color: rgba(33, 31, 28, 1);
+  padding-bottom: 16px;
+  box-shadow: none;
+}
+.opening-v1-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 16px 4px;
+  height: 32px;
+  flex-shrink: 0;
+}
+/* Heading xxx-small: only on section title (My Openings / All Openings). GNS: teams.design.public.tokens.semantic.typography.headings */
+/* – font-family: var(--font-family-heading) → Chess Sans */
+/* – font-size: 14px | line-height: 16px | weight: 700 (Bold) */
+.opening-v1-section-header__title {
+  flex-shrink: 0;
+  font-family: var(--font-family-heading, 'Chess Sans', sans-serif);
+  font-size: var(--heading-xxx-small, 14px);
+  line-height: var(--leading-4, 16px);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+}
+/* Counter: same style as "31 Courses" label (text-small-bold + meta panel count color) */
+.opening-v1-section-header__count {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 /* Opening Courses V1: course cards list – no overflow/height so only .opening-v1-scroll-wrap scrolls */
 .opening-course-cards-list {
   display: flex;
@@ -8837,6 +10286,8 @@ body {
   padding-bottom: 0;
   padding-left: 8px;
   padding-right: 8px;
+  margin-top: 0;
+  margin-bottom: 2px;
   overflow: visible;
   height: auto;
   max-height: none;
@@ -8846,7 +10297,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 8px;
+  padding: 4px 8px;
   border-radius: 7px;
   position: relative;
   width: 100%;
@@ -8855,10 +10306,12 @@ body {
   cursor: pointer;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
-/* Hover V1: card background only */
-.opening-course-card--hover-v1:hover,
-.opening-course-card--hover-v1.opening-course-card--selected:hover {
+/* Hover V1: card background only (selected card: no bg change on hover) */
+.opening-course-card--hover-v1:hover {
   background: var(--color-bg-subtlest);
+}
+.opening-course-card--hover-v1.opening-course-card--selected:hover {
+  background: unset;
 }
 
 /* Hover V2: cover overlay FFF 10% on the board only (no wrap padding), heading → boldest, body → default */
@@ -8886,12 +10339,12 @@ body {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-border-success, var(--color-green-300, #81B64C)) 50%, transparent);
 }
 .opening-course-card--variant-full-card-outline.opening-course-card--selected:hover {
-  background: var(--color-bg-subtlest);
+  background: unset;
 }
 
-/* Selected + hover: board stays on preview until pointer leaves; show active state */
+/* Selected + hover: board stays on preview until pointer leaves; no background change when selected */
 .opening-course-card--selected-hover {
-  background: var(--color-bg-subtlest);
+  background: unset;
 }
 
 /* Variant: Square-outline – selected state outlines only the cover (see .opening-course-card__cover-wrap--selected). */
@@ -8920,7 +10373,7 @@ body {
 .opening-course-card__content-wrap {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 8px;
   padding: 4px 12px;
   width: 100%;
 }
@@ -9050,6 +10503,161 @@ body {
 /* DS gray chip translucent: bg = --color-bg-subtle (dark: transparent-white-10). Ensure chip uses DS token. */
 .opening-course-card__properties :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent) {
   background-color: var(--color-bg-subtle);
+}
+
+/* Returning User: started course card – header (title + Lines chip), footer (Progress + bar) at baseline of cover */
+.opening-course-card__content--started {
+  position: relative;
+  height: 64px;
+  min-height: 64px;
+  justify-content: flex-start;
+}
+/* Desktop S and Mobile: taller content for started card */
+.app.app--viewport-narrow .opening-course-card__content--started,
+.app.app--viewport-mobile .opening-course-card__content--started {
+  height: 84px;
+  min-height: 84px;
+}
+/* Headline + king icon with 6px gap (icon next to last word of title) */
+.opening-course-card__started-header {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  width: 318px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.opening-course-card__started-header .opening-course-card__title {
+  width: fit-content;
+  min-width: 0;
+}
+/* Row under header: king icon + chip next to each other */
+.opening-course-card__started-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 318px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+/* Wrapper for king icon in started-header */
+.opening-course-card__color-icon-wrap {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  padding-bottom: 2px;
+}
+/* V1 color icon (piece-white-king / piece-black-king) – after headline in started-header */
+.opening-course-card__color-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+.opening-course-card__started-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 318px;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 4px;
+}
+/* Progress label: same as Course Page (course-card-completion__complete-label) */
+.opening-course-card__started-footer .course-card-completion__complete-label {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--color-text-subtle, var(--text-tertiary, rgba(255, 255, 255, 0.5)));
+  flex-shrink: 0;
+}
+.opening-course-card__progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.opening-course-card__progress-block .course-card-completion__complete-label {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--color-text-subtle, var(--text-tertiary, rgba(255, 255, 255, 0.5)));
+  flex-shrink: 0;
+}
+/* DS CcChip on opening cards: system font; gray = --color-bg-subtle; aqua = --color-aqua-300 */
+.opening-course-card__properties :deep(.cc-chip-fg),
+.opening-course-card__progress-block :deep(.cc-chip-fg),
+.opening-course-card__started-header :deep(.cc-chip-fg),
+.opening-course-card__started-meta :deep(.cc-chip-fg),
+.opening-course-card__started-footer :deep(.cc-chip-fg),
+.opening-course-card__properties :deep(.opening-course-card__chip-label),
+.opening-course-card__progress-block :deep(.opening-course-card__chip-label),
+.opening-course-card__started-header :deep(.opening-course-card__chip-label),
+.opening-course-card__started-meta :deep(.opening-course-card__chip-label),
+.opening-course-card__started-footer :deep(.opening-course-card__chip-label) {
+  font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  font-size: 12px;
+}
+.opening-course-card__properties :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent),
+.opening-course-card__progress-block :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent),
+.opening-course-card__started-header :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent),
+.opening-course-card__started-meta :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent),
+.opening-course-card__started-footer :deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent) {
+  background-color: var(--color-bg-subtle);
+}
+/* Opening page: completed card shows mastery bar (L4, 50% fill) instead of progress bar */
+.opening-course-card__mastery-row .opening-course-card__mastery-bar.course-card-mastery-bar {
+  margin-bottom: 0;
+}
+.opening-course-card__progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 316px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+.opening-course-card__completion.course-card-completion--in-mastery-row {
+  flex-shrink: 0;
+}
+.opening-course-card__review-badge-wrap {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+}
+.opening-course-card__review-badge {
+  flex-shrink: 0;
+}
+
+/* Desktop S and Mobile: hide progress bar, show only % label (Progress: label already hidden via v-if) */
+.app.app--viewport-narrow .opening-course-card__completion-bar,
+.app.app--viewport-mobile .opening-course-card__completion-bar {
+  display: none;
+}
+
+/* Desktop S and Mobile: keep started card content (and Practice badge) inside panel – no fixed width overflow */
+.app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__started-header,
+.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__started-header,
+.app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__started-meta,
+.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__started-meta,
+.app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__started-footer,
+.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__started-footer {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__progress-row,
+.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__progress-row {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* V4: section-level timeline wrap – one vertical line per chapter: chapter check → last card check */
@@ -9337,9 +10945,12 @@ body {
   outline: 2px solid var(--color-aqua-300, #26C2A3);
   outline-offset: 2px;
 }
-/* Line items are non-clickable (no open line page) */
+/* Line items: non-clickable but hover shows board preview – use pointer to show hover feedback */
+.courses-content--line-items-no-click .chapter-line-card {
+  cursor: pointer;
+}
 .chapter-line-card__body--no-click {
-  cursor: default;
+  cursor: pointer;
 }
 .chapter-line-card__body--no-click:focus-visible {
   outline: none;
@@ -11369,13 +12980,13 @@ body {
 .move-item:hover .move-item-content {
   background: var(--bg-hover-subtle, rgba(255, 255, 255, 0.02));
 }
-/* Line items are non-clickable (no open line page) */
+/* Line items: non-clickable but hover shows board preview – use pointer to show hover feedback */
 .courses-content--line-items-no-click .move-item {
-  cursor: default;
+  cursor: pointer;
 }
 .courses-content--line-items-no-click .move-item:hover,
 .courses-content--line-items-no-click .move-item:hover .move-item-content {
-  background: transparent;
+  background: var(--bg-hover-subtle, rgba(255, 255, 255, 0.04));
 }
 
 .move-item-content {
@@ -11550,10 +13161,11 @@ body {
 }
 /* Uncompleted line (or any state with no level row + no icon footer): align spacing and padding */
 .panel-footer-container--no-icon-footer {
-  padding: 8px 12px 16px 12px;
+  padding: 6px 12px 16px 12px;
+  height: fit-content;
 }
 .panel-footer-container--no-icon-footer .footer-section-actions {
-  margin-top: 12px;
+  margin-top: 0;
   padding-left: 4px;
   padding-right: 4px;
 }
@@ -11719,23 +13331,27 @@ body {
 
 .footer-section-actions {
   justify-content: center;
-  padding: 12px;
-  gap: 16px;
+  padding: 0 12px 4px 12px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
-  height: 56px;
+  height: fit-content;
   margin: 2px 0 0 0;
 }
 
-/* Buttons container – column, 12px gap, align start */
+/* Buttons container – column, 2px gap, align start */
 .footer-buttons-container {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
+  gap: 2px;
   width: 100%;
   min-width: 0;
   position: relative;
+}
+/* Opening V1: when only CTA (no color picker), add 8px top margin; leave footer unchanged when color picker is present */
+.footer-buttons-container--cta-only {
+  margin-top: 8px;
 }
 .footer-buttons-row {
   display: flex;
@@ -11751,6 +13367,14 @@ body {
 }
 .footer-buttons-row-full {
   /* single full-width button */
+}
+.footer-buttons-row--pick-color {
+  margin-bottom: 2px;
+  height: 40px;
+  justify-content: flex-start;
+}
+.pick-your-color-wrap {
+  width: auto;
 }
 .footer-btn-equal {
   flex: 1 0 0;
@@ -11961,6 +13585,72 @@ body {
   position: relative;
   border-radius: 3px;
   overflow: visible; /* Allow animation elements to overflow */
+}
+
+/* Opening Courses V1: outline 0→12px then dissolve. Opacity: 50% visible, then dissolve to 0. */
+@keyframes opening-board-hint-ring {
+  0% {
+    outline-width: 0;
+    opacity: 0.5;
+  }
+  45% {
+    outline-width: 8px;
+    opacity: 0.5;
+  }
+  70% {
+    outline-width: 8px;
+    opacity: 0;
+  }
+  100% {
+    outline-width: 8px;
+    opacity: 0;
+  }
+}
+.opening-board-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.28s ease-out;
+}
+.opening-board-hint--dissolving {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+.opening-board-hint--dissolving .opening-board-hint__pill::after {
+  animation: none;
+  opacity: 0;
+}
+.opening-board-hint__pill {
+  position: relative;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 8px 16px;
+  border-radius: 5px;
+  overflow: visible;
+}
+/* Ring grows outward (border outside content); no border-box so border doesn’t get clipped */
+/* Outline ring: corners 3px (less round than pill 5px). Adjust 2–4px to taste. */
+.opening-board-hint__pill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  outline: 8px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 0;
+  pointer-events: none;
+  animation: opening-board-hint-ring 2.2s ease-out infinite;
+}
+.opening-board-hint__text {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: rgba(39, 37, 34, 0.9);
 }
 
 /* ========== EXPLOSION CIRCLE ========== */
