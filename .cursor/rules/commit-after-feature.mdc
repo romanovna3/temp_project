@@ -1,0 +1,21 @@
+---
+description: Create a commit after each relevant new feature (project convention)
+alwaysApply: true
+---
+
+# Commit after each relevant new feature
+
+**Convention:** After implementing a relevant new feature (or a coherent set of related changes), create a commit automatically. Do not leave feature work uncommitted at the end of the session unless the user explicitly asks otherwise.
+
+## What to do
+
+- When you finish a feature, bugfix, or a logical chunk of work: run `git add` for the changed files, then `git commit` with a clear message (e.g. `feat: …`, `fix: …`, `docs: …`).
+- Prefer one logical commit per feature/fix; split into multiple commits if the change set is large or covers unrelated areas.
+- **Push:** By default, do **not** push to the remote. Only run `git push` when the user explicitly asks to push (e.g. "push to main", "deploy", "push my changes").
+
+## Scope
+
+- "Relevant" = user-requested or clearly part of the current task (not stray edits or exploratory tweaks).
+- Config-only or tooling-only changes can be a single commit (e.g. `chore: …`).
+
+This keeps history meaningful and makes it easy to push or roll back by feature.
