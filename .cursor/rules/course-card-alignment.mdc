@@ -1,0 +1,36 @@
+---
+description: Course card alignment for Learn and Practice tabs – keep consistent
+globs: my-app/src/views/Courses.vue
+alwaysApply: false
+---
+
+# Course Card Alignment (Learn & Practice)
+
+When editing the opening course card in `Courses.vue`, preserve this layout so **Learn** and **Practice** stay aligned.
+
+## Card content (80px, matches cover baseline)
+
+- **Container** (`.opening-course-card__content--v7-completion`): `height: 80px`, `justify-content: space-between` so title is at top and progress row at bottom (aligned with cover baseline).
+- **Title/author** (`.opening-course-card__title-author`): `flex: 0 0 auto` so it only takes needed space at the top. Do not use `height: 100%` or `flex: 1 1 0` here or the progress row will be pushed off and clipped.
+
+## Learn tab – completion row
+
+- **Row** (`.course-card-completion-row`): `display: flex`, `align-items: flex-end`, `justify-content: flex-start`, `height: 28px`, `margin-bottom: 1px` (in V7 context). No extra bottom margin that would lift the row off the baseline.
+- **Completion block** (`.course-card-completion`): `width: fit-content`, `height: 28px`, `justify-content: flex-start`, `align-items: center`, `margin-bottom: 0`.
+- **Stats icon**: Same as Practice (22×22px, `margin-left: auto`). Last child in the row.
+
+## Practice tab – mastery row
+
+- **Row** (`.course-card-mastery-row`): `display: flex`, `align-items: flex-end`, `justify-content: flex-start`, `width: 100%`, `height: 24px`, `padding-bottom: 0`, `margin-bottom: 1px`, `flex-shrink: 0`.
+- **Mastery group** (`.course-card-mastery-group`): `justify-content: flex-start`, `align-items: flex-end`, contains bar + Mastery label/chip.
+- **Mastery bar** (`.course-card-mastery-bar`): `margin-bottom: 2px`.
+- **Mastery label** (`.course-card-mastery-group .extra-data-label`): `margin-bottom: 0`, `padding-top: 3px`.
+- **Mastery block** (`.course-card-av-level` in group): `justify-content: center`, `align-items: center`. Chip only (no level name “Rookie”).
+- **Stats icon**: 22×22px, last child in row, same styles as Learn.
+
+## Do not
+
+- Add `height: 100%` or grow the title block so it fills the card; that clips the progress row.
+- Add bottom margin to the completion row in the V7 card (use `margin-bottom: 1px` max so it stays on the baseline).
+- Re-add the level name span (e.g. “Rookie”) inside the Mastery chip on the course card.
+- Change `justify-content: space-between` on the V7 content container; it keeps progress at the bottom for both tabs.

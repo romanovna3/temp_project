@@ -18,7 +18,7 @@ Track progress here. Add more items as we go.
 | 1 | **Panel container** – Design tokens (--color-bg-primary, --radius-l) | done |
 | 2 | **Panel header** – "Courses" + open book icon; back/trailing icons (work on later) | later |
 | 3 | **Course card** – Thumbnail, title, author; layout and spacing from Figma | done |
-| 4 | **Progress (node 2-5697)** – Title, bar, Learned X/Y under course card; derived from courseSections | done |
+| 4 | **Progress (node 2-5697)** – Title, bar, Completed X/Y under course card; derived from courseSections | done |
 | 5 | **Course "120 lines" + "Show All"** – Line count, filter (Show bold + value regular); Figma node 2-1762 | done |
 | 6 | **Sections list** – Scrollable; section rows with progress, expand/collapse (chevron), click to toggle | done |
 | 7 | **Progress indicators** – circle-fill-check, circle-dashboard-fill, circle-hollow-blank | done |

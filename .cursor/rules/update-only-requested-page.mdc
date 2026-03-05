@@ -1,0 +1,20 @@
+---
+description: When changing a specific page or version, update only that page; leave other variants unchanged.
+globs: my-app/src/views/**/*.vue
+alwaysApply: false
+---
+
+# Update only the requested page or version
+
+When the user asks to change a **specific page** or **version** (e.g. "V2.4", "the v2.4 page", "only Opening Courses V1"):
+
+1. **Scope changes by route**  
+   Use the route (e.g. `route.path === '/courses/v2.4'`) so that only the requested page/version is affected. Do not change behavior for other routes or variants that share the same component.
+
+2. **Shared components**  
+   If multiple pages use the same view or component (e.g. Courses.vue for `/courses/v2.4` and `/courses/v4`), branch inside that component by route instead of changing the component in a way that affects all users of it.
+
+3. **Naming**  
+   Even if different pages use components with the same names, only the page the user asked to update should change.
+
+Example: if the user says "undo the changes for V2.4 only", introduce or use a condition like `route.path === '/courses/v2.4'` (or a computed such as `isVideoV2_4Only`) so that V4, V5, and other versions keep the current behavior and only V2.4 gets the reverted behavior.

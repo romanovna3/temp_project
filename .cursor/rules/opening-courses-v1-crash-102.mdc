@@ -1,0 +1,49 @@
+---
+description: Instant fix for Error -102 on /#/courses/opening-courses-v1 (tab/renderer crash)
+globs: ["**/Courses.vue"]
+alwaysApply: false
+---
+
+# Error -102 on Opening Courses V1 – Instant Fix
+
+**Symptom:** Browser shows Error Code -102 when opening `http://127.0.0.1:5173/#/courses/opening-courses-v1` (tab may reload or go blank). This is a **renderer/tab crash**, not “connection refused.”
+
+**Apply these fixes in `my-app/src/views/Courses.vue` in order:**
+
+## 0. Defer layout (if -102 persists)
+
+- Add `openingV1Ready = ref(false)` and a `watch(isOpeningCoursesV1, ...)` that sets `openingV1Ready = true` only after a short delay (e.g. `setTimeout(..., 50)`) when the route is opening-courses-v1; clear the timer in `onUnmounted`.
+- In the template, wrap the opening-v1-layout in `v-if="openingV1Ready"` and add `<div v-else class="opening-v1-placeholder">` so the full layout does not render on first paint. Add minimal `.opening-v1-placeholder` CSS (flex, min-height, background).
+
+## 1. Dedicated scroll ref (main cause)
+
+The scroll container for Opening Courses V1 must **not** share `coursesContentRef` with the other panel (v-else branch). Sharing causes the scroll listener to attach to the wrong or torn-down node and can crash the tab.
+
+- **Add:** `const openingScrollRef = ref(null)`
+- **Template:** On the opening-v1 scroll container (the div with class `opening-v1-scroll`), use `ref="openingScrollRef"` (not `ref="coursesContentRef"`).
+- **Scroll watcher:** Depend on `openingScrollRef`, not `coursesContentRef`:
+  - `watch(() => [isOpeningCoursesV1.value, openingScrollRef.value], ...)`
+  - Inside the handler and in `onOpeningContentScroll`, use `openingScrollRef.value` only.
+
+## 2. Safe FEN / position helpers
+
+- **parseFEN(fen):** Must never throw. Validate `fen` (null/undefined/string), validate `position` and `rows.length === 8`. On invalid input or in catch, return a safe fallback (e.g. parse STARTING_FEN in a try/catch or return `[]`).
+- **getPositionAtEndOfLine(moves):** Wrap body in try/catch; on error return `{ fen: STARTING_FEN, lastMove: null }`.
+
+## 3. Scroll listener
+
+- **onOpeningContentScroll:** Wrap body in try/catch. Guard `scrollTop` (e.g. `typeof el.scrollTop === 'number' ? el.scrollTop : 0`).
+- **Watch cleanup:** Wrap `addEventListener` / `removeEventListener` and `lastOpeningScrollTop.value = el.scrollTop` in try/catch.
+
+## 4. Opening card watcher
+
+- **setTimeout callback** that calls `playOpeningThirdMove`: wrap in try/catch; on error set `openingCardAnimatingMove.value = null`.
+- Keep **clearOpeningAutoMove()** in **onUnmounted**.
+
+## 5. Verify
+
+- Build: `cd my-app && npm run build`
+- Open `http://127.0.0.1:5173/#/courses/opening-courses-v1` (with dev server running). No -102.
+
+**Reference in code:** In Courses.vue near the opening card watch, keep a one-line comment:  
+`// If Error -102 on /#/courses/opening-courses-v1: apply .cursor/rules/opening-courses-v1-crash-102.mdc`

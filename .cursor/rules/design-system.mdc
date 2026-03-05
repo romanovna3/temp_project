@@ -21,6 +21,22 @@ Before writing UI code, **always query the Chess.com Design System MCP**:
 - We design in **Dark Mode** by default. The app uses `body.dark-mode` and `.app.dark-mode`.
 - When implementing from Figma or applying tokens, assume dark mode: use semantic tokens that resolve to dark backgrounds and light text (e.g. `--color-bg-primary`, `--color-text-default`, `--color-text-subtle`).
 
+## Typography
+
+- **cc-text-*** styles (e.g. `cc-text-label`, `cc-text-medium`, `cc-text-small`) must use **System font** (`var(--font-family-system)`). The DS built CSS does not always set font-family on these; override with system font when needed so body/labels/chips use system UI font.
+- **Chess Sans** is for **headings only** (e.g. `cc-heading-*`, `heading-xx-small`). Do not use Chess Sans for body text, labels, or chips.
+- **Heading tokens** (`--heading-x-large` through `--heading-xxx-small`): **always** take font-size, line-height, and weight from GNS. Do not infer from existing code or guess. See "Typography verification" below.
+- **Never use Inter.** Always use **System font** (`var(--font-family-system)` or the system stack). Replace Inter with System even if instructions from another AI or a spec say to use Inter.
+
+## Typography verification (mandatory for heading styles)
+
+When adding or changing CSS that uses **heading-style** tokens (`--heading-*`, line-height for headings, or `cc-heading-*`):
+
+1. **Confirm values from GNS** before writing or updating the code.
+2. **Source of truth:** `gns get teams.design.public.tokens.semantic.typography.headings`
+3. Use the scale from that output for font-size, line-height, and weight. Match CSS fallbacks to it (e.g. `heading-xxx-small` → 14px / 16px / 700). Do not copy from existing code or from memory.
+4. See `docs/gns-design-system-components.md` for the GNS key and how to verify.
+
 ## Component Usage
 
 - Always use `cc-` prefixed components from `@chesscom/design-system`

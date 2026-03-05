@@ -1,0 +1,30 @@
+---
+description: When debugging app crashes, always check this error and route
+globs: ["**/Courses.vue", "**/router/**"]
+---
+
+# Crash Debug Checklist
+
+**Error Code -102 = ERR_CONNECTION_REFUSED.** The browser cannot connect to the server. This is **not** a JavaScript bug. Fix: start the dev server and use the URL it prints.
+
+1. **Start the server:** In a terminal run `cd my-app && npm run dev`.
+2. **Use the URL from the terminal:** Vite prints e.g. `Local: http://127.0.0.1:5173/`. If port 5173 is in use it may print 5174. Open that exact URL in the browser.
+3. If you see -102 on that URL, the server is not running, the port is wrong, or something is blocking the connection (firewall, etc.).
+
+When the app crashes for other reasons (e.g. Vue/runtime errors), check:
+
+- **Error Code:** `-102` = connection refused (see above). Other codes may be JS/runtime errors.
+- **URL:** May be root `http://127.0.0.1:5174/` or `http://127.0.0.1:5174/#/courses/opening-courses-v1` (or same paths on different port).
+
+## Opening Courses V1 – common crash sources
+
+1. **`squareToPercent(square)`** – Must NOT depend on `files`/`ranks` (they are defined later in the file). Use `square.charCodeAt(0) - 97` for file index and validate `square` before use.
+2. **`openingCardAnimatingMove` / `playOpeningThirdMove`** – Guard against missing `moves[2]` or `moves[2].white` (use optional chaining). Clear timeout in `onUnmounted` via `clearOpeningAutoMove()`.
+3. **Template** – When using `openingCardAnimatingMove`, ensure it is truthy before accessing `.from`, `.to`, `.pieceType` (overlay is already `v-if="openingCardAnimatingMove"`).
+4. **Computed `openingCardMovingPieceStyle`** – Returns early when `!anim`; only then use `squareToPercent(anim.from)` / `anim.to`.
+
+**Current safeguards in code:**  
+- **App.vue:** Use `useRoute()` and `route?.fullPath ?? ''` for `RouterView` key so missing `$route` on first paint doesn’t throw.  
+- **Courses.vue (Opening Courses):** Full try/catch in opening-courses watch; guards in `playOpeningThirdMove`; `openingCardMovingPieceStyle` and sliding-piece overlay require valid `from`/`to`/`pieceType`; `clearOpeningAutoMove()` in `onUnmounted`; `squareToPercent` does not use `files`.
+
+After any fix, re-verify on route `/#/courses/opening-courses-v1` and confirm no Error -102.

@@ -1,0 +1,26 @@
+---
+description: Apply course page changes only to V9; do not modify V8 logic or components.
+globs: my-app/src/views/Courses.vue
+alwaysApply: false
+---
+
+# Changes only to V9 (do not touch V8)
+
+When changing the **courses** page behavior:
+
+1. **Apply changes only to V9**  
+   Use `isVideoV9` (route `/courses/v9`) for any new or modified behavior. Do **not** change conditions or code that run for V8.
+
+2. **Do not touch V8**  
+   Do not modify:
+   - Logic guarded by `isVideoV8` or `route.path === '/courses/v8'`
+   - CSS under `.courses-content--v8`
+   - Components or branches that only apply when the user is on V8
+
+3. **Shared “both” behavior**  
+   Where V8 and V9 should behave the same, the condition is `(isVideoV8 || isVideoV9)`. When adding **new** behavior that should apply only to V9, use `isVideoV9` only and leave the existing `(isVideoV8 || isVideoV9)` and V8-only code unchanged.
+
+4. **V9-specific styling**  
+   Add or edit styles under `.courses-content--v9` only. Do not change `.courses-content--v8` rules.
+
+Example: to add a new feature only on V9, add a branch like `v-if="isVideoV9"` or `:class="{ 'my-feature': isVideoV9 }"` and implement the feature there. Do not add the same feature under `isVideoV8` or alter existing V8 branches.
