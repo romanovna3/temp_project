@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 defineOptions({ name: 'PresetBarSelect' })
 
@@ -7,6 +7,7 @@ const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
   options: { type: Array, default: () => [] },
   ariaLabel: { type: String, default: 'Select' },
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -14,6 +15,21 @@ const emit = defineEmits(['update:modelValue'])
 const isOpen = ref(false)
 const triggerRef = ref(null)
 const panelRef = ref(null)
+const rulerRef = ref(null)
+const triggerMinWidthPx = ref(null)
+
+const longestLabel = computed(() => {
+  if (!props.options.length) return ''
+  return props.options.reduce((a, o) => ((o.label?.length ?? 0) > (a?.length ?? 0) ? o.label : a), props.options[0]?.label ?? '')
+})
+
+function measureTriggerMinWidth() {
+  nextTick(() => {
+    if (!rulerRef.value || !longestLabel.value) return
+    const w = rulerRef.value.getBoundingClientRect().width
+    if (w > 0) triggerMinWidthPx.value = Math.ceil(w) + 12 + 32 // label width + left padding + chevron
+  })
+}
 
 const selectedLabel = computed(() => {
   const opt = props.options.find((o) => o.value === props.modelValue)
@@ -36,10 +52,12 @@ function select(option) {
 }
 
 function onTriggerClick() {
+  if (props.disabled) return
   isOpen.value ? close() : open()
 }
 
 function onKeydown(e) {
+  if (props.disabled) return
   if (!isOpen.value) {
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
       e.preventDefault()
@@ -79,8 +97,10 @@ function onClickOutside(e) {
   close()
 }
 
+watch([() => props.options, longestLabel], measureTriggerMinWidth)
 onMounted(() => {
   document.addEventListener('click', onClickOutside)
+  measureTriggerMinWidth()
 })
 onUnmounted(() => {
   document.removeEventListener('click', onClickOutside)
@@ -89,14 +109,18 @@ onUnmounted(() => {
 
 <template>
   <div class="preset-bar-select">
+    <span ref="rulerRef" class="preset-bar-select__ruler" aria-hidden="true">{{ longestLabel }}</span>
     <button
       ref="triggerRef"
       type="button"
       class="preset-bar-select__trigger"
+      :class="{ 'preset-bar-select__trigger--disabled': disabled }"
+      :style="triggerMinWidthPx != null ? { minWidth: triggerMinWidthPx + 'px' } : undefined"
       :aria-label="ariaLabel"
       :aria-expanded="isOpen"
       aria-haspopup="listbox"
       :aria-controls="isOpen ? 'preset-bar-select-panel' : undefined"
+      :disabled="disabled"
       @click="onTriggerClick"
       @keydown="onKeydown"
     >
@@ -136,6 +160,15 @@ onUnmounted(() => {
   min-width: 90px;
   height: 32px;
 }
+.preset-bar-select__ruler {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
 .preset-bar-select__trigger {
   display: flex;
   align-items: center;
@@ -157,6 +190,15 @@ onUnmounted(() => {
 .preset-bar-select__trigger:hover,
 .preset-bar-select__trigger:focus-visible {
   background: rgba(0, 0, 0, 0.25);
+}
+.preset-bar-select__trigger--disabled,
+.preset-bar-select__trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.preset-bar-select__trigger--disabled:hover,
+.preset-bar-select__trigger:disabled:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 .preset-bar-select__label {
   flex: 1;
