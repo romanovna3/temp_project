@@ -2906,7 +2906,10 @@ function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite) {
       }
     } catch (_) {}
     try {
-      playSound(isCapture ? 'capture' : 'move')
+      const boardSection = document.querySelector('.board-section')
+      if (boardSection && getComputedStyle(boardSection).display !== 'none') {
+        playSound(isCapture ? 'capture' : 'move')
+      }
     } catch (_) {}
     // Show last-move highlight immediately when the piece “leaves” the square (start of slide)
     lastMove.value = { from, to }
@@ -5790,7 +5793,7 @@ onUnmounted(() => {
                       <p class="opening-course-card__description">{{ card.description }}</p>
                     </div>
                     <div class="opening-course-card__properties">
-                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" />
+                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" />
                     </div>
                   </div>
                 </div>
