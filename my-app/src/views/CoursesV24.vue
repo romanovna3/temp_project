@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, provide, watchEffect } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, provide, watchEffect, onErrorCaptured } from 'vue'
 import { useRoute } from 'vue-router'
 import { Chess } from 'chess.js'
 import { CcButton, CcChip, CcIconButton, CcIcon } from '@chesscom/design-system'
@@ -168,10 +168,10 @@ const linesFilterValue = ref('all')
 
 // Progress under course card – derived from actual section moves (chapters/lines)
 const progressLearned = computed(() =>
-  courseSections.value.reduce((sum, s) => sum + getSectionChapterProgress(s).completed, 0)
+  (courseSections.value ?? []).reduce((sum, s) => sum + getSectionChapterProgress(s).completed, 0)
 )
 const progressTotal = computed(() =>
-  courseSections.value.reduce((sum, s) => sum + getSectionChapterProgress(s).total, 0)
+  (courseSections.value ?? []).reduce((sum, s) => sum + getSectionChapterProgress(s).total, 0)
 )
 /** Total number of lines in the course (for "X lines" display). */
 const courseTotalLines = computed(() => progressTotal.value)
@@ -219,6 +219,8 @@ const masteryLevelItems = computed(() => {
 
 // Section expand/collapse (accordion)
 const expandedSectionIds = ref(new Set())
+/** Left panel scroll container (sections list); declared early so watch(..., coursesContentRef) and toggleSection can use it. */
+const coursesContentRef = ref(null)
 function toggleSection(sectionId) {
   v3ReleasedUntilSectionId.value = null
   // V2.2 / V2.3: opening another chapter (or closing) pauses the video – play button shows again
@@ -277,7 +279,8 @@ function openLine(section, move) {
   v3ShowScrollUp.value = false
   clearV3ScrollUpHideTimer()
   selectedLine.value = { section, move }
-  lineViewMoves.value = getMovesForLine(section, move)
+  const moves = getMovesForLine(section, move)
+  lineViewMoves.value = Array.isArray(moves) ? moves : defaultLineMoves
   selectedPly.value = { moveIndex: 0, side: 'white' }
   isLineReadMode.value = false
   if (hoveredChapterLineDelayTimer) {
@@ -330,7 +333,7 @@ const currentLineIndexForNav = computed(() => {
 const currentSectionIndexForNav = computed(() => {
   const { section } = selectedLine.value || {}
   if (!section) return -1
-  return courseSections.value.findIndex((s) => s.id === section.id)
+  return (courseSections.value ?? []).findIndex((s) => s.id === section.id)
 })
 const hasPrevLine = computed(() => {
   const idx = currentLineIndexForNav.value
@@ -345,7 +348,7 @@ const hasNextLine = computed(() => {
   const sectionIdx = currentSectionIndexForNav.value
   if (idx < 0 || sectionIdx < 0) return false
   if (idx < list.length - 1) return true
-  return sectionIdx < courseSections.value.length - 1
+  return sectionIdx < (courseSections.value ?? []).length - 1
 })
 function goToPrevLine() {
   if (!hasPrevLine.value || !selectedLine.value) return
@@ -358,7 +361,7 @@ function goToPrevLine() {
   }
   const sectionIdx = currentSectionIndexForNav.value
   if (sectionIdx > 0) {
-    const prevSection = courseSections.value[sectionIdx - 1]
+    const prevSection = (courseSections.value ?? [])[sectionIdx - 1]
     const prevMoves = getSectionMoves(prevSection)
     if (prevMoves.length) openLine(prevSection, prevMoves[prevMoves.length - 1])
   }
@@ -373,8 +376,8 @@ function goToNextLine() {
     return
   }
   const sectionIdx = currentSectionIndexForNav.value
-  if (sectionIdx >= 0 && sectionIdx < courseSections.value.length - 1) {
-    const nextSection = courseSections.value[sectionIdx + 1]
+  if (sectionIdx >= 0 && sectionIdx < (courseSections.value ?? []).length - 1) {
+    const nextSection = (courseSections.value ?? [])[sectionIdx + 1]
     const nextMoves = getSectionMoves(nextSection)
     if (nextMoves.length) openLine(nextSection, nextMoves[0])
   }
@@ -1108,24 +1111,28 @@ const defaultLineMoves = [
   { number: 3, white: 'Bb5', black: 'a6' },
 ]
 function getMovesForLine(section, move) {
-  if (!section?.id || !move?.id) return defaultLineMoves
+  if (!section?.id || move?.id == null) return defaultLineMoves
   const baseId = String(section.id).replace(/-2$/, '')
-  const key = `${baseId}-${move.id}`
-  return lineMovesByKey[key] ?? defaultLineMoves
+  const key = `${baseId}-${String(move.id)}`
+  const result = lineMovesByKey[key] ?? defaultLineMoves
+  return Array.isArray(result) ? result : defaultLineMoves
 }
 const lineViewMoves = ref([...defaultLineMoves])
 const selectedPly = ref({ moveIndex: 0, side: 'white' })
 
 /** Chapter page: hovered line for board preview (only for non-ready lines; ready = hidden). */
 const hoveredChapterLine = ref(null) // { section, move } | null
-const HOVER_BOARD_PREVIEW_DELAY_MS = 180
+const HOVER_BOARD_PREVIEW_DELAY_MS = 120
+const HOVER_CLEAR_DELAY_MS = 150
 let hoveredChapterLineDelayTimer = null
+let hoveredChapterLineClearTimer = null
 
 /** Build FEN and lastMove for the position *after* the selected ply (selected = this move is highlighted; show board after it). */
 function getPositionAfterPly(moves, selectedPlyVal) {
   try {
+    const list = Array.isArray(moves) ? moves : []
     const flat = []
-    for (const pair of moves) {
+    for (const pair of list) {
       if (pair.white) flat.push(pair.white)
       if (pair.black && pair.black !== '#') flat.push(pair.black)
     }
@@ -1155,7 +1162,36 @@ function getPositionAtEndOfLine(moves) {
   }
 }
 
+const LEARNING_THE_GAME_SECTION_ID = 'learning-the-game'
+function getFirstMovePieceAndSquare(moves) {
+  try {
+    if (!moves?.length) return null
+    const first = moves[0]
+    const san = ((first?.white || first?.black || '').trim().replace(/[+#]$/, '') || '').trim()
+    if (!san) return null
+    const isWhite = Boolean(first?.white)
+    const color = isWhite ? 'w' : 'b'
+    const squareMatch = san.match(/([a-h][1-8])(?:=[QRBN])?[+#]?$/)
+    const square = squareMatch ? squareMatch[1] : null
+    if (!square) return null
+    let piece = 'p'
+    if (/^[KQRBN]/.test(san)) {
+      piece = san[0].toLowerCase()
+    } else if (/^[a-h]/.test(san) && san.includes('=')) {
+      const promMatch = san.match(/=([QRBN])/)
+      piece = promMatch ? promMatch[1].toLowerCase() : 'p'
+    }
+    return { type: `${color}${piece}`, square }
+  } catch {
+    return null
+  }
+}
+
 function setHoveredChapterLine(section, move) {
+  if (hoveredChapterLineClearTimer) {
+    clearTimeout(hoveredChapterLineClearTimer)
+    hoveredChapterLineClearTimer = null
+  }
   if (!section || !move) {
     if (hoveredChapterLineDelayTimer) {
       clearTimeout(hoveredChapterLineDelayTimer)
@@ -1164,7 +1200,6 @@ function setHoveredChapterLine(section, move) {
     hoveredChapterLine.value = null
     return
   }
-  if (getLineType(move) === 'ready') return // hidden moves – don't preview
   if (hoveredChapterLineDelayTimer) clearTimeout(hoveredChapterLineDelayTimer)
   hoveredChapterLineDelayTimer = setTimeout(() => {
     hoveredChapterLineDelayTimer = null
@@ -1177,7 +1212,11 @@ function clearHoveredChapterLine() {
     clearTimeout(hoveredChapterLineDelayTimer)
     hoveredChapterLineDelayTimer = null
   }
-  hoveredChapterLine.value = null
+  if (hoveredChapterLineClearTimer) clearTimeout(hoveredChapterLineClearTimer)
+  hoveredChapterLineClearTimer = setTimeout(() => {
+    hoveredChapterLineClearTimer = null
+    hoveredChapterLine.value = null
+  }, HOVER_CLEAR_DELAY_MS)
 }
 
 function isPlySelected(moveIndex, side) {
@@ -1503,7 +1542,7 @@ const sectionMovesV23 = {
   ],
 }
 
-const sectionMoves = computed(() => (isVideoV2_4.value ? sectionMovesV24 : sectionMovesV23))
+const sectionMoves = computed(() => (isVideoV2_4.value ? sectionMovesV24 : sectionMovesV23) ?? {})
 
 // Informational line content (key: sectionId-moveId). Coach message + body HTML for info-only lines.
 const infoLineContentByKey = {
@@ -2167,18 +2206,25 @@ function seededShuffle(arr, seed) {
 }
 
 function getSectionMoves(section) {
-  const sectionId = typeof section === 'string' ? section : section?.id
-  const total = typeof section === 'object' && section?.total != null ? section.total : 0
-  const baseId = (sectionId || '').replace(/-2$/, '')
-  const moves = sectionMoves.value
-  if (moves[baseId]) return moves[baseId]
-  const shuffled = seededShuffle(uncompletedMoveTitles, sectionId)
-  const count = Math.min(total, shuffled.length)
-  return shuffled.slice(0, count).map((text, i) => ({
-    id: String(i + 1),
-    text,
-    completed: false,
-  }))
+  try {
+    if (section == null) return []
+    const sectionId = typeof section === 'string' ? section : section?.id
+    const total = typeof section === 'object' && section?.total != null ? section.total : 0
+    const baseId = (sectionId || '').replace(/-2$/, '')
+    const moves = sectionMoves.value
+    if (moves != null && typeof moves === 'object' && Array.isArray(moves[baseId])) return moves[baseId]
+    const seed = String(sectionId ?? '')
+    const titles = Array.isArray(uncompletedMoveTitles) ? uncompletedMoveTitles : []
+    const shuffled = seededShuffle(titles, seed)
+    const count = Math.min(total, shuffled.length)
+    return shuffled.slice(0, count).map((text, i) => ({
+      id: String(i + 1),
+      text,
+      completed: false,
+    }))
+  } catch {
+    return []
+  }
 }
 
 // V2.4: real course – 6 chapters (start-here removed)
@@ -2216,11 +2262,60 @@ const courseSectionsV23 = [
     }
   }),
 ]
-const courseSections = computed(() => (isVideoV2_4.value ? courseSectionsV24 : courseSectionsV23))
+const courseSections = computed(() => (isVideoV2_4.value ? courseSectionsV24 : courseSectionsV23) ?? [])
+
+/** Safe array for v-for; always a plain array (avoids "undefined is not iterable"). */
+const courseSectionsList = computed(() => {
+  const s = courseSections.value
+  if (s == null || !Array.isArray(s)) return []
+  return s.slice(0)
+})
+
+/** Ref used for section list v-for so we never iterate over undefined (set by watch). */
+const sectionsListForRender = ref([])
+watch(
+  courseSections,
+  (s) => {
+    sectionsListForRender.value = Array.isArray(s) ? s.slice(0) : []
+  },
+  { immediate: true }
+)
+
+/** Return a safe array for section list iteration (used in template to avoid any proxy/iterable issue). */
+function getSectionsForList() {
+  try {
+    const s = courseSections.value
+    return Array.isArray(s) ? [...s] : []
+  } catch {
+    return []
+  }
+}
+
+/** Return a safe array for move list iteration (used in template). */
+function getMovesForSectionList(section) {
+  try {
+    const moves = getSectionMoves(section)
+    return Array.isArray(moves) ? moves : []
+  } catch {
+    return []
+  }
+}
+
+/** Return a safe array for line view moves (used in template to avoid iterable error). */
+function getLineViewMovesList() {
+  try {
+    const m = lineViewMoves.value
+    return Array.isArray(m) ? m : []
+  } catch {
+    return []
+  }
+}
 
 // Count of Ready item Lines (completed moves without level) for Practice button badge
 const practiceReadyCount = computed(() => {
-  const moves = Object.values(sectionMoves.value).flat()
+  const source = sectionMoves.value
+  if (source == null || typeof source !== 'object') return 0
+  const moves = Object.values(source).flat()
   return moves.filter(m => m.completed && !m.level).length
 })
 
@@ -2448,7 +2543,10 @@ function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite) {
       }
     } catch (_) {}
     try {
-      playSound(isCapture ? 'capture' : 'move')
+      const boardSection = document.querySelector('.board-section')
+      if (boardSection && getComputedStyle(boardSection).display !== 'none') {
+        playSound(isCapture ? 'capture' : 'move')
+      }
     } catch (_) {}
     // Show last-move highlight immediately when the piece “leaves” the square (start of slide)
     lastMove.value = { from, to }
@@ -2794,8 +2892,18 @@ watchEffect(() => {
     // Chapter page: hovered line preview (non–Opening Courses or no card selected)
     if (panelView.value === 'courses' && hoveredChapterLine.value) {
       const { section, move } = hoveredChapterLine.value
-      if (getLineType(move) === 'ready') return
       const moves = getMovesForLine(section, move)
+      const sectionId = String(section?.id || '').replace(/-2$/, '')
+      if (sectionId === LEARNING_THE_GAME_SECTION_ID) {
+        const single = getFirstMovePieceAndSquare(moves)
+        if (single) {
+          pieces.value = [single]
+          lastMove.value = null
+          selectedSquare.value = null
+          checkmateHighlight.value = null
+          return
+        }
+      }
       const { fen, lastMove: last } = getPositionAtEndOfLine(moves)
       pieces.value = parseFEN(fen)
       lastMove.value = last
@@ -3369,8 +3477,9 @@ const openingSortLabel = computed(() => {
   return 'Name'
 })
 const openingCoursesFiltered = computed(() => {
+  const cards = openingCourseCards ?? []
   const q = (openingSearchQuery.value || '').trim().toLowerCase()
-  let list = q ? openingCourseCards.filter((c) => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q)) : [...openingCourseCards]
+  let list = q ? cards.filter((c) => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q)) : [...cards]
   if (openingSortBy.value === 'name') {
     list = list.slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''))
   } else if (openingSortBy.value === 'lines') {
@@ -3378,7 +3487,7 @@ const openingCoursesFiltered = computed(() => {
   } else if (openingSortBy.value === 'type') {
     list = list.slice().sort((a, b) => (a.type || '').localeCompare(b.type || ''))
   }
-  return list
+  return list ?? []
 })
 function onOpeningFiltersClick() {
   // TODO: open filters modal/sheet
@@ -3400,7 +3509,8 @@ function onOpeningContentScroll() {
 }
 watch(
   () => [isOpeningCoursesV1.value, coursesContentRef.value],
-  ([isV1, ref]) => {
+  (val) => {
+    const [isV1, ref] = Array.isArray(val) ? val : [false, null]
     const el = ref
     if (!isV1 || !el) {
       openingFilterStripHidden.value = false
@@ -3555,8 +3665,9 @@ function setupV23ScrollListener() {
 
 const isVideoV3 = computed(() => route.path === '/learn/v3')
 const expandedSection = computed(() => {
-  const id = [...expandedSectionIds.value][0]
-  return id ? (courseSections.value.find((s) => s.id === id) ?? null) : null
+  const ids = expandedSectionIds.value
+  const id = ids == null ? undefined : (Array.isArray(ids) ? ids[0] : [...ids][0])
+  return id ? ((courseSections.value ?? []).find((s) => s.id === id) ?? null) : null
 })
 
 // V3: scroll-driven sticky – which section's block has reached the header
@@ -3668,11 +3779,12 @@ function updateStickySection() {
   // 1. Which section has reached the header – single "current", topmost at or past header.
   //    When in released state, only consider sections up to and including releasedUntil so we never skip order.
   const releasedUntilIndex = releasedUntil != null
-    ? courseSections.value.findIndex((s) => s.id === releasedUntil)
+    ? (courseSections.value ?? []).findIndex((s) => s.id === releasedUntil)
     : -1
+  const sections = courseSections.value ?? []
   const sectionsToConsider = releasedUntilIndex >= 0
-    ? courseSections.value.slice(0, releasedUntilIndex + 1)
-    : courseSections.value
+    ? sections.slice(0, releasedUntilIndex + 1)
+    : sections
 
   let best = null
   let bestTop = -Infinity
@@ -3695,8 +3807,9 @@ function updateStickySection() {
     const stickyVideoEl = v3StickyVideoRef.value
     const videoBottom = stickyVideoEl ? stickyVideoEl.getBoundingClientRect().bottom : (stickyStripEl ? stickyStripEl.getBoundingClientRect().bottom : null)
     if (videoBottom != null) {
-      const currentIndex = courseSections.value.findIndex((s) => s.id === best.id)
-      const nextSection = currentIndex >= 0 && currentIndex < courseSections.value.length - 1 ? courseSections.value[currentIndex + 1] : null
+      const secs = courseSections.value ?? []
+      const currentIndex = secs.findIndex((s) => s.id === best.id)
+      const nextSection = currentIndex >= 0 && currentIndex < secs.length - 1 ? secs[currentIndex + 1] : null
       if (nextSection) {
         const nextEl = sectionBlockRefs.value[nextSection.id]
         if (nextEl) {
@@ -3735,7 +3848,7 @@ function updateStickySection() {
 /** V3: video placeholder bg – #000 for even chapter index, dark grey for odd */
 function getStickyVideoBg(section) {
   if (!section) return '#000000'
-  const i = courseSections.value.findIndex((s) => s.id === section.id)
+  const i = (courseSections.value ?? []).findIndex((s) => s.id === section.id)
   return i >= 0 && i % 2 === 1 ? '#2a2a2a' : '#000000'
 }
 
@@ -3751,8 +3864,8 @@ function clampV3Scroll() {
       return
     }
     const el = coursesContentRef.value
-    const sections = courseSections.value
-    if (!sections?.length) {
+    const sections = courseSections.value ?? []
+    if (!sections.length) {
       v3PaddingBottomPx.value = null
       return
     }
@@ -3880,7 +3993,7 @@ function setupV3IntersectionObserver() {
   v3IntersectionObserver = null
   if (!isVideoV3.value || !coursesContentRef.value) return
   const root = coursesContentRef.value
-  const sectionIds = courseSections.value.map((s) => s.id)
+  const sectionIds = (courseSections.value ?? []).map((s) => s.id)
   const elements = sectionIds.map((id) => sectionBlockRefs.value[id]).filter(Boolean)
   if (elements.length === 0) {
     // Refs may not be set yet (v-for); retry once when still on V3
@@ -3909,7 +4022,6 @@ const lineViewVideoSectionVisible = computed(() => {
   return showVideoSection.value
 })
 const videoSectionRef = ref(null)
-const coursesContentRef = ref(null)
 const videoSectionHeightPx = ref(270) // for sticky chapter; updated when video visible or size changes
 
 const VIDEO_ASPECT = 16 / 9
@@ -4336,6 +4448,12 @@ watch([isVideoV2_3OrV24, coursesContentRef], () => {
   setupV23ScrollListener()
 }, { immediate: true })
 
+onErrorCaptured((err, instance, info) => {
+  if (err && String(err.message || err).includes('iterable')) {
+    console.error('[CoursesV24] iterable error:', err.message, info, err.stack)
+  }
+  return false
+})
 onMounted(() => {
   document.addEventListener('mousemove', handleDragMove)
   document.addEventListener('mouseup', handleDragEnd)
@@ -4365,7 +4483,7 @@ onUnmounted(() => {
         <div class="board-wrapper">
           <div class="chessboard" ref="boardRef">
             <div 
-              v-for="square in squares" 
+              v-for="square in (squares || [])" 
               :key="square"
               class="square"
               :class="[
@@ -4585,7 +4703,7 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div class="opening-courses-meta-panel" data-name="Course counter and filter">
-                  <span class="opening-courses-meta-panel__count text-small-bold">{{ openingCoursesFiltered.length }} Courses</span>
+                  <span class="opening-courses-meta-panel__count text-small-bold">{{ (openingCoursesFiltered || []).length }} Courses</span>
                   <div class="opening-courses-meta-panel__sort">
                     <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
                       <span class="text-small">Sort by </span><span class="text-small-bold">{{ openingSortLabel }}</span>
@@ -4601,7 +4719,7 @@ onUnmounted(() => {
               </div>
               <div class="opening-course-cards-list" data-name="Opening course cards">
             <article
-              v-for="card in openingCoursesFiltered"
+              v-for="card in (openingCoursesFiltered || [])"
               :key="card.id"
               class="opening-course-card"
               :class="[
@@ -4646,7 +4764,7 @@ onUnmounted(() => {
                       </g>
                     </svg>
                     <div
-                      v-for="(piece, i) in card.coverPieces"
+                      v-for="(piece, i) in (card.coverPieces || [])"
                       :key="`${card.id}-${i}-${piece.type}`"
                       class="course-cover-board__piece"
                       :style="{ '--file': piece.col, '--rank': piece.row }"
@@ -4661,7 +4779,7 @@ onUnmounted(() => {
                       <p class="opening-course-card__description">{{ card.description }}</p>
                     </div>
                     <div class="opening-course-card__properties">
-                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" />
+                      <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" />
                     </div>
                   </div>
                 </div>
@@ -4680,7 +4798,7 @@ onUnmounted(() => {
             :style="isVideoV3 && v3PaddingBottomPx != null ? { paddingBottom: `${v3PaddingBottomPx}px` } : {}"
           >
           <div
-            v-for="course in courses"
+            v-for="course in (courses || [])"
             :key="course.id"
             class="course-cards"
             data-name="Course Cards"
@@ -4797,7 +4915,7 @@ onUnmounted(() => {
             <!-- Variations list (L1 Rookie, etc.) -->
             <div v-show="showMoreStats" class="advanced-stats-variations" role="list">
               <div
-                v-for="item in masteryLevelItems"
+                v-for="item in (masteryLevelItems || [])"
                 :key="item.level"
                 class="mastery-level-item"
                 :class="{ 'mastery-level-item--locked': item.locked }"
@@ -4865,7 +4983,7 @@ onUnmounted(() => {
                 aria-label="Show lines"
               >
                 <option
-                  v-for="opt in linesFilterOptions"
+                  v-for="opt in (linesFilterOptions || [])"
                   :key="opt.value"
                   :value="opt.value"
                 >
@@ -4880,9 +4998,9 @@ onUnmounted(() => {
 
           <!-- Sections list – V3: all visible + scroll sticky; V2/V1: accordion; hidden on Opening Courses V1 -->
           <div v-if="!isOpeningCoursesV1" class="sections-list">
+            <template v-for="(section, sectionIndex) in sectionsListForRender" :key="section?.id ?? sectionIndex">
             <div
-              v-for="(section, sectionIndex) in courseSections"
-              :key="section.id"
+              v-if="section"
               class="section-item"
               :data-section-id="section.id"
               :ref="isVideoV2_3OrV24 ? (el) => setV23SectionItemRef(section.id, el) : undefined"
@@ -4941,8 +5059,8 @@ onUnmounted(() => {
                   <div class="move-list-wrap">
                     <div class="move-list" role="list" data-name="Lines" aria-label="Lines">
                       <div
-                        v-for="move in getSectionMoves(section)"
-                        :key="`${section.id}-${move.id}`"
+                        v-for="move in getMovesForSectionList(section)"
+                        :key="`${section?.id}-${move?.id}`"
                         class="move-item"
                         :class="[
                           { 'move-item--inactive': !move.completed },
@@ -4951,7 +5069,6 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
-                        @click="openLine(section, move)"
                         @mouseenter="setHoveredChapterLine(section, move)"
                         @mouseleave="clearHoveredChapterLine()"
                       >
@@ -5053,51 +5170,50 @@ onUnmounted(() => {
                     </div>
                     <Transition name="chapter-moves">
                       <div
-                        v-if="isSectionExpanded(section.id) && getSectionMoves(section).length"
+                        v-if="isSectionExpanded(section.id) && getMovesForSectionList(section).length"
                         class="move-list-wrap"
                       >
                       <div class="move-list" role="list" data-name="Lines" aria-label="Lines">
-                        <div
-                          v-for="move in getSectionMoves(section)"
-                          :key="`${section.id}-${move.id}`"
-                          class="move-item"
-                          :class="[
-                            { 'move-item--inactive': !move.completed },
-                            `move-item--${getLineType(move)}`
-                          ]"
-                          role="listitem"
-                          data-name="Line"
-                          :data-move-id="`${section.id}-${move.id}`"
-                          @click="openLine(section, move)"
-                          @mouseenter="setHoveredChapterLine(section, move)"
-                          @mouseleave="clearHoveredChapterLine()"
-                        >
-                          <div class="move-item-content">
-                            <div class="move-item-inner">
-                              <div class="move-item-plys">
-                                <span class="move-item-check-wrap" aria-hidden="true">
-                                  <CcIcon name="mark-check" variant="glyph" :size="16" class="move-item-check" />
-                                </span>
-                                <span class="move-item-text">{{ move.text }}</span>
-                              </div>
-                              <span v-if="move.info" class="move-item-info-wrap" aria-hidden="true">
-                                <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                      <div
+                        v-for="move in getMovesForSectionList(section)"
+                        :key="`${section?.id}-${move?.id}`"
+                        class="move-item"
+                        :class="[
+                          { 'move-item--inactive': !move.completed },
+                          `move-item--${getLineType(move)}`
+                        ]"
+                        role="listitem"
+                        data-name="Line"
+                        :data-move-id="`${section?.id}-${move?.id}`"
+                        @mouseenter="setHoveredChapterLine(section, move)"
+                        @mouseleave="clearHoveredChapterLine()"
+                      >
+                        <div class="move-item-content">
+                          <div class="move-item-inner">
+                            <div class="move-item-plys">
+                              <span class="move-item-check-wrap" aria-hidden="true">
+                                <CcIcon name="mark-check" variant="glyph" :size="16" class="move-item-check" />
                               </span>
-                              <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
-                                <CcChip
-                                  :label="move.level"
-                                  color="aqua"
-                                  variant="translucent"
-                                  :is-uppercase="false"
-                                  label-class="move-item-level-chip-label"
-                                />
-                              </span>
-                              <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
-                                <span class="move-item-dot" />
-                              </span>
+                              <span class="move-item-text">{{ move.text }}</span>
                             </div>
+                            <span v-if="move.info" class="move-item-info-wrap" aria-hidden="true">
+                              <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                            </span>
+                            <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
+                              <CcChip
+                                :label="move.level"
+                                color="aqua"
+                                variant="translucent"
+                                :is-uppercase="false"
+                                label-class="move-item-level-chip-label"
+                              />
+                            </span>
+                            <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
+                              <span class="move-item-dot" />
+                            </span>
                           </div>
                         </div>
+                      </div>
                     </div>
                   </div>
                 </Transition>
@@ -5172,13 +5288,13 @@ onUnmounted(() => {
                 </div>
                 <Transition name="chapter-moves">
                   <div
-                    v-if="isSectionExpanded(section.id) && getSectionMoves(section).length"
+                    v-if="isSectionExpanded(section.id) && getMovesForSectionList(section).length"
                     class="move-list-wrap"
                   >
                     <div class="move-list" role="list" data-name="Lines" aria-label="Lines">
                       <div
-                        v-for="move in getSectionMoves(section)"
-                        :key="`${section.id}-${move.id}`"
+                        v-for="move in getMovesForSectionList(section)"
+                        :key="`${section?.id}-${move?.id}`"
                         class="move-item"
                         :class="[
                           { 'move-item--inactive': !move.completed },
@@ -5187,7 +5303,6 @@ onUnmounted(() => {
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
-                        @click="openLine(section, move)"
                         @mouseenter="setHoveredChapterLine(section, move)"
                         @mouseleave="clearHoveredChapterLine()"
                       >
@@ -5223,6 +5338,7 @@ onUnmounted(() => {
               </template>
               </template>
             </div>
+            </template>
           </div>
           </div>
           </template>
@@ -5290,7 +5406,7 @@ onUnmounted(() => {
                   </div>
                   <div class="line-view-moves">
                     <div
-                      v-for="(pair, idx) in lineViewMoves"
+                      v-for="(pair, idx) in getLineViewMovesList()"
                       :key="idx"
                       class="move-row"
                       data-name="Move"
@@ -5370,7 +5486,7 @@ onUnmounted(() => {
                 </section>
                 <div class="line-view-moves">
                   <div
-                    v-for="(pair, idx) in lineViewMoves"
+                    v-for="(pair, idx) in getLineViewMovesList()"
                     :key="idx"
                     class="move-row"
                     data-name="Move"
@@ -5441,9 +5557,9 @@ onUnmounted(() => {
                     <span class="video-resize-handle" />
                   </div>
                 </section>
-                <template v-if="infoLineContentCurrent?.movesInBody && lineViewMoves?.length">
+                <template v-if="infoLineContentCurrent?.movesInBody && getLineViewMovesList().length">
                   <div class="info-line-body cc-paragraph-medium" v-html="infoLineContentCurrent.introBodyHtml" />
-                  <template v-for="(pair, idx) in lineViewMoves" :key="idx">
+                  <template v-for="(pair, idx) in getLineViewMovesList()" :key="idx">
                     <div class="line-view-moves">
                       <div
                         class="move-row"
@@ -5473,23 +5589,23 @@ onUnmounted(() => {
                   <div class="info-line-body cc-paragraph-medium" v-html="infoLineContentCurrent.closingBodyHtml" />
                 </template>
                 <template v-else>
-                  <div v-if="infoLineContentCurrent?.hasMoves && lineViewMoves?.length" :class="infoLineContentCurrent?.movesLayout === 'inline' ? 'line-view-moves line-view-moves--inline' : 'line-view-moves'">
+                  <div v-if="infoLineContentCurrent?.hasMoves && getLineViewMovesList().length" :class="infoLineContentCurrent?.movesLayout === 'inline' ? 'line-view-moves line-view-moves--inline' : 'line-view-moves'">
                     <template v-if="infoLineContentCurrent?.movesLayout === 'inline'">
                       <div class="line-view-moves-inline">
-                        <template v-for="(pair, idx) in lineViewMoves" :key="idx">
+                        <template v-for="(pair, idx) in getLineViewMovesList()" :key="idx">
                           <span
                             v-if="pair.white"
                             class="line-view-move-inline-chip"
                             :class="{ 'line-view-move-inline-chip--selected': isPlySelected(idx, 'white') }"
                             @click="selectPly(idx, 'white')"
                           ><span class="line-view-move-inline-chip-inner">{{ pair.number }}. </span><CcIcon v-if="getPieceIconName(pair.white)" :name="getPieceIconName(pair.white)" variant="glyph" :customSize="PIECE_ICON_SIZE" class="line-view-move-inline-piece-icon" /><span class="line-view-move-inline-chip-inner"> {{ getPieceDisplaySquare(pair.white) }} --</span></span>
-                          <span v-if="idx < lineViewMoves.length - 1" class="line-view-moves-inline-sep"> </span>
+                          <span v-if="idx < getLineViewMovesList().length - 1" class="line-view-moves-inline-sep"> </span>
                         </template>
                       </div>
                     </template>
                     <template v-else>
                       <div
-                        v-for="(pair, idx) in lineViewMoves"
+                        v-for="(pair, idx) in getLineViewMovesList()"
                         :key="idx"
                         class="move-row"
                         data-name="Move"
@@ -5562,7 +5678,7 @@ onUnmounted(() => {
                   </div>
                   <div class="line-view-moves">
                     <div
-                      v-for="(pair, idx) in lineViewMoves"
+                      v-for="(pair, idx) in getLineViewMovesList()"
                       :key="idx"
                       class="move-row"
                       data-name="Move"
@@ -5665,7 +5781,7 @@ onUnmounted(() => {
                   </section>
                   <div class="line-view-moves">
                     <div
-                      v-for="(pair, idx) in lineViewMoves"
+                      v-for="(pair, idx) in getLineViewMovesList()"
                       :key="idx"
                       class="move-row"
                       data-name="Move"
