@@ -1,3 +1,5 @@
+# Deploy my-app to GitHub Pages. Requires repo secret NPM_TOKEN (PAT with read:packages)
+# so npm ci can install @chesscom/design-system from GitHub Packages. See docs/SETUP-NEW-MACHINE.md.
 name: Deploy to GitHub Pages
 
 on:
