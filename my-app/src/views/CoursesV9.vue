@@ -6677,7 +6677,7 @@ onUnmounted(() => {
             </div>
           </div>
           </template>
-          <template v-if="isVideoV9"><div ref="v9ScrollRef" class="courses-content courses-content--v9-scroll courses-content--line-items-no-click" @scroll.passive="onCoursesContentScroll">
+          <template v-if="isVideoV9"><div ref="v9ScrollRef" class="courses-content courses-content--v9-scroll courses-content--line-items-no-click" :class="{ 'v9-chapters-collapsed': v9ChaptersCollapsed }" @scroll.passive="onCoursesContentScroll">
           <!-- ToC area: overlay + drawer + tab panels. V9: inside scroll only. -->
           <div class="stats-overlay-toc-wrap">
             <!-- V7/V8: darker overlay over ToC only (not course card) when stats drawer open; click to close -->
@@ -13629,25 +13629,29 @@ body {
 
 /* V9: chapters hover/selection logic when functioning as an accordion */
 .courses-content--v9 .chapter-v2 {
+  background: var(--color-bg-subtle, rgba(255, 255, 255, 0.04)) !important;
+  background-color: var(--color-bg-subtle, rgba(255, 255, 255, 0.04)) !important;
+}
+.courses-content--v9 .v9-chapters-collapsed .chapter-v2 {
   background: #272522 !important;
   background-color: #272522 !important;
 }
-.courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected)[aria-expanded="true"] {
-  background: #272522 !important;
-  background-color: #272522 !important;
-}
-.courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected):hover {
+.courses-content--v9 .v9-chapters-collapsed .chapter-v2:not(.chapter-v2--v9-selected):hover {
   background: #312e2b !important; /* Brighter than #272522 on hover */
   background-color: #312e2b !important;
 }
+.courses-content--v9:not(.v9-chapters-collapsed) .chapter-v2:not(.chapter-v2--v9-selected):hover {
+  background: var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)) !important;
+  background-color: var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)) !important;
+}
 .courses-content--v9 .chapter-v2--v9-selected,
 .courses-content--v9 .chapter-v2--v9-selected[aria-expanded="true"] {
-  background: #312e2b !important;
-  background-color: #312e2b !important;
+  background: var(--color-bg-subtle, rgba(255, 255, 255, 0.04)) !important;
+  background-color: var(--color-bg-subtle, rgba(255, 255, 255, 0.04)) !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected:hover {
-  background: #3a3835 !important; /* Also brighten selected chapter on hover */
-  background-color: #3a3835 !important;
+  background: var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)) !important; /* Also brighten selected chapter on hover */
+  background-color: var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)) !important;
 }
 
 /* V9 chapter hover icon swapping */
