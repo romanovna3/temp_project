@@ -6897,9 +6897,14 @@ onUnmounted(() => {
                     :ref="(el) => setPracticeSectionLineWrapRef(section.id, el)"
                   >
                     <div class="v23-section-timeline-wrap__line" aria-hidden="true" />
-                    <div
-                      class="chapter-v2 chapter-v2--header chapter-v2--sticky-title-v23 chapter-v2--no-accordion chapter-v2--v4-timeline chapter-v2--v6-timeline-right"
+                    <component
+                      :is="useAccordionChapters || isVideoV9 ? 'button' : 'div'"
+                      :type="useAccordionChapters || isVideoV9 ? 'button' : undefined"
+                      class="chapter-v2 chapter-v2--header chapter-v2--sticky-title-v23 chapter-v2--v4-timeline chapter-v2--v6-timeline-right"
+                      :class="{ 'chapter-v2--no-accordion': !(useAccordionChapters || isVideoV9), 'chapter-v2--v9-selected': isVideoV9 && v9SelectedChapterId === section.id }"
                       data-name="Chapter V2"
+                      :aria-expanded="(useAccordionChapters || isVideoV9) ? isSectionOpen(section.id) : undefined"
+                      @click="(useAccordionChapters || isVideoV9) ? toggleSection(section.id) : undefined"
                     >
                       <span class="chapter-v2-border" aria-hidden="true" />
                       <div class="chapter-v2__timeline-col" aria-hidden="true">
@@ -6912,11 +6917,22 @@ onUnmounted(() => {
                       </div>
                       <div class="chapter-progress-name">
                         <div class="chapter-content">
+                          <span v-if="isVideoV9" class="chapter-v9-left-chevron">
+                            <CcIcon
+                              name="arrow-chevron-bottom"
+                              variant="glyph"
+                              :size="16"
+                              class="chapter-chevron-v9"
+                            />
+                          </span>
                           <span class="chapter-title">{{ section.name }}</span>
                         </div>
                       </div>
-                    </div>
-                    <div class="v23-expandable v23-expandable--open">
+                    </component>
+                    <div
+                      class="v23-expandable"
+                      :class="{ 'v23-expandable--open': isSectionOpen(section.id) }"
+                    >
                       <div class="v22-chapter-video-block">
                       </div>
                       <Transition name="chapter-moves">
