@@ -588,9 +588,39 @@ const displayMasteryLevelItems = computed(() => {
 })
 
 // Section expand/collapse (accordion) – kept for later; set useAccordionChapters to true to restore
+const v9ChaptersCollapsed = ref(false)
+const v9SelectedChapterId = ref(null)
 const useAccordionChapters = ref(false)
 const expandedSectionIds = ref(new Set())
 function toggleSection(sectionId) {
+  if (isVideoV9.value) {
+    if (!v9ChaptersCollapsed.value) {
+      // currently all open, so collapse them
+      v9ChaptersCollapsed.value = true
+      v9SelectedChapterId.value = null
+    } else {
+      // currently collapsed, so open all and scroll to the clicked section
+      v9ChaptersCollapsed.value = false
+      v9SelectedChapterId.value = sectionId
+      nextTick(() => {
+        const container = v9ScrollRef.value || coursesContentRef.value
+        if (!container) return
+        const sectionEl = Array.from(container.querySelectorAll('.section-item')).find(
+          (el) => el.getAttribute('data-section-id') === sectionId
+        )
+        if (!sectionEl) return
+        
+        const containerRect = container.getBoundingClientRect()
+        const sectionRect = sectionEl.getBoundingClientRect()
+        
+        // Exact offset to place it correctly below any header stack, delta relative to container
+        const scrollDelta = sectionRect.top - containerRect.top
+        container.scrollTop += scrollDelta
+      })
+    }
+    return
+  }
+
   v3ReleasedUntilSectionId.value = null
   // V2.2 / V2.3: opening another chapter (or closing) pauses the video – play button shows again
   if (isVideoV2_2.value) v22PlayingSectionId.value = null
@@ -637,6 +667,9 @@ function isSectionExpanded(sectionId) {
 }
 /** When false (default): all chapters shown as headers, always open. When true: accordion (one open at a time). */
 function isSectionOpen(sectionId) {
+  if (isVideoV9.value) {
+    return !v9ChaptersCollapsed.value
+  }
   return useAccordionChapters.value ? isSectionExpanded(sectionId) : true
 }
 
@@ -7176,17 +7209,17 @@ onUnmounted(() => {
                   >
                     <div v-if="isVideoV2_4OrV5" class="v23-section-timeline-wrap__line" aria-hidden="true" />
                   <component
-                    :is="useAccordionChapters ? 'button' : 'div'"
-                    :type="useAccordionChapters ? 'button' : undefined"
+                    :is="useAccordionChapters || isVideoV9 ? 'button' : 'div'"
+                    :type="useAccordionChapters || isVideoV9 ? 'button' : undefined"
                     class="chapter-v2 chapter-v2--header"
                     :class="[
-                      { 'chapter-v2--sticky-title-v23': isSectionOpen(section.id), 'chapter-v2--no-accordion': !useAccordionChapters },
+                      { 'chapter-v2--sticky-title-v23': isSectionOpen(section.id), 'chapter-v2--no-accordion': !(useAccordionChapters || isVideoV9), 'chapter-v2--v9-selected': isVideoV9 && v9SelectedChapterId === section.id },
                       isVideoV2_4OrV5 && 'chapter-v2--v4-timeline',
                       isVideoV6OrV7 && 'chapter-v2--v6-timeline-right'
                     ]"
                     data-name="Chapter V2"
-                    :aria-expanded="useAccordionChapters ? isSectionExpanded(section.id) : undefined"
-                    @click="useAccordionChapters ? toggleSection(section.id) : undefined"
+                    :aria-expanded="(useAccordionChapters || isVideoV9) ? isSectionOpen(section.id) : undefined"
+                    @click="(useAccordionChapters || isVideoV9) ? toggleSection(section.id) : undefined"
                   >
                     <span class="chapter-v2-border" aria-hidden="true" />
                     <!-- V4: one big progress in timeline column so line runs behind it -->
@@ -7211,8 +7244,8 @@ onUnmounted(() => {
                       </div>
                       <div class="chapter-variations">
                         <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
-                        <span v-if="useAccordionChapters" class="chapter-chevron-wrap" aria-hidden="true">
-                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
+                        <span v-if="useAccordionChapters || isVideoV9" class="chapter-chevron-wrap" aria-hidden="true">
+                          <CcIcon :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'" variant="glyph" :size="16" class="chapter-chevron" />
                         </span>
                       </div>
                     </div>
@@ -7499,18 +7532,19 @@ v-if="isVideoV6OrV7"
                   }"
                 >
                   <component
-                    :is="useAccordionChapters ? 'button' : 'div'"
-                    :type="useAccordionChapters ? 'button' : undefined"
+                    :is="useAccordionChapters || isVideoV9 ? 'button' : 'div'"
+                    :type="useAccordionChapters || isVideoV9 ? 'button' : undefined"
                     class="chapter-v2 chapter-v2--header"
                     :class="{
                       'chapter-v2--sticky-under-video': showVideoSectionVisible && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionOpen(section.id),
                       'chapter-v2--sticky-title-v23': isVideoV2_3OrV24 && isSectionOpen(section.id),
-                      'chapter-v2--no-accordion': !useAccordionChapters
+                      'chapter-v2--no-accordion': !(useAccordionChapters || isVideoV9),
+                      'chapter-v2--v9-selected': isVideoV9 && v9SelectedChapterId === section.id
                     }"
                     :style="showVideoSectionVisible && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionOpen(section.id) ? { '--sticky-under-video-top': videoSectionHeightPx + 'px' } : undefined"
                     data-name="Chapter V2"
-                    :aria-expanded="useAccordionChapters ? isSectionExpanded(section.id) : undefined"
-                    @click="useAccordionChapters ? toggleSection(section.id) : undefined"
+                    :aria-expanded="(useAccordionChapters || isVideoV9) ? isSectionOpen(section.id) : undefined"
+                    @click="(useAccordionChapters || isVideoV9) ? toggleSection(section.id) : undefined"
                   >
                     <span class="chapter-v2-border" aria-hidden="true" />
                     <div class="chapter-progress-name">
@@ -7526,8 +7560,8 @@ v-if="isVideoV6OrV7"
                       </div>
                       <div class="chapter-variations">
                         <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
-                        <span v-if="useAccordionChapters" class="chapter-chevron-wrap" aria-hidden="true">
-                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
+                        <span v-if="useAccordionChapters || isVideoV9" class="chapter-chevron-wrap" aria-hidden="true">
+                          <CcIcon :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'" variant="glyph" :size="16" class="chapter-chevron" />
                         </span>
                       </div>
                     </div>
@@ -13576,5 +13610,17 @@ body {
 /* V9: 85% opacity for chapter line card title on hover for all statuses */
 .courses-content--v9 .chapter-line-card:hover .opening-course-card__title {
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* V9: chapters hover/selection logic when functioning as an accordion */
+.courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected)[aria-expanded="true"] {
+  background: transparent;
+}
+.courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected):hover {
+  background: var(--chapter-selected-bg, #353330);
+}
+.courses-content--v9 .chapter-v2--v9-selected,
+.courses-content--v9 .chapter-v2--v9-selected[aria-expanded="true"] {
+  background: var(--chapter-selected-bg, #353330);
 }
 </style>
