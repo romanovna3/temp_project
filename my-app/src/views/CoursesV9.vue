@@ -610,12 +610,26 @@ function toggleSection(sectionId) {
         )
         if (!sectionEl) return
         
-        const containerRect = container.getBoundingClientRect()
-        const sectionRect = sectionEl.getBoundingClientRect()
-        
-        // Exact offset to place it correctly below any header stack, delta relative to container
-        const scrollDelta = sectionRect.top - containerRect.top
-        container.scrollTop += scrollDelta
+        const expandDuration = 360
+        const start = performance.now()
+        const tick = () => {
+          const elapsed = performance.now() - start
+          if (elapsed >= expandDuration) {
+            // One final snap to be perfectly accurate
+            const containerRectFinal = container.getBoundingClientRect()
+            const sectionRectFinal = sectionEl.getBoundingClientRect()
+            const finalScrollDelta = sectionRectFinal.top - containerRectFinal.top
+            container.scrollTop += finalScrollDelta
+            return
+          }
+          const containerRectNow = container.getBoundingClientRect()
+          const sectionRectNow = sectionEl.getBoundingClientRect()
+          const scrollDelta = sectionRectNow.top - containerRectNow.top
+          
+          if (Math.abs(scrollDelta) > 1) container.scrollTop += scrollDelta
+          requestAnimationFrame(tick)
+        }
+        requestAnimationFrame(tick)
       })
     }
     return
@@ -13629,8 +13643,11 @@ body {
 }
 
 /* V9: chapters hover/selection logic when functioning as an accordion */
+.courses-content--v9 .chapter-v2 {
+  background: var(--color-bg-primary, #312e2b);
+}
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected)[aria-expanded="true"] {
-  background: transparent !important;
+  background: var(--color-bg-primary, #312e2b) !important;
 }
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected):hover {
   background: #403e3a !important; /* Brighter than #353330 on hover */
@@ -13653,10 +13670,6 @@ body {
   flex-shrink: 0;
 }
 .courses-content--v9 .chapter-chevron-v9 {
-  display: none !important;
   color: rgba(255, 255, 255, 0.35) !important;
-}
-.courses-content--v9 .chapter-v2:hover .chapter-chevron-v9 {
-  display: flex !important;
 }
 </style>
