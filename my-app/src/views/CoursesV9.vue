@@ -7229,31 +7229,23 @@ onUnmounted(() => {
                         :progress="getSectionProgressPercent(section)"
                         :size="24"
                         class="chapter-v2__timeline-progress"
-                        :class="{ 'chapter-progress-circle-v9': isVideoV9 }"
-                      />
-                      <CcIcon
-                        v-if="isVideoV9"
-                        :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
-                        variant="glyph"
-                        :size="24"
-                        class="chapter-chevron-v9 chapter-v2__timeline-progress"
                       />
                     </div>
                     <div class="chapter-progress-name">
                       <div class="chapter-content">
+                        <span v-if="isVideoV9" class="chapter-v9-left-chevron">
+                          <CcIcon
+                            :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
+                            variant="glyph"
+                            :size="20"
+                            class="chapter-chevron-v9"
+                          />
+                        </span>
                         <span v-if="!isVideoV2_4OrV5" class="chapter-progress-icon" aria-hidden="true">
                           <ProgressCircle
                             :key="`progress-${section.id}`"
                             :progress="getSectionProgressPercent(section)"
                             :size="24"
-                            :class="{ 'chapter-progress-circle-v9': isVideoV9 }"
-                          />
-                          <CcIcon
-                            v-if="isVideoV9"
-                            :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
-                            variant="glyph"
-                            :size="24"
-                            class="chapter-chevron-v9"
                           />
                         </span>
                         <span class="chapter-title">{{ section.name }}</span>
@@ -7565,19 +7557,19 @@ v-if="isVideoV6OrV7"
                     <span class="chapter-v2-border" aria-hidden="true" />
                     <div class="chapter-progress-name">
                       <div class="chapter-content">
+                        <span v-if="isVideoV9" class="chapter-v9-left-chevron">
+                          <CcIcon
+                            :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
+                            variant="glyph"
+                            :size="20"
+                            class="chapter-chevron-v9"
+                          />
+                        </span>
                         <span class="chapter-progress-icon" aria-hidden="true">
                           <ProgressCircle
                             :key="`progress-${section.id}`"
                             :progress="getSectionProgressPercent(section)"
                             :size="24"
-                            :class="{ 'chapter-progress-circle-v9': isVideoV9 }"
-                          />
-                          <CcIcon
-                            v-if="isVideoV9"
-                            :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
-                            variant="glyph"
-                            :size="24"
-                            class="chapter-chevron-v9"
                           />
                         </span>
                         <span class="chapter-title">{{ section.name }}</span>
@@ -13652,15 +13644,19 @@ body {
 }
 
 /* V9 chapter hover icon swapping */
+.courses-content--v9 .chapter-v9-left-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
 .courses-content--v9 .chapter-chevron-v9 {
   display: none !important;
   color: rgba(255, 255, 255, 0.35) !important;
-  width: 32px !important;
 }
 .courses-content--v9 .chapter-v2:hover .chapter-chevron-v9 {
   display: flex !important;
-}
-.courses-content--v9 .chapter-v2:hover .chapter-progress-circle-v9 {
-  display: none !important;
 }
 </style>
