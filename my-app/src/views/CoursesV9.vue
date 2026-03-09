@@ -13644,6 +13644,9 @@ body {
 }
 
 /* V9: chapters hover/selection logic when functioning as an accordion */
+.courses-content--v9 .chapter-progress-name {
+  gap: 4px !important;
+}
 .courses-content--v9 .chapter-content {
   gap: 12px !important;
 }
