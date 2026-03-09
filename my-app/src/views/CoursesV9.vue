@@ -13675,6 +13675,10 @@ body {
 }
 
 /* V9 chapter hover icon swapping */
+.courses-content--v9 .v9-chapters-collapsed .v23-section-timeline-wrap__line {
+  display: none !important;
+}
+
 .courses-content--v9 .chapter-v9-left-chevron {
   display: flex;
   align-items: center;
