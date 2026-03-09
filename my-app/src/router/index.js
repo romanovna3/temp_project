@@ -28,6 +28,7 @@ const router = createRouter({
     { path: '/learn/opening-courses-oc/:courseId', name: 'learn-opening-courses-oc-course', component: () => import('../views/CoursesV9OC.vue') },
     { path: '/learn/sicilian-defense', name: 'learn-sicilian-defense', component: () => import('../views/CoursesV9OC.vue') },
     { path: '/courses/v3', name: 'courses-v3', component: () => import('../views/CoursesV3.vue') },
+    { path: '/courses/v10', name: 'courses-v10', component: () => import('../views/CoursesV10.vue') },
   ],
 })
 
