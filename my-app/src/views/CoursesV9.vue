@@ -13648,7 +13648,7 @@ body {
   gap: 4px !important;
 }
 .courses-content--v9 .chapter-content {
-  gap: 4px !important;
+  gap: 6px !important;
 }
 
 .courses-content--v9 .chapter-v2 {
