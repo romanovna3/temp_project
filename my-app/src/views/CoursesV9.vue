@@ -13627,12 +13627,12 @@ body {
 
 /* V9: chapters hover/selection logic when functioning as an accordion */
 .courses-content--v9 .chapter-v2 {
-  background: var(--color-bg-primary, #312e2b) !important;
-  background-color: var(--color-bg-primary, #312e2b) !important;
+  background: #272522 !important;
+  background-color: #272522 !important;
 }
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected)[aria-expanded="true"] {
-  background: var(--color-bg-primary, #312e2b) !important;
-  background-color: var(--color-bg-primary, #312e2b) !important;
+  background: #272522 !important;
+  background-color: #272522 !important;
 }
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected):hover {
   background: #403e3a !important; /* Brighter than #353330 on hover */
