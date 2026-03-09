@@ -13666,9 +13666,11 @@ body {
   color: var(--color-text-primary, rgba(255, 255, 255, 0.85)) !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected .chapter-title,
-.courses-content--v9 .chapter-v2--v9-selected .chapter-count,
-.courses-content--v9 .chapter-v2--v9-selected .chapter-chevron-v9 {
+.courses-content--v9 .chapter-v2--v9-selected .chapter-count {
   color: var(--color-text-primary, rgba(255, 255, 255, 0.85)) !important;
+}
+.courses-content--v9 .chapter-v2--v9-selected .chapter-chevron-v9 {
+  color: rgba(255, 255, 255, 0.3) !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected:hover {
   background: linear-gradient(var(--color-bg-subtle, rgba(255, 255, 255, 0.04)), var(--color-bg-subtle, rgba(255, 255, 255, 0.04))), var(--color-bg-primary, #312e2b) !important; /* Also brighten selected chapter on hover */
@@ -13688,7 +13690,7 @@ body {
   flex-shrink: 0;
 }
 .courses-content--v9 .chapter-chevron-v9 {
-  color: rgba(255, 255, 255, 0.4) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
   width: 16px !important;
   height: 16px !important;
   font-size: 16px !important;
