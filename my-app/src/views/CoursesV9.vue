@@ -7234,7 +7234,7 @@ onUnmounted(() => {
                           <CcIcon
                             name="arrow-chevron-bottom"
                             variant="glyph"
-                            :size="24"
+                            :size="16"
                             class="chapter-chevron-v9"
                           />
                         </span>
@@ -7558,7 +7558,7 @@ v-if="isVideoV6OrV7"
                           <CcIcon
                             name="arrow-chevron-bottom"
                             variant="glyph"
-                            :size="24"
+                            :size="16"
                             class="chapter-chevron-v9"
                           />
                         </span>
@@ -13653,16 +13653,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 .courses-content--v9 .chapter-chevron-v9 {
-  color: rgba(255, 255, 255, 1) !important;
-  width: 32px !important;
-  height: 32px !important;
-  font-size: 32px !important;
-  display: block !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  width: 16px !important;
+  height: 16px !important;
+  font-size: 16px !important;
   transition: transform 0.2s ease;
 }
 .courses-content--v9 .chapter-v2[aria-expanded="true"] .chapter-chevron-v9 {
