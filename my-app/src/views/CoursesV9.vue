@@ -13688,7 +13688,7 @@ body {
   flex-shrink: 0;
 }
 .courses-content--v9 .chapter-chevron-v9 {
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: rgba(255, 255, 255, 0.4) !important;
   width: 16px !important;
   height: 16px !important;
   font-size: 16px !important;
