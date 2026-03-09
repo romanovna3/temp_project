@@ -13629,7 +13629,7 @@ body {
 
 /* V9: chapters hover/selection logic when functioning as an accordion */
 .courses-content--v9 .chapter-content {
-  gap: 8px !important;
+  gap: 12px !important;
 }
 
 .courses-content--v9 .chapter-v2 {
