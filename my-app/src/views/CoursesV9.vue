@@ -7238,14 +7238,22 @@ onUnmounted(() => {
                             :key="`progress-${section.id}`"
                             :progress="getSectionProgressPercent(section)"
                             :size="24"
+                            :class="{ 'chapter-progress-circle-v9': isVideoV9 }"
+                          />
+                          <CcIcon
+                            v-if="isVideoV9"
+                            :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
+                            variant="glyph"
+                            :size="24"
+                            class="chapter-chevron-v9"
                           />
                         </span>
                         <span class="chapter-title">{{ section.name }}</span>
                       </div>
                       <div class="chapter-variations">
                         <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
-                        <span v-if="useAccordionChapters || isVideoV9" class="chapter-chevron-wrap" aria-hidden="true">
-                          <CcIcon :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'" variant="glyph" :size="16" class="chapter-chevron" />
+                        <span v-if="useAccordionChapters" class="chapter-chevron-wrap" aria-hidden="true">
+                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
                         </span>
                       </div>
                     </div>
@@ -13617,10 +13625,25 @@ body {
   background: transparent;
 }
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected):hover {
-  background: var(--chapter-selected-bg, #353330);
+  background: #403e3a; /* Brighter than #353330 on hover */
 }
 .courses-content--v9 .chapter-v2--v9-selected,
 .courses-content--v9 .chapter-v2--v9-selected[aria-expanded="true"] {
   background: var(--chapter-selected-bg, #353330);
+}
+.courses-content--v9 .chapter-v2--v9-selected:hover {
+  background: #403e3a; /* Also brighten selected chapter on hover */
+}
+
+/* V9 chapter hover icon swapping */
+.courses-content--v9 .chapter-chevron-v9 {
+  display: none;
+  color: var(--color-text-primary);
+}
+.courses-content--v9 .chapter-v2:hover .chapter-chevron-v9 {
+  display: block;
+}
+.courses-content--v9 .chapter-v2:hover .chapter-progress-circle-v9 {
+  display: none;
 }
 </style>
