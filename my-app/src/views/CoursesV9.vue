@@ -7229,6 +7229,14 @@ onUnmounted(() => {
                         :progress="getSectionProgressPercent(section)"
                         :size="24"
                         class="chapter-v2__timeline-progress"
+                        :class="{ 'chapter-progress-circle-v9': isVideoV9 }"
+                      />
+                      <CcIcon
+                        v-if="isVideoV9"
+                        :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
+                        variant="glyph"
+                        :size="24"
+                        class="chapter-chevron-v9 chapter-v2__timeline-progress"
                       />
                     </div>
                     <div class="chapter-progress-name">
@@ -7562,14 +7570,22 @@ v-if="isVideoV6OrV7"
                             :key="`progress-${section.id}`"
                             :progress="getSectionProgressPercent(section)"
                             :size="24"
+                            :class="{ 'chapter-progress-circle-v9': isVideoV9 }"
+                          />
+                          <CcIcon
+                            v-if="isVideoV9"
+                            :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
+                            variant="glyph"
+                            :size="24"
+                            class="chapter-chevron-v9"
                           />
                         </span>
                         <span class="chapter-title">{{ section.name }}</span>
                       </div>
                       <div class="chapter-variations">
                         <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
-                        <span v-if="useAccordionChapters || isVideoV9" class="chapter-chevron-wrap" aria-hidden="true">
-                          <CcIcon :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'" variant="glyph" :size="16" class="chapter-chevron" />
+                        <span v-if="useAccordionChapters" class="chapter-chevron-wrap" aria-hidden="true">
+                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
                         </span>
                       </div>
                     </div>
@@ -13622,28 +13638,29 @@ body {
 
 /* V9: chapters hover/selection logic when functioning as an accordion */
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected)[aria-expanded="true"] {
-  background: transparent;
+  background: transparent !important;
 }
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected):hover {
-  background: #403e3a; /* Brighter than #353330 on hover */
+  background: #403e3a !important; /* Brighter than #353330 on hover */
 }
 .courses-content--v9 .chapter-v2--v9-selected,
 .courses-content--v9 .chapter-v2--v9-selected[aria-expanded="true"] {
-  background: var(--chapter-selected-bg, #353330);
+  background: var(--chapter-selected-bg, #353330) !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected:hover {
-  background: #403e3a; /* Also brighten selected chapter on hover */
+  background: #403e3a !important; /* Also brighten selected chapter on hover */
 }
 
 /* V9 chapter hover icon swapping */
 .courses-content--v9 .chapter-chevron-v9 {
-  display: none;
-  color: var(--color-text-primary);
+  display: none !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+  width: 32px !important;
 }
 .courses-content--v9 .chapter-v2:hover .chapter-chevron-v9 {
-  display: block;
+  display: flex !important;
 }
 .courses-content--v9 .chapter-v2:hover .chapter-progress-circle-v9 {
-  display: none;
+  display: none !important;
 }
 </style>
