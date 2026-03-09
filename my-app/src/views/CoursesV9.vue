@@ -13629,7 +13629,7 @@ body {
 
 /* V9: chapters hover/selection logic when functioning as an accordion */
 .courses-content--v9 .chapter-content {
-  gap: 4px !important;
+  gap: 8px !important;
 }
 
 .courses-content--v9 .chapter-v2 {
@@ -13647,6 +13647,12 @@ body {
 .courses-content--v9 .chapter-v2--v9-selected,
 .courses-content--v9 .chapter-v2--v9-selected[aria-expanded="true"] {
   background: linear-gradient(var(--color-bg-subtlest, rgba(255, 255, 255, 0.02)), var(--color-bg-subtlest, rgba(255, 255, 255, 0.02))), var(--color-bg-primary, #312e2b) !important;
+  color: rgba(0, 0, 0, 1) !important;
+}
+.courses-content--v9 .chapter-v2--v9-selected .chapter-title,
+.courses-content--v9 .chapter-v2--v9-selected .chapter-count,
+.courses-content--v9 .chapter-v2--v9-selected .chapter-chevron-v9 {
+  color: rgba(0, 0, 0, 1) !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected:hover {
   background: linear-gradient(var(--color-bg-subtle, rgba(255, 255, 255, 0.04)), var(--color-bg-subtle, rgba(255, 255, 255, 0.04))), var(--color-bg-primary, #312e2b) !important; /* Also brighten selected chapter on hover */
