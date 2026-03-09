@@ -10932,8 +10932,10 @@ body {
 }
 /* V9: chapter sticky top = 0 (scroll viewport is already below the fixed stack) */
 .courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--v4-timeline,
-.courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline {
-  top: 0;
+.courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline,
+.courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--v6-timeline-right,
+.courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v6-timeline-right {
+  top: 0 !important;
 }
 .course-card-frame--with-completion .course-cover-wrapper {
   width: 80px;
