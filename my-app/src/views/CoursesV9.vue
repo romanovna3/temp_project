@@ -13637,17 +13637,17 @@ body {
   background-color: #272522 !important;
 }
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected):hover {
-  background: #403e3a !important; /* Brighter than #353330 on hover */
-  background-color: #403e3a !important;
+  background: #312e2b !important; /* Brighter than #272522 on hover */
+  background-color: #312e2b !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected,
 .courses-content--v9 .chapter-v2--v9-selected[aria-expanded="true"] {
-  background: var(--chapter-selected-bg, #353330) !important;
-  background-color: var(--chapter-selected-bg, #353330) !important;
+  background: #312e2b !important;
+  background-color: #312e2b !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected:hover {
-  background: #403e3a !important; /* Also brighten selected chapter on hover */
-  background-color: #403e3a !important;
+  background: #3a3835 !important; /* Also brighten selected chapter on hover */
+  background-color: #3a3835 !important;
 }
 
 /* V9 chapter hover icon swapping */
