@@ -610,26 +610,9 @@ function toggleSection(sectionId) {
         )
         if (!sectionEl) return
         
-        const expandDuration = 360
-        const start = performance.now()
-        const tick = () => {
-          const elapsed = performance.now() - start
-          if (elapsed >= expandDuration) {
-            // One final snap to be perfectly accurate
-            const containerRectFinal = container.getBoundingClientRect()
-            const sectionRectFinal = sectionEl.getBoundingClientRect()
-            const finalScrollDelta = sectionRectFinal.top - containerRectFinal.top
-            container.scrollTop += finalScrollDelta
-            return
-          }
-          const containerRectNow = container.getBoundingClientRect()
-          const sectionRectNow = sectionEl.getBoundingClientRect()
-          const scrollDelta = sectionRectNow.top - containerRectNow.top
-          
-          if (Math.abs(scrollDelta) > 1) container.scrollTop += scrollDelta
-          requestAnimationFrame(tick)
-        }
-        requestAnimationFrame(tick)
+        setTimeout(() => {
+          sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 50)
       })
     }
     return
@@ -7251,7 +7234,7 @@ onUnmounted(() => {
                           <CcIcon
                             :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
                             variant="glyph"
-                            :size="20"
+                            :size="24"
                             class="chapter-chevron-v9"
                           />
                         </span>
@@ -7575,7 +7558,7 @@ v-if="isVideoV6OrV7"
                           <CcIcon
                             :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
                             variant="glyph"
-                            :size="20"
+                            :size="24"
                             class="chapter-chevron-v9"
                           />
                         </span>
@@ -13644,20 +13627,25 @@ body {
 
 /* V9: chapters hover/selection logic when functioning as an accordion */
 .courses-content--v9 .chapter-v2 {
-  background: var(--color-bg-primary, #312e2b);
+  background: var(--color-bg-primary, #312e2b) !important;
+  background-color: var(--color-bg-primary, #312e2b) !important;
 }
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected)[aria-expanded="true"] {
   background: var(--color-bg-primary, #312e2b) !important;
+  background-color: var(--color-bg-primary, #312e2b) !important;
 }
 .courses-content--v9 .chapter-v2:not(.chapter-v2--v9-selected):hover {
   background: #403e3a !important; /* Brighter than #353330 on hover */
+  background-color: #403e3a !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected,
 .courses-content--v9 .chapter-v2--v9-selected[aria-expanded="true"] {
   background: var(--chapter-selected-bg, #353330) !important;
+  background-color: var(--chapter-selected-bg, #353330) !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected:hover {
   background: #403e3a !important; /* Also brighten selected chapter on hover */
+  background-color: #403e3a !important;
 }
 
 /* V9 chapter hover icon swapping */
@@ -13671,5 +13659,9 @@ body {
 }
 .courses-content--v9 .chapter-chevron-v9 {
   color: rgba(255, 255, 255, 0.35) !important;
+  width: 20px !important;
+  height: 20px !important;
+  font-size: 20px !important;
+  display: block !important;
 }
 </style>
