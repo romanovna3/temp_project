@@ -611,10 +611,8 @@ function toggleSection(sectionId) {
         if (!sectionEl) return
         
         setTimeout(() => {
-          // Instead of smooth scrolling, we just let it stick at the top normally, 
-          // but we do need to scroll enough to make sure it's at the top.
-          const topOffset = sectionEl.offsetTop;
-          container.scrollTo({ top: topOffset, behavior: 'smooth' });
+          // Fix for "clicking chapter 5 opens chapter 1" - using scrollIntoView instead of offsetTop to ensure correct scrolling behavior regardless of parent relative positioning
+          sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 50)
       })
     }
