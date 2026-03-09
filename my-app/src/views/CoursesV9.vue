@@ -6936,7 +6936,7 @@ onUnmounted(() => {
                       <div class="v22-chapter-video-block">
                       </div>
                       <Transition name="chapter-moves">
-                        <div v-if="section.practiceMoves.length" class="move-list-wrap">
+                        <div v-if="isSectionOpen(section.id) && section.practiceMoves.length" class="move-list-wrap">
                           <div class="chapter-line-cards-list-wrapper">
                             <div
                               class="opening-course-cards-list chapter-line-cards-list"
