@@ -13572,4 +13572,9 @@ body {
   62.5% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* V9: 85% opacity for chapter line card title on hover for all statuses */
+.courses-content--v9 .chapter-line-card:hover .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.85);
+}
 </style>
