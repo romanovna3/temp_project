@@ -665,7 +665,9 @@ function isSectionExpanded(sectionId) {
 /** When false (default): all chapters shown as headers, always open. When true: accordion (one open at a time). */
 function isSectionOpen(sectionId) {
   if (isVideoV9.value) {
-    return !v9ChaptersCollapsed.value
+    if (v9ChaptersCollapsed.value) return false
+    if (v9SelectedChapterId.value) return v9SelectedChapterId.value === sectionId
+    return true // if not collapsed and nothing explicitly selected, assume all are open initially
   }
   return useAccordionChapters.value ? isSectionExpanded(sectionId) : true
 }
