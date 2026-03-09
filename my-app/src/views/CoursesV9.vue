@@ -594,12 +594,12 @@ const useAccordionChapters = ref(false)
 const expandedSectionIds = ref(new Set())
 function toggleSection(sectionId) {
   if (isVideoV9.value) {
-    if (!v9ChaptersCollapsed.value) {
-      // currently all open, so collapse them
+    if (!v9ChaptersCollapsed.value && v9SelectedChapterId.value === sectionId) {
+      // currently open and clicking the same one -> collapse all
       v9ChaptersCollapsed.value = true
       v9SelectedChapterId.value = null
     } else {
-      // currently collapsed, so open all and scroll to the clicked section
+      // currently collapsed, or clicking a DIFFERENT chapter while expanded -> open that new one
       v9ChaptersCollapsed.value = false
       v9SelectedChapterId.value = sectionId
       nextTick(() => {
