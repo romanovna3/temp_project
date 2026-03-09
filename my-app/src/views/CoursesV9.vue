@@ -12361,7 +12361,7 @@ body {
   flex: 1 0 0;
   min-width: 1px;
   min-height: 1px;
-  font-family: var(--font-family-heading, 'Chess Sans', sans-serif);
+  font-family: var(--font-family-system, system-ui, -apple-system, BlinkMacSystemFont, sans-serif);
   font-weight: 600;
   font-size: 14px;
   line-height: 16px;
