@@ -7232,7 +7232,7 @@ onUnmounted(() => {
                       <div class="chapter-content">
                         <span v-if="isVideoV9" class="chapter-v9-left-chevron">
                           <CcIcon
-                            :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
+                            name="arrow-chevron-bottom"
                             variant="glyph"
                             :size="24"
                             class="chapter-chevron-v9"
@@ -7556,7 +7556,7 @@ v-if="isVideoV6OrV7"
                       <div class="chapter-content">
                         <span v-if="isVideoV9" class="chapter-v9-left-chevron">
                           <CcIcon
-                            :name="isSectionOpen(section.id) ? 'arrow-chevron-up' : 'arrow-chevron-bottom'"
+                            name="arrow-chevron-bottom"
                             variant="glyph"
                             :size="24"
                             class="chapter-chevron-v9"
@@ -13653,15 +13653,19 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
 }
 .courses-content--v9 .chapter-chevron-v9 {
-  color: rgba(255, 255, 255, 0.35) !important;
-  width: 20px !important;
-  height: 20px !important;
-  font-size: 20px !important;
+  color: rgba(255, 255, 255, 1) !important;
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 32px !important;
   display: block !important;
+  transition: transform 0.2s ease;
+}
+.courses-content--v9 .chapter-v2[aria-expanded="true"] .chapter-chevron-v9 {
+  transform: rotate(180deg);
 }
 </style>
