@@ -13633,29 +13633,23 @@ body {
 }
 
 .courses-content--v9 .chapter-v2 {
-  background: var(--color-bg-subtle, rgba(255, 255, 255, 0.04)) !important;
-  background-color: var(--color-bg-subtle, rgba(255, 255, 255, 0.04)) !important;
+  background: linear-gradient(var(--color-bg-subtle, rgba(255, 255, 255, 0.04)), var(--color-bg-subtle, rgba(255, 255, 255, 0.04))), var(--color-bg-primary, #312e2b) !important;
 }
 .courses-content--v9 .v9-chapters-collapsed .chapter-v2 {
   background: #272522 !important;
-  background-color: #272522 !important;
 }
 .courses-content--v9 .v9-chapters-collapsed .chapter-v2:not(.chapter-v2--v9-selected):hover {
   background: #312e2b !important; /* Brighter than #272522 on hover */
-  background-color: #312e2b !important;
 }
 .courses-content--v9:not(.v9-chapters-collapsed) .chapter-v2:not(.chapter-v2--v9-selected):hover {
-  background: var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)) !important;
-  background-color: var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)) !important;
+  background: linear-gradient(var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)), var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08))), var(--color-bg-primary, #312e2b) !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected,
 .courses-content--v9 .chapter-v2--v9-selected[aria-expanded="true"] {
-  background: var(--color-bg-subtle, rgba(255, 255, 255, 0.04)) !important;
-  background-color: var(--color-bg-subtle, rgba(255, 255, 255, 0.04)) !important;
+  background: linear-gradient(var(--color-bg-subtle, rgba(255, 255, 255, 0.04)), var(--color-bg-subtle, rgba(255, 255, 255, 0.04))), var(--color-bg-primary, #312e2b) !important;
 }
 .courses-content--v9 .chapter-v2--v9-selected:hover {
-  background: var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)) !important; /* Also brighten selected chapter on hover */
-  background-color: var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)) !important;
+  background: linear-gradient(var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08)), var(--color-bg-subtle-hover, rgba(255, 255, 255, 0.08))), var(--color-bg-primary, #312e2b) !important; /* Also brighten selected chapter on hover */
 }
 
 /* V9 chapter hover icon swapping */
