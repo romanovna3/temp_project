@@ -10212,7 +10212,7 @@ body {
   flex-direction: column;
   flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 4px;
+  gap: 0;
   width: 100%;
   flex-shrink: 0;
   min-width: 0;
@@ -11301,7 +11301,7 @@ body {
   object-fit: cover;
   border-radius: 3px;
 }
-/* V7 content: height 72px (matches course-page cover), title/author at top, progress row at bottom (baseline-aligned with cover) */
+/* V7 content: height 72px (matches course-page cover), title/author at top, progress row at bottom */
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion {
   padding: 0;
   width: 100%;
@@ -11309,10 +11309,12 @@ body {
   height: 72px;
   min-height: 72px;
   max-height: 72px;
+  display: flex;
+  flex-direction: column;
   justify-content: space-between;
   align-items: flex-start;
   overflow: visible;
-  gap: 8px;
+  gap: 0;
 }
 .course-card-frame--with-completion .opening-course-card__content--v7-completion .opening-course-card__title-author {
   flex: 0 0 auto;
