@@ -5134,7 +5134,8 @@ function onCoursesContentScroll() {
   if ((isVideoV7OrV8OrV9.value || isVideoV10.value) && statsPanelExpanded.value) {
     statsPanelExpanded.value = false
   }
-  if (!isVideoV4OrV5OrV6.value) return
+  const useScrollLinkedTabs = isVideoV4OrV5OrV6.value || isVideoV9.value || isVideoV10.value
+  if (!useScrollLinkedTabs) return
   if (tabsScrollRafId != null) return
   tabsScrollRafId = requestAnimationFrame(() => {
     tabsScrollRafId = null
@@ -5240,6 +5241,28 @@ function setupCourseTabsScrollListener() {
     })
     tabsResizeObserver.observe(el)
     if ((isVideoV9.value || isVideoV10.value) && courseCardV9Ref.value) {
+      courseCardResizeObserver = new ResizeObserver(() => {
+        const card = courseCardV9Ref.value
+        if (card && el) {
+          const cardH = card.offsetHeight || 120
+          courseCardHeightPx.value = cardH
+          el.style.setProperty('--course-h', cardH + 'px')
+        }
+      })
+      courseCardResizeObserver.observe(courseCardV9Ref.value)
+    }
+  } else if (isVideoV9.value || isVideoV10.value) {
+    el.style.setProperty('--header-h', COURSE_HEADER_H_PX + 'px')
+    el.style.setProperty('--tabs-h', courseTabsH.value + 'px')
+    el.style.setProperty('--tabs-y', tabsY + 'px')
+    el.style.setProperty('--tabs-visible', (tabsY + courseTabsH.value) + 'px')
+    if (courseCardV9Ref.value) {
+      const cardH = courseCardV9Ref.value.offsetHeight || 120
+      courseCardHeightPx.value = cardH
+      el.style.setProperty('--course-h', cardH + 'px')
+    }
+    computeTabsStickyStart()
+    if (courseCardV9Ref.value) {
       courseCardResizeObserver = new ResizeObserver(() => {
         const card = courseCardV9Ref.value
         if (card && el) {
@@ -6432,9 +6455,9 @@ onUnmounted(() => {
               </div>
             </section>
           </div>
-          <!-- V4/V5/V6/V7: tabs at top (Learn / Practice). V9: in fixed stack. -->
-          <template v-if="isVideoV9">
-            <!-- V9 fixed stack: header + tabs (scroll-linked) + course card. One scroll container below. -->
+          <!-- V4/V5/V6/V7: tabs at top (Learn / Practice). V9/V10: in fixed stack. -->
+          <template v-if="isVideoV9 || isVideoV10">
+            <!-- V9/V10 fixed stack: header + tabs (scroll-linked) + course card. One scroll container below. -->
             <div
               ref="coursesContentV9WrapperRef"
               class="courses-content--v9-stack"
@@ -7215,8 +7238,8 @@ onUnmounted(() => {
               </template>
               <!-- V2/V1: accordion (useAccordionChapters=true) or all chapters as headers, always open (default) -->
               <template v-else>
-                <!-- V2.3: chapter as button (accordion) or div (header only) -->
-                <div v-if="isVideoV2_3OrV24" class="v23-section-sticky-wrap">
+                <!-- V2.3/V10: chapter as button (accordion) or div (header only); sticky wrap for stick-at-top -->
+                <div v-if="isVideoV2_3OrV24 || isVideoV10" class="v23-section-sticky-wrap">
                   <!-- V2.3/V4: wrapper for layout; V4 draws one vertical line from chapter checkmark down through cards (masked at last card) -->
                   <div
                     class="v23-section-timeline-wrap"
