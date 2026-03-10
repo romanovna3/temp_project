@@ -11380,7 +11380,8 @@ body {
   height: 32px;
 }
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion .course-card-completion--in-mastery-row {
-  justify-content: center;
+  height: 100%;
+  justify-content: flex-end;
   align-items: flex-end;
 }
 .course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-mastery-row {
