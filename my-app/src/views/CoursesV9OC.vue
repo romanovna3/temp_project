@@ -11339,6 +11339,10 @@ body {
   margin-top: 0;
   flex-basis: auto;
 }
+.course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion .course-card-completion__bar-row {
+  justify-content: center;
+  align-items: flex-end;
+}
 .course-card-completion-row {
   display: flex;
   align-items: flex-end;
