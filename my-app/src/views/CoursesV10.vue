@@ -6668,7 +6668,7 @@ onUnmounted(() => {
                         @click="courseTabsActive = 'stats'"
                       />
                     </cc-tab-group>
-                    <span class="v10-version-badge" data-version="v10" aria-hidden="true">V10</span>
+                    <span v-show="courseTabsActive === 'content'" class="v10-version-badge" data-version="v10" aria-hidden="true">V10</span>
                   </div>
                 </div>
                 <div ref="courseCardV9Ref" class="courses-content--v9-course-card-wrap courses-content--v9-course-card-wrap--v10-in-flow">
