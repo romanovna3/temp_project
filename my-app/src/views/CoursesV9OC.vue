@@ -5296,7 +5296,7 @@ const courseCardV9Ref = ref(null)
 const coachV9Ref = ref(null)
 const coachHeightPx = ref(120) // fallback; measured by ResizeObserver (opening coach has 96px avatar + bubble)
 
-const v9StackHeightStyle = computed(() => (isVideoV9.value ? { height: 'calc(var(--header-h, 0px) + var(--coach-h, 120px) + var(--tabs-visible, 48px))' } : undefined))
+const v9StackHeightStyle = computed(() => (isVideoV9.value ? { height: 'calc(var(--header-h, 0px) + var(--coach-h, 120px))' } : undefined))
 
 // V4/V5: Scroll-linked tabs
 const COURSE_HEADER_H_PX = 0
@@ -6718,27 +6718,6 @@ onUnmounted(() => {
                   </div>
                 </section>
               </div>
-              <!-- V9: tabs under coach (fixed stack) -->
-              <div
-                ref="courseTabsWrapRef"
-                class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--v9-under-coach"
-              >
-                <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
-                  <cc-tab-item
-                    id="content"
-                    :label="courseTabContentLabel"
-                    :isActive="courseTabsActive === 'content'"
-                    @click="courseTabsActive = 'content'"
-                  />
-                  <cc-tab-item
-                    id="stats"
-                    :label="courseTabStatsLabel"
-                    :badge="(openingCourseIdFromRoute && scenarioEffectivePracticeCount === 0) ? '' : (scenarioPreset !== 'nothing-to-practice' && scenarioPreset !== 'new-course' ? String(scenarioEffectivePracticeCount) : '')"
-                    :isActive="courseTabsActive === 'stats'"
-                    @click="courseTabsActive = 'stats'"
-                  />
-                </cc-tab-group>
-              </div>
           </div>
           </template>
           <template v-else>
@@ -6885,7 +6864,27 @@ onUnmounted(() => {
           </div>
           </template>
           <template v-if="isVideoV9"><div ref="v9ScrollRef" class="courses-content courses-content--v9-scroll courses-content--line-items-no-click" @scroll.passive="onCoursesContentScroll">
-          <!-- V9: course card scrolls with content; only coach (and tabs) are fixed -->
+          <!-- V9: tabs under coach, above course card (scroll with content) -->
+          <div
+            ref="courseTabsWrapRef"
+            class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--top"
+          >
+            <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
+              <cc-tab-item
+                id="content"
+                :label="courseTabContentLabel"
+                :isActive="courseTabsActive === 'content'"
+                @click="courseTabsActive = 'content'"
+              />
+              <cc-tab-item
+                id="stats"
+                :label="courseTabStatsLabel"
+                :badge="(openingCourseIdFromRoute && scenarioEffectivePracticeCount === 0) ? '' : (scenarioPreset !== 'nothing-to-practice' && scenarioPreset !== 'new-course' ? String(scenarioEffectivePracticeCount) : '')"
+                :isActive="courseTabsActive === 'stats'"
+                @click="courseTabsActive = 'stats'"
+              />
+            </cc-tab-group>
+          </div>
           <div ref="courseCardV9Ref" class="courses-content--v9-course-card-wrap courses-content--v9-course-card-wrap--scrolls">
             <div v-for="course in courses" :key="course.id" class="course-card-frame course-card-frame--with-completion">
               <article class="opening-course-card opening-course-card--hover-v1 course-card--main" data-name="Course Card">
