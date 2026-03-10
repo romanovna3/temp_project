@@ -5540,12 +5540,12 @@ function isPracticeSectionFullyVisible(sectionId) {
   return practiceSectionFullyVisibleIds.value.has(sectionId)
 }
 function applySectionLineMask(wraps, cols) {
-  const lineTopOffset = 28
   for (const sectionId of Object.keys(wraps)) {
     const wrap = wraps[sectionId]
     const lastCol = cols[sectionId]
     const lineEl = wrap?.querySelector?.('.v23-section-timeline-wrap__line')
     if (!lineEl) continue
+    const lineTopOffset = wrap?.classList?.contains('v23-section-timeline-wrap--no-chapter') ? 0 : 28
     if (!wrap || !lastCol) {
       lineEl.style.removeProperty('top')
       lineEl.style.removeProperty('bottom')
@@ -6782,7 +6782,7 @@ onUnmounted(() => {
                             </div>
                           </div>
                           <div v-else-if="courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
-                            <div class="course-card-mastery-group">
+                            <div v-if="false" class="course-card-mastery-group">
                               <template v-if="scenarioPreset === 'nothing-to-practice'">
                                 <div class="extra-data-practice-in" data-name="PracticeIn">
                                   <span class="extra-data-label">Practice in:</span>
@@ -6897,7 +6897,7 @@ onUnmounted(() => {
                         </button>
                       </div>
                       <div v-else-if="isVideoV7OrV8OrV9 && courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
-                        <div class="course-card-mastery-group">
+                        <div v-if="false" class="course-card-mastery-group">
                           <template v-if="scenarioPreset === 'nothing-to-practice'">
                             <div class="extra-data-practice-in" data-name="PracticeIn">
                               <span class="extra-data-label">Practice in:</span>
@@ -7513,10 +7513,14 @@ onUnmounted(() => {
                   <!-- V2.3/V4: wrapper for layout; V4 draws one vertical line from chapter checkmark down through cards (masked at last card) -->
                   <div
                     class="v23-section-timeline-wrap"
-                    :class="{ 'v23-section-timeline-wrap--v4': isVideoV2_4OrV5, 'v23-section-timeline-wrap--v6': isVideoV6OrV7 }"
+                    :class="{
+                      'v23-section-timeline-wrap--v4': isVideoV2_4OrV5,
+                      'v23-section-timeline-wrap--v6': isVideoV6OrV7,
+                      'v23-section-timeline-wrap--no-chapter': isLondonSystemWhiteCourse
+                    }"
                     :ref="isVideoV2_4OrV5 ? (el => setSectionLineWrapRef(section.id, el)) : undefined"
                   >
-                    <div v-if="isVideoV2_4OrV5 && !isLondonSystemWhiteCourse" class="v23-section-timeline-wrap__line" aria-hidden="true" />
+                    <div v-if="isVideoV2_4OrV5" class="v23-section-timeline-wrap__line" aria-hidden="true" />
                   <component
                     v-if="!isLondonSystemWhiteCourse"
                     :is="useAccordionChapters ? 'button' : 'div'"
@@ -7643,7 +7647,24 @@ onUnmounted(() => {
                         @mouseenter="setHoveredChapterLine(section, move)"
                         @mouseleave="clearHoveredChapterLine()"
                       >
-                        <!-- Body first in DOM (V6: timeline-col on right via row-reverse) -->
+                        <!-- V6/V7: timeline-col first in DOM so checks are on the very left of the card -->
+                        <div
+                          v-if="isVideoV6OrV7"
+                          class="chapter-line-card__timeline-col"
+                          aria-hidden="true"
+                          :ref="lineIndex === getSectionMovesForDisplay(section).length - 1 ? (el => setSectionLastCardColRef(section.id, el)) : undefined"
+                        >
+                          <span
+                            class="chapter-line-card__timeline-node"
+                            :class="{
+                              'chapter-line-card__timeline-node--completed': move.completed,
+                              'chapter-line-card__timeline-node--v6': isVideoV6OrV7,
+                              'chapter-line-card__timeline-node--next-to-learn': isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id
+                            }"
+                          >
+                            <img v-if="move.completed" :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="chapter-line-card__timeline-node-icon" width="13" height="13" aria-hidden="true" />
+                          </span>
+                        </div>
                         <div
                           class="chapter-line-card__body chapter-line-card__body--no-click"
                           :title="move.text"
@@ -7764,8 +7785,9 @@ v-if="isVideoV6OrV7"
                           </div>
                         </div>
                         </div>
-                        <!-- Timeline col after body in DOM (V6: appears on right) -->
+                        <!-- V4/V5: timeline-col after body (timeline on left of section, col on right of card) -->
                         <div
+                          v-if="!isVideoV6OrV7"
                           class="chapter-line-card__timeline-col"
                           aria-hidden="true"
                           :ref="lineIndex === getSectionMovesForDisplay(section).length - 1 ? (el => setSectionLastCardColRef(section.id, el)) : undefined"
@@ -10380,27 +10402,36 @@ body {
   z-index: 1;
 }
 
-/* ========== V6: timeline on the right ========== */
+/* ========== V6: timeline on the left (same as V4, checks on very left of each card) ========== */
+.v23-section-timeline-wrap--v6 {
+  --timeline-center-offset: calc(12px + var(--timeline-col-width, 24px) / 2); /* align with list padding-left + center of timeline col */
+}
 .v23-section-timeline-wrap--v6 .v23-section-timeline-wrap__line {
-  left: auto;
-  right: calc(12px + var(--timeline-col-width, 24px) / 2);
-  margin-left: 0;
-  margin-right: -1px;
+  left: var(--timeline-center-offset);
+  right: auto;
+  margin-left: -1px;
+  margin-right: 0;
+}
+/* No chapter header (e.g. London System): line starts at top and runs through all checks */
+.v23-section-timeline-wrap--no-chapter .v23-section-timeline-wrap__line {
+  top: 0;
 }
 .chapter-v2--v6-timeline-right {
   flex-direction: row-reverse;
 }
-/* V6: body first in DOM, timeline-col second → normal row order gives body left, checks right */
+/* V6: timeline-col first in DOM, then body → normal row so checks are on the very left of the card */
 .chapter-line-card--v6-timeline-right {
   flex-direction: row;
   padding: 0;
 }
 /* V6: force article padding to 0 and smaller radius (override .opening-course-card / .chapter-line-card) */
 .courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding-top: 4px;
+  padding-bottom: 4px;
   padding-left: 0;
   padding-right: 0;
+  gap: 16px;
+  justify-content: flex-end;
   border-radius: 3px;
 }
 .courses-content--v6 .chapter-line-card__timeline-node--v6 {
@@ -10435,6 +10466,11 @@ body {
 /* Next-to-learn card: green vertical bar on the left (full height of card, aligned to main container left edge) */
 .courses-content--v6 .chapter-line-card--next-to-learn {
   position: relative;
+}
+.courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right.chapter-line-card--next-to-learn {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  gap: 16px;
 }
 /* Next-to-learn line: same font color as completed lines (override inactive dimming) */
 .courses-content--v6 .chapter-line-card--next-to-learn .opening-course-card__title {
@@ -10616,6 +10652,10 @@ body {
 .chapter-line-card.opening-course-card--hover-v1:hover {
   background: transparent;
 }
+/* Line cards: hide cover/icon column on all lines */
+.chapter-line-card .opening-course-card__cover-wrap {
+  display: none;
+}
 /* Chapter line card: content wrap (V4 default: 12px padding, gap 10px) */
 .chapter-line-card .opening-course-card__content-wrap {
   padding: 12px;
@@ -10784,8 +10824,8 @@ body {
 .courses-content--v6 .chapter-line-card .opening-course-card__content-wrap {
   gap: 10px;
   padding: 0;
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 7px;
+  margin-bottom: 7px;
 }
 .courses-content--v6 .chapter-line-card__intro-cover--v6 .chapter-line-card__intro-cover-icon--v6 {
   flex-shrink: 0;
