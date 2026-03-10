@@ -10224,12 +10224,13 @@ body {
   flex-shrink: 0;
   min-width: 0;
 }
-/* Course page: header with king icon (same as started cards on Opening page). */
+/* Course page: header (title) with color king icon placed under the header. */
 .opening-course-card__started-header {
   display: flex;
+  flex-direction: column;
   flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 4px;
   width: 100%;
   flex-shrink: 0;
   min-width: 0;
@@ -10237,6 +10238,9 @@ body {
 .opening-course-card__started-header .opening-course-card__title {
   width: fit-content;
   min-width: 0;
+}
+.opening-course-card__started-header .opening-course-card__color-icon-wrap {
+  margin-top: 2px;
 }
 .opening-course-card__color-icon-wrap {
   flex-shrink: 0;
