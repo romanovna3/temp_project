@@ -10292,7 +10292,7 @@ body {
 /* V4: section-level timeline wrap – one vertical line per chapter: chapter check → last card check */
 .v23-section-timeline-wrap {
   --timeline-col-width: 24px;
-  --timeline-center-offset: calc(12px + var(--timeline-col-width) / 2);
+  --timeline-center-offset: calc(4px + var(--timeline-col-width) / 2);
   --v23-chapter-row-height: 56px; /* used so line starts at center of chapter row (the check) */
   position: relative;
 }
@@ -10315,10 +10315,10 @@ body {
   mask-size: 100% 100%;
   -webkit-mask-size: 100% 100%;
 }
-/* Chapter row V4: align timeline column with cards list (12px padding then 32px col) */
+/* Chapter row V4: align timeline column with cards list (4px padding then timeline col) */
 /* V4 chapter header: align with timeline, no sticky background, consistent padding/margin (override sticky-title) */
 .chapter-v2--v4-timeline {
-  padding-left: 12px;
+  padding-left: 4px;
   padding-right: 16px;
   padding-bottom: 16px;
   margin-left: 0;
@@ -10336,7 +10336,7 @@ body {
 .chapter-v2--sticky-title-v23.chapter-v2--v4-timeline,
 .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline {
   z-index: 5;
-  padding: 12px;
+  padding: 12px 12px 12px 4px;
   margin: 0;
   min-height: 56px;
   justify-content: center;
@@ -10470,7 +10470,7 @@ body {
 /* Wrapper: inherits timeline vars when used without section wrap (e.g. list-only); line lives in v23-section-timeline-wrap for V4 */
 .chapter-line-cards-list-wrapper {
   --timeline-col-width: 24px;
-  --timeline-center-offset: calc(12px + var(--timeline-col-width) / 2); /* list padding-left + half column */
+  --timeline-center-offset: calc(4px + var(--timeline-col-width) / 2); /* list padding-left + half column */
   position: relative;
 }
 .chapter-line-cards-list-wrapper__line {
@@ -10489,7 +10489,7 @@ body {
 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
   padding-top: 0;
   padding-bottom: 0;
-  padding-left: 12px;
+  padding-left: 4px;
   padding-right: 12px;
   gap: 0;
   margin-left: 0;
@@ -11995,7 +11995,7 @@ body {
   gap: 0;
   padding-top: 4px;
   padding-bottom: 4px;
-  padding-left: 12px;
+  padding-left: 4px;
   padding-right: 12px;
 }
 .course-tab-panel--stats.course-tab-panel--v7 .section-item:first-child .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
