@@ -5352,6 +5352,13 @@ function onCoursesContentScroll() {
     if (!scrollEl || !varsTarget) return
     const H = courseTabsH.value
     const st = typeof scrollEl.scrollTop === 'number' ? scrollEl.scrollTop : 0
+    const ch = scrollEl.clientHeight
+    const sh = scrollEl.scrollHeight
+    const atBottom = sh > ch && st + ch >= sh - 1
+    if (atBottom) {
+      lastScrollTop = st
+      return
+    }
     if (st < tabsStickyStartScrollTop) {
       lastScrollTop = st
       tabsY = 0
