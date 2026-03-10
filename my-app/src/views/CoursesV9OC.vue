@@ -10161,16 +10161,16 @@ body {
   border-radius: var(--radius-xs, 2px);
   overflow: hidden;
 }
-/* Course page main card: same board as Opening list, 60×60 */
+/* Course page main card: same board as Opening list, 72×72 */
 .course-cover-board--course-page {
-  --size-chess-square: 15px;
-  --size-chess-board-cover: 60px;
+  --size-chess-square: 18px;
+  --size-chess-board-cover: 72px;
 }
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__cover-wrap--board {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
-  min-height: 60px;
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  min-height: 72px;
 }
 .course-cover-board__svg {
   display: block;
@@ -11200,15 +11200,15 @@ body {
   gap: 8px;
 }
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__inner {
-  height: 64px;
-  min-height: 64px;
-  max-height: 64px;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
   box-sizing: border-box;
 }
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content-wrap {
-  height: 60px;
-  min-height: 60px;
-  max-height: 60px;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
   gap: 12px;
   box-sizing: border-box;
 }
@@ -11315,7 +11315,7 @@ body {
   object-fit: cover;
   border-radius: 3px;
 }
-/* V7 content: height 60px (matches course-page cover), title/author at top, progress row at bottom (baseline-aligned with cover) */
+/* V7 content: height 72px (matches course-page cover), title/author at top, progress row at bottom (baseline-aligned with cover) */
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion {
   padding: 0;
   width: 100%;
@@ -11408,7 +11408,7 @@ body {
   background: rgba(33, 31, 28, 1);
   padding: 0;
 }
-/* V7 Practice tab only: same 60px height, space-between so mastery row sits at bottom (cover baseline) */
+/* V7 Practice tab only: same 72px height, space-between so mastery row sits at bottom (cover baseline) */
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion.opening-course-card__content--v7-practice {
   padding: 0;
   padding-bottom: 0;
