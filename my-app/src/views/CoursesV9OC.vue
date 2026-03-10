@@ -2936,15 +2936,9 @@ const courseSectionsOC = [
   { id: 'main-level', name: 'Main Level', completed: 0, total: 10, status: 'not_started', videoAvailable: true },
 ]
 
-// London System for White (course 12): 7 lessons from screenshot
+// London System for White (course 12): one chapter "Learn the London System for White" with 7 lines
 const courseSectionsLondonSystemWhite = [
-  { id: 'main-line', name: 'London System: Main Line', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
-  { id: 'black-attacks-center', name: 'London System: Black Attacks the Center', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
-  { id: 'queen-face-off', name: 'London System: Queen Face Off', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
-  { id: 'symmetrical-variation', name: 'London System: Symmetrical Variation', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
-  { id: 'queens-knight-defense', name: "London System: Queen's Knight Defense", completed: 0, total: 1, status: 'not_started', videoAvailable: true },
-  { id: 'kings-indian-setup', name: "London System: King's Indian Setup", completed: 0, total: 1, status: 'not_started', videoAvailable: true },
-  { id: 'poison-pawn-variation', name: 'London System: Poison Pawn Variation', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
+  { id: 'london-system-white', name: 'Learn the London System for White', completed: 0, total: 7, status: 'not_started', videoAvailable: true },
 ]
 
 const sectionMovesOC = {
@@ -2976,15 +2970,17 @@ const FRENCH_DEFENSE_WHITE_MAIN_LEVEL = [
   { id: '10', text: 'Sideline with 3...c5?', completed: false },
 ]
 
-// London System for White: one line per lesson (placeholder content)
+// London System for White: 7 lines under the single chapter (no "London System:" prefix on line names)
 const sectionMovesLondonSystemWhite = {
-  'main-line': [{ id: '1', text: 'London System: Main Line', completed: false, info: true }],
-  'black-attacks-center': [{ id: '1', text: 'London System: Black Attacks the Center', completed: false, info: true }],
-  'queen-face-off': [{ id: '1', text: 'London System: Queen Face Off', completed: false, info: true }],
-  'symmetrical-variation': [{ id: '1', text: 'London System: Symmetrical Variation', completed: false, info: true }],
-  'queens-knight-defense': [{ id: '1', text: "London System: Queen's Knight Defense", completed: false, info: true }],
-  'kings-indian-setup': [{ id: '1', text: "London System: King's Indian Setup", completed: false, info: true }],
-  'poison-pawn-variation': [{ id: '1', text: 'London System: Poison Pawn Variation', completed: false, info: true }],
+  'london-system-white': [
+    { id: '1', text: 'Main Line', completed: false },
+    { id: '2', text: 'Black Attacks the Center', completed: false },
+    { id: '3', text: 'Queen Face Off', completed: false },
+    { id: '4', text: 'Symmetrical Variation', completed: false },
+    { id: '5', text: "Queen's Knight Defense", completed: false },
+    { id: '6', text: "King's Indian Setup", completed: false },
+    { id: '7', text: 'Poison Pawn Variation', completed: false },
+  ],
 }
 
 /** OC section moves: use course-specific content when available (e.g. French Defense for White, London System for White). */
@@ -2999,7 +2995,7 @@ const sectionMovesOCResolved = computed(() => {
   return sectionMovesOC
 })
 
-/** OC sections: use London System 7 lessons when course is London System for White (e.g. courseId 12). */
+/** OC sections: use London System (one chapter, 7 lines) when course is London System for White (e.g. courseId 12). */
 const courseSectionsOCResolved = computed(() => {
   const course = courseFromOCRoute.value
   if (course?.title === 'Learn The London System For White' && course?.playSide === 'white') {
