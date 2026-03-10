@@ -11379,6 +11379,10 @@ body {
   gap: 2px;
   height: 32px;
 }
+.course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion .course-card-completion--in-mastery-row {
+  justify-content: center;
+  align-items: flex-end;
+}
 .course-card-frame--with-completion .opening-course-card__content--v7-completion .course-card-mastery-row {
   padding-bottom: 0;
   gap: 8px;
