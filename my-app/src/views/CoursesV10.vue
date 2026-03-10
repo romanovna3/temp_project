@@ -10979,6 +10979,12 @@ body {
 .courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v6-timeline-right {
   top: 0 !important;
 }
+/* V10: same sticky behavior in scroll container (Learn and Practice); explicit scroll-context selector so Learn tab chapters stick */
+.courses-content--v10.courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--v10-selected {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10;
+}
 .course-card-frame--with-completion .course-cover-wrapper {
   width: 80px;
   height: 80px;
