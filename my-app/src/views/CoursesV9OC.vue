@@ -3004,6 +3004,12 @@ const courseSectionsOCResolved = computed(() => {
   return courseSectionsOC
 })
 
+/** When true, hide the chapter header and show only lines (London System for White). */
+const isLondonSystemWhiteCourse = computed(() => {
+  const course = courseFromOCRoute.value
+  return course?.title === 'Learn The London System For White' && course?.playSide === 'white'
+})
+
 // V2.4: real course – 6 chapters (start-here removed)
 const courseSectionsV24 = [
   { id: 'intro', name: 'Introduction', completed: 0, total: 1, status: 'not_started', videoAvailable: false },
@@ -7521,8 +7527,9 @@ onUnmounted(() => {
                     :class="{ 'v23-section-timeline-wrap--v4': isVideoV2_4OrV5, 'v23-section-timeline-wrap--v6': isVideoV6OrV7 }"
                     :ref="isVideoV2_4OrV5 ? (el => setSectionLineWrapRef(section.id, el)) : undefined"
                   >
-                    <div v-if="isVideoV2_4OrV5" class="v23-section-timeline-wrap__line" aria-hidden="true" />
+                    <div v-if="isVideoV2_4OrV5 && !isLondonSystemWhiteCourse" class="v23-section-timeline-wrap__line" aria-hidden="true" />
                   <component
+                    v-if="!isLondonSystemWhiteCourse"
                     :is="useAccordionChapters ? 'button' : 'div'"
                     :type="useAccordionChapters ? 'button' : undefined"
                     class="chapter-v2 chapter-v2--header"
