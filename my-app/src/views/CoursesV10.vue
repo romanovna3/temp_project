@@ -592,30 +592,35 @@ const displayMasteryLevelItems = computed(() => {
 // Section expand/collapse (accordion) – kept for later; set useAccordionChapters to true to restore
 const v10ChaptersCollapsed = ref(false)
 const v10SelectedChapterId = ref(null)
+/** When true, expand runs with no transition so we can set scrollTop and reveal final state with no visible jump */
+const v10ExpandNoTransition = ref(false)
 const useAccordionChapters = ref(false)
 const expandedSectionIds = ref(new Set())
 function toggleSection(sectionId) {
   if (isVideoV10.value) {
-    if (v10SelectedChapterId.value === sectionId) {
+    const allChaptersExpanded = !v10ChaptersCollapsed.value
+    if (allChaptersExpanded) {
       v10ChaptersCollapsed.value = true
       v10SelectedChapterId.value = null
-    } else {
-      v10ChaptersCollapsed.value = false
-      v10SelectedChapterId.value = sectionId
-      nextTick(() => {
-        const container = v9ScrollRef.value || coursesContentRef.value
-        if (!container) return
-        const sectionEl = Array.from(container.querySelectorAll('.section-item')).find(
-          (el) => el.getAttribute('data-section-id') === sectionId
-        )
-        if (!sectionEl) return
-        
-        setTimeout(() => {
-          // Fix for "clicking chapter 5 opens chapter 1" - using scrollIntoView instead of offsetTop to ensure correct scrolling behavior regardless of parent relative positioning
-          sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50)
-      })
+      return
     }
+    v10SelectedChapterId.value = sectionId
+    v10ExpandNoTransition.value = true
+    v10ChaptersCollapsed.value = false
+    nextTick(() => {
+      const container = v9ScrollRef.value || coursesContentRef.value
+      if (!container) return
+      const sectionEl = Array.from(container.querySelectorAll('.section-item')).find(
+        (el) => el.getAttribute('data-section-id') === sectionId
+      )
+      if (!sectionEl) return
+      const sectionRect = sectionEl.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      container.scrollTop += sectionRect.top - containerRect.top
+      requestAnimationFrame(() => {
+        v10ExpandNoTransition.value = false
+      })
+    })
     return
   }
 
@@ -2838,6 +2843,18 @@ const courseSectionsV23 = [
   }),
 ]
 const courseSections = computed(() => (isVideoV2_4OrV5.value ? courseSectionsV24 : courseSectionsV23))
+
+/** V10: auto-select first chapter so one header has sticky class and sticks when scrolling (visible without clicking). */
+watch(
+  () => (isVideoV10.value && courseSections.value?.length ? courseSections.value[0]?.id : null),
+  (firstId) => {
+    if (firstId != null && v10SelectedChapterId.value == null) {
+      v10SelectedChapterId.value = firstId
+      v10ChaptersCollapsed.value = false
+    }
+  },
+  { immediate: true }
+)
 
 /** First incomplete line in the whole course (only one "next to learn"). */
 const nextToLearnRef = computed(() => {
@@ -5086,11 +5103,146 @@ const coursesContentV9WrapperRef = ref(null)
 const courseCardV9Ref = ref(null)
 const courseCardHeightPx = ref(120) // fallback; measured by ResizeObserver
 
-const v9StackHeightStyle = computed(() => ((isVideoV9.value || isVideoV10.value) ? { height: 'calc(var(--header-h, 0px) + var(--tabs-visible, 48px) + var(--course-h, 120px))' } : undefined))
+// V10: reactive visible height of tabs (0 when hidden) so stack height has one source of truth
+const tabsVisibleHeightPx = ref(48)
 
-// V4/V5: Scroll-linked tabs
+// V9 only: synthetic stack height (V10 uses layout-driven stack, no inline height)
+const v9StackHeightStyle = computed(() => {
+  if (!isVideoV9.value) return undefined
+  return { height: 'calc(var(--header-h, 0px) + var(--tabs-visible, 48px) + var(--course-h, 120px))' }
+})
+
+// V4/V5: Scroll-linked tabs. V10: single source of truth for top stack (no gap above sticky chapter).
 const COURSE_HEADER_H_PX = 0
 const courseTabsH = ref(48)
+/** Temporary debug: set to true to log V10 stack/sticky values (remove after fixing gap) */
+const DEBUG_V10_STACK = false
+/** Temporary debug: set to true to compare Learn vs Practice during upward scroll (tabs visible height, sticky top, transform, CSS vars, tab mode) */
+const DEBUG_V10_SCROLL_UP = false
+function debugV10Stack(label, varsTarget) {
+  if (!DEBUG_V10_STACK || !isVideoV10.value || !varsTarget) return
+  const scrollEl = v9ScrollRef.value
+  const scrollPaddingTop = scrollEl ? getComputedStyle(scrollEl).paddingTop || '0' : '0'
+  const topStackPx = COURSE_HEADER_H_PX + tabsVisibleHeightPx.value + (courseCardHeightPx.value || 120)
+  console.log('[V10 stack]', label, {
+    headerH: COURSE_HEADER_H_PX,
+    tabsVisibleHeightPx: tabsVisibleHeightPx.value,
+    courseCardHeightPx: courseCardHeightPx.value,
+    topStackPx,
+    scrollPaddingTop,
+    tabsY
+  })
+}
+/** Debug: scroll container + stack breakdown – find exact source of extra ~56px (call from console when on V10) */
+function measureV10StickyGap() {
+  if (!isVideoV10.value || !courseCardV9Ref.value || !v9ScrollRef.value) {
+    console.warn('[V10 gap] Need V10, courseCardV9Ref, v9ScrollRef')
+    return
+  }
+  const courseCardEl = courseCardV9Ref.value
+  const scrollContainerEl = v9ScrollRef.value
+  const firstSticky = scrollContainerEl.querySelector('.chapter-v2--sticky-title-v23, .chapter-v2--v10-selected')
+  if (!firstSticky) {
+    console.warn('[V10 gap] No sticky chapter found')
+    return
+  }
+  const courseCardBottom = courseCardEl.getBoundingClientRect().bottom
+  const scrollContainerTop = scrollContainerEl.getBoundingClientRect().top
+  const stickyChapterTop = firstSticky.getBoundingClientRect().top
+  const gapToCard = stickyChapterTop - courseCardBottom
+  const gapToScrollTop = stickyChapterTop - scrollContainerTop
+  const parent = scrollContainerEl.parentElement
+  const parentStyle = parent ? getComputedStyle(parent) : null
+  const stackEl = document.querySelector('.courses-content--v9-stack')
+  const stackRect = stackEl ? stackEl.getBoundingClientRect() : null
+  const stackHeightPx = stackEl ? stackEl.offsetHeight : null
+  const headerHeight = COURSE_HEADER_H_PX
+  const tabsVisibleHeight = tabsVisibleHeightPx.value
+  const courseCardHeight = courseCardHeightPx.value ?? 120
+  const expectedStackHeight = headerHeight + tabsVisibleHeight + courseCardHeight
+  const panelTop = parent ? parent.getBoundingClientRect().top : null
+  const expectedScrollContainerTop = panelTop != null ? panelTop + expectedStackHeight : null
+  const scrollContainerOffsetFromExpected = expectedScrollContainerTop != null ? Math.round((scrollContainerTop - expectedScrollContainerTop) * 10) / 10 : null
+
+  const stackChildrenBreakdown = []
+  if (stackEl) {
+    const directChildren = Array.from(stackEl.children)
+    directChildren.forEach((child, i) => {
+      const cs = getComputedStyle(child)
+      const rect = child.getBoundingClientRect()
+      stackChildrenBreakdown.push({
+        index: i,
+        className: child.className || child.tagName,
+        offsetHeight: child.offsetHeight,
+        getBoundingClientRectHeight: Math.round(rect.height * 10) / 10,
+        position: cs.position,
+        minHeight: cs.minHeight,
+        height: cs.height,
+        marginTop: cs.marginTop,
+        marginBottom: cs.marginBottom,
+        paddingTop: cs.paddingTop,
+        paddingBottom: cs.paddingBottom
+      })
+    })
+  }
+
+  const stackComputedHeight = stackEl ? getComputedStyle(stackEl).height : null
+  const stackInlineHeight = stackEl ? stackEl.style.height : null
+
+  console.log('[V10 stack breakdown]', {
+    headerHeight,
+    tabsVisibleHeight,
+    courseCardHeight,
+    expectedVisualStackHeight: expectedStackHeight,
+    stackHeightPx,
+    stackInlineHeight,
+    stackComputedHeight,
+    stackHeightMismatch: stackHeightPx != null ? Math.round((stackHeightPx - expectedStackHeight) * 10) / 10 : null,
+    stackDirectChildrenHeights: stackChildrenBreakdown,
+    scrollContainerTop: Math.round(scrollContainerTop * 10) / 10,
+    expectedScrollContainerTop: expectedScrollContainerTop != null ? Math.round(expectedScrollContainerTop * 10) / 10 : null,
+    scrollContainerOffsetFromExpected,
+    courseCardBottom: Math.round(courseCardBottom * 10) / 10,
+    gapToCard: Math.round(gapToCard * 10) / 10,
+    gapToScrollTop: Math.round(gapToScrollTop * 10) / 10
+  })
+
+  const stickyCs = getComputedStyle(firstSticky)
+  const stickyRect = firstSticky.getBoundingClientRect()
+  const parentChain = []
+  let node = firstSticky.parentElement
+  let depth = 0
+  while (node && node !== scrollContainerEl && depth < 8) {
+    const cs = getComputedStyle(node)
+    const r = node.getBoundingClientRect()
+    parentChain.push({
+      tag: node.tagName,
+      class: (node.className && typeof node.className === 'string') ? node.className.slice(0, 80) : '',
+      position: cs.position,
+      transform: cs.transform,
+      paddingTop: cs.paddingTop,
+      marginTop: cs.marginTop,
+      overflow: cs.overflow,
+      overflowY: cs.overflowY,
+      top: r.top,
+      height: r.height
+    })
+    node = node.parentElement
+    depth++
+  }
+  console.log('[V10 sticky chapter]', {
+    computedTop: stickyCs.top,
+    computedTransform: stickyCs.transform,
+    computedTranslate: stickyCs.translate,
+    marginTop: stickyCs.marginTop,
+    paddingTop: stickyCs.paddingTop,
+    minHeight: stickyCs.minHeight,
+    position: stickyCs.position,
+    getBoundingClientRectTop: Math.round(stickyRect.top * 10) / 10,
+    scrollContainerTop: Math.round(scrollContainerTop * 10) / 10,
+    parentChain
+  })
+}
 const courseTabsWrapRef = ref(null)
 let tabsY = 0 // -tabsH to 0 (0 = fully visible)
 let lastScrollTop = 0
@@ -5149,6 +5301,7 @@ function onCoursesContentScroll() {
       tabsY = 0
       varsTarget.style.setProperty('--tabs-y', '0px')
       varsTarget.style.setProperty('--tabs-visible', H + 'px')
+      if (isVideoV10.value) tabsVisibleHeightPx.value = H
       if (courseTabsActive.value === 'content') scheduleFooterChapterUpdate()
       if (courseTabsActive.value === 'stats') {
         updateSectionLineMasks()
@@ -5159,8 +5312,28 @@ function onCoursesContentScroll() {
     const delta = st - lastScrollTop
     lastScrollTop = st
     tabsY = clamp(tabsY - delta, -H, 0)
+    const tabsVisiblePx = Math.max(0, tabsY + H)
     varsTarget.style.setProperty('--tabs-y', tabsY + 'px')
-    varsTarget.style.setProperty('--tabs-visible', (tabsY + H) + 'px')
+    varsTarget.style.setProperty('--tabs-visible', tabsVisiblePx + 'px')
+    if (isVideoV10.value) tabsVisibleHeightPx.value = tabsVisiblePx
+    if (DEBUG_V10_SCROLL_UP && isVideoV10.value && scrollEl) {
+      const firstSticky = scrollEl.querySelector('.chapter-v2--sticky-title-v23, .chapter-v2--v10-selected')
+      const stickyCs = firstSticky ? getComputedStyle(firstSticky) : null
+      const stickyTop = firstSticky ? firstSticky.getBoundingClientRect().top : null
+      const scrollTop = scrollEl.getBoundingClientRect().top
+      console.log('[V10 scroll]', {
+        mode: courseTabsActive.value === 'content' ? 'Learn' : 'Practice',
+        tabsVisibleHeightPx: tabsVisiblePx,
+        tabsY,
+        stickyChapterTop: stickyTop != null ? Math.round(stickyTop * 10) / 10 : null,
+        scrollContainerTop: Math.round(scrollTop * 10) / 10,
+        stickyComputedTop: stickyCs?.top ?? null,
+        stickyTransform: stickyCs?.transform ?? null,
+        varsTabsVisible: varsTarget.style.getPropertyValue('--tabs-visible'),
+        varsTabsY: varsTarget.style.getPropertyValue('--tabs-y'),
+        delta: Math.round(delta * 10) / 10
+      })
+    }
     if (courseTabsActive.value === 'content') scheduleFooterChapterUpdate()
     if (courseTabsActive.value === 'stats') {
       updateSectionLineMasks()
@@ -5255,11 +5428,17 @@ function setupCourseTabsScrollListener() {
     el.style.setProperty('--header-h', COURSE_HEADER_H_PX + 'px')
     el.style.setProperty('--tabs-h', courseTabsH.value + 'px')
     el.style.setProperty('--tabs-y', tabsY + 'px')
-    el.style.setProperty('--tabs-visible', (tabsY + courseTabsH.value) + 'px')
+    const tabsVisiblePx = tabsY + courseTabsH.value
+    el.style.setProperty('--tabs-visible', tabsVisiblePx + 'px')
     if (courseCardV9Ref.value) {
       const cardH = courseCardV9Ref.value.offsetHeight || 120
       courseCardHeightPx.value = cardH
       el.style.setProperty('--course-h', cardH + 'px')
+    }
+    if (isVideoV10.value) {
+      tabsVisibleHeightPx.value = tabsVisiblePx
+      debugV10Stack('setup', el)
+      if (DEBUG_V10_STACK) nextTick(() => requestAnimationFrame(measureV10StickyGap))
     }
     computeTabsStickyStart()
     if (courseCardV9Ref.value) {
@@ -5960,6 +6139,9 @@ watch(scenarioPreset, (s) => {
 }, { immediate: true })
 
 onMounted(() => {
+  if (typeof window !== 'undefined' && isVideoV10.value) {
+    (window).__measureV10StickyGap = measureV10StickyGap
+  }
   if (isVideoV6OrV7.value && courseTabsActive.value === 'content' && nextToLearnRef.value) {
     nextTick(() => {
       requestAnimationFrame(() => {
@@ -6424,7 +6606,7 @@ onUnmounted(() => {
             v-else
             ref="coursesContentRef"
             class="panel-content courses-content courses-content--line-items-no-click"
-            :class="{ 'courses-content--v3': isVideoV3, 'courses-content--v5': isVideoV5, 'courses-content--v6': isVideoV6OrV7, 'courses-content--v8': isVideoV8, 'courses-content--v9': isVideoV9, 'courses-content--tabs-scroll-linked': isVideoV4OrV5OrV6 }"
+            :class="{ 'courses-content--v3': isVideoV3, 'courses-content--v5': isVideoV5, 'courses-content--v6': isVideoV6OrV7, 'courses-content--v8': isVideoV8, 'courses-content--v9': isVideoV9, 'courses-content--v10': isVideoV10, 'courses-content--tabs-scroll-linked': isVideoV4OrV5OrV6 }"
             @scroll.passive="onCoursesContentScroll"
             :style="{
               ...(isVideoV3 && v3PaddingBottomPx != null ? { paddingBottom: `${v3PaddingBottomPx}px` } : {}),
@@ -6457,34 +6639,37 @@ onUnmounted(() => {
           </div>
           <!-- V4/V5/V6/V7: tabs at top (Learn / Practice). V9/V10: in fixed stack. -->
           <template v-if="isVideoV9 || isVideoV10">
-            <!-- V9/V10 fixed stack: header + tabs (scroll-linked) + course card. One scroll container below. -->
-            <div
-              ref="coursesContentV9WrapperRef"
-              class="courses-content--v9-stack"
-              :style="v9StackHeightStyle"
-            >
-              <div class="courses-content--v9-stack__header" aria-hidden="true" />
+            <!-- V10: layout-driven stack – tabs in clipped container, course card in flow; no absolute, no synthetic height. -->
+            <template v-if="isVideoV10">
               <div
-                ref="courseTabsWrapRef"
-                class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--v9-stack"
+                ref="coursesContentV9WrapperRef"
+                class="courses-content--v9-stack courses-content--v9-stack--v10-layout"
               >
-                <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
-                  <cc-tab-item
-                    id="content"
-                    :label="courseTabContentLabel"
-                    :isActive="courseTabsActive === 'content'"
-                    @click="courseTabsActive = 'content'"
-                  />
-                  <cc-tab-item
-                    id="stats"
-                    :label="courseTabStatsLabel"
-                    :badge="scenarioPreset !== 'nothing-to-practice' && scenarioPreset !== 'new-course' ? String(scenarioEffectivePracticeCount) : undefined"
-                    :isActive="courseTabsActive === 'stats'"
-                    @click="courseTabsActive = 'stats'"
-                  />
-                </cc-tab-group>
-              </div>
-              <div ref="courseCardV9Ref" class="courses-content--v9-course-card-wrap">
+                <div class="courses-content--v9-tabs-visible-wrap" :style="{ height: tabsVisibleHeightPx + 'px', overflow: 'hidden' }">
+                  <div
+                    ref="courseTabsWrapRef"
+                    class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--v9-stack course-tabs-wrap--v10-in-flow"
+                    :class="{ 'course-tabs-wrap--v10': true }"
+                  >
+                    <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
+                      <cc-tab-item
+                        id="content"
+                        :label="courseTabContentLabel"
+                        :isActive="courseTabsActive === 'content'"
+                        @click="courseTabsActive = 'content'"
+                      />
+                      <cc-tab-item
+                        id="stats"
+                        :label="courseTabStatsLabel"
+                        :badge="scenarioPreset !== 'nothing-to-practice' && scenarioPreset !== 'new-course' ? String(scenarioEffectivePracticeCount) : undefined"
+                        :isActive="courseTabsActive === 'stats'"
+                        @click="courseTabsActive = 'stats'"
+                      />
+                    </cc-tab-group>
+                    <span class="v10-version-badge" data-version="v10" aria-hidden="true">V10</span>
+                  </div>
+                </div>
+                <div ref="courseCardV9Ref" class="courses-content--v9-course-card-wrap courses-content--v9-course-card-wrap--v10-in-flow">
                 <div v-for="course in courses" :key="course.id" class="course-card-frame course-card-frame--with-completion">
                   <article class="opening-course-card opening-course-card--hover-v1 course-card--main" data-name="Course Card">
                     <div class="opening-course-card__inner">
@@ -6571,6 +6756,122 @@ onUnmounted(() => {
                 </div>
             </div>
           </div>
+            </template>
+            <!-- V9: synthetic stack height + absolute tabs/card. -->
+            <template v-else>
+              <div
+                ref="coursesContentV9WrapperRef"
+                class="courses-content--v9-stack"
+                :style="v9StackHeightStyle"
+              >
+                <div class="courses-content--v9-stack__header" aria-hidden="true" />
+                <div
+                  ref="courseTabsWrapRef"
+                  class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--v9-stack"
+                >
+                  <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
+                    <cc-tab-item
+                      id="content"
+                      :label="courseTabContentLabel"
+                      :isActive="courseTabsActive === 'content'"
+                      @click="courseTabsActive = 'content'"
+                    />
+                    <cc-tab-item
+                      id="stats"
+                      :label="courseTabStatsLabel"
+                      :badge="scenarioPreset !== 'nothing-to-practice' && scenarioPreset !== 'new-course' ? String(scenarioEffectivePracticeCount) : undefined"
+                      :isActive="courseTabsActive === 'stats'"
+                      @click="courseTabsActive = 'stats'"
+                    />
+                  </cc-tab-group>
+                </div>
+                <div ref="courseCardV9Ref" class="courses-content--v9-course-card-wrap">
+                  <div v-for="course in courses" :key="course.id" class="course-card-frame course-card-frame--with-completion">
+                    <article class="opening-course-card opening-course-card--hover-v1 course-card--main" data-name="Course Card">
+                      <div class="opening-course-card__inner">
+                        <div class="opening-course-card__content-wrap">
+                          <div class="opening-course-card__cover-wrap">
+                            <div class="course-cover course-cover--card" data-name="Cover Image" aria-hidden="true">
+                              <div class="course-cover-wrapper" aria-hidden="true">
+                                <img v-if="course.thumbnail" :src="baseUrl + course.thumbnail" class="course-cover-img" alt="" />
+                              </div>
+                            </div>
+                          </div>
+                          <div class="opening-course-card__content opening-course-card__content--v7-completion" :class="{ 'opening-course-card__content--v7-practice': courseTabsActive === 'stats' }">
+                            <div class="opening-course-card__title-author">
+                              <h3 class="opening-course-card__title">{{ course.title }}</h3>
+                              <p class="opening-course-card__description course-card--author">{{ course.instructor }}</p>
+                            </div>
+                            <div v-if="courseTabsActive === 'content'" class="course-card-mastery-row" data-name="Progress">
+                              <div class="course-card-mastery-group">
+                                <div class="course-card-completion course-card-completion--in-mastery-row" data-name="Completion" role="progressbar" :aria-valuenow="displayCompletionPercentRounded" aria-valuemin="0" aria-valuemax="100" aria-label="Course completion">
+                                  <template v-if="!isNarrowOrMobileViewport">
+                                    <div class="course-card-completion__track" data-name="Progress bar">
+                                      <div class="course-card-completion__fill" data-name="Progress" :style="{ width: displayCompletionFillWidthPx + 'px' }" />
+                                    </div>
+                                  </template>
+                                  <p class="course-card-completion__label" :class="{ 'course-card-completion__label--compact': isNarrowOrMobileViewport }">{{ isNarrowOrMobileViewport ? 'Complete: ' + displayCompletionPercentRounded + '%' : displayCompletionPercentRounded + '%' }}</p>
+                                </div>
+                              </div>
+                              <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
+                                <CcIcon name="graph-bars-statistics" variant="glyph" :size="20" class="footer-icon" />
+                              </button>
+                            </div>
+                            <div v-else-if="courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
+                              <div class="course-card-mastery-group">
+                                <template v-if="scenarioPreset === 'nothing-to-practice'">
+                                  <div class="extra-data-practice-in" data-name="PracticeIn">
+                                    <span class="extra-data-label">Practice in:</span>
+                                    <CcChip
+                                      :label="scenarioNothingToPracticeClosestPracticeIn"
+                                      icon="time-clock"
+                                      color="gray"
+                                      variant="translucent"
+                                      :is-uppercase="true"
+                                      label-class="extra-data-time-chip-label"
+                                      class="extra-data-time-chip"
+                                    />
+                                  </div>
+                                </template>
+                                <template v-else-if="scenarioPreset === 'new-course'">
+                                  <div v-if="!isNarrowOrMobileViewport" class="course-card-mastery-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level">
+                                    <div class="course-card-mastery-bar__segments">
+                                      <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                    </div>
+                                    <div class="course-card-mastery-bar__fill" :style="{ width: '0%' }">
+                                      <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                    </div>
+                                  </div>
+                                </template>
+                                <template v-else>
+                                  <div v-if="!isNarrowOrMobileViewport" class="course-card-mastery-bar" role="progressbar" :aria-valuenow="displayMasteryLevel" :aria-valuemin="0" :aria-valuemax="masteryTotal" aria-label="Mastery level">
+                                    <div class="course-card-mastery-bar__segments">
+                                      <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                    </div>
+                                    <div class="course-card-mastery-bar__fill" :style="{ width: displayMasteryFillWidthPx + 'px' }">
+                                      <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                    </div>
+                                  </div>
+                                  <div class="course-card-av-level extra-data-next-level" data-name="Mastery">
+                                    <span class="extra-data-label">Mastery:</span>
+                                    <div class="extra-data-level-chip" data-name="LevelChip">
+                                      <CcChip :label="displayExtraDataLevelBadge" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                                    </div>
+                                  </div>
+                                </template>
+                              </div>
+                              <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
+                                <CcIcon name="graph-bars-statistics" variant="glyph" :size="20" class="footer-icon" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </template>
           </template>
           <template v-else>
           <!-- Non-V9: tabs and course card in scroll flow -->
@@ -6703,7 +7004,7 @@ onUnmounted(() => {
           </div>
           </template>
           <template v-if="isVideoV10">
-            <div ref="v9ScrollRef" class="courses-content courses-content--v10 courses-content--v9-scroll courses-content--line-items-no-click" :class="{ 'v10-chapters-collapsed': v10ChaptersCollapsed }" @scroll.passive="onCoursesContentScroll">
+            <div ref="v9ScrollRef" class="courses-content courses-content--v10 courses-content--v9-scroll courses-content--line-items-no-click" :class="{ 'v10-chapters-collapsed': v10ChaptersCollapsed, 'v10-expand-no-transition': v10ExpandNoTransition }" @scroll.passive="onCoursesContentScroll">
           <!-- ToC area: overlay + drawer + tab panels. V9: inside scroll only. -->
           <div class="stats-overlay-toc-wrap">
             <!-- V7/V8: darker overlay over ToC only (not course card) when stats drawer open; click to close -->
@@ -6774,8 +7075,8 @@ onUnmounted(() => {
               </div>
             </div>
 
-          <!-- Content tab: video + sections list (inside drawer wrap so overlay covers it) -->
-          <div v-if="!isOpeningCoursesV1" v-show="courseTabsActive === 'content'" class="course-tab-panel" :class="{ 'course-tab-panel--drawer-open': statsPanelExpanded, 'course-tab-panel--hide-flash': learnTabFirstOpenHideFlash }" role="tabpanel" aria-label="Content">
+          <!-- Content tab: video + sections list. V10: do not render this panel so Learn uses only the sections-list panel below – same single-panel structure as Practice, no gap on scroll up. -->
+          <div v-if="!isOpeningCoursesV1 && !isVideoV10" v-show="courseTabsActive === 'content'" class="course-tab-panel" :class="{ 'course-tab-panel--drawer-open': statsPanelExpanded, 'course-tab-panel--hide-flash': learnTabFirstOpenHideFlash }" role="tabpanel" aria-label="Content">
           <!-- VideoSection (V1 only) – visible when Video button clicked; under course card; sticky -->
           <section ref="videoSectionRef" v-show="showVideoSectionVisible && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && !isVideoV3" class="video-section" data-name="VideoSection">
             <div
@@ -6809,9 +7110,229 @@ onUnmounted(() => {
             </div>
           </section>
           </div>
-
-          <!-- Stats tab: Progress + Mastery. V7 Practice: mastery is on course card; sections list same design as Learn. -->
-          <div v-show="courseTabsActive === 'stats'" class="course-tab-panel course-tab-panel--stats" :class="{ 'course-tab-panel--v7': (isVideoV7OrV8OrV9 || isVideoV10), 'course-tab-panel--drawer-open': statsPanelExpanded }" role="tabpanel" aria-label="Stats">
+          <!-- Stats tab: Progress + Mastery. V7 Practice: mastery is on course card; sections list same design as Learn. V10: same panel used for both tabs so Learn has identical structure to Practice (no gap on scroll up). -->
+          <div v-show="courseTabsActive === 'stats' || isVideoV10" class="course-tab-panel course-tab-panel--stats" :class="{ 'course-tab-panel--v7': (isVideoV7OrV8OrV9 || isVideoV10), 'course-tab-panel--drawer-open': statsPanelExpanded }" role="tabpanel" aria-label="Stats">
+          <!-- V10 Learn: same panel as Practice, sections list first so sticky behavior is identical -->
+          <template v-if="isVideoV10 && courseTabsActive === 'content'">
+            <div class="sections-list">
+              <div
+                v-for="(section, sectionIndex) in courseSections"
+                :key="section.id"
+                class="section-item"
+                :data-section-id="section.id"
+                :ref="(el) => setV23SectionItemRef(section.id, el)"
+              >
+                <div class="v23-section-sticky-wrap">
+                  <div
+                    class="v23-section-timeline-wrap v23-section-timeline-wrap--v4 v23-section-timeline-wrap--v6"
+                    :ref="(el) => setSectionLineWrapRef(section.id, el)"
+                  >
+                    <div class="v23-section-timeline-wrap__line" aria-hidden="true" />
+                    <component
+                      :is="'button'"
+                      type="button"
+                      class="chapter-v2 chapter-v2--header chapter-v2--sticky-title-v23 chapter-v2--v4-timeline chapter-v2--v6-timeline-right chapter-v2--no-accordion"
+                      :class="{ 'chapter-v2--v10-selected': v10SelectedChapterId === section.id }"
+                      data-name="Chapter V2"
+                      :aria-expanded="isSectionOpen(section.id)"
+                      @click="toggleSection(section.id)"
+                    >
+                      <span class="chapter-v2-border" aria-hidden="true" />
+                      <div class="chapter-v2__timeline-col" aria-hidden="true">
+                        <ProgressCircle
+                          :key="`progress-${section.id}`"
+                          :progress="getSectionProgressPercent(section)"
+                          :size="24"
+                          class="chapter-v2__timeline-progress"
+                        />
+                      </div>
+                      <div class="chapter-progress-name">
+                        <div class="chapter-content">
+                          <span class="chapter-v10-left-chevron">
+                            <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron-v10" />
+                          </span>
+                          <span class="chapter-title">{{ section.name }}</span>
+                        </div>
+                        <div class="chapter-variations">
+                          <span class="chapter-count">{{ getSectionChapterCountDisplay(section) }}</span>
+                        </div>
+                      </div>
+                    </component>
+                    <div
+                      class="v23-expandable"
+                      :class="{ 'v23-expandable--open': isSectionOpen(section.id) }"
+                    >
+                      <div
+                        class="v22-chapter-video-block"
+                        :class="{ 'v22-chapter-video-block--sticky': (isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id), 'v22-chapter-video-block--v23-sticky-title': isVideoV2_3OrV24 && isSectionOpen(section.id) }"
+                      >
+                        <section
+                          v-if="(isVideoV2 || isVideoV2_2 || (isVideoV2_3OrV24 && !isVideoV6OrV7)) && showVideoSectionVisible && section.videoAvailable && isSectionOpen(section.id)"
+                          class="video-section video-section--inline"
+                          :data-name="`VideoSection-${section.id}`"
+                        >
+                          <div class="video-placeholder-frame" :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px' }">
+                            <button v-if="videoFormat !== 'none'" type="button" class="video-play-button" :aria-label="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id) ? 'Pause video' : 'Play video'" @click="isVideoV2_2 ? toggleV22VideoPlay(section.id) : isVideoV2_3OrV24 ? toggleV23VideoPlay(section.id) : undefined">
+                              <CcIcon :name="(isVideoV2_2 && v22PlayingSectionId === section.id) || (isVideoV2_3OrV24 && v23PlayingSectionId === section.id) ? 'media-control-pause' : 'media-control-play'" variant="glyph" :size="24" class="video-play-icon" />
+                            </button>
+                          </div>
+                        </section>
+                        <section
+                          v-if="isVideoV6OrV7 && courseTabsActive === 'content' && showVideoSectionVisible && section.videoAvailable && isSectionOpen(section.id)"
+                          class="video-section video-section--inline video-section--scrollable"
+                          :data-name="`VideoSection-${section.id}`"
+                        >
+                          <div class="video-placeholder-frame" :style="{ width: videoFrameWidth + 'px', height: videoFrameHeight + 'px', backgroundColor: '#000000' }">
+                            <button v-if="videoFormat !== 'none'" type="button" class="video-play-button" aria-label="Play video">
+                              <CcIcon name="media-control-play" variant="glyph" :size="24" class="video-play-icon" />
+                            </button>
+                          </div>
+                        </section>
+                      </div>
+                      <Transition name="chapter-moves">
+                        <div v-if="isSectionOpen(section.id) && getSectionMovesForDisplay(section).length" class="move-list-wrap">
+                          <div v-if="isVideoV2_4OrV5" class="chapter-line-cards-list-wrapper">
+                            <div class="opening-course-cards-list chapter-line-cards-list" role="list" data-name="Lines" aria-label="Lines">
+                              <article
+                                v-for="(move, lineIndex) in getSectionMovesForDisplay(section)"
+                                :key="`${section.id}-${move.id}`"
+                                class="opening-course-card opening-course-card--hover-v1 chapter-line-card"
+                                :class="[
+                                  { 'move-item--inactive': !move.completed },
+                                  lineIndex === getSectionMovesForDisplay(section).length - 1 && 'chapter-line-card--last',
+                                  isVideoV6OrV7 && 'chapter-line-card--v6-timeline-right',
+                                  isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id && 'chapter-line-card--next-to-learn'
+                                ]"
+                                role="listitem"
+                                data-name="Line"
+                                :data-move-id="`${section.id}-${move.id}`"
+                                @mouseenter="setHoveredChapterLine(section, move)"
+                                @mouseleave="clearHoveredChapterLine()"
+                              >
+                                <div class="chapter-line-card__body chapter-line-card__body--no-click" :title="move.text">
+                                  <div class="opening-course-card__inner">
+                                    <div class="opening-course-card__content-wrap">
+                                      <div class="opening-course-card__cover-wrap">
+                                        <div
+                                          v-if="isVideoV6OrV7"
+                                          class="chapter-line-card__intro-cover chapter-line-card__intro-cover--v6"
+                                          :class="{ 'chapter-line-card__intro-cover--v6-incomplete': !move.completed, 'chapter-line-card__intro-cover--v6-completed': move.completed }"
+                                          aria-hidden="true"
+                                        >
+                                          <CcIcon :name="(isVideoV8 || isVideoV9 || isVideoV10) ? getLineCoverIconV8(section, move) : (move.info ? 'document-book-open' : 'game-type-puzzle')" variant="glyph" :size="20" class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--v6" />
+                                        </div>
+                                        <div
+                                          v-else-if="lineCoverByKey[`${section.id}-${move.id}`]"
+                                          class="chapter-line-card__intro-cover chapter-line-card__line-cover"
+                                          :class="{ 'chapter-line-card__line-cover--incomplete': !move.completed }"
+                                          aria-hidden="true"
+                                          :style="getLineCoverStyle(section.id, move.id)"
+                                        >
+                                          <div class="chapter-line-card__intro-cover-dark" />
+                                          <div class="chapter-line-card__intro-cover-light">
+                                            <div class="chapter-line-card__intro-cover-light-inner">
+                                              <img v-if="move.quiz" :src="baseUrl + 'icons/misc/quiz-dice.png'" alt="" class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--img" width="32" height="32" aria-hidden="true" />
+                                              <CcIcon v-else-if="isVideoV5OrV6" :name="lineCoverByKey[`${section.id}-${move.id}`]?.pieceIcon || 'piece-white-pawn'" variant="color" :customSize="28" class="chapter-line-card__intro-cover-icon" />
+                                              <CcIcon v-else :name="lineCoverByKey[`${section.id}-${move.id}`]?.pieceIcon || 'piece-white-rook'" variant="color" :customSize="32" class="chapter-line-card__intro-cover-icon" />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div v-else class="course-cover-board chapter-line-card__board" aria-hidden="true">
+                                          <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
+                                            <g id="course-cover-board-grid">
+                                              <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                              <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                              <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                              <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
+                                              <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
+                                              <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
+                                              <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
+                                              <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
+                                              <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
+                                              <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
+                                              <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
+                                              <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                              <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                              <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                              <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                              <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                            </g>
+                                          </svg>
+                                        </div>
+                                      </div>
+                                      <div class="opening-course-card__content">
+                                        <div class="chapter-line-card__header-row">
+                                          <div class="chapter-line-card__title-wrap">
+                                            <h3 class="opening-course-card__title">{{ move.text }}</h3>
+                                            <CcChip v-if="move.info && !(isVideoV8 || isVideoV9 || isVideoV10)" label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label chapter-line-card__info-chip-inline" />
+                                          </div>
+                                          <div class="chapter-line-card__header-indicators">
+                                            <CcChip v-if="move.completed && move.level && !isVideoV6OrV7" :label="move.level" color="aqua" variant="translucent" :is-uppercase="false" label-class="move-item-level-chip-label" />
+                                          </div>
+                                        </div>
+                                        <p v-if="getLineMoveCount(section, move) > 0" class="chapter-line-card__moves-count">{{ getLineMoveCount(section, move) }} moves</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="chapter-line-card__timeline-col" aria-hidden="true" :ref="lineIndex === getSectionMovesForDisplay(section).length - 1 ? (el => setSectionLastCardColRef(section.id, el)) : undefined">
+                                  <span
+                                    class="chapter-line-card__timeline-node"
+                                    :class="{
+                                      'chapter-line-card__timeline-node--completed': move.completed,
+                                      'chapter-line-card__timeline-node--v6': isVideoV6OrV7,
+                                      'chapter-line-card__timeline-node--next-to-learn': isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id
+                                    }"
+                                  >
+                                    <img v-if="move.completed" :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="chapter-line-card__timeline-node-icon" width="13" height="13" aria-hidden="true" />
+                                  </span>
+                                </div>
+                              </article>
+                            </div>
+                          </div>
+                          <div v-else class="move-list" role="list" data-name="Lines" aria-label="Lines">
+                            <div
+                              v-for="move in getSectionMoves(section)"
+                              :key="`${section.id}-${move.id}`"
+                              class="move-item"
+                              :class="[ { 'move-item--inactive': !move.completed }, `move-item--${getLineType(move)}` ]"
+                              role="listitem"
+                              data-name="Line"
+                              :data-move-id="`${section.id}-${move.id}`"
+                              @mouseenter="setHoveredChapterLine(section, move)"
+                              @mouseleave="clearHoveredChapterLine()"
+                            >
+                              <div class="move-item-content">
+                                <div class="move-item-inner">
+                                  <div class="move-item-plys">
+                                    <span class="move-item-check-wrap" aria-hidden="true">
+                                      <CcIcon name="mark-check" variant="glyph" :size="16" class="move-item-check" />
+                                    </span>
+                                    <span class="move-item-text">{{ move.text }}</span>
+                                  </div>
+                                  <span v-if="move.info && !(isVideoV8 || isVideoV9 || isVideoV10)" class="move-item-info-wrap" aria-hidden="true">
+                                    <CcChip label="INFO" color="gray" variant="translucent" :is-uppercase="false" label-class="move-item-info-chip-label" />
+                                  </span>
+                                  <span v-else-if="move.completed && move.level" class="move-item-level-wrap" aria-hidden="true">
+                                    <CcChip :label="move.level" color="aqua" variant="translucent" :is-uppercase="false" label-class="move-item-level-chip-label" />
+                                  </span>
+                                  <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
+                                    <span class="move-item-dot" />
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Transition>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <!-- Practice tab content (and non-V10 Stats): Progress, Mastery, empty state, Practice sections list -->
+          <template v-else-if="courseTabsActive === 'stats'">
           <!-- Progress – hidden on V7 Practice (do not delete) -->
           <div v-if="!(isVideoV7OrV8OrV9 || isVideoV10)" class="course-progress" data-name="Course Progress Container">
             <div class="course-progress-header" data-name="Header">
@@ -7100,13 +7621,12 @@ onUnmounted(() => {
             </div>
           </template>
 
-          </div>
+          </template>
 
           </div>
-          <!-- /stats-drawer-wrap -->
 
-          <!-- Content tab: lines row (hidden) + sections list -->
-          <div v-show="courseTabsActive === 'content'" class="course-tab-panel" :class="{ 'course-tab-panel--hide-flash': learnTabFirstOpenHideFlash }" role="tabpanel" aria-label="Content">
+          <!-- Content tab (non-V10 only): V10 Learn uses same panel as Practice above -->
+          <div v-if="!isVideoV10" v-show="courseTabsActive === 'content'" class="course-tab-panel" :class="{ 'course-tab-panel--hide-flash': learnTabFirstOpenHideFlash }" role="tabpanel" aria-label="Content">
           <div v-show="false" class="course-lines-row">
             <span class="course-lines-count">{{ courseTotalLines }} lines</span>
             <div class="show-all" data-name="Show All" aria-label="Show lines">
@@ -7137,7 +7657,7 @@ onUnmounted(() => {
               :key="section.id"
               class="section-item"
               :data-section-id="section.id"
-              :ref="isVideoV2_3OrV24 ? (el) => setV23SectionItemRef(section.id, el) : undefined"
+              :ref="(isVideoV2_3OrV24 || isVideoV10) ? (el) => setV23SectionItemRef(section.id, el) : undefined"
             >
               <!-- V3: every chapter in a sticky block – each sticks when it reaches the header; each has a video -->
               <template v-if="isVideoV3">
@@ -7238,23 +7758,21 @@ onUnmounted(() => {
               </template>
               <!-- V2/V1: accordion (useAccordionChapters=true) or all chapters as headers, always open (default) -->
               <template v-else>
-                <!-- V2.3/V10: chapter as button (accordion) or div (header only); sticky wrap for stick-at-top -->
+                <!-- V2.3/V10: chapter as button (accordion) or div (header only); sticky wrap for stick-at-top. V10: match Practice (same timeline/chapter classes so sticky fix applies). -->
                 <div v-if="isVideoV2_3OrV24 || isVideoV10" class="v23-section-sticky-wrap">
-                  <!-- V2.3/V4: wrapper for layout; V4 draws one vertical line from chapter checkmark down through cards (masked at last card) -->
+                  <!-- V2.3/V4: wrapper for layout; V4 draws one vertical line from chapter checkmark down through cards (masked at last card). V10: always --v4 and --v6 like Practice. -->
                   <div
                     class="v23-section-timeline-wrap"
-                    :class="{ 'v23-section-timeline-wrap--v4': isVideoV2_4OrV5, 'v23-section-timeline-wrap--v6': isVideoV6OrV7 }"
-                    :ref="isVideoV2_4OrV5 ? (el => setSectionLineWrapRef(section.id, el)) : undefined"
+                    :class="{ 'v23-section-timeline-wrap--v4': isVideoV2_4OrV5 || isVideoV10, 'v23-section-timeline-wrap--v6': isVideoV6OrV7 || isVideoV10 }"
+                    :ref="(isVideoV2_4OrV5 || isVideoV10) ? (el => setSectionLineWrapRef(section.id, el)) : undefined"
                   >
-                    <div v-if="isVideoV2_4OrV5" class="v23-section-timeline-wrap__line" aria-hidden="true" />
+                    <div v-if="isVideoV2_4OrV5 || isVideoV10" class="v23-section-timeline-wrap__line" aria-hidden="true" />
                   <component
                     :is="useAccordionChapters || isVideoV10 ? 'button' : 'div'"
                     :type="useAccordionChapters || isVideoV10 ? 'button' : undefined"
                     class="chapter-v2 chapter-v2--header"
                     :class="[
-                      { 'chapter-v2--sticky-title-v23': isVideoV10 ? v10SelectedChapterId === section.id : isSectionOpen(section.id), 'chapter-v2--no-accordion': !(useAccordionChapters || isVideoV10), 'chapter-v2--v10-selected': isVideoV10 && v10SelectedChapterId === section.id },
-                      isVideoV2_4OrV5 && 'chapter-v2--v4-timeline',
-                      isVideoV6OrV7 && 'chapter-v2--v6-timeline-right'
+                      { 'chapter-v2--sticky-title-v23': isVideoV10 || (isVideoV2_3OrV24 && isSectionOpen(section.id)), 'chapter-v2--no-accordion': !(useAccordionChapters || isVideoV10), 'chapter-v2--v10-selected': isVideoV10 && v10SelectedChapterId === section.id, 'chapter-v2--v4-timeline': isVideoV2_4OrV5 || isVideoV10, 'chapter-v2--v6-timeline-right': isVideoV6OrV7 || isVideoV10 },
                     ]"
                     data-name="Chapter V2"
                     :aria-expanded="(useAccordionChapters || isVideoV10) ? isSectionOpen(section.id) : undefined"
@@ -7584,7 +8102,7 @@ v-if="isVideoV6OrV7"
                     class="chapter-v2 chapter-v2--header"
                     :class="{
                       'chapter-v2--sticky-under-video': showVideoSectionVisible && !isVideoV2 && !isVideoV2_2 && !isVideoV2_3OrV24 && isSectionOpen(section.id),
-                      'chapter-v2--sticky-title-v23': isVideoV10 ? v10SelectedChapterId === section.id : (isVideoV2_3OrV24 && isSectionOpen(section.id)),
+                      'chapter-v2--sticky-title-v23': isVideoV10 || (isVideoV2_3OrV24 && isSectionOpen(section.id)),
                       'chapter-v2--no-accordion': !(useAccordionChapters || isVideoV10),
                       'chapter-v2--v10-selected': isVideoV10 && v10SelectedChapterId === section.id
                     }"
@@ -7702,6 +8220,9 @@ v-if="isVideoV6OrV7"
             </div>
           </div>
           </div>
+
+          </div>
+          <!-- /stats-drawer-wrap -->
           <!-- /stats-overlay-toc-wrap -->
           </div>
           </template>
@@ -10943,7 +11464,10 @@ body {
 }
 .courses-content--v9-stack__header {
   width: 100%;
+  height: 0;
+  min-height: 0;
   flex-shrink: 0;
+  overflow: hidden;
 }
 .course-tabs-wrap--v9-stack {
   position: absolute;
@@ -10979,11 +11503,14 @@ body {
 .courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v6-timeline-right {
   top: 0 !important;
 }
-/* V10: same sticky behavior in scroll container (Learn and Practice); explicit scroll-context selector so Learn tab chapters stick */
-.courses-content--v10.courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--v10-selected {
-  position: sticky !important;
+/* V10: scroll div has BOTH .courses-content--v10 and .courses-content--v9-scroll (same element); chapter sticky top = 0 */
+.courses-content--v10.courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--v10-selected,
+.courses-content--v10.courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline,
+.courses-content--v10.courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v6-timeline-right {
   top: 0 !important;
-  z-index: 10;
+  /* Avoid contain/will-change from other rules breaking sticky */
+  contain: none !important;
+  will-change: auto !important;
 }
 .course-card-frame--with-completion .course-cover-wrapper {
   width: 80px;
@@ -11387,6 +11914,11 @@ body {
   max-height: 5000px;
   transition: max-height 0.35s ease-in;
 }
+/* V10: open selected collapsed chapter with no visible jump – suppress expand transition, set scroll, then re-enable */
+.courses-content--v10.v10-expand-no-transition .v23-expandable,
+.courses-content--v10.v10-expand-no-transition .v23-expandable--open {
+  transition: none !important;
+}
 .video-placeholder-frame {
   flex-shrink: 0;
   background: #000;
@@ -11560,6 +12092,13 @@ body {
 }
 .course-tab-panel {
   margin-top: 0;
+}
+.course-tab-panel--video-hidden-v10 {
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
 }
 .course-tab-panel--hide-flash {
   opacity: 0;
@@ -13743,8 +14282,121 @@ body {
 }
 
 /* V10: specific styles */
+/* Outer panel must not scroll so sticky uses the inner scroll div (v9ScrollRef) as scroll container.
+   Scroll container must start directly under the fixed stack (no gap). */
+.panel-content.courses-content--v10 {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0;
+}
+/* V10: layout-driven stack – no synthetic height; tabs container clips by --tabs-visible, card in flow */
+.courses-content--v9-stack--v10-layout {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(33, 31, 28, 1);
+  margin-bottom: 0;
+}
+.courses-content--v9-tabs-visible-wrap {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.course-tabs-wrap--v10-in-flow {
+  position: relative;
+  transform: translateY(var(--tabs-y, 0));
+  min-height: var(--tabs-h, 48px);
+  background-color: rgba(33, 31, 28, 1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 15;
+}
+.courses-content--v9-course-card-wrap--v10-in-flow {
+  position: static;
+  flex-shrink: 0;
+  background-color: rgba(33, 31, 28, 1);
+}
+.panel-content.courses-content--v10 > .courses-content--v10.courses-content--v9-scroll {
+  margin-top: 0;
+}
+/* V10: ensure the scroll div is the only scroll container and gets a real height; no top gap */
+.courses-content--v10.courses-content--v9-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-top: 0;
+  margin-top: 0;
+}
+/* V10: scroll content must start flush with top – no extra spacer above first chapter */
+.courses-content--v10.courses-content--v9-scroll .stats-overlay-toc-wrap {
+  padding-top: 0;
+  margin-top: 0;
+}
+.courses-content--v10.courses-content--v9-scroll .stats-drawer-wrap {
+  padding-top: 0;
+  margin-top: 0;
+}
+/* V10 Learn: first Content panel (video) must stay collapsed so sections list is at top of scroll – same as Practice. If this panel had height: auto it would take space on reflow when tabs reveal on scroll up and create the gap. */
+.courses-content--v10.courses-content--v9-scroll .course-tab-panel.course-tab-panel--video-hidden-v10 {
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 0;
+  margin-top: 0;
+}
+/* V10: all tab panels (Learn + Practice) flush to top so sticky chapter sits under course card in both tabs */
+.courses-content--v10.courses-content--v9-scroll .course-tab-panel {
+  padding-top: 0;
+  margin-top: 0;
+}
+/* V10: no chapter-row-sized gap – sticky is the chapter row itself (.chapter-v2), not a wrapper; no placeholder/spacer */
+.courses-content--v10.courses-content--v9-scroll .sections-list {
+  padding-top: 0;
+  margin-top: 0;
+}
+.courses-content--v10.courses-content--v9-scroll .section-item:first-child,
+.courses-content--v10.courses-content--v9-scroll .section-item:first-child .v23-section-sticky-wrap,
+.courses-content--v10.courses-content--v9-scroll .section-item:first-child .v23-section-timeline-wrap {
+  margin-top: 0;
+  padding-top: 0;
+}
+/* Ensure no extra min-height above first chapter (only the chapter row has min-height: 56px) */
+.courses-content--v10.courses-content--v9-scroll .section-item:first-child .v23-section-sticky-wrap,
+.courses-content--v10.courses-content--v9-scroll .section-item:first-child .v23-section-timeline-wrap {
+  min-height: 0;
+}
+/* V10: first sticky chapter must sit flush under course card – no offset; sticky top is 0 relative to scroll container */
+.courses-content--v10.courses-content--v9-scroll .section-item:first-child .chapter-v2--sticky-title-v23,
+.courses-content--v10.courses-content--v9-scroll .section-item:first-child .chapter-v2--v10-selected {
+  top: 0 !important;
+  margin-top: 0 !important;
+  transform: none !important;
+}
+/* Visible "V10" badge so you can confirm you're on the V10 route (URL must be /courses/v10) */
+.course-tabs-wrap--v10 {
+  position: relative;
+}
+.v10-version-badge {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(139, 195, 74, 0.25);
+  color: #8bc34a;
+  border: 1px solid rgba(139, 195, 74, 0.5);
+  pointer-events: none;
+}
 .courses-content--v10 .chapter-v2 {
   background: var(--color-bg-primary, #312e2b) !important;
+}
+.courses-content--v10 .chapter-v2--no-accordion {
+  cursor: pointer;
 }
 .courses-content--v10 .v10-chapters-collapsed .chapter-v2 {
   background: #272522 !important;
@@ -13764,6 +14416,8 @@ body {
   position: sticky !important;
   top: 0 !important;
   z-index: 10;
+  contain: none !important;
+  will-change: auto !important;
 }
 .courses-content--v10 .chapter-v2--v10-selected .chapter-title,
 .courses-content--v10 .chapter-v2--v10-selected .chapter-count {
@@ -13791,10 +14445,10 @@ body {
   font-size: 16px !important;
   transition: transform 0.2s ease;
 }
-.courses-content--v10 .chapter-v2--v10-selected .chapter-chevron-v10 {
+/* Single source of truth: chevron direction from global expanded state, not per-row selected */
+.courses-content--v10:not(.v10-chapters-collapsed) .chapter-v2 .chapter-chevron-v10 {
   transform: rotate(180deg);
 }
-
 .courses-content--v10 .chapter-progress-name {
   gap: 4px !important;
 }
@@ -13805,6 +14459,9 @@ body {
 /* V10: specific styles */
 .courses-content--v10 .chapter-v2 {
   background: var(--color-bg-primary, #312e2b) !important;
+}
+.courses-content--v10 .chapter-v2--no-accordion {
+  cursor: pointer;
 }
 .courses-content--v10 .v10-chapters-collapsed .chapter-v2 {
   background: #272522 !important;
@@ -13824,6 +14481,8 @@ body {
   position: sticky !important;
   top: 0 !important;
   z-index: 10;
+  contain: none !important;
+  will-change: auto !important;
 }
 .courses-content--v10 .chapter-v2--v10-selected .chapter-title,
 .courses-content--v10 .chapter-v2--v10-selected .chapter-count {
@@ -13851,10 +14510,10 @@ body {
   font-size: 16px !important;
   transition: transform 0.2s ease;
 }
-.courses-content--v10 .chapter-v2--v10-selected .chapter-chevron-v10 {
+/* Single source of truth: chevron direction from global expanded state, not per-row selected */
+.courses-content--v10:not(.v10-chapters-collapsed) .chapter-v2 .chapter-chevron-v10 {
   transform: rotate(180deg);
 }
-
 .courses-content--v10 .chapter-progress-name {
   gap: 4px !important;
 }
