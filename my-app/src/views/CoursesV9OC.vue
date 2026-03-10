@@ -11320,9 +11320,9 @@ body {
   padding: 0;
   width: 100%;
   min-width: 0;
-  height: 60px;
-  min-height: 60px;
-  max-height: 60px;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
   justify-content: space-between;
   align-items: flex-start;
   overflow: visible;
@@ -11412,9 +11412,9 @@ body {
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion.opening-course-card__content--v7-practice {
   padding: 0;
   padding-bottom: 0;
-  height: 60px;
-  min-height: 60px;
-  max-height: 60px;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
   justify-content: space-between;
   width: 100%;
   gap: 8px;
