@@ -6762,16 +6762,7 @@ onUnmounted(() => {
                         <div class="opening-course-card__content opening-course-card__content--v7-completion" :class="{ 'opening-course-card__content--v7-practice': courseTabsActive === 'stats' }">
                           <div v-if="openingCourseIdFromRoute" class="opening-course-card__started-header">
                             <h3 class="opening-course-card__title">{{ course.title }}</h3>
-                            <div class="opening-course-card__color-icon-wrap">
-                              <CcIcon
-                                :name="coursePlaySide === 'white' ? 'piece-white-king' : 'piece-black-king'"
-                                variant="color"
-                                :size="16"
-                                class="opening-course-card__color-icon"
-                                aria-hidden="true"
-                                :title="coursePlaySide === 'white' ? 'White' : 'Black'"
-                              />
-                            </div>
+                            <span class="opening-course-card__play-as-label course-card-completion__complete-label">{{ coursePlaySide === 'white' ? 'Play As White' : 'Play As Black' }}</span>
                           </div>
                           <div v-else class="opening-course-card__title-author">
                             <h3 class="opening-course-card__title">{{ course.title }}</h3>
@@ -6780,7 +6771,7 @@ onUnmounted(() => {
                           <div v-if="courseTabsActive === 'content'" class="course-card-mastery-row" data-name="Progress">
                             <div class="course-card-mastery-group">
                               <div class="course-card-completion course-card-completion--in-mastery-row" data-name="Progress" role="progressbar" :aria-valuenow="displayCompletionPercentRounded" aria-valuemin="0" aria-valuemax="100" aria-label="Course progress">
-                                <span class="course-card-completion__complete-label">Progress:</span>
+                                <span v-if="!openingCourseIdFromRoute" class="course-card-completion__complete-label">Progress:</span>
                                 <div class="course-card-completion__bar-row">
                                   <div class="course-card-completion__track" data-name="Progress bar">
                                     <div class="course-card-completion__fill" data-name="Progress" :style="{ width: displayCompletionFillWidthPx + 'px' }" />
@@ -6884,16 +6875,7 @@ onUnmounted(() => {
                     <div class="opening-course-card__content" :class="{ 'opening-course-card__content--v7-completion': isVideoV7OrV8OrV9, 'opening-course-card__content--v7-practice': isVideoV7OrV8OrV9 && courseTabsActive === 'stats' }">
                       <div v-if="openingCourseIdFromRoute" class="opening-course-card__started-header">
                         <h3 class="opening-course-card__title">{{ course.title }}</h3>
-                        <div class="opening-course-card__color-icon-wrap">
-                          <CcIcon
-                            :name="coursePlaySide === 'white' ? 'piece-white-king' : 'piece-black-king'"
-                            variant="color"
-                            :size="16"
-                            class="opening-course-card__color-icon"
-                            aria-hidden="true"
-                            :title="coursePlaySide === 'white' ? 'White' : 'Black'"
-                          />
-                        </div>
+                        <span class="opening-course-card__play-as-label course-card-completion__complete-label">{{ coursePlaySide === 'white' ? 'Play As White' : 'Play As Black' }}</span>
                       </div>
                       <div v-else class="opening-course-card__title-author">
                         <h3 class="opening-course-card__title">{{ course.title }}</h3>
@@ -6907,7 +6889,7 @@ onUnmounted(() => {
                                 <div class="course-card-completion__fill" data-name="Progress" :style="{ width: displayCompletionFillWidthPx + 'px' }" />
                               </div>
                             </template>
-                            <p class="course-card-completion__label" :class="{ 'course-card-completion__label--compact': isNarrowOrMobileViewport }">{{ isNarrowOrMobileViewport ? 'Progress: ' + displayCompletionPercentRounded + '%' : displayCompletionPercentRounded + '%' }}</p>
+                            <p class="course-card-completion__label" :class="{ 'course-card-completion__label--compact': isNarrowOrMobileViewport }">{{ (isNarrowOrMobileViewport && !openingCourseIdFromRoute) ? 'Progress: ' + displayCompletionPercentRounded + '%' : displayCompletionPercentRounded + '%' }}</p>
                           </div>
                         </div>
                         <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
@@ -10239,7 +10221,7 @@ body {
   width: fit-content;
   min-width: 0;
 }
-.opening-course-card__started-header .opening-course-card__color-icon-wrap {
+.opening-course-card__play-as-label {
   margin-top: 2px;
 }
 .opening-course-card__color-icon-wrap {
