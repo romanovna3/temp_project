@@ -591,6 +591,8 @@ const displayMasteryLevelItems = computed(() => {
 
 // Section expand/collapse (accordion) – kept for later; set useAccordionChapters to true to restore
 const v10ChaptersCollapsed = ref(false)
+/** Single source of truth for chevron direction: false = down (closed), true = up (open) */
+const allChaptersExpanded = computed(() => !v10ChaptersCollapsed.value)
 const v10SelectedChapterId = ref(null)
 /** When true, expand runs with no transition so we can set scrollTop and reveal final state with no visible jump */
 const v10ExpandNoTransition = ref(false)
@@ -7149,7 +7151,7 @@ onUnmounted(() => {
                       <div class="chapter-progress-name">
                         <div class="chapter-content">
                           <span class="chapter-v10-left-chevron">
-                            <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron-v10" />
+                            <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" :class="['chapter-chevron-v10', { 'chapter-chevron-v10--expanded': allChaptersExpanded }]" />
                           </span>
                           <span class="chapter-title">{{ section.name }}</span>
                         </div>
@@ -7477,7 +7479,7 @@ onUnmounted(() => {
                               name="arrow-chevron-bottom"
                               variant="glyph"
                               :size="16"
-                              class="chapter-chevron-v10"
+                              :class="['chapter-chevron-v10', { 'chapter-chevron-v10--expanded': allChaptersExpanded }]"
                             />
                           </span>
                           <span class="chapter-title">{{ section.name }}</span>
@@ -7803,7 +7805,7 @@ onUnmounted(() => {
                               name="arrow-chevron-bottom"
                               variant="glyph"
                               :size="16"
-                              class="chapter-chevron-v10"
+                              :class="['chapter-chevron-v10', { 'chapter-chevron-v10--expanded': allChaptersExpanded }]"
                             />
                           </span>
                         <span v-if="!isVideoV2_4OrV5" class="chapter-progress-icon" aria-hidden="true">
@@ -8127,7 +8129,7 @@ v-if="isVideoV6OrV7"
                               name="arrow-chevron-bottom"
                               variant="glyph"
                               :size="16"
-                              class="chapter-chevron-v10"
+                              :class="['chapter-chevron-v10', { 'chapter-chevron-v10--expanded': allChaptersExpanded }]"
                             />
                           </span>
                         <span class="chapter-progress-icon" aria-hidden="true">
@@ -14469,11 +14471,11 @@ body {
   font-size: 16px !important;
   transition: transform 0.2s ease;
 }
-/* Single source of truth: chevron direction from global expanded state */
-.courses-content--v10.v10-chapters-collapsed .chapter-v2 .chapter-chevron-v10 {
+/* Chevron direction bound to allChaptersExpanded in template: closed = down, open = up */
+.courses-content--v10 .chapter-chevron-v10 {
   transform: none;
 }
-.courses-content--v10:not(.v10-chapters-collapsed) .chapter-v2 .chapter-chevron-v10 {
+.courses-content--v10 .chapter-chevron-v10--expanded {
   transform: rotate(180deg);
 }
 .courses-content--v10 .chapter-progress-name {
@@ -14545,11 +14547,11 @@ body {
   font-size: 16px !important;
   transition: transform 0.2s ease;
 }
-/* Single source of truth: chevron direction from global expanded state */
-.courses-content--v10.v10-chapters-collapsed .chapter-v2 .chapter-chevron-v10 {
+/* Chevron direction bound to allChaptersExpanded in template: closed = down, open = up */
+.courses-content--v10 .chapter-chevron-v10 {
   transform: none;
 }
-.courses-content--v10:not(.v10-chapters-collapsed) .chapter-v2 .chapter-chevron-v10 {
+.courses-content--v10 .chapter-chevron-v10--expanded {
   transform: rotate(180deg);
 }
 .courses-content--v10 .chapter-progress-name {
