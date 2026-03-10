@@ -582,20 +582,33 @@ const statsDrawerOverlayStyle = ref({})
 function updateStatsDrawerPosition() {
   if (!isVideoV9.value || !statsPanelExpanded.value) return
   const scrollEl = v9ScrollRef.value
+  const cardEl = courseCardV9Ref.value
   if (!scrollEl) return
   const r = scrollEl.getBoundingClientRect()
   const fillToFooter = isNarrowOrMobileViewport.value
+  let drawerTop = r.top
+  let drawerHeight = r.height
+  let overlayTop = r.top
+  let overlayHeight = r.height
+  if (cardEl) {
+    const cardRect = cardEl.getBoundingClientRect()
+    drawerTop = cardRect.bottom
+    drawerHeight = Math.max(0, r.bottom - cardRect.bottom)
+    overlayTop = cardRect.bottom
+    overlayHeight = Math.max(0, r.bottom - cardRect.bottom)
+  }
   statsDrawerFixedStyle.value = {
-    top: `${r.top}px`,
+    top: `${drawerTop}px`,
     left: `${r.left}px`,
     width: `${r.width}px`,
-    ...(fillToFooter ? { height: `${r.height}px` } : {})
+    maxHeight: `${drawerHeight}px`,
+    ...(fillToFooter ? { height: `${drawerHeight}px` } : {})
   }
   statsDrawerOverlayStyle.value = {
-    top: `${r.top}px`,
+    top: `${overlayTop}px`,
     left: `${r.left}px`,
     width: `${r.width}px`,
-    height: `${r.height}px`
+    height: `${overlayHeight}px`
   }
 }
 function toggleStatsPanel() {
@@ -1674,9 +1687,12 @@ function getMovesForLine(section, move) {
   return lineMovesByKey[key] ?? defaultLineMoves
 }
 
-/** Number of (full) moves in a single line – for "# moves" on the line card (not section total). */
+/** Number of (full) moves in a single line – for "# moves" on the line card. Randomized 4–9 per line (stable per section+move). */
 function getLineMoveCount(section, move) {
-  return getMovesForLine(section, move).length
+  const seed = `${section?.id ?? ''}-${move?.id ?? ''}`
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h) + seed.charCodeAt(i) | 0
+  return 4 + (Math.abs(h) % 6)
 }
 const lineViewMoves = ref([...defaultLineMoves])
 const selectedPly = ref({ moveIndex: 0, side: 'white' })
@@ -5492,9 +5508,10 @@ function setupCourseTabsScrollListener() {
   }
 }
 
-// V4: line ends at last card checkmark – Learn tab uses these refs; Practice tab uses separate refs below
+// V4: line ends at last card checkmark, starts at first card check (no-chapter) – Learn tab uses these refs; Practice tab uses separate refs below
 const sectionLineWrapRefs = ref(Object.create(null))
 const sectionLastCardColRefs = ref(Object.create(null))
+const sectionFirstCardColRefs = ref(Object.create(null))
 function setSectionLineWrapRef(sectionId, el) {
   if (el) sectionLineWrapRefs.value[sectionId] = el
   else delete sectionLineWrapRefs.value[sectionId]
@@ -5503,9 +5520,14 @@ function setSectionLastCardColRef(sectionId, el) {
   if (el) sectionLastCardColRefs.value[sectionId] = el
   else delete sectionLastCardColRefs.value[sectionId]
 }
+function setSectionFirstCardColRef(sectionId, el) {
+  if (el) sectionFirstCardColRefs.value[sectionId] = el
+  else delete sectionFirstCardColRefs.value[sectionId]
+}
 // Practice tab: own refs so line mask runs independently (copy of Learn logic)
 const practiceSectionLineWrapRefs = ref(Object.create(null))
 const practiceSectionLastCardColRefs = ref(Object.create(null))
+const practiceSectionFirstCardColRefs = ref(Object.create(null))
 function setPracticeSectionLineWrapRef(sectionId, el) {
   if (el) practiceSectionLineWrapRefs.value[sectionId] = el
   else delete practiceSectionLineWrapRefs.value[sectionId]
@@ -5513,6 +5535,10 @@ function setPracticeSectionLineWrapRef(sectionId, el) {
 function setPracticeSectionLastCardColRef(sectionId, el) {
   if (el) practiceSectionLastCardColRefs.value[sectionId] = el
   else delete practiceSectionLastCardColRefs.value[sectionId]
+}
+function setPracticeSectionFirstCardColRef(sectionId, el) {
+  if (el) practiceSectionFirstCardColRefs.value[sectionId] = el
+  else delete practiceSectionFirstCardColRefs.value[sectionId]
 }
 
 /** Practice-in tooltip: only show when the full chapter (section) is visible in the scroll area. */
@@ -5541,13 +5567,14 @@ function updatePracticeSectionVisibility() {
 function isPracticeSectionFullyVisible(sectionId) {
   return practiceSectionFullyVisibleIds.value.has(sectionId)
 }
-function applySectionLineMask(wraps, cols) {
+function applySectionLineMask(wraps, lastCols, firstCols) {
   for (const sectionId of Object.keys(wraps)) {
     const wrap = wraps[sectionId]
-    const lastCol = cols[sectionId]
+    const lastCol = lastCols[sectionId]
     const lineEl = wrap?.querySelector?.('.v23-section-timeline-wrap__line')
     if (!lineEl) continue
-    const lineTopOffset = wrap?.classList?.contains('v23-section-timeline-wrap--no-chapter') ? 0 : 28
+    const isNoChapter = wrap?.classList?.contains('v23-section-timeline-wrap--no-chapter')
+    const lineTopOffset = isNoChapter ? 0 : 28
     if (!wrap || !lastCol) {
       lineEl.style.removeProperty('top')
       lineEl.style.removeProperty('bottom')
@@ -5558,11 +5585,18 @@ function applySectionLineMask(wraps, cols) {
       continue
     }
     const wrapRect = wrap.getBoundingClientRect()
-    const colRect = lastCol.getBoundingClientRect()
-    const lastCheckY = colRect.top + colRect.height / 2
-    const lineTopY = wrapRect.top + lineTopOffset
+    const lastColRect = lastCol.getBoundingClientRect()
+    const lastCheckY = lastColRect.top + lastColRect.height / 2
+    let lineTopY = wrapRect.top + lineTopOffset
+    let topPx = lineTopOffset
+    if (firstCols?.[sectionId]) {
+      const firstColRect = firstCols[sectionId].getBoundingClientRect()
+      const firstCheckY = firstColRect.top + firstColRect.height / 2
+      lineTopY = firstCheckY
+      topPx = firstCheckY - wrapRect.top
+    }
     const heightPx = Math.max(0, lastCheckY - lineTopY)
-    lineEl.style.setProperty('top', lineTopOffset + 'px')
+    lineEl.style.setProperty('top', topPx + 'px')
     lineEl.style.setProperty('bottom', 'auto')
     lineEl.style.setProperty('height', heightPx + 'px')
     lineEl.style.removeProperty('--section-line-mask-end')
@@ -5573,9 +5607,9 @@ function applySectionLineMask(wraps, cols) {
 function updateSectionLineMasks() {
   if (!isVideoV2_4OrV5.value) return
   if (courseTabsActive.value === 'content') {
-    applySectionLineMask(sectionLineWrapRefs.value, sectionLastCardColRefs.value)
+    applySectionLineMask(sectionLineWrapRefs.value, sectionLastCardColRefs.value, sectionFirstCardColRefs.value)
   } else if (courseTabsActive.value === 'stats') {
-    applySectionLineMask(practiceSectionLineWrapRefs.value, practiceSectionLastCardColRefs.value)
+    applySectionLineMask(practiceSectionLineWrapRefs.value, practiceSectionLastCardColRefs.value, practiceSectionFirstCardColRefs.value)
   }
 }
 
@@ -6025,6 +6059,7 @@ watch([isVideoV2_4OrV5, coursesContentRef, v9ScrollRef, courseCardV9Ref, coachV9
   if (isVideoV2_4OrV5.value) {
     nextTick(measureCourseTabsHeight)
     nextTick(updateCurrentChapterNameForFooter)
+    nextTick(() => nextTick(() => requestAnimationFrame(updateSectionLineMasks)))
   } else {
     currentChapterNameInFooter.value = ''
   }
@@ -6771,7 +6806,7 @@ onUnmounted(() => {
                         </button>
                       </div>
                       <div v-else-if="isVideoV7OrV8OrV9 && courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
-                        <div v-if="false" class="course-card-mastery-group">
+                        <div class="course-card-mastery-group">
                           <template v-if="scenarioPreset === 'nothing-to-practice'">
                             <div class="extra-data-practice-in" data-name="PracticeIn">
                               <span class="extra-data-label">Practice in:</span>
@@ -6787,9 +6822,9 @@ onUnmounted(() => {
                             </div>
                           </template>
                           <template v-else-if="scenarioPreset === 'new-course' || (openingCourseIdFromRoute && courseTabsActive === 'stats')">
-                            <!-- New course / OC course Practice tab: empty mastery bar (hidden on smaller screens) -->
+                            <!-- New course / OC course Practice tab: empty mastery bar (hidden on smaller screens), no label -->
                             <div v-if="!isNarrowOrMobileViewport" class="course-card-completion course-card-completion--in-mastery-row" data-name="Mastery">
-                              <span class="course-card-completion__complete-label">Mastery:</span>
+                              <span v-if="false" class="course-card-completion__complete-label">Mastery:</span>
                               <div class="course-card-completion__bar-row">
                                 <div class="course-card-mastery-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level">
                                   <div class="course-card-mastery-bar__segments">
@@ -6804,7 +6839,7 @@ onUnmounted(() => {
                           </template>
                           <template v-else>
                             <div class="course-card-completion course-card-completion--in-mastery-row" data-name="Mastery">
-                              <span class="course-card-completion__complete-label">Mastery:</span>
+                              <span v-if="false" class="course-card-completion__complete-label">Mastery:</span>
                               <div class="course-card-completion__bar-row">
                                 <div v-if="!isNarrowOrMobileViewport" class="course-card-mastery-bar" role="progressbar" :aria-valuenow="displayMasteryLevel" :aria-valuemin="0" :aria-valuemax="masteryTotal" aria-label="Mastery level">
                                   <div class="course-card-mastery-bar__segments">
@@ -6951,7 +6986,57 @@ onUnmounted(() => {
                         </div>
                       </div>
                       <div v-else-if="courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
-                        <div v-if="false" class="course-card-mastery-group" />
+                        <div class="course-card-mastery-group">
+                          <template v-if="scenarioPreset === 'nothing-to-practice'">
+                            <div class="extra-data-practice-in" data-name="PracticeIn">
+                              <span class="extra-data-label">Practice in:</span>
+                              <CcChip
+                                :label="scenarioNothingToPracticeClosestPracticeIn"
+                                icon="time-clock"
+                                color="gray"
+                                variant="translucent"
+                                :is-uppercase="true"
+                                label-class="extra-data-time-chip-label"
+                                class="extra-data-time-chip"
+                              />
+                            </div>
+                          </template>
+                          <template v-else-if="scenarioPreset === 'new-course' || (openingCourseIdFromRoute && courseTabsActive === 'stats')">
+                            <div v-if="!isNarrowOrMobileViewport" class="course-card-completion course-card-completion--in-mastery-row" data-name="Mastery">
+                              <span v-if="false" class="course-card-completion__complete-label">Mastery:</span>
+                              <div class="course-card-completion__bar-row">
+                                <div class="course-card-mastery-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level">
+                                  <div class="course-card-mastery-bar__segments">
+                                    <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                  </div>
+                                  <div class="course-card-mastery-bar__fill" :style="{ width: '0%' }">
+                                    <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </template>
+                          <template v-else>
+                            <div class="course-card-completion course-card-completion--in-mastery-row" data-name="Mastery">
+                              <span v-if="false" class="course-card-completion__complete-label">Mastery:</span>
+                              <div class="course-card-completion__bar-row">
+                                <div v-if="!isNarrowOrMobileViewport" class="course-card-mastery-bar" role="progressbar" :aria-valuenow="displayMasteryLevel" :aria-valuemin="0" :aria-valuemax="masteryTotal" aria-label="Mastery level">
+                                  <div class="course-card-mastery-bar__segments">
+                                    <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                  </div>
+                                  <div class="course-card-mastery-bar__fill" :style="{ width: displayMasteryFillWidthPx + 'px' }">
+                                    <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                  </div>
+                                </div>
+                                <div class="course-card-av-level extra-data-next-level" data-name="Mastery">
+                                  <div class="extra-data-level-chip" data-name="LevelChip">
+                                    <CcChip :label="displayExtraDataLevelBadge" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </template>
+                        </div>
                         <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
                           <CcIcon name="graph-bars-statistics" variant="glyph" :size="20" class="footer-icon" />
                         </button>
@@ -7323,7 +7408,7 @@ onUnmounted(() => {
                                 <div
                                   class="chapter-line-card__timeline-col"
                                   aria-hidden="true"
-                                  :ref="lineIndex === section.practiceMoves.length - 1 ? (el => setPracticeSectionLastCardColRef(section.id, el)) : undefined"
+                                  :ref="lineIndex === 0 ? (el => setPracticeSectionFirstCardColRef(section.id, el)) : (lineIndex === section.practiceMoves.length - 1 ? (el => setPracticeSectionLastCardColRef(section.id, el)) : undefined)"
                                 >
                                   <span
                                     class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6"
@@ -7624,7 +7709,7 @@ onUnmounted(() => {
                           v-if="isVideoV6OrV7"
                           class="chapter-line-card__timeline-col"
                           aria-hidden="true"
-                          :ref="lineIndex === getSectionMovesForDisplay(section).length - 1 ? (el => setSectionLastCardColRef(section.id, el)) : undefined"
+                          :ref="lineIndex === 0 ? (el => setSectionFirstCardColRef(section.id, el)) : (lineIndex === getSectionMovesForDisplay(section).length - 1 ? (el => setSectionLastCardColRef(section.id, el)) : undefined)"
                         >
                           <span
                             class="chapter-line-card__timeline-node"
@@ -7762,7 +7847,7 @@ v-if="isVideoV6OrV7"
                           v-if="!isVideoV6OrV7"
                           class="chapter-line-card__timeline-col"
                           aria-hidden="true"
-                          :ref="lineIndex === getSectionMovesForDisplay(section).length - 1 ? (el => setSectionLastCardColRef(section.id, el)) : undefined"
+                          :ref="lineIndex === 0 ? (el => setSectionFirstCardColRef(section.id, el)) : (lineIndex === getSectionMovesForDisplay(section).length - 1 ? (el => setSectionLastCardColRef(section.id, el)) : undefined)"
                         >
                           <span
                             class="chapter-line-card__timeline-node"
@@ -9666,6 +9751,7 @@ body {
   flex-shrink: 0;
   position: relative;
   z-index: 10;
+  padding-bottom: 0;
   background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(26, 25, 24, 1) 100%);
   background-clip: unset;
   -webkit-background-clip: unset;
@@ -10301,7 +10387,7 @@ body {
 /* V4: section-level timeline wrap – one vertical line per chapter: chapter check → last card check */
 .v23-section-timeline-wrap {
   --timeline-col-width: 24px;
-  --timeline-center-offset: calc(4px + var(--timeline-col-width) / 2);
+  --timeline-center-offset: calc(8px + var(--timeline-col-width) / 2);
   --v23-chapter-row-height: 56px; /* used so line starts at center of chapter row (the check) */
   position: relative;
 }
@@ -10391,7 +10477,7 @@ body {
 
 /* ========== V6: timeline on the left (same as V4, checks on very left of each card) ========== */
 .v23-section-timeline-wrap--v6 {
-  --timeline-center-offset: calc(12px + var(--timeline-col-width, 24px) / 2); /* align with list padding-left + center of timeline col */
+  --timeline-center-offset: calc(16px + var(--timeline-col-width, 24px) / 2); /* align with list padding-left + center of timeline col */
 }
 .v23-section-timeline-wrap--v6 .v23-section-timeline-wrap__line {
   left: var(--timeline-center-offset);
@@ -10411,13 +10497,14 @@ body {
   flex-direction: row;
   padding: 0;
 }
-/* V6: force article padding to 0 and smaller radius (override .opening-course-card / .chapter-line-card) */
+/* V6: force article padding and margin (override .opening-course-card / .chapter-line-card) */
 .courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right {
   padding-top: 4px;
   padding-bottom: 4px;
-  padding-left: 0;
+  padding-left: 4px;
   padding-right: 0;
-  gap: 16px;
+  margin-left: 0;
+  gap: 12px;
   justify-content: flex-end;
   border-radius: 3px;
 }
@@ -10457,7 +10544,7 @@ body {
 .courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right.chapter-line-card--next-to-learn {
   padding-top: 4px;
   padding-bottom: 4px;
-  gap: 16px;
+  gap: 12px;
 }
 /* Next-to-learn line: same font color as completed lines (override inactive dimming) */
 .courses-content--v6 .chapter-line-card--next-to-learn .opening-course-card__title {
@@ -10493,7 +10580,7 @@ body {
 /* Wrapper: inherits timeline vars when used without section wrap (e.g. list-only); line lives in v23-section-timeline-wrap for V4 */
 .chapter-line-cards-list-wrapper {
   --timeline-col-width: 24px;
-  --timeline-center-offset: calc(4px + var(--timeline-col-width) / 2); /* list padding-left + half column */
+  --timeline-center-offset: calc(8px + var(--timeline-col-width) / 2); /* list padding-left + half column */
   position: relative;
 }
 .chapter-line-cards-list-wrapper__line {
@@ -11213,15 +11300,15 @@ body {
   gap: 8px;
 }
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__inner {
-  height: 72px;
-  min-height: 72px;
-  max-height: 72px;
+  height: 66px;
+  min-height: 66px;
+  max-height: 66px;
   box-sizing: border-box;
 }
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content-wrap {
-  height: 72px;
-  min-height: 72px;
-  max-height: 72px;
+  height: 66px;
+  min-height: 66px;
+  max-height: 66px;
   gap: 12px;
   box-sizing: border-box;
 }
@@ -11321,6 +11408,10 @@ body {
   background-color: unset;
   flex-shrink: 0;
 }
+.courses-content--v9-course-card-wrap .course-card-frame.course-card-frame--with-completion {
+  background-color: rgba(39, 37, 34, 1);
+  background: unset;
+}
 .courses-content--v9-course-card-wrap .opening-course-card.course-card--main {
   padding-top: 4px;
   padding-bottom: 4px;
@@ -11338,6 +11429,15 @@ body {
   scroll-behavior: auto;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
+/* V9: tabs under coach – background #272522, no inset shadow */
+.courses-content--v9-scroll .course-tabs-wrap {
+  background-color: #272522;
+}
+.courses-content--v9-scroll .course-tabs-ds {
+  background-color: #272522;
+  box-shadow: none;
+  color: rgba(39, 37, 34, 1);
+}
 /* V9: chapter sticky top = 0 (scroll viewport is already below the fixed stack) */
 .courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--v4-timeline,
 .courses-content--v9 .courses-content--v9-scroll .chapter-v2--sticky-title-v23.chapter-v2--no-accordion.chapter-v2--v4-timeline {
@@ -11354,14 +11454,15 @@ body {
   object-fit: cover;
   border-radius: 3px;
 }
-/* V7 content: height 72px (matches course-page cover), title/author at top, progress row at bottom */
+/* V7 content: height 66px (matches course-page cover), title/author at top, progress row at bottom */
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion {
   padding: 0;
+  padding-top: 0;
   width: 100%;
   min-width: 0;
-  height: 72px;
-  min-height: 72px;
-  max-height: 72px;
+  height: 66px;
+  min-height: 66px;
+  max-height: 66px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -11444,7 +11545,7 @@ body {
   align-items: center;
   min-width: 0;
 }
-/* Course card Stats icon – same style as footer icon buttons; align to right so it stays inside the card */
+/* Course card Stats icon – same style as footer icon buttons; align to right so it stays inside the card; default transparent bg */
 .course-card-completion-row .course-card-stats-icon,
 .course-card-mastery-row .course-card-stats-icon {
   flex-shrink: 0;
@@ -11455,16 +11556,18 @@ body {
   min-height: 32px;
   justify-content: center;
   align-items: center;
-  background: rgba(33, 31, 28, 1);
+  background: unset;
+  background-color: unset;
   padding: 0;
 }
-/* V7 Practice tab only: same 72px height, space-between so mastery row sits at bottom (cover baseline) */
+/* V7 Practice tab only: same 66px height, space-between so mastery row sits at bottom (cover baseline) */
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__content--v7-completion.opening-course-card__content--v7-practice {
   padding: 0;
+  padding-top: 0;
   padding-bottom: 0;
-  height: 72px;
-  min-height: 72px;
-  max-height: 72px;
+  height: 66px;
+  min-height: 66px;
+  max-height: 66px;
   justify-content: space-between;
   width: 100%;
   gap: 8px;
@@ -11473,8 +11576,8 @@ body {
 /* V7 Practice tab: mastery bar + Mastery on course card (same size as course progress bar) */
 .course-card-mastery-row {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: flex-end;
   gap: 8px;
   width: 100%;
   min-width: 0;
@@ -11483,6 +11586,7 @@ body {
   padding-bottom: 0;
   margin-bottom: 0;
   flex-shrink: 0;
+  color: rgba(39, 37, 34, 1);
 }
 /* Container so progress bar and mastery level are aligned vertically (same row, aligned) */
 .course-card-mastery-group {
@@ -12461,7 +12565,7 @@ body {
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  padding-top: var(--space-3, 12px);
+  padding-top: 0;
   padding-bottom: var(--space-3, 12px);
   padding-left: 16px;
   padding-right: 12px;
