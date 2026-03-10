@@ -5296,7 +5296,7 @@ const courseCardV9Ref = ref(null)
 const coachV9Ref = ref(null)
 const coachHeightPx = ref(120) // fallback; measured by ResizeObserver (opening coach has 96px avatar + bubble)
 
-const v9StackHeightStyle = computed(() => (isVideoV9.value ? { height: 'calc(var(--header-h, 0px) + var(--tabs-visible, 48px) + var(--coach-h, 120px))' } : undefined))
+const v9StackHeightStyle = computed(() => (isVideoV9.value ? { height: 'calc(var(--header-h, 0px) + var(--coach-h, 120px))' } : undefined))
 
 // V4/V5: Scroll-linked tabs
 const COURSE_HEADER_H_PX = 0
@@ -6695,26 +6695,6 @@ onUnmounted(() => {
               :style="v9StackHeightStyle"
             >
               <div class="courses-content--v9-stack__header" aria-hidden="true" />
-              <div
-                ref="courseTabsWrapRef"
-                class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--v9-stack"
-              >
-                <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
-                  <cc-tab-item
-                    id="content"
-                    :label="courseTabContentLabel"
-                    :isActive="courseTabsActive === 'content'"
-                    @click="courseTabsActive = 'content'"
-                  />
-                  <cc-tab-item
-                    id="stats"
-                    :label="courseTabStatsLabel"
-                    :badge="(openingCourseIdFromRoute && scenarioEffectivePracticeCount === 0) ? '' : (scenarioPreset !== 'nothing-to-practice' && scenarioPreset !== 'new-course' ? String(scenarioEffectivePracticeCount) : '')"
-                    :isActive="courseTabsActive === 'stats'"
-                    @click="courseTabsActive = 'stats'"
-                  />
-                </cc-tab-group>
-              </div>
               <div ref="coachV9Ref" class="courses-content--v9-coach-wrap opening-v1-coach-wrap">
                 <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
                   <div class="coach-new-opening__inner coach-feedback">
@@ -6961,6 +6941,27 @@ onUnmounted(() => {
                 </div>
               </article>
             </div>
+          </div>
+          <!-- V9: tabs under course card (scroll with content) -->
+          <div
+            ref="courseTabsWrapRef"
+            class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--top"
+          >
+            <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
+              <cc-tab-item
+                id="content"
+                :label="courseTabContentLabel"
+                :isActive="courseTabsActive === 'content'"
+                @click="courseTabsActive = 'content'"
+              />
+              <cc-tab-item
+                id="stats"
+                :label="courseTabStatsLabel"
+                :badge="(openingCourseIdFromRoute && scenarioEffectivePracticeCount === 0) ? '' : (scenarioPreset !== 'nothing-to-practice' && scenarioPreset !== 'new-course' ? String(scenarioEffectivePracticeCount) : '')"
+                :isActive="courseTabsActive === 'stats'"
+                @click="courseTabsActive = 'stats'"
+              />
+            </cc-tab-group>
           </div>
           <!-- ToC area: overlay + drawer + tab panels. V9: inside scroll only. -->
           <div class="stats-overlay-toc-wrap">
@@ -11300,7 +11301,7 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(var(--header-h, 0) + var(--tabs-visible, 48px));
+  top: var(--header-h, 0);
   z-index: 10;
   flex-shrink: 0;
 }
