@@ -525,8 +525,8 @@ function toggleStatsPanel() {
   }
 }
 
-// Preset bar dropdown options (for custom select). Viewport hidden when SHOW_VIEWPORT_PRESET_IN_BAR is false; see docs/opening-courses-viewport-preset.md
-const SHOW_VIEWPORT_PRESET_IN_BAR = false
+// Preset bar dropdown options (for custom select). Viewport shown in bar for V10 Course page only (not opening list).
+const SHOW_VIEWPORT_PRESET_IN_BAR = true
 const viewportPresetOptions = [
   { value: 'default', label: 'Desktop L' },
   { value: 'narrow', label: 'Desktop S' },
