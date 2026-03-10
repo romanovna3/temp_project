@@ -5289,13 +5289,14 @@ const videoSectionRef = ref(null)
 const coursesContentRef = ref(null)
 const videoSectionHeightPx = ref(270) // for sticky chapter; updated when video visible or size changes
 
-// V9: fixed stack + scroll-only. Refs and height for --course-h.
+// V9: fixed stack + scroll-only. Refs and height for --coach-h (course card scrolls).
 const v9ScrollRef = ref(null)
 const coursesContentV9WrapperRef = ref(null)
 const courseCardV9Ref = ref(null)
-const courseCardHeightPx = ref(120) // fallback; measured by ResizeObserver
+const coachV9Ref = ref(null)
+const coachHeightPx = ref(120) // fallback; measured by ResizeObserver (opening coach has 96px avatar + bubble)
 
-const v9StackHeightStyle = computed(() => (isVideoV9.value ? { height: 'calc(var(--header-h, 0px) + var(--tabs-visible, 48px) + var(--course-h, 120px))' } : undefined))
+const v9StackHeightStyle = computed(() => (isVideoV9.value ? { height: 'calc(var(--header-h, 0px) + var(--tabs-visible, 48px) + var(--coach-h, 120px))' } : undefined))
 
 // V4/V5: Scroll-linked tabs
 const COURSE_HEADER_H_PX = 0
@@ -5329,10 +5330,10 @@ function measureCourseTabsHeight() {
         el.style.setProperty('--tabs-h', h + 'px')
         el.style.setProperty('--tabs-y', tabsY + 'px')
         el.style.setProperty('--tabs-visible', (tabsY + h) + 'px')
-        if (isVideoV9.value && courseCardV9Ref.value) {
-          const cardH = courseCardV9Ref.value.offsetHeight || 120
-          courseCardHeightPx.value = cardH
-          el.style.setProperty('--course-h', cardH + 'px')
+        if (isVideoV9.value && coachV9Ref.value) {
+          const coachH = coachV9Ref.value.offsetHeight || 56
+          coachHeightPx.value = coachH
+          el.style.setProperty('--coach-h', coachH + 'px')
         }
       }
       computeTabsStickyStart()
@@ -5433,18 +5434,19 @@ function setupCourseTabsScrollListener() {
   lastScrollTop = (scrollEl || el).scrollTop
   let addedScrollListener = false
   let tabsResizeObserver = null
-  let courseCardResizeObserver = null
+  let coachResizeObserver = null
   if (isVideoV4OrV5OrV6.value) {
     el.style.setProperty('--header-h', COURSE_HEADER_H_PX + 'px')
     el.style.setProperty('--tabs-h', courseTabsH.value + 'px')
     el.style.setProperty('--tabs-y', tabsY + 'px')
     el.style.setProperty('--tabs-visible', (tabsY + courseTabsH.value) + 'px')
-    if (isVideoV9.value && courseCardV9Ref.value) {
-      const cardH = courseCardV9Ref.value.offsetHeight || 120
-      courseCardHeightPx.value = cardH
-      el.style.setProperty('--course-h', cardH + 'px')
+    if (!isVideoV9.value) el.style.removeProperty('--course-h')
+    if (isVideoV9.value && coachV9Ref.value) {
+      const coachH = coachV9Ref.value.offsetHeight || 56
+      coachHeightPx.value = coachH
+      el.style.setProperty('--coach-h', coachH + 'px')
     } else if (!isVideoV9.value) {
-      el.style.removeProperty('--course-h')
+      el.style.removeProperty('--coach-h')
     }
     computeTabsStickyStart()
     const target = scrollEl || el
@@ -5455,22 +5457,22 @@ function setupCourseTabsScrollListener() {
       if (courseTabsActive.value === 'stats') requestAnimationFrame(updateSectionLineMasks)
     })
     tabsResizeObserver.observe(el)
-    if (isVideoV9.value && courseCardV9Ref.value) {
-      courseCardResizeObserver = new ResizeObserver(() => {
-        const card = courseCardV9Ref.value
-        if (card && el) {
-          const cardH = card.offsetHeight || 120
-          courseCardHeightPx.value = cardH
-          el.style.setProperty('--course-h', cardH + 'px')
+    if (isVideoV9.value && coachV9Ref.value) {
+      coachResizeObserver = new ResizeObserver(() => {
+        const coach = coachV9Ref.value
+        if (coach && el) {
+          const coachH = coach.offsetHeight || 56
+          coachHeightPx.value = coachH
+          el.style.setProperty('--coach-h', coachH + 'px')
         }
       })
-      courseCardResizeObserver.observe(courseCardV9Ref.value)
+      coachResizeObserver.observe(coachV9Ref.value)
     }
   }
   courseTabsScrollCleanup = () => {
-    if (courseCardResizeObserver && courseCardV9Ref.value) {
-      courseCardResizeObserver.disconnect()
-      courseCardResizeObserver = null
+    if (coachResizeObserver) {
+      coachResizeObserver.disconnect()
+      coachResizeObserver = null
     }
     if (tabsResizeObserver && el) {
       tabsResizeObserver.disconnect()
@@ -6018,7 +6020,7 @@ watch([isVideoV2_3OrV24, coursesContentRef], () => {
   setupV23ScrollListener()
 }, { immediate: true })
 
-watch([isVideoV2_4OrV5, coursesContentRef, v9ScrollRef, courseCardV9Ref], () => {
+watch([isVideoV2_4OrV5, coursesContentRef, v9ScrollRef, courseCardV9Ref, coachV9Ref], () => {
   setupCourseTabsScrollListener()
   if (isVideoV2_4OrV5.value) {
     nextTick(measureCourseTabsHeight)
@@ -6713,137 +6715,29 @@ onUnmounted(() => {
                   />
                 </cc-tab-group>
               </div>
-              <div ref="courseCardV9Ref" class="courses-content--v9-course-card-wrap">
-                <div v-for="course in courses" :key="course.id" class="course-card-frame course-card-frame--with-completion">
-                  <article class="opening-course-card opening-course-card--hover-v1 course-card--main" data-name="Course Card">
-                    <div class="opening-course-card__inner">
-                      <div class="opening-course-card__content-wrap">
-                        <div class="opening-course-card__cover-wrap" :class="{ 'opening-course-card__cover-wrap--board': openingCourseIdFromRoute && course.coverPieces?.length }">
-                          <template v-if="openingCourseIdFromRoute && course.coverPieces?.length">
-                            <div class="course-cover-board course-cover-board--course-page" aria-hidden="true" data-name="CourseCoverBoard" :title="course.firstMove">
-                              <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
-                                <g id="course-cover-board-grid">
-                                  <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
-                                  <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
-                                  <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
-                                  <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
-                                  <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
-                                  <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
-                                  <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
-                                  <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
-                                  <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
-                                  <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
-                                  <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
-                                  <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
-                                  <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
-                                  <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
-                                  <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
-                                  <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
-                                </g>
-                              </svg>
-                              <div
-                                v-for="(piece, i) in course.coverPieces"
-                                :key="`cover-${course.id}-${i}-${piece.type}`"
-                                class="course-cover-board__piece"
-                                :style="{ '--file': piece.col, '--rank': piece.row }"
-                              >
-                                <img v-if="piece?.type" :src="getPieceImage({ type: piece.type })" alt="" class="course-cover-board__piece-img" width="15" height="15" aria-hidden="true" />
-                              </div>
-                            </div>
-                          </template>
-                          <template v-else>
-                            <div class="course-cover course-cover--card" data-name="Cover Image" aria-hidden="true">
-                              <div class="course-cover-wrapper" aria-hidden="true">
-                                <img v-if="course.thumbnail" :src="baseUrl + course.thumbnail" class="course-cover-img" alt="" />
-                              </div>
-                            </div>
-                          </template>
-                        </div>
-                        <div class="opening-course-card__content opening-course-card__content--v7-completion" :class="{ 'opening-course-card__content--v7-practice': courseTabsActive === 'stats' }">
-                          <div v-if="openingCourseIdFromRoute" class="opening-course-card__started-header">
-                            <h3 class="opening-course-card__title">{{ course.title }}</h3>
-                            <span class="opening-course-card__play-as-label course-card-completion__complete-label">{{ coursePlaySide === 'white' ? 'Play As White' : 'Play As Black' }}</span>
-                          </div>
-                          <div v-else class="opening-course-card__title-author">
-                            <h3 class="opening-course-card__title">{{ course.title }}</h3>
-                            <p class="opening-course-card__description course-card--author">{{ course.instructor }}</p>
-                          </div>
-                          <div v-if="courseTabsActive === 'content'" class="course-card-mastery-row" data-name="Progress">
-                            <div class="course-card-mastery-group">
-                              <div class="course-card-completion course-card-completion--in-mastery-row" data-name="Progress" role="progressbar" :aria-valuenow="displayCompletionPercentRounded" aria-valuemin="0" aria-valuemax="100" aria-label="Course progress">
-                                <span v-if="!openingCourseIdFromRoute" class="course-card-completion__complete-label">Progress:</span>
-                                <div class="course-card-completion__bar-row">
-                                  <div class="course-card-completion__track" data-name="Progress bar">
-                                    <div class="course-card-completion__fill" data-name="Progress" :style="{ width: displayCompletionFillWidthPx + 'px' }" />
-                                  </div>
-                                  <p v-if="!isNarrowOrMobileViewport" class="course-card-completion__label" :class="{ 'course-card-completion__label--compact': isNarrowOrMobileViewport }">{{ displayCompletionPercentRounded }}%</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div v-else-if="courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
-                            <div v-if="false" class="course-card-mastery-group">
-                              <template v-if="scenarioPreset === 'nothing-to-practice'">
-                                <div class="extra-data-practice-in" data-name="PracticeIn">
-                                  <span class="extra-data-label">Practice in:</span>
-                                  <CcChip
-                                    :label="scenarioNothingToPracticeClosestPracticeIn"
-                                    icon="time-clock"
-                                    color="gray"
-                                    variant="translucent"
-                                    :is-uppercase="true"
-                                    label-class="extra-data-time-chip-label"
-                                    class="extra-data-time-chip"
-                                  />
-                                </div>
-                              </template>
-                              <template v-else-if="scenarioPreset === 'new-course' || (openingCourseIdFromRoute && courseTabsActive === 'stats')">
-                                <!-- New course / OC course Practice tab: empty mastery bar (hidden on smaller screens) -->
-                                <div v-if="!isNarrowOrMobileViewport" class="course-card-completion course-card-completion--in-mastery-row" data-name="Mastery">
-                                  <span class="course-card-completion__complete-label">Mastery:</span>
-                                  <div class="course-card-completion__bar-row">
-                                    <div class="course-card-mastery-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level">
-                                      <div class="course-card-mastery-bar__segments">
-                                        <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
-                                      </div>
-                                      <div class="course-card-mastery-bar__fill" :style="{ width: '0%' }">
-                                        <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </template>
-                              <template v-else>
-                                <div class="course-card-completion course-card-completion--in-mastery-row" data-name="Mastery">
-                                  <span class="course-card-completion__complete-label">Mastery:</span>
-                                  <div class="course-card-completion__bar-row">
-                                    <div v-if="!isNarrowOrMobileViewport" class="course-card-mastery-bar" role="progressbar" :aria-valuenow="displayMasteryLevel" :aria-valuemin="0" :aria-valuemax="masteryTotal" aria-label="Mastery level">
-                                      <div class="course-card-mastery-bar__segments">
-                                        <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
-                                      </div>
-                                      <div class="course-card-mastery-bar__fill" :style="{ width: displayMasteryFillWidthPx + 'px' }">
-                                        <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
-                                      </div>
-                                    </div>
-                                    <div class="course-card-av-level extra-data-next-level" data-name="Mastery">
-                                      <div class="extra-data-level-chip" data-name="LevelChip">
-                                        <CcChip :label="displayExtraDataLevelBadge" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </template>
-                            </div>
-                            <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
-                              <CcIcon name="graph-bars-statistics" variant="glyph" :size="20" class="footer-icon" />
-                            </button>
+              <div ref="coachV9Ref" class="courses-content--v9-coach-wrap opening-v1-coach-wrap">
+                <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
+                  <div class="coach-new-opening__inner coach-feedback">
+                    <div class="coach-new-opening__coach">
+                      <div class="coach-new-opening__avatar-wrap">
+                        <img :src="baseUrl + 'icons/misc/coach-avatar-opening.png'" alt="" class="coach-new-opening__avatar" width="96" height="96" />
+                      </div>
+                      <div class="coach-new-opening__caret" aria-hidden="true">
+                        <img :src="baseUrl + 'icons/misc/bubble-tip-opening.png'" alt="" width="14" height="22" class="coach-new-opening__caret-img" />
+                      </div>
+                    </div>
+                    <div class="coach-new-opening__message-wrap">
+                      <div class="coach-new-opening__bubble">
+                        <div class="coach-new-opening__message">
+                          <div class="coach-new-opening__message-inner">
+                            <p class="coach-new-opening__text">Let's continue — pick a chapter below to keep learning.</p>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </article>
-                </div>
-            </div>
+                  </div>
+                </section>
+              </div>
           </div>
           </template>
           <template v-else>
@@ -6990,6 +6884,84 @@ onUnmounted(() => {
           </div>
           </template>
           <template v-if="isVideoV9"><div ref="v9ScrollRef" class="courses-content courses-content--v9-scroll courses-content--line-items-no-click" @scroll.passive="onCoursesContentScroll">
+          <!-- V9: course card scrolls with content; only coach (and tabs) are fixed -->
+          <div ref="courseCardV9Ref" class="courses-content--v9-course-card-wrap courses-content--v9-course-card-wrap--scrolls">
+            <div v-for="course in courses" :key="course.id" class="course-card-frame course-card-frame--with-completion">
+              <article class="opening-course-card opening-course-card--hover-v1 course-card--main" data-name="Course Card">
+                <div class="opening-course-card__inner">
+                  <div class="opening-course-card__content-wrap">
+                    <div class="opening-course-card__cover-wrap" :class="{ 'opening-course-card__cover-wrap--board': openingCourseIdFromRoute && course.coverPieces?.length }">
+                      <template v-if="openingCourseIdFromRoute && course.coverPieces?.length">
+                        <div class="course-cover-board-wrap course-cover-board-wrap--64">
+                          <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="course.firstMove">
+                            <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
+                              <g id="course-cover-board-grid">
+                                <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
+                                <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                              </g>
+                            </svg>
+                            <div v-for="(piece, i) in course.coverPieces" :key="`cover-${course.id}-${i}-${piece.type}`" class="course-cover-board__piece" :style="{ '--file': piece.col, '--rank': piece.row }">
+                              <img v-if="piece?.type" :src="getPieceImage({ type: piece.type })" alt="" class="course-cover-board__piece-img" width="24" height="24" aria-hidden="true" />
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <div class="course-cover course-cover--card" data-name="Cover Image" aria-hidden="true">
+                          <div class="course-cover-wrapper" aria-hidden="true">
+                            <img v-if="course.thumbnail" :src="baseUrl + course.thumbnail" class="course-cover-img" alt="" />
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                    <div class="opening-course-card__content opening-course-card__content--v7-completion" :class="{ 'opening-course-card__content--v7-practice': courseTabsActive === 'stats' }">
+                      <div v-if="openingCourseIdFromRoute" class="opening-course-card__started-header">
+                        <h3 class="opening-course-card__title">{{ course.title }}</h3>
+                        <span class="opening-course-card__play-as-label course-card-completion__complete-label">{{ coursePlaySide === 'white' ? 'Play As White' : 'Play As Black' }}</span>
+                      </div>
+                      <div v-else class="opening-course-card__title-author">
+                        <h3 class="opening-course-card__title">{{ course.title }}</h3>
+                        <p class="opening-course-card__description course-card--author">{{ course.instructor }}</p>
+                      </div>
+                      <div v-if="courseTabsActive === 'content'" class="course-card-mastery-row" data-name="Progress">
+                        <div class="course-card-mastery-group">
+                          <div class="course-card-completion course-card-completion--in-mastery-row" data-name="Progress" role="progressbar" :aria-valuenow="displayCompletionPercentRounded" aria-valuemin="0" aria-valuemax="100" aria-label="Course progress">
+                            <span v-if="!openingCourseIdFromRoute" class="course-card-completion__complete-label">Progress:</span>
+                            <div class="course-card-completion__bar-row">
+                              <div class="course-card-completion__track" data-name="Progress bar">
+                                <div class="course-card-completion__fill" data-name="Progress" :style="{ width: displayCompletionFillWidthPx + 'px' }" />
+                              </div>
+                              <p v-if="!isNarrowOrMobileViewport" class="course-card-completion__label" :class="{ 'course-card-completion__label--compact': isNarrowOrMobileViewport }">{{ displayCompletionPercentRounded }}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div v-else-if="courseTabsActive === 'stats'" class="course-card-mastery-row" data-name="Mastery progress">
+                        <div v-if="false" class="course-card-mastery-group" />
+                        <button type="button" class="footer-icon-btn course-card-stats-icon" :class="{ 'stats-icon--active': statsPanelExpanded }" aria-label="Stats" @click="toggleStatsPanel">
+                          <CcIcon name="graph-bars-statistics" variant="glyph" :size="20" class="footer-icon" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
           <!-- ToC area: overlay + drawer + tab panels. V9: inside scroll only. -->
           <div class="stats-overlay-toc-wrap">
             <!-- V7/V8: darker overlay over ToC only (not course card) when stats drawer open; click to close -->
@@ -10165,16 +10137,31 @@ body {
   border-radius: var(--radius-xs, 2px);
   overflow: hidden;
 }
-/* Course page main card: same board as Opening list, 72×72 */
-.course-cover-board--course-page {
-  --size-chess-square: 18px;
-  --size-chess-board-cover: 72px;
+/* Course page main card: opening-list cover (96×96 board) scaled to 64×64 */
+.course-cover-board-wrap--64 {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  min-height: 64px;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs, 2px);
+  overflow: hidden;
+  position: relative;
+}
+.course-cover-board-wrap--64 .course-cover-board {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 96px;
+  height: 96px;
+  transform: scale(0.666667); /* 64/96 */
+  transform-origin: 0 0;
 }
 .course-card-frame--with-completion .opening-course-card.course-card--main .opening-course-card__cover-wrap--board {
-  width: 72px;
-  height: 72px;
-  min-width: 72px;
-  min-height: 72px;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  min-height: 64px;
 }
 .course-cover-board__svg {
   display: block;
@@ -11309,13 +11296,28 @@ body {
   background-color: rgba(33, 31, 28, 1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-.courses-content--v9-course-card-wrap {
+.courses-content--v9-coach-wrap {
   position: absolute;
   left: 0;
   right: 0;
   top: calc(var(--header-h, 0) + var(--tabs-visible, 48px));
   z-index: 10;
-  background-color: rgba(33, 31, 28, 1);
+  flex-shrink: 0;
+}
+/* V9: course card lives in scroll area (--scrolls), only coach is fixed */
+.courses-content--v9-course-card-wrap.courses-content--v9-course-card-wrap--scrolls {
+  background: unset;
+  background-color: unset;
+  flex-shrink: 0;
+}
+.courses-content--v9-course-card-wrap .opening-course-card.course-card--main {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  gap: 16px;
+  background-color: rgba(39, 37, 34, 1);
+}
+.courses-content--v9-course-card-wrap .opening-course-card.course-card--main:hover {
+  background-color: rgba(39, 37, 34, 1);
 }
 .courses-content--v9-scroll {
   flex: 1;
