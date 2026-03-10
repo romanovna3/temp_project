@@ -30,7 +30,7 @@ const coursesV23 = [
   { id: 1, title: "The Master's Hand: Capablanca's Endgame Technique", instructor: 'GM Alex Colovich', lines: 120, thumbnail: 'course-cover-gotham.png' },
 ]
 const coursesV24 = [
-  { id: 1, title: 'Everything You Need to Know About Chess', instructor: 'IM Danny Rensch', lines: 92, thumbnail: 'course-cover-everything.png' },
+  { id: 1, title: 'Learn The London System For White', instructor: 'chesscomopenings', lines: 7, thumbnail: 'course-cover-everything.png' },
 ]
 const courses = computed(() => (isVideoV2_4.value ? coursesV24 : coursesV23))
 
@@ -1382,79 +1382,28 @@ function buildPlaceholderMoves(total) {
   }))
 }
 
-// V2.4: real course – 7 chapters, real line titles from course curriculum
+// V2.4: London System for White – 7 lessons, one line per lesson (placeholder content)
 const sectionMovesV24 = {
-  intro: [
-    { id: '1', text: 'Introduction', completed: true, info: true },
+  'main-line': [
+    { id: '1', text: 'London System: Main Line', completed: false, info: true },
   ],
-  'learning-the-game': [
-    { id: '1', text: 'Learning the Board: Ranks', completed: true, quiz: true, level: 'L2' },
-    { id: '2', text: 'Learning the Board: Files', completed: true, quiz: true, level: 'L2' },
-    { id: '3', text: 'Learning the Board: Diagonals', completed: true, quiz: true, level: 'L2' },
-    { id: '4', text: 'Getting to Know the Squares #1', completed: true, quiz: true, level: 'L2' },
-    { id: '5', text: 'Getting to Know the Squares #2', completed: true, quiz: true, level: 'L2' },
-    { id: '6', text: 'Getting to Know the Squares #3', completed: true, quiz: true, level: 'L2' },
-    { id: '7', text: 'Meet the Rook', completed: true, info: true, level: 'L2' },
-    { id: '8', text: 'Meet the Rook - Practice', completed: true, quiz: true, level: 'L1' },
-    { id: '9', text: 'Meet the Bishop', completed: true, info: true, level: 'L1' },
-    { id: '10', text: 'Meet the Bishop - Practice', completed: true, quiz: true, level: 'L1' },
-    { id: '11', text: 'Meet the Queen', completed: true, info: true, level: 'L1' },
-    { id: '12', text: 'Meet the Queen - Practice', completed: true, quiz: true, nextLevel: 'L1' },
-    { id: '13', text: 'Meet the Knight', completed: true, info: true, nextLevel: 'L1' },
-    { id: '14', text: 'Meet the Knight - Practice', completed: true, quiz: true, nextLevel: 'L1' },
-    { id: '15', text: 'Meet the King', completed: true, info: true, nextLevel: 'L1' },
-    { id: '16', text: 'Meet the King - Practice', completed: true, quiz: true, nextLevel: 'L1' },
-    { id: '17', text: 'Meet the Pawn', completed: true, info: true },
-    { id: '18', text: 'Meet the Pawn - Practice #1', completed: true, quiz: true },
-    { id: '19', text: 'Meet the Pawn - Practice #2', completed: true, quiz: true },
-    { id: '20', text: 'Pawn Promotion', completed: true, quiz: true },
+  'black-attacks-center': [
+    { id: '1', text: 'London System: Black Attacks the Center', completed: false, info: true },
   ],
-  'the-opening': [
-    { id: '1', text: 'The Dream Opening', completed: true, info: true },
-    { id: '2', text: 'The Dream Opening - Practice', completed: true, quiz: true },
-    { id: '3', text: 'The Dream Opening (Both Colors)', completed: true, info: true },
-    { id: '4', text: "Danny's Ten Opening Rules", completed: true, info: true },
-    { id: '5', text: 'Leave the Queen at Home!', completed: true },
-    { id: '6', text: 'Early Castling in the Ruy Lopez', completed: true },
-    { id: '7', text: "Learn the Queen's Gambit", completed: true },
-    { id: '8', text: "Don't Try Scholar's Mate!", completed: true },
-    { id: '9', text: 'Breaking Principles When Necessary', completed: true },
-    { id: '10', text: 'Review #1', completed: false },
-    { id: '11', text: 'Review #2', completed: false },
-    { id: '12', text: 'Review #3', completed: false },
+  'queen-face-off': [
+    { id: '1', text: 'London System: Queen Face Off', completed: false, info: true },
   ],
-  'tactics-strategy': [
-    { id: '1', text: 'Tactics: Double Attack #1', completed: false },
-    { id: '2', text: 'Tactics: Double Attack #2', completed: false },
-    { id: '3', text: 'Tactics: Absolute Pin', completed: false },
-    { id: '4', text: 'Tactics: Relative Pin', completed: false },
-    { id: '5', text: "Tactics: Relative Pin in the Queen's Gambit", completed: false },
-    { id: '6', text: 'Tactics: Skewer', completed: false },
-    { id: '7', text: 'Tactics: A Deadly Rook Skewer', completed: false },
-    { id: '8', text: 'Tactics: Skewer - The Infamous Endgame Skewer', completed: false },
+  'symmetrical-variation': [
+    { id: '1', text: 'London System: Symmetrical Variation', completed: false, info: true },
   ],
-  'the-endgame': [
-    { id: '1', text: 'Endgame Checkmates: Ladder Mate', completed: false },
-    { id: '2', text: 'Endgame Checkmates: The Queen Checkmate', completed: false },
-    { id: '3', text: 'Endgame Checkmates: The Rook Mate', completed: false, info: true },
-    { id: '4', text: 'The Rook Mate - Practice', completed: false },
-    { id: '5', text: 'Pawn Promotion: King on the 6th #1', completed: false },
-    { id: '6', text: 'Pawn Promotion: King on the 6th #2', completed: false },
-    { id: '7', text: 'Passed Pawns', completed: false, info: true },
-    { id: '8', text: 'Outside Passed Pawns', completed: false, info: true },
-    { id: '9', text: 'Outside Passed Pawns #2', completed: false, info: true },
-    { id: '10', text: 'Outside Passed Pawns #2: How we got there', completed: false, info: true },
-    { id: '11', text: 'The Active King', completed: false, info: true },
-    { id: '12', text: 'Review #1', completed: false },
-    { id: '13', text: 'Review #2', completed: false },
-    { id: '14', text: 'Review #3', completed: false },
+  'queens-knight-defense': [
+    { id: '1', text: "London System: Queen's Knight Defense", completed: false, info: true },
   ],
-  'bringing-it-together': [
-    { id: '1', text: 'The Immortal Blitz Game: Wesley So vs. Garry Kasparov, St. Louis, 2022', completed: false, info: true },
-    { id: '2', text: 'Final Review #1', completed: false, quiz: true },
-    { id: '3', text: 'Final Review #2', completed: false, quiz: true },
-    { id: '4', text: 'Final Review #3', completed: false, quiz: true },
-    { id: '5', text: 'Course Conclusion', completed: false, info: true },
+  'kings-indian-setup': [
+    { id: '1', text: "London System: King's Indian Setup", completed: false, info: true },
+  ],
+  'poison-pawn-variation': [
+    { id: '1', text: 'London System: Poison Pawn Variation', completed: false, info: true },
   ],
 }
 
@@ -2227,14 +2176,15 @@ function getSectionMoves(section) {
   }
 }
 
-// V2.4: real course – 6 chapters (start-here removed)
+// V2.4: London System for White – 7 lessons (Learn the London System for White)
 const courseSectionsV24 = [
-  { id: 'intro', name: 'Introduction', completed: 0, total: 1, status: 'not_started', videoAvailable: false },
-  { id: 'learning-the-game', name: '1) Learning the Game', completed: 0, total: 20, status: 'not_started', videoAvailable: true },
-  { id: 'the-opening', name: '2) The Opening', completed: 0, total: 12, status: 'not_started', videoAvailable: true },
-  { id: 'tactics-strategy', name: '3) Tactics & Strategy', completed: 0, total: 8, status: 'not_started', videoAvailable: true },
-  { id: 'the-endgame', name: '4) The Endgame', completed: 0, total: 14, status: 'not_started', videoAvailable: true },
-  { id: 'bringing-it-together', name: '5) Bringing it all Together', completed: 0, total: 5, status: 'not_started', videoAvailable: true },
+  { id: 'main-line', name: 'London System: Main Line', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
+  { id: 'black-attacks-center', name: 'London System: Black Attacks the Center', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
+  { id: 'queen-face-off', name: 'London System: Queen Face Off', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
+  { id: 'symmetrical-variation', name: 'London System: Symmetrical Variation', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
+  { id: 'queens-knight-defense', name: "London System: Queen's Knight Defense", completed: 0, total: 1, status: 'not_started', videoAvailable: true },
+  { id: 'kings-indian-setup', name: "London System: King's Indian Setup", completed: 0, total: 1, status: 'not_started', videoAvailable: true },
+  { id: 'poison-pawn-variation', name: 'London System: Poison Pawn Variation', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
 ]
 
 // V2.3: legacy – 7 base sections + 7 Part 2 sections
