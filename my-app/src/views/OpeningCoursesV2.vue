@@ -10251,7 +10251,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
   width: 460px;
   max-width: 100%;
   margin-left: auto;
