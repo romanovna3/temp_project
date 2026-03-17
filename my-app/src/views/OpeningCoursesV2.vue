@@ -10296,6 +10296,7 @@ body {
 }
 .opening-courses-empty-state__btn {
   margin-top: 0;
+  font-family: var(--font-family-system, system-ui, -apple-system, BlinkMacSystemFont, sans-serif);
 }
 
 /* Opening Courses V1: course cards list – no overflow/height so only .opening-v1-scroll-wrap scrolls */
