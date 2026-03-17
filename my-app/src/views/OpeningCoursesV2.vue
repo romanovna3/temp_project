@@ -6187,8 +6187,8 @@ onUnmounted(() => {
                     <div class="opening-search-panel__search">
                       <SearchInput
                         v-model="openingSearchQuery"
-                        placeholder="Search your courses"
-                        aria-label="Search your courses"
+                        placeholder="Search openings"
+                        aria-label="Search openings"
                         @enter="onOpeningSearchEnter"
                       />
                     </div>
