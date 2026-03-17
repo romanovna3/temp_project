@@ -30,8 +30,6 @@ provide('design-system-key', {
   trans: (key) => key,
 })
 import { playSound } from '../lib/playSound.js'
-import practiceEmptyStateImage from '../assets/practice-empty-state.png'
-
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
 
@@ -6575,9 +6573,10 @@ onUnmounted(() => {
                   </template>
                   <template v-else-if="openingV2ScenarioPreset === 'returning-user-b'">
                     <div v-if="openingV2RubCourseList.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
-                      <img :src="practiceEmptyStateImage" alt="" class="opening-courses-empty-state__image" />
-                      <h3 class="opening-courses-empty-state__heading">No courses match</h3>
-                      <p class="opening-courses-empty-state__description">No opening courses match this position or search. Try changing the board position or removing a filter chip.</p>
+                      <img :src="baseUrl + 'icons/empty-state-no-courses.png'" alt="" class="opening-courses-empty-state__image" />
+                      <h3 class="opening-courses-empty-state__heading">No courses found</h3>
+                      <p class="opening-courses-empty-state__description">Please try a different search or filter</p>
+                      <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                     </div>
                     <div v-else class="opening-course-cards-list" data-name="Opening course cards">
                       <article
@@ -6741,9 +6740,10 @@ onUnmounted(() => {
                 <template v-else>
                   <!-- No courses match the current filters (board position and/or keywords) -->
                   <div v-if="openingCoursesFiltered.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
-                    <img :src="practiceEmptyStateImage" alt="" class="opening-courses-empty-state__image" />
-                    <h3 class="opening-courses-empty-state__heading">No courses match</h3>
-                    <p class="opening-courses-empty-state__description">No opening courses match this position or search. Try changing the board position or removing a filter chip.</p>
+                    <img :src="baseUrl + 'icons/empty-state-no-courses.png'" alt="" class="opening-courses-empty-state__image" />
+                    <h3 class="opening-courses-empty-state__heading">No courses found</h3>
+                    <p class="opening-courses-empty-state__description">Please try a different search or filter</p>
+                    <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                   </div>
                   <div v-else class="opening-course-cards-list" data-name="Opening course cards">
                   <article
@@ -10278,6 +10278,9 @@ body {
 .app.app--viewport-mobile .opening-courses-empty-state__description {
   margin-left: 0;
   margin-right: 0;
+}
+.opening-courses-empty-state__btn {
+  margin-top: 8px;
 }
 
 /* Opening Courses V1: course cards list – no overflow/height so only .opening-v1-scroll-wrap scrolls */
