@@ -4428,28 +4428,32 @@ function onOpeningSearchEnter() {
   if (!q) return
   const san = parseSearchAsSan(q)
   if (san) {
-    const chess = new Chess()
-    const filterMoves = openingFilterMoves.value
-    for (const m of filterMoves) {
-      const ok = chess.move(m.san)
-      if (!ok) break
-    }
-    const result = chess.move(san)
-    if (result) {
-      clearOpeningCardPreviewTimeout()
-      clearOpeningAutoMove()
-      selectedOpeningCardId.value = null
-      const n = filterMoves.length
-      const moveNum = Math.floor(n / 2) + 1
-      const display = n % 2 === 0 ? `${moveNum}.${result.san}` : `${moveNum}...${result.san}`
-      openingFilterMoves.value = [...filterMoves, { san: result.san, display }]
-      const { fen, lastMove: last } = getPositionFromFilterMoves(openingFilterMoves.value)
-      pieces.value = parseFEN(fen)
-      lastMove.value = last
-      selectedSquare.value = null
-      checkmateHighlight.value = null
-      openingSearchQuery.value = ''
-      return
+    try {
+      const chess = new Chess()
+      const filterMoves = openingFilterMoves.value
+      for (const m of filterMoves) {
+        const ok = chess.move(m.san)
+        if (!ok) break
+      }
+      const result = chess.move(san)
+      if (result) {
+        clearOpeningCardPreviewTimeout()
+        clearOpeningAutoMove()
+        selectedOpeningCardId.value = null
+        const n = filterMoves.length
+        const moveNum = Math.floor(n / 2) + 1
+        const display = n % 2 === 0 ? `${moveNum}.${result.san}` : `${moveNum}...${result.san}`
+        openingFilterMoves.value = [...filterMoves, { san: result.san, display }]
+        const { fen, lastMove: last } = getPositionFromFilterMoves(openingFilterMoves.value)
+        pieces.value = parseFEN(fen)
+        lastMove.value = last
+        selectedSquare.value = null
+        checkmateHighlight.value = null
+        openingSearchQuery.value = ''
+        return
+      }
+    } catch (_) {
+      // Not valid SAN (e.g. word like "Italian"); fall through to keyword tag
     }
   }
   // Add as keyword tag (filter by title/description)
