@@ -6574,7 +6574,7 @@ onUnmounted(() => {
                   <template v-else-if="openingV2ScenarioPreset === 'returning-user-b'">
                     <div v-if="openingV2RubCourseList.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
                       <img :src="baseUrl + 'icons/empty-state-no-courses.png'" alt="" class="opening-courses-empty-state__image" />
-                      <h3 class="opening-courses-empty-state__heading">No courses found</h3>
+                      <h3 class="opening-courses-empty-state__heading text-medium-bold">No courses found</h3>
                       <p class="opening-courses-empty-state__description">Please try a different search or filter</p>
                       <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                     </div>
@@ -6741,7 +6741,7 @@ onUnmounted(() => {
                   <!-- No courses match the current filters (board position and/or keywords) -->
                   <div v-if="openingCoursesFiltered.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
                     <img :src="baseUrl + 'icons/empty-state-no-courses.png'" alt="" class="opening-courses-empty-state__image" />
-                    <h3 class="opening-courses-empty-state__heading">No courses found</h3>
+                    <h3 class="opening-courses-empty-state__heading text-medium-bold">No courses found</h3>
                     <p class="opening-courses-empty-state__description">Please try a different search or filter</p>
                     <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                   </div>
@@ -10262,10 +10262,14 @@ body {
 }
 .opening-courses-empty-state__heading {
   margin: 0;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.3;
   color: rgba(255, 255, 255, 0.85);
+}
+/* DS text/medium-bold: 14px / 16px, weight 600, system font */
+.opening-courses-empty-state__heading.text-medium-bold {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
 }
 .opening-courses-empty-state__description {
   margin: 0 40px;
