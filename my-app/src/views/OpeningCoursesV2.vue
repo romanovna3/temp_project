@@ -3864,8 +3864,17 @@ const tryMove = (from, to) => {
 
   // Default board (index -1): free play – execute any legal move
   if (currentQuestionIndex.value < 0) {
-    // Opening V1: only allow moves that extend the filter sequence; record move and filter courses
+    // Opening Courses V2: only allow moves that extend the filter sequence; record move and filter courses. Undo: move piece back to remove latest chip.
     if (isOpeningV1FreePlay) {
+      // Undo: moving the piece back (from lastMove.to → lastMove.from) removes the latest filter chip and syncs the board
+      if (openingFilterMoves.value.length > 0 && lastMove.value && from === lastMove.value.to && to === lastMove.value.from) {
+        clearOpeningCardPreviewTimeout()
+        clearOpeningAutoMove()
+        selectedOpeningCardId.value = null
+        removeOpeningFilterMoveAt(openingFilterMoves.value.length - 1)
+        playSound('move')
+        return true
+      }
       // Clear any card preview/animation when user makes a move
       clearOpeningCardPreviewTimeout()
       clearOpeningAutoMove()
