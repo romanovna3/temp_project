@@ -124,3 +124,116 @@ onMounted(() => nextTick(updateChipsOverflow))
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Chips row: scrollable left + fixed right (chevron + Clear all); height fits content – match OpeningCoursesV2.vue */
+.opening-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  min-height: 28px;
+  height: auto;
+  flex-shrink: 0;
+}
+.opening-chips-scroll-wrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.opening-move-chips-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.opening-move-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+.opening-move-chips-scroll:focus {
+  outline: none;
+}
+.opening-chips-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, rgba(39, 37, 34, 1));
+}
+.opening-chips-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 4px);
+  padding-left: var(--space-8, 8px);
+  background: rgba(39, 37, 34, 1);
+}
+.opening-chips-chevron-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-2, 4px);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+.opening-chips-chevron-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+}
+.opening-chips-clear-all {
+  padding: 4px 0;
+  border: none;
+  background: none;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.opening-chips-clear-all:hover {
+  color: rgba(255, 255, 255, 0.95);
+}
+.opening-move-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-8, 8px);
+  padding: 0;
+  min-width: min-content;
+}
+.opening-move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius-2, 4px);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+  border: none;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.opening-move-chip:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.opening-move-chip__x {
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.85;
+}
+</style>
