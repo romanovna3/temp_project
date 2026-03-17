@@ -6574,8 +6574,10 @@ onUnmounted(() => {
                   <template v-else-if="openingV2ScenarioPreset === 'returning-user-b'">
                     <div v-if="openingV2RubCourseList.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
                       <img :src="baseUrl + 'icons/empty-state-no-courses.png'" alt="" class="opening-courses-empty-state__image" />
-                      <h3 class="opening-courses-empty-state__heading text-medium-bold">No courses found</h3>
-                      <p class="opening-courses-empty-state__description">Please try a different search or filter</p>
+                      <div class="opening-courses-empty-state__text-group">
+                        <h3 class="opening-courses-empty-state__heading text-medium-bold">No courses found</h3>
+                        <p class="opening-courses-empty-state__description">Please try a different search or filter</p>
+                      </div>
                       <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                     </div>
                     <div v-else class="opening-course-cards-list" data-name="Opening course cards">
@@ -6741,8 +6743,10 @@ onUnmounted(() => {
                   <!-- No courses match the current filters (board position and/or keywords) -->
                   <div v-if="openingCoursesFiltered.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
                     <img :src="baseUrl + 'icons/empty-state-no-courses.png'" alt="" class="opening-courses-empty-state__image" />
-                    <h3 class="opening-courses-empty-state__heading text-medium-bold">No courses found</h3>
-                    <p class="opening-courses-empty-state__description">Please try a different search or filter</p>
+                    <div class="opening-courses-empty-state__text-group">
+                      <h3 class="opening-courses-empty-state__heading text-medium-bold">No courses found</h3>
+                      <p class="opening-courses-empty-state__description">Please try a different search or filter</p>
+                    </div>
                     <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                   </div>
                   <div v-else class="opening-course-cards-list" data-name="Opening course cards">
@@ -10247,12 +10251,19 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 460px;
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
   padding: 32px 24px;
+  text-align: center;
+}
+.opening-courses-empty-state__text-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   text-align: center;
 }
 .opening-courses-empty-state__image {
@@ -10284,7 +10295,7 @@ body {
   margin-right: 0;
 }
 .opening-courses-empty-state__btn {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 /* Opening Courses V1: course cards list – no overflow/height so only .opening-v1-scroll-wrap scrolls */
