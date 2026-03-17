@@ -885,8 +885,8 @@ function backToCourses() {
 /** Header back button: on line view always go back to chapter (courses) page; works for all line types (info, quiz, completed, ready, uncompleted). */
 function onHeaderBackClick() {
   if (panelView.value === 'line') backToCourses()
-  // OC: when on course route (opening-courses-oc/:courseId), back goes to Opening Courses V1 list
-  else if (openingCourseIdFromRoute.value) router.push(route.path.startsWith('/learn/') ? '/learn/opening-courses-v1' : '/courses/opening-courses-v1')
+  // OC: when on course route (opening-courses-oc/:courseId), back goes to Opening Courses V2 list
+  else if (openingCourseIdFromRoute.value) router.push(route.path.startsWith('/learn/') ? '/learn/opening-courses-v2' : '/courses/opening-courses-v2')
 }
 
 /** V2.3 Line view: prev/next line for headline chevrons; can cross chapter boundaries */
@@ -6171,11 +6171,15 @@ watch(courseTabsActive, (active) => {
   }
 })
 
-/** OC course page: land on Learn tab when entering; restore play side from Opening page color picker choice. */
+/** OC course page: land on Learn tab when entering; restore play side from Opening page color picker choice; expand single section so lines are visible. */
 watch(openingCourseIdFromRoute, (courseId) => {
   openingStartedState.value = courseId ? getOpeningStartedState() : null
   if (courseId) {
     courseTabsActive.value = 'content'
+    nextTick(() => {
+      const sections = courseSections.value
+      if (sections?.length) expandedSectionIds.value = new Set([sections[0].id])
+    })
     try {
       const raw = sessionStorage.getItem(OPENING_COURSES_V1_RETURN_STATE_KEY)
       if (raw) {
@@ -7573,13 +7577,13 @@ onUnmounted(() => {
                     :class="{
                       'v23-section-timeline-wrap--v4': isVideoV2_4OrV5,
                       'v23-section-timeline-wrap--v6': isVideoV6OrV7,
-                      'v23-section-timeline-wrap--no-chapter': isLondonSystemWhiteCourse
+                      'v23-section-timeline-wrap--no-chapter': isLondonSystemWhiteCourse || !!openingCourseIdFromRoute
                     }"
                     :ref="isVideoV2_4OrV5 ? (el => setSectionLineWrapRef(section.id, el)) : undefined"
                   >
                     <div v-if="isVideoV2_4OrV5" class="v23-section-timeline-wrap__line" aria-hidden="true" />
                   <component
-                    v-if="!isLondonSystemWhiteCourse"
+                    v-if="!isLondonSystemWhiteCourse && !openingCourseIdFromRoute"
                     :is="useAccordionChapters ? 'button' : 'div'"
                     :type="useAccordionChapters ? 'button' : undefined"
                     class="chapter-v2 chapter-v2--header"
