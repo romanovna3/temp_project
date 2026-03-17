@@ -13,6 +13,9 @@ const router = createRouter({
     { path: '/learn/opening-courses-v1', name: 'learn-opening-courses-v1', component: () => import('../views/CoursesWithErrorBoundary.vue') },
     // Singular "course" → redirect so /#/course/opening-courses-v1 works
     { path: '/course/opening-courses-v1', redirect: '/courses/opening-courses-v1' },
+    { path: '/courses/opening-courses-v2', name: 'courses-opening-courses-v2', component: () => import('../views/OpeningCoursesV2WithErrorBoundary.vue') },
+    { path: '/learn/opening-courses-v2', name: 'learn-opening-courses-v2', component: () => import('../views/OpeningCoursesV2WithErrorBoundary.vue') },
+    { path: '/course/opening-courses-v2', redirect: '/courses/opening-courses-v2' },
     { path: '/courses/v2.3', name: 'courses-v2-3', component: () => import('../views/CoursesV23.vue') },
     { path: '/courses/v2.4', name: 'courses-v2-4', component: () => import('../views/CoursesV24.vue') },
     { path: '/courses/v4', name: 'courses-v4', component: () => import('../views/CoursesV4.vue') },

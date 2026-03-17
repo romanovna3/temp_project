@@ -2,6 +2,10 @@
 
 **Purpose:** High-level overview of the Opening Courses experience for non-technical stakeholders. Describes main features and product decisions.
 
+**Design versions (separate files, like chapter page versions):**
+- **V1:** `my-app/src/views/Courses.vue` — routes `/courses/opening-courses-v1`, `/learn/opening-courses-v1`.
+- **V2:** `my-app/src/views/OpeningCoursesV2.vue` — routes `/courses/opening-courses-v2`, `/learn/opening-courses-v2`. New design changes are applied to V2 only.
+
 ---
 
 ## 1. What This Is
