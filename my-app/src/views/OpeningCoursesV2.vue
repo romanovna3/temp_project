@@ -6219,6 +6219,7 @@ onUnmounted(() => {
                       :keyword-tags="openingKeywordTags"
                       @clear-board-position="clearBoardPosition"
                       @remove-keyword-tag="(idx) => removeOpeningKeywordTag(idx)"
+                      @clear-all="clearAllOpeningFilters"
                     />
                     <div v-else-if="openingV2ScenarioPreset === 'new-user' || openingV2ScenarioPreset === 'returning-user-b'" class="opening-courses-meta-panel" data-name="Course counter and filter">
                       <span class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} Courses</span>

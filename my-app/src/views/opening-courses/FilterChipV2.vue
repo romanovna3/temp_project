@@ -1,8 +1,8 @@
 <!--
-  Opening Courses filter chips V2: single "Board position" chip for all moves + keyword tags. No Clear all.
+  Opening Courses filter chips V2: single "Board position" chip + keyword tags. Clear all when > 1 chip; horizontal scroll when overflow.
 -->
 <script setup>
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { CcIcon } from '@chesscom/design-system'
 
 const props = defineProps({
@@ -10,7 +10,10 @@ const props = defineProps({
   keywordTags: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['clear-board-position', 'remove-keyword-tag'])
+const emit = defineEmits(['clear-board-position', 'remove-keyword-tag', 'clear-all'])
+
+const totalChipCount = computed(() => (props.filterMoves.length > 0 ? 1 : 0) + props.keywordTags.length)
+const showClearAll = computed(() => totalChipCount.value > 1)
 
 const chipsScrollRef = ref(null)
 const chipsOverflowRight = ref(false)
@@ -114,6 +117,14 @@ onMounted(() => nextTick(updateChipsOverflow))
       >
         <CcIcon name="arrow-chevron-right" variant="glyph" :size="16" aria-hidden="true" />
       </button>
+      <button
+        v-if="showClearAll"
+        type="button"
+        class="opening-chips-clear-all"
+        @click="emit('clear-all')"
+      >
+        Clear all
+      </button>
     </div>
   </div>
 </template>
@@ -182,6 +193,20 @@ onMounted(() => nextTick(updateChipsOverflow))
 }
 .opening-chips-chevron-btn:hover {
   background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+}
+.opening-chips-clear-all {
+  padding: 4px 0;
+  border: none;
+  background: none;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.opening-chips-clear-all:hover {
   color: rgba(255, 255, 255, 0.95);
 }
 .opening-move-chips {
