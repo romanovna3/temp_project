@@ -10282,12 +10282,14 @@ body {
   line-height: 16px;
   font-weight: 600;
 }
+/* DS text/medium + color text/subtle */
 .opening-courses-empty-state__description {
   margin: 0 40px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 12px;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.65);
+  font-family: var(--font-family-system, system-ui, -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--color-text-subtle, var(--text-tertiary, rgba(255, 255, 255, 0.5)));
 }
 .app.app--viewport-narrow .opening-courses-empty-state__description,
 .app.app--viewport-mobile .opening-courses-empty-state__description {
