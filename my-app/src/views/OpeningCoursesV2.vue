@@ -3854,8 +3854,19 @@ const tryMove = (from, to) => {
   const movingPiece = getPieceOnSquare(from)
   if (!movingPiece) return false
 
-  // Opening V1 free play: allow the side to move (White when even moves, Black when odd)
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV2.value && currentQuestionIndex.value < 0
+
+  // Opening Courses V2: undo by moving piece back – check before side-to-move (undo moves the piece that just moved, i.e. “wrong” color). If 1 move → chip disappears, board resets; if 2+ moves → chip stays, board shows position after remaining moves.
+  if (currentQuestionIndex.value < 0 && isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && from === lastMove.value.to && to === lastMove.value.from) {
+    clearOpeningCardPreviewTimeout()
+    clearOpeningAutoMove()
+    selectedOpeningCardId.value = null
+    removeOpeningFilterMoveAt(openingFilterMoves.value.length - 1)
+    playSound('move')
+    return true
+  }
+
+  // Opening V1 free play: allow the side to move (White when even moves, Black when odd)
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'b' : 'w'
   const expectedPrefix = isOpeningV1FreePlay ? sideToMove : 'w'
   if (!movingPiece.type.startsWith(expectedPrefix)) return false
@@ -3866,17 +3877,8 @@ const tryMove = (from, to) => {
 
   // Default board (index -1): free play – execute any legal move
   if (currentQuestionIndex.value < 0) {
-    // Opening Courses V2: only allow moves that extend the filter sequence; record move and filter courses. Undo: move piece back to remove latest chip.
+    // Opening Courses V2: only allow moves that extend the filter sequence; record move and filter courses
     if (isOpeningV1FreePlay) {
-      // Undo: moving the piece back (from lastMove.to → lastMove.from) removes the latest filter chip and syncs the board
-      if (openingFilterMoves.value.length > 0 && lastMove.value && from === lastMove.value.to && to === lastMove.value.from) {
-        clearOpeningCardPreviewTimeout()
-        clearOpeningAutoMove()
-        selectedOpeningCardId.value = null
-        removeOpeningFilterMoveAt(openingFilterMoves.value.length - 1)
-        playSound('move')
-        return true
-      }
       // Clear any card preview/animation when user makes a move
       clearOpeningCardPreviewTimeout()
       clearOpeningAutoMove()
