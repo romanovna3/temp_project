@@ -30,6 +30,7 @@ provide('design-system-key', {
   trans: (key) => key,
 })
 import { playSound } from '../lib/playSound.js'
+import practiceEmptyStateImage from '../assets/practice-empty-state.png'
 
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
@@ -6573,7 +6574,12 @@ onUnmounted(() => {
                   </div>
                   </template>
                   <template v-else-if="openingV2ScenarioPreset === 'returning-user-b'">
-                    <div class="opening-course-cards-list" data-name="Opening course cards">
+                    <div v-if="openingV2RubCourseList.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
+                      <img :src="practiceEmptyStateImage" alt="" class="opening-courses-empty-state__image" />
+                      <h3 class="opening-courses-empty-state__heading">No courses match</h3>
+                      <p class="opening-courses-empty-state__description">No opening courses match this position or search. Try changing the board position or removing a filter chip.</p>
+                    </div>
+                    <div v-else class="opening-course-cards-list" data-name="Opening course cards">
                       <article
                         v-for="card in openingV2RubCourseList"
                         :key="card.id"
@@ -6732,7 +6738,14 @@ onUnmounted(() => {
                     </div>
                   </template>
                 </template>
-                <div v-else class="opening-course-cards-list" data-name="Opening course cards">
+                <template v-else>
+                  <!-- No courses match the current filters (board position and/or keywords) -->
+                  <div v-if="openingCoursesFiltered.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
+                    <img :src="practiceEmptyStateImage" alt="" class="opening-courses-empty-state__image" />
+                    <h3 class="opening-courses-empty-state__heading">No courses match</h3>
+                    <p class="opening-courses-empty-state__description">No opening courses match this position or search. Try changing the board position or removing a filter chip.</p>
+                  </div>
+                  <div v-else class="opening-course-cards-list" data-name="Opening course cards">
                   <article
                     v-for="card in openingCoursesFiltered"
                     :key="card.id"
@@ -6889,6 +6902,7 @@ onUnmounted(() => {
                     </div>
                   </article>
                 </div>
+                </template>
               </div>
             </div>
           </div>
@@ -10226,6 +10240,44 @@ body {
   line-height: 16px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
+}
+
+/* Opening Courses V2: no courses match filters – same layout as chapter “Nothing to review” empty state */
+.opening-courses-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 460px;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 32px 24px;
+  text-align: center;
+}
+.opening-courses-empty-state__image {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+}
+.opening-courses-empty-state__heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.85);
+}
+.opening-courses-empty-state__description {
+  margin: 0 40px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.65);
+}
+.app.app--viewport-narrow .opening-courses-empty-state__description,
+.app.app--viewport-mobile .opening-courses-empty-state__description {
+  margin-left: 0;
+  margin-right: 0;
 }
 
 /* Opening Courses V1: course cards list – no overflow/height so only .opening-v1-scroll-wrap scrolls */
