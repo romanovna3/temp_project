@@ -3567,7 +3567,8 @@ const handleSquareClick = (square) => {
   const piece = getPieceOnSquare(square)
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV2.value && currentQuestionIndex.value < 0
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
-  const canSelectPiece = piece && (isOpeningV1FreePlay ? piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') : piece.type.startsWith('w'))
+  const isLastMovedPiece = piece && isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && square === lastMove.value.to
+  const canSelectPiece = piece && (isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w'))
 
   // If no piece selected yet
   if (!selectedSquare.value) {
@@ -3976,10 +3977,11 @@ const handleDragStart = (event, square) => {
 
   const piece = getPieceOnSquare(square)
   if (!piece) return
-  // Opening V1 free play: allow the side to move (White when 0,2,4... moves; Black when 1,3,5...)
+  // Opening Courses V2 free play: allow the side to move, or allow dragging the last-moved piece (for undo)
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV2.value && currentQuestionIndex.value < 0
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
-  const canMove = isOpeningV1FreePlay ? piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') : piece.type.startsWith('w')
+  const isLastMovedPiece = isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && square === lastMove.value.to
+  const canMove = isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w')
   if (!canMove) return
 
   // Prevent default drag behavior
