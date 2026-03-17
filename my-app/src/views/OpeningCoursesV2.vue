@@ -16,6 +16,8 @@ import PresetBarSelect from '../components/PresetBarSelect.vue'
 import OpeningCoursePage from './OpeningCoursePage.vue'
 import PickYourColor from '../components/PickYourColor.vue'
 import AquaBadge from '../components/AquaBadge.vue'
+import FilterChipV2 from './opening-courses/FilterChipV2.vue'
+// To revert to per-move chips + Clear all: import FilterChipV1, use <FilterChipV1 :filter-moves="openingFilterMoves" :keyword-tags="openingKeywordTags" @remove-move-at="removeOpeningFilterMoveAt" @remove-keyword-tag="(i) => removeOpeningKeywordTag(i)" @clear-all="clearAllOpeningFilters" />
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -4458,27 +4460,6 @@ function removeOpeningKeywordTag(index) {
 }
 
 // Chips row: overflow state for gradient + chevron; scroll by 70% on chevron click
-const openingChipsScrollRef = ref(null)
-const chipsOverflowRight = ref(false)
-const CHIPS_SCROLL_PERCENT = 0.7
-
-function updateChipsOverflow() {
-  const el = openingChipsScrollRef.value
-  if (!el) {
-    chipsOverflowRight.value = false
-    return
-  }
-  const canScrollRight = el.scrollWidth > el.clientWidth && el.scrollLeft + el.clientWidth < el.scrollWidth - 1
-  chipsOverflowRight.value = canScrollRight
-}
-
-function scrollChipsRight() {
-  const el = openingChipsScrollRef.value
-  if (!el || !chipsOverflowRight.value) return
-  const delta = Math.max(1, Math.floor(el.clientWidth * CHIPS_SCROLL_PERCENT))
-  el.scrollTo({ left: el.scrollLeft + delta, behavior: 'smooth' })
-}
-
 function clearAllOpeningFilters() {
   clearOpeningCardPreviewTimeout()
   clearOpeningAutoMove()
@@ -4490,35 +4471,19 @@ function clearAllOpeningFilters() {
   lastMove.value = last
   selectedSquare.value = null
   checkmateHighlight.value = null
-  nextTick(updateChipsOverflow)
 }
 
-watch(
-  () => [openingFilterMoves.value.length, openingKeywordTags.value.length],
-  () => nextTick(updateChipsOverflow)
-)
-let chipsResizeObserver = null
-watch(
-  openingChipsScrollRef,
-  (el) => {
-    if (chipsResizeObserver) {
-      chipsResizeObserver.disconnect()
-      chipsResizeObserver = null
-    }
-    if (el && typeof ResizeObserver !== 'undefined') {
-      chipsResizeObserver = new ResizeObserver(() => updateChipsOverflow())
-      chipsResizeObserver.observe(el)
-    }
-  },
-  { flush: 'post' }
-)
-onUnmounted(() => {
-  if (chipsResizeObserver && openingChipsScrollRef.value) {
-    chipsResizeObserver.disconnect()
-  }
-})
-function onOpeningChipsScroll() {
-  updateChipsOverflow()
+// V2 filter chips: clear only board position (moves); keeps keyword tags. Used when user removes "Board position" chip.
+function clearBoardPosition() {
+  clearOpeningCardPreviewTimeout()
+  clearOpeningAutoMove()
+  selectedOpeningCardId.value = null
+  openingFilterMoves.value = []
+  const { fen, lastMove: last } = getPositionFromFilterMoves([])
+  pieces.value = parseFEN(fen)
+  lastMove.value = last
+  selectedSquare.value = null
+  checkmateHighlight.value = null
 }
 
 function computeOpeningTabsStickyStart() {
@@ -6240,63 +6205,13 @@ onUnmounted(() => {
                     >Filters</CcButton>
                   </div>
                   <div v-if="!isReturningUserScenario(openingV2ScenarioPreset) || openingV2ScenarioPreset === 'returning-user-b' || openingFilterMoves.length || openingKeywordTags.length" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
-                    <div v-if="openingFilterMoves.length || openingKeywordTags.length" class="opening-chips-row" role="list" aria-label="Filter chips">
-                      <div class="opening-chips-scroll-wrap">
-                        <div
-                          ref="openingChipsScrollRef"
-                          class="opening-move-chips-scroll"
-                          role="list"
-                          tabindex="-1"
-                          @scroll="onOpeningChipsScroll"
-                        >
-                          <div class="opening-move-chips">
-                            <button
-                              v-for="(item, idx) in openingFilterMoves"
-                              :key="'move-' + idx"
-                              type="button"
-                              class="opening-move-chip"
-                              role="listitem"
-                              :aria-label="`Remove move ${item.display}`"
-                              @click="removeOpeningFilterMoveAt(idx)"
-                            >
-                              <span class="opening-move-chip__label">{{ item.display }}</span>
-                              <span class="opening-move-chip__x" aria-hidden="true">×</span>
-                            </button>
-                            <button
-                              v-for="(tag, idx) in openingKeywordTags"
-                              :key="'tag-' + idx"
-                              type="button"
-                              class="opening-move-chip opening-move-chip--keyword"
-                              role="listitem"
-                              :aria-label="`Remove tag ${tag}`"
-                              @click="removeOpeningKeywordTag(idx)"
-                            >
-                              <span class="opening-move-chip__label">{{ tag }}</span>
-                              <span class="opening-move-chip__x" aria-hidden="true">×</span>
-                            </button>
-                          </div>
-                        </div>
-                        <div v-if="chipsOverflowRight" class="opening-chips-fade" aria-hidden="true" />
-                      </div>
-                      <div class="opening-chips-actions">
-                        <button
-                          v-if="chipsOverflowRight"
-                          type="button"
-                          class="opening-chips-chevron-btn"
-                          aria-label="Scroll chips right"
-                          @click="scrollChipsRight"
-                        >
-                          <CcIcon name="arrow-chevron-right" variant="glyph" :size="16" aria-hidden="true" />
-                        </button>
-                        <button
-                          type="button"
-                          class="opening-chips-clear-all"
-                          @click="clearAllOpeningFilters"
-                        >
-                          Clear all
-                        </button>
-                      </div>
-                    </div>
+                    <FilterChipV2
+                      v-if="openingFilterMoves.length || openingKeywordTags.length"
+                      :filter-moves="openingFilterMoves"
+                      :keyword-tags="openingKeywordTags"
+                      @clear-board-position="clearBoardPosition"
+                      @remove-keyword-tag="(idx) => removeOpeningKeywordTag(idx)"
+                    />
                     <div v-else-if="openingV2ScenarioPreset === 'new-user' || openingV2ScenarioPreset === 'returning-user-b'" class="opening-courses-meta-panel" data-name="Course counter and filter">
                       <span class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} Courses</span>
                       <div class="opening-courses-meta-panel__sort">
