@@ -8435,10 +8435,18 @@ v-if="isVideoV6OrV7"
                 </button>
               </div>
             </div>
-            <!-- Opening Courses V2 (courses view): single primary CTA (Learn on Your Openings; Learn / Start Course on All / New User). -->
+            <!-- Opening Courses V2 (courses view): completed → aqua Practice + counter; else Learn / Start Course. -->
             <div v-else-if="isOpeningCoursesV2 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-full">
+                <AquaCtaButton
+                  v-if="selectedOpeningCard && isReturningUserScenario(openingV2ScenarioPreset) && isOpeningCardCompleted(selectedOpeningCard)"
+                  label="Practice"
+                  :badge="getOpeningCardStartedData(selectedOpeningCard)?.reviewCount ?? 0"
+                  class="footer-btn-full opening-v2-footer-aqua-practice"
+                  @click="openOpeningCourse(null, { openInPracticeTab: true })"
+                />
                 <CcButton
+                  v-else
                   variant="primary"
                   size="large"
                   class="footer-btn-full"
