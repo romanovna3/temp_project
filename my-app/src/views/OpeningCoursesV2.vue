@@ -4270,6 +4270,14 @@ watch(openingFilterColor, (val) => {
 }, { immediate: false })
 const openingSortBy = ref('recent') // 'recent' | 'name' | 'type' | 'popular'
 const openingSortOpen = ref(false)
+/** Your Openings tab (returning user): sort options are Most Recent, Name, First Move; default Most Recent. All/New User: Popular, Name, First Move, Most Recent; default Popular. */
+const isYourOpeningsSortContext = computed(() =>
+  openingV2RubActiveTab.value === 'my-openings' && isReturningUserScenario(openingV2ScenarioPreset.value)
+)
+/** On Your Openings, 'popular' is not an option — treat as 'recent' for label and started list. */
+const effectiveOpeningSortBy = computed(() =>
+  isYourOpeningsSortContext.value && openingSortBy.value === 'popular' ? 'recent' : openingSortBy.value
+)
 // Opening V1: scroll-linked search bar – searchY in px clamped to [-H, 0]; searchY -= delta on scroll (no boolean).
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)) }
 const openingSearchY = ref(0)
@@ -4311,9 +4319,10 @@ function measureOpeningSearchH() {
   })
 }
 const openingSortLabel = computed(() => {
-  if (openingSortBy.value === 'recent') return 'Most Recent'
-  if (openingSortBy.value === 'type') return 'First Move'
-  if (openingSortBy.value === 'popular') return 'Popular'
+  const sort = effectiveOpeningSortBy.value
+  if (sort === 'recent') return 'Most Recent'
+  if (sort === 'type') return 'First Move'
+  if (sort === 'popular') return 'Popular'
   return 'Name'
 })
 
@@ -4350,8 +4359,9 @@ function courseMatchesMoveSequence(card, filterMoves) {
   return filterSans.every((san, i) => courseSans[i] === san)
 }
 
-/** Search, board moves, keywords, sort — used after optional color filter. */
-function applyOpeningCoursesHeaderFilters(list) {
+/** Search, board moves, keywords, sort — used after optional color filter. sortByOverride: when provided (e.g. for Your Openings), use instead of openingSortBy. */
+function applyOpeningCoursesHeaderFilters(list, sortByOverride) {
+  const sortBy = sortByOverride != null ? sortByOverride : openingSortBy.value
   let out = list.slice()
   const q = (openingSearchQuery.value || '').trim().toLowerCase()
   if (q) out = out.filter((c) => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
@@ -4368,7 +4378,7 @@ function applyOpeningCoursesHeaderFilters(list) {
       return lower.every((kw) => t.includes(kw) || d.includes(kw))
     })
   }
-  if (openingSortBy.value === 'recent') {
+  if (sortBy === 'recent') {
     if (isReturningUserScenario(openingV2ScenarioPreset.value)) {
       out = out.slice().sort((a, b) => {
         const aStarted = isOpeningCardStarted(a)
@@ -4382,11 +4392,11 @@ function applyOpeningCoursesHeaderFilters(list) {
       out = out.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
     }
   } else {
-    if (openingSortBy.value === 'name') {
+    if (sortBy === 'name') {
       out = out.slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''))
-    } else if (openingSortBy.value === 'type') {
+    } else if (sortBy === 'type') {
       out = out.slice().sort((a, b) => (a.type || '').localeCompare(b.type || ''))
-    } else if (openingSortBy.value === 'popular') {
+    } else if (sortBy === 'popular') {
       out = out.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
     }
     if (isReturningUserScenario(openingV2ScenarioPreset.value)) {
@@ -4410,10 +4420,10 @@ const openingCoursesFiltered = computed(() => {
   return applyOpeningCoursesHeaderFilters(base)
 })
 
-/** Returning user: started courses on Your Openings — all White + Black started (no piece-color filter). */
+/** Returning user: started courses on Your Openings — all White + Black started; sort uses effective (popular → recent). */
 const openingCoursesStartedList = computed(() => {
   if (!isReturningUserScenario(openingV2ScenarioPreset.value)) return []
-  return applyOpeningCoursesHeaderFilters(openingCourseCards).filter((c) => isOpeningCardStarted(c))
+  return applyOpeningCoursesHeaderFilters(openingCourseCards, effectiveOpeningSortBy.value).filter((c) => isOpeningCardStarted(c))
 })
 /** Returning user: non-started courses only (for "All Openings" section). Each card is per color; once started it is in My Openings only. Both colors can be started for openings with two courses; only the other color remains in All Openings until started. */
 const openingCoursesRestList = computed(() => {
@@ -4452,6 +4462,15 @@ watch(openingV2ScenarioPreset, () => {
     // ignore
   }
 })
+
+/** Your Openings: default Most Recent (no Popular). All / New User: default Popular. Coerce when switching. */
+watch([openingV2ScenarioPreset, openingV2RubActiveTab], () => {
+  if (openingV2ScenarioPreset.value === 'new-user') {
+    openingSortBy.value = 'popular'
+  } else if (openingV2RubActiveTab.value === 'my-openings' && openingSortBy.value === 'popular') {
+    openingSortBy.value = 'recent'
+  }
+}, { immediate: true })
 
 // Remove move at index and all after; sync board to new position
 function removeOpeningFilterMoveAt(index) {
@@ -6261,10 +6280,17 @@ onUnmounted(() => {
                           <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
                         </button>
                         <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
-                          <button type="button" role="option" :aria-selected="openingSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
-                          <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
-                          <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
-                          <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
+                          <template v-if="isYourOpeningsSortContext">
+                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
+                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                          </template>
+                          <template v-else>
+                            <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
+                            <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                            <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                            <button type="button" role="option" :aria-selected="openingSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
+                          </template>
                         </div>
                       </div>
                     </div>
