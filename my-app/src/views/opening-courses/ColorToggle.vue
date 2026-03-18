@@ -292,10 +292,10 @@ function onToggleKeydown(event) {
 
 /* GNS: teams.design.public.tokens.semantic.dimensions (radius-5, space-8), color.border (border-success, border-default). No color-picker component in GNS; tile visuals follow Colorpicker pattern. */
 .color-switch__outline {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   box-sizing: border-box;
   border-radius: calc(var(--radius-5, 5px) + 2px);
   transition: box-shadow 0.15s ease;
@@ -305,14 +305,14 @@ function onToggleKeydown(event) {
 }
 
 .color-switch__option--selected .color-switch__outline {
-  box-shadow: 0 0 0 2px rgba(129, 182, 76, 1);
+  box-shadow: 0 0 0 2px var(--color-border-success);
 }
 
 .color-switch__thumb {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   box-sizing: border-box;
   border-radius: var(--radius-5, 5px);
   display: flex;
@@ -334,11 +334,11 @@ function onToggleKeydown(event) {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* piece-hollow-king-1 – scaled for 32×32 tile */
+/* piece-hollow-king-1 – medium scale inside 40×40 */
 .color-switch__king {
-  width: 24px;
+  width: 28px;
   height: auto;
-  max-height: 28px;
+  max-height: 32px;
   display: block;
   flex-shrink: 0;
   pointer-events: none;
