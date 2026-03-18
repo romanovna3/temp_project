@@ -453,6 +453,13 @@ const selectedOpeningCard = computed(() =>
     ? openingCourseCards.find((c) => c.id === selectedOpeningCardId.value) ?? null
     : null
 )
+/** Your Openings started courses: how many lines appear on Practice tab (French 10, Italian 4, London W 6 / B 5, Scandinavian 3). */
+const openingCoursePracticeLineCount = computed(() => {
+  const card = selectedOpeningCard.value
+  if (!card || !isOpeningCardStarted(card)) return 0
+  const data = getOpeningCardStartedData(card)
+  return Math.max(0, data?.reviewCount ?? 0)
+})
 /** List used for "both colors present" check: New User = all filtered; Returning User = current tab list. */
 const selectedOpeningListForColors = computed(() =>
   openingV2ScenarioPreset.value === 'new-user' ? openingCoursesFiltered.value : openingV2RubCourseList.value
@@ -2724,6 +2731,15 @@ const nextToLearnRef = computed(() => {
   return null
 })
 
+/** First line in Practice tab that is ready or uncompleted (next to practice); used for aqua highlight. */
+const nextToPracticeRef = computed(() => {
+  for (const section of courseSectionsForPractice.value) {
+    const idx = section.practiceMoves.findIndex((item) => item.practiceType === 'ready' || item.practiceType === 'uncompleted')
+    if (idx >= 0) return { sectionId: section.id, moveId: section.practiceMoves[idx].move.id }
+  }
+  return null
+})
+
 // V7 only: tab labels – Learn (content) and Practice (stats)
 const courseTabContentLabel = computed(() => (isVideoV7OrV8.value ? 'Learn' : 'Content'))
 const courseTabStatsLabel = computed(() => (isVideoV7OrV8.value ? 'Practice' : 'Stats'))
@@ -2743,7 +2759,8 @@ const courseSectionsReadyForReview = computed(() => {
 /** V7 Practice tab: sections with ready and/or completed lines; each section has practiceMoves: { move, practiceType: 'ready'|'completed' } (ready first, then completed). */
 const courseSectionsForPractice = computed(() => {
   if (!isVideoV7OrV8.value) return []
-  return courseSections.value
+  const sections = courseSections.value
+  return sections
     .map((section) => {
       const all = getSectionMovesForDisplay(section)
       const ready = all.filter((m) => getLineType(m) === 'ready')
@@ -4229,6 +4246,20 @@ const openingV2FooterPrimaryLabel = computed(() => {
   return card && isOpeningCardStarted(card) ? 'Learn' : 'Start Course'
 })
 
+/** True when the selected card is completed (100% progress, green Completed chip). When true, main CTA is Practice aqua with counter. */
+const selectedOpeningCardIsCompleted = computed(() => {
+  const card = selectedOpeningCard.value
+  return card != null && isOpeningCardCompleted(card)
+})
+
+/** Practice count for selected card when completed (reviewCount); 0 otherwise. Used for Practice CTA badge. */
+const selectedOpeningCardPracticeCount = computed(() => {
+  const card = selectedOpeningCard.value
+  if (!card || !selectedOpeningCardIsCompleted.value) return 0
+  const data = getOpeningCardStartedData(card)
+  return data?.reviewCount ?? 0
+})
+
 const selectedOpeningCardId = ref(null)
 // True when the selected card is currently hovered (pointer over it) – board does not reset while true
 const selectedOpeningCardHovered = ref(false)
@@ -4504,6 +4535,12 @@ watch([openingV2ScenarioPreset, openingV2RubActiveTab], () => {
     openingSortBy.value = 'recent'
   }
 }, { immediate: true })
+
+/** When switching Your Openings ↔ All: scroll to top of the page instantly (no animation). */
+watch(openingV2RubActiveTab, () => {
+  const el = openingV2ScrollWrapRef.value
+  if (el && typeof el.scrollTop === 'number') el.scrollTop = 0
+})
 
 // Remove move at index and all after; sync board to new position
 function removeOpeningFilterMoveAt(index) {
@@ -6230,6 +6267,7 @@ onUnmounted(() => {
             v-if="panelView === 'opening-course' && isOpeningCoursesV2"
             :card="selectedOpeningCard"
             :variations="OPENING_COURSE_VARIATIONS"
+            :practice-line-count="openingCoursePracticeLineCount"
             :base-url="baseUrl"
             :get-piece-image="getPieceImage"
           />
@@ -6329,7 +6367,7 @@ onUnmounted(() => {
                           </template>
                         </div>
                       </div>
-                      <span v-if="!showRecommendedAndAllSections" class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} Courses</span>
+                      <span v-if="!showRecommendedAndAllSections" class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} {{ openingV2ScenarioMetaCount === 1 ? 'course' : 'Courses' }}</span>
                     </div>
                     <FilterChipV2
                       v-else
@@ -6357,7 +6395,7 @@ onUnmounted(() => {
                       <div v-for="section in openingCoursesSections" :key="section.id" class="opening-v1-section" data-name="Opening section">
                         <div class="opening-v1-section-header">
                           <span class="opening-v1-section-header__title">{{ section.title }}</span>
-                          <span class="opening-v1-section-header__count">{{ section.count }} courses</span>
+                          <span class="opening-v1-section-header__count">{{ section.count }} {{ section.count === 1 ? 'course' : 'courses' }}</span>
                         </div>
                         <div class="opening-course-cards-list" data-name="Opening course cards">
                           <article
@@ -6633,7 +6671,7 @@ onUnmounted(() => {
                     <div v-for="section in openingCoursesSections" :key="section.id" class="opening-v1-section" data-name="Opening section">
                       <div class="opening-v1-section-header">
                         <span class="opening-v1-section-header__title">{{ section.title }}</span>
-                        <span class="opening-v1-section-header__count">{{ section.count }} courses</span>
+                        <span class="opening-v1-section-header__count">{{ section.count }} {{ section.count === 1 ? 'course' : 'courses' }}</span>
                       </div>
                       <div class="opening-course-cards-list" data-name="Opening course cards">
                   <article
@@ -7162,9 +7200,9 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- V7 only: Practice tab – Ready + Completed lines, color-coded; vertical line masked at last card -->
+          <!-- V7 only: Practice tab – Ready + Completed lines, color-coded; vertical line masked at last card; aqua timeline -->
           <template v-if="isVideoV7OrV8 && courseSectionsForPractice.length && courseTabsActive === 'stats'">
-            <div class="sections-list">
+            <div class="sections-list sections-list--practice">
               <div
                 v-for="(section, sectionIndex) in courseSectionsForPractice"
                 :key="section.id"
@@ -7215,7 +7253,8 @@ onUnmounted(() => {
                                 class="opening-course-card opening-course-card--hover-v1 chapter-line-card chapter-line-card--v6-timeline-right chapter-line-card--v7-practice"
                                 :class="[
                                   item.practiceType === 'completed' && 'chapter-line-card--v7-practice-completed',
-                                  lineIndex === section.practiceMoves.length - 1 && 'chapter-line-card--last'
+                                  lineIndex === section.practiceMoves.length - 1 && 'chapter-line-card--last',
+                                  nextToPracticeRef && nextToPracticeRef.sectionId === section.id && nextToPracticeRef.moveId === item.move.id && 'chapter-line-card--next-to-practice'
                                 ]"
                                 role="listitem"
                                 data-name="Line"
@@ -7282,13 +7321,18 @@ onUnmounted(() => {
                                   </div>
                                 </div>
                                 <div
-                                  class="chapter-line-card__timeline-col"
+                                  class="chapter-line-card__timeline-col chapter-line-card__timeline-col--practice"
                                   aria-hidden="true"
                                   :ref="lineIndex === section.practiceMoves.length - 1 ? (el => setPracticeSectionLastCardColRef(section.id, el)) : undefined"
                                 >
                                   <span
-                                    class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6"
+                                    class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6 chapter-line-card__timeline-node--practice"
+                                    :class="[
+                                      (item.practiceType === 'completed' || item.practiceType === 'ready') && 'chapter-line-card__timeline-node--completed',
+                                      nextToPracticeRef && nextToPracticeRef.sectionId === section.id && nextToPracticeRef.moveId === item.move.id && 'chapter-line-card__timeline-node--next-to-practice'
+                                    ]"
                                   >
+                                    <img v-if="item.practiceType === 'completed' || item.practiceType === 'ready'" :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--practice" width="13" height="13" aria-hidden="true" />
                                   </span>
                                 </div>
                               </article>
@@ -8435,10 +8479,18 @@ v-if="isVideoV6OrV7"
                 </button>
               </div>
             </div>
-            <!-- Opening Courses V2 (courses view): single primary CTA (Learn on Your Openings; Learn / Start Course on All / New User). -->
+            <!-- Opening Courses V2 (courses view): completed card → Practice (aqua) with counter; else Learn / Start Course. -->
             <div v-else-if="isOpeningCoursesV2 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-full">
+                <AquaCtaButton
+                  v-if="selectedOpeningCardIsCompleted"
+                  label="Practice"
+                  :badge="selectedOpeningCardPracticeCount"
+                  class="footer-btn-full"
+                  @click="openOpeningCourse(undefined, { openInPracticeTab: true })"
+                />
                 <CcButton
+                  v-else
                   variant="primary"
                   size="large"
                   class="footer-btn-full"
@@ -9733,13 +9785,13 @@ body {
   max-height: none;
 }
 
-/* Opening Courses V1: search panel – 440×74; 6px top padding; 6px row gap; inputs row 436px, 4px gap */
+/* Opening Courses V1: search panel – 456px so inputs row is 436px (440 content + 16L+4R padding); 6px top, 6px row gap */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
   box-sizing: border-box;
-  width: 440px;
+  width: 456px;
   max-width: 100%;
   min-width: 0;
   min-height: 74px;
@@ -10739,6 +10791,52 @@ body {
   background: #81B64C;
   pointer-events: none;
 }
+
+/* Practice tab: same timeline as Learn but aqua (vertical line, nodes, checks, next-to-practice highlight) */
+.sections-list--practice .v23-section-timeline-wrap__line {
+  background: var(--color-aqua-300, #26C2A3);
+}
+.sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--completed) {
+  border: 2px solid var(--color-aqua-300, rgba(38, 194, 163, 0.5));
+  background: var(--color-bg-primary, #312e2b);
+}
+.sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--completed {
+  background: transparent;
+  border-color: transparent;
+}
+.sections-list--practice .chapter-line-card__timeline-node-icon--practice {
+  display: block;
+  width: 13px;
+  height: 13px;
+  /* Tint check icon to aqua (same as --color-aqua-300) */
+  filter: invert(72%) sepia(42%) saturate(800%) hue-rotate(120deg) brightness(95%) contrast(88%);
+}
+.sections-list--practice .chapter-line-card__timeline-node--next-to-practice {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  outline: 2px solid var(--color-aqua-300, #26C2A3);
+  outline-offset: 0;
+  box-shadow: 0 0 0 2px var(--color-aqua-300, #26C2A3), 0 0 8px 2px rgba(38, 194, 163, 0.7);
+}
+.sections-list--practice .chapter-line-card--next-to-practice {
+  position: relative;
+}
+.sections-list--practice .chapter-line-card--next-to-practice .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.72);
+}
+.sections-list--practice .chapter-line-card--next-to-practice::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-aqua-300, #26C2A3);
+  pointer-events: none;
+}
+
 .courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
   gap: 0;
   padding-top: 4px;

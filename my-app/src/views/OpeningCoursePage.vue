@@ -4,7 +4,7 @@
  * Self-contained so design changes here do not affect Courses.vue or CoursesV9.vue.
  * Used when user clicks "Start Course" from the Opening Courses V1 list.
  */
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { CcButton, CcChip, CcIcon, CcTabGroup, CcTabItem } from '@chesscom/design-system'
 import ProgressCircle from '../components/ProgressCircle.vue'
 import StatsCards from '../components/StatsCards.vue'
@@ -12,20 +12,41 @@ import StatsCards from '../components/StatsCards.vue'
 const props = defineProps({
   /** Selected opening card (from Opening Courses V1 list) */
   card: { type: Object, default: null },
-  /** List of variation names to show as lines */
+  /** List of variation names to show as lines (Learn tab = full list) */
   variations: { type: Array, default: () => [] },
+  /** Your Openings started courses only: first N lines from Learn on Practice tab (0 = not started / from All tab) */
+  practiceLineCount: { type: Number, default: 0 },
   /** Base URL for assets (e.g. '' or '/temp_project/') */
   baseUrl: { type: String, default: '/' },
   /** Function (piece) => image URL for piece thumbnails on cover */
   getPieceImage: { type: Function, required: true },
 })
 
-// Local state – not shared with parent or V9
+/** White vs Black chip + copy (normalize in case of casing quirks) */
+const isLearnAsBlack = computed(() => String(props.card?.type ?? '').toLowerCase() === 'black')
+
 const tabsActive = ref('content')
 const statsPanelExpanded = ref(false)
 function toggleStatsPanel() {
   statsPanelExpanded.value = !statsPanelExpanded.value
 }
+
+/** Practice tab: first N lines from Learn; pad labels if N > variations length */
+const practiceLineItems = computed(() => {
+  const n = props.practiceLineCount
+  if (n <= 0) return []
+  const v = [...(props.variations ?? [])]
+  while (v.length < n) {
+    v.push(`Variation ${v.length + 1}`)
+  }
+  const labels = v.slice(0, n)
+  return labels.map((text, i) => ({
+    text,
+    /** First n-1 show aqua check; last line = next to practice */
+    completed: n > 1 ? i < n - 1 : false,
+    isNext: i === n - 1,
+  }))
+})
 
 // Placeholder data for stats drawer (opening-course only)
 const statsCards = [
@@ -108,18 +129,18 @@ const masteryLevelItems = [
               </div>
             </div>
             <div class="opening-course-card__content" :class="{ 'opening-course-card__content--v7-completion': true, 'opening-course-card__content--v7-practice': tabsActive === 'stats' }">
-              <div class="opening-course-card__started-header">
+              <div class="opening-course-card__started-header opening-course-page__title-row">
                 <h3 class="opening-course-card__title">{{ card?.title ?? 'Course' }}</h3>
-                <div v-if="card?.type" class="opening-course-card__color-icon-wrap">
-                  <CcIcon
-                    :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
-                    variant="color"
-                    :size="16"
-                    class="opening-course-card__color-icon"
-                    aria-hidden="true"
-                    :title="card.type === 'White' ? 'White' : 'Black'"
-                  />
-                </div>
+                <CcChip
+                  v-if="card?.type"
+                  :label="isLearnAsBlack ? 'Black' : 'White'"
+                  color="gray"
+                  variant="translucent"
+                  :is-uppercase="false"
+                  label-class="opening-course-page__color-chip-label"
+                  class="opening-course-page__color-chip"
+                />
+                <span v-if="card?.type" class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ isLearnAsBlack ? 'Learn as Black' : 'Learn as White' }}</span>
               </div>
               <p class="opening-course-card__description course-card--author">{{ card?.description ?? '' }}</p>
               <div v-if="tabsActive === 'content'" class="course-card-mastery-row" data-name="Progress">
@@ -294,9 +315,12 @@ const masteryLevelItems = [
             </div>
           </div>
         </div>
-        <!-- Stats tab: placeholder -->
-        <div v-show="tabsActive === 'stats'" class="course-tab-panel course-tab-panel--stats course-tab-panel--v7" :class="{ 'course-tab-panel--drawer-open': statsPanelExpanded }" role="tabpanel" aria-label="Stats">
-          <div class="sections-list">
+        <!-- Practice tab: Your Openings only — first N lines from Learn, aqua timeline -->
+        <div v-show="tabsActive === 'stats'" class="course-tab-panel course-tab-panel--stats course-tab-panel--v7" :class="{ 'course-tab-panel--drawer-open': statsPanelExpanded }" role="tabpanel" aria-label="Practice">
+          <div v-if="practiceLineCount <= 0" class="opening-course-practice-empty" role="status">
+            <p class="opening-course-practice-empty__text">Practice lines appear here once this course is in <strong>Your Openings</strong>.</p>
+          </div>
+          <div v-else class="sections-list sections-list--practice">
             <div class="section-item" data-section-id="opening-course-practice">
               <div class="v23-section-sticky-wrap">
                 <div class="v23-section-timeline-wrap v23-section-timeline-wrap--v4 v23-section-timeline-wrap--v6">
@@ -313,28 +337,78 @@ const masteryLevelItems = [
                       <div class="chapter-content">
                         <span class="chapter-title">{{ card?.title ?? 'Course' }}</span>
                       </div>
+                      <div class="chapter-variations">
+                        <span class="chapter-count">0/{{ practiceLineItems.length }}</span>
+                        <span class="chapter-chevron-wrap" aria-hidden="true">
+                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div class="v23-expandable v23-expandable--open">
                     <div class="move-list-wrap">
-                      <div class="move-list" role="list" data-name="Lines" aria-label="Lines">
+                      <div class="chapter-line-cards-list-wrapper">
                         <div
-                          v-for="(name, i) in variations"
-                          :key="i"
-                          class="move-item move-item--inactive move-item--uncompleted"
-                          role="listitem"
-                          data-name="Line"
+                          class="opening-course-cards-list chapter-line-cards-list"
+                          role="list"
+                          data-name="Practice lines"
+                          aria-label="Practice lines"
                         >
-                          <div class="move-item-content">
-                            <div class="move-item-inner">
-                              <div class="move-item-plys">
-                                <span class="move-item-check-wrap" aria-hidden="true">
-                                  <CcIcon name="mark-check" variant="glyph" :size="16" class="move-item-check" />
-                                </span>
-                                <span class="move-item-text">{{ name }}</span>
+                          <article
+                            v-for="(item, lineIndex) in practiceLineItems"
+                            :key="lineIndex"
+                            class="opening-course-card opening-course-card--hover-v1 chapter-line-card chapter-line-card--v6-timeline-right chapter-line-card--v7-practice"
+                            :class="[
+                              item.completed && 'chapter-line-card--v7-practice-completed',
+                              lineIndex === practiceLineItems.length - 1 && 'chapter-line-card--last',
+                              item.isNext && 'chapter-line-card--next-to-practice'
+                            ]"
+                            role="listitem"
+                            data-name="Line"
+                          >
+                            <div class="chapter-line-card__body chapter-line-card__body--no-click" :title="item.text">
+                              <div class="opening-course-card__inner">
+                                <div class="opening-course-card__content-wrap">
+                                  <div class="opening-course-card__cover-wrap">
+                                    <div
+                                      class="chapter-line-card__intro-cover chapter-line-card__intro-cover--v6 chapter-line-card__intro-cover--v7-practice"
+                                      :class="{ 'chapter-line-card__intro-cover--v7-practice-completed': item.completed }"
+                                      aria-hidden="true"
+                                    >
+                                      <CcIcon name="game-type-puzzle" variant="glyph" :size="20" class="chapter-line-card__intro-cover-icon chapter-line-card__intro-cover-icon--v6" />
+                                    </div>
+                                  </div>
+                                  <div class="opening-course-card__content">
+                                    <div class="chapter-line-card__header-row">
+                                      <div class="chapter-line-card__title-wrap">
+                                        <h3 class="opening-course-card__title">{{ item.text }}</h3>
+                                      </div>
+                                      <div class="chapter-line-card__header-indicators" />
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                            <div class="chapter-line-card__timeline-col chapter-line-card__timeline-col--practice" aria-hidden="true">
+                              <span
+                                class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6 chapter-line-card__timeline-node--practice"
+                                :class="[
+                                  item.completed && 'chapter-line-card__timeline-node--completed',
+                                  item.isNext && 'chapter-line-card__timeline-node--next-to-practice'
+                                ]"
+                              >
+                                <img
+                                  v-if="item.completed"
+                                  :src="baseUrl + 'icons/circle-fill-check.png'"
+                                  alt=""
+                                  class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--practice"
+                                  width="13"
+                                  height="13"
+                                  aria-hidden="true"
+                                />
+                              </span>
+                            </div>
+                          </article>
                         </div>
                       </div>
                     </div>
@@ -350,8 +424,93 @@ const masteryLevelItems = [
 </template>
 
 <style scoped>
-/* Opening course page only – does not affect Courses.vue or CoursesV9.vue */
-.opening-course-page {
-  /* Wrapper for any future page-specific overrides */
+.opening-course-page__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.opening-course-page__title-row .opening-course-card__title {
+  margin: 0;
+}
+.opening-course-page__color-chip {
+  flex-shrink: 0;
+}
+.opening-course-practice-empty {
+  padding: 24px 16px;
+  text-align: center;
+}
+.opening-course-practice-empty__text {
+  margin: 0;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.55);
+}
+</style>
+
+<style>
+/* Opening course page: Practice tab aqua timeline (matches OpeningCoursesV2 Practice styling) */
+.opening-course-page .sections-list--practice .v23-section-timeline-wrap__line {
+  background: var(--color-aqua-300, #26c2a3);
+}
+.opening-course-page .sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--completed):not(.chapter-line-card__timeline-node--next-to-practice) {
+  border: 2px solid rgba(38, 194, 163, 0.45);
+  background: var(--color-bg-primary, #312e2b);
+}
+.opening-course-page .sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--completed {
+  background: transparent;
+  border-color: transparent;
+}
+.opening-course-page .sections-list--practice .chapter-line-card__timeline-node-icon--practice {
+  display: block;
+  width: 13px;
+  height: 13px;
+  filter: invert(72%) sepia(42%) saturate(800%) hue-rotate(120deg) brightness(95%) contrast(88%);
+}
+.opening-course-page .sections-list--practice .chapter-line-card__timeline-node--next-to-practice {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  outline: 2px solid var(--color-aqua-300, #26c2a3);
+  outline-offset: 0;
+  box-shadow:
+    0 0 0 2px var(--color-aqua-300, #26c2a3),
+    0 0 8px 2px rgba(38, 194, 163, 0.7);
+}
+.opening-course-page .sections-list--practice .chapter-line-card--next-to-practice {
+  position: relative;
+}
+.opening-course-page .sections-list--practice .chapter-line-card--next-to-practice .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.72);
+}
+.opening-course-page .sections-list--practice .chapter-line-card--next-to-practice::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-aqua-300, #26c2a3);
+  pointer-events: none;
+}
+.opening-course-page .opening-course-cards-list.chapter-line-cards-list {
+  gap: 0;
+  padding: 8px 12px 8px 12px;
+}
+.opening-course-page .opening-course-card.chapter-line-card--v6-timeline-right {
+  padding: 0;
+  border-radius: 3px;
+}
+.opening-course-page .chapter-line-card__timeline-node--v6 {
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  min-height: 13px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
