@@ -9646,6 +9646,7 @@ body {
   flex-shrink: 0;
   position: relative;
   z-index: 10;
+  padding-bottom: 12px;
   background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(26, 25, 24, 1) 100%);
   background-clip: unset;
   -webkit-background-clip: unset;
