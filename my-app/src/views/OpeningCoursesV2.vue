@@ -487,9 +487,9 @@ const OPENING_COURSES_V2_FILTER_COLOR_KEY = 'openingCoursesV2FilterColor'
 function getStoredOpeningFilterColor() {
   try {
     const raw = sessionStorage.getItem(OPENING_COURSES_V2_FILTER_COLOR_KEY)
-    if (raw === 'white' || raw === 'black') return raw
+    if (raw === 'white' || raw === 'black' || raw === 'both') return raw
   } catch (_) {}
-  return 'white'
+  return 'both'
 }
 
 /** Open opening course: pass a card when nothing is selected (e.g. Learn → latest); else uses selectedOpeningCard. options.openInPracticeTab = true to land on Practice tab. */
@@ -4351,8 +4351,8 @@ function courseMatchesMoveSequence(card, filterMoves) {
 
 const openingCoursesFiltered = computed(() => {
   const colorFilter = openingFilterColor.value
-  const typeMatch = colorFilter === 'white' ? 'White' : 'Black'
-  let list = openingCourseCards.filter((c) => c.type === typeMatch)
+  const typeMatch = colorFilter === 'both' ? null : (colorFilter === 'white' ? 'White' : 'Black')
+  let list = typeMatch == null ? openingCourseCards : openingCourseCards.filter((c) => c.type === typeMatch)
   const q = (openingSearchQuery.value || '').trim().toLowerCase()
   if (q) list = list.filter((c) => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
   const filterMoves = openingFilterMoves.value
@@ -6226,6 +6226,7 @@ onUnmounted(() => {
                       v-model:selected-color="openingFilterColor"
                       :base-url="baseUrl"
                       variant="switch"
+                      :allow-both="openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'my-openings'"
                       class="opening-search-panel__color-toggle"
                     />
                   </div>

@@ -13,6 +13,8 @@ const props = defineProps({
   baseUrl: { type: String, default: '' },
   /** 'toggle' = sliding toggle (V3/V4); 'switch' = two squares, outline on selected (V5) */
   variant: { type: String, default: 'toggle' },
+  /** When true (e.g. Your Openings): show third "Both" tile (white|black split), accept 'both' in selectedColor */
+  allowBoth: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:selectedColor', 'toggle'])
@@ -21,11 +23,18 @@ const emit = defineEmits(['update:selectedColor', 'toggle'])
 
 const kingIconSrc = computed(() => `${props.baseUrl || ''}icons/king-outline.svg`)
 
-const tooltipText = computed(() =>
-  props.selectedColor === 'white' ? 'Openings for White' : 'Openings for Black'
-)
+const tooltipText = computed(() => {
+  if (props.selectedColor === 'white') return 'Openings for White'
+  if (props.selectedColor === 'black') return 'Openings for Black'
+  return 'Openings for White and Black'
+})
 
 const isSwitch = computed(() => props.variant === 'switch')
+
+/** When only two tiles shown but value is 'both', show white as selected for ring (filter still both) */
+const effectiveSelectedForOutline = computed(() =>
+  props.allowBoth ? props.selectedColor : (props.selectedColor === 'both' ? 'white' : props.selectedColor)
+)
 
 function select(color) {
   if (props.selectedColor === color) return
@@ -97,7 +106,7 @@ function onToggleKeydown(event) {
       <button
         type="button"
         class="color-switch__option"
-        :class="{ 'color-switch__option--selected': selectedColor === 'white' }"
+        :class="{ 'color-switch__option--selected': effectiveSelectedForOutline === 'white' }"
         aria-label="Openings for White"
         :aria-pressed="selectedColor === 'white'"
         @click="select('white')"
@@ -124,7 +133,7 @@ function onToggleKeydown(event) {
       <button
         type="button"
         class="color-switch__option"
-        :class="{ 'color-switch__option--selected': selectedColor === 'black' }"
+        :class="{ 'color-switch__option--selected': effectiveSelectedForOutline === 'black' }"
         aria-label="Openings for Black"
         :aria-pressed="selectedColor === 'black'"
         @click="select('black')"
@@ -133,6 +142,36 @@ function onToggleKeydown(event) {
           <span class="color-switch__thumb color-switch__thumb--black" aria-hidden="true">
             <svg
               class="color-switch__king-svg"
+              viewBox="0 0 19 22"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              data-name="piece-hollow-king-1"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <path
+                d="M4.87 17.47L3.37 17.57C3.27 16.24 0 14.7 0 11.17C0 7.24 3.57 5.34 6.77 6.27L6.64 7.07H4.61V2.27H6.88V0H11.68V2.27H13.95V7.07H11.88L11.78 6.3C15.15 5.27 18.55 7.27 18.55 11.2C18.55 14.63 15.22 16.3 15.15 17.53L13.65 17.46C13.75 15.26 17.05 14.13 17.05 11.19C17.05 7.66 13.45 6.46 10.58 8.52L10.15 5.55H12.45V3.75H10.18V1.48H8.38V3.75H6.11V5.55H8.41L7.94 8.52C5.34 6.52 1.51 7.62 1.51 11.15C1.51 14.18 4.71 15.18 4.88 17.45L4.87 17.47ZM3.4 19.97V20.5H15.13V19.97C15.13 18.24 14.16 18.1 9.26 18.1C4.36 18.1 3.39 18.23 3.39 19.97H3.4ZM1.9 22V19.97C1.9 17.24 3.27 16.6 9.27 16.6C15.27 16.6 16.64 17.23 16.64 19.97V22H1.9ZM12.34 13.9H10.71V11.1C12.38 9.73 14.04 10.3 14.04 11.47C14.04 12.24 13.07 13.17 12.34 13.9ZM7.84 11.07V13.9H6.21C5.48 13.17 4.54 12.27 4.54 11.57C4.54 10.4 6.21 9.84 7.84 11.07Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+        </span>
+      </button>
+      <button
+        v-if="allowBoth"
+        type="button"
+        class="color-switch__option"
+        :class="{ 'color-switch__option--selected': effectiveSelectedForOutline === 'both' }"
+        aria-label="Openings for White and Black"
+        :aria-pressed="selectedColor === 'both'"
+        @click="select('both')"
+      >
+        <span class="color-switch__outline">
+          <span class="color-switch__thumb color-switch__thumb--both" aria-hidden="true">
+            <span class="color-switch__thumb-half color-switch__thumb-half--left" aria-hidden="true" />
+            <span class="color-switch__thumb-half color-switch__thumb-half--right" aria-hidden="true" />
+            <svg
+              class="color-switch__king-svg color-switch__king-svg--overlay"
               viewBox="0 0 19 22"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -342,6 +381,49 @@ function onToggleKeydown(event) {
   box-shadow:
     inset 0 0 0 1px var(--color-border-default, rgba(255, 255, 255, 0.1)),
     0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Both: left white, right black; same inset stroke per half; king centered on top */
+.color-switch__thumb--both {
+  position: relative;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-5, 5px);
+}
+
+.color-switch__thumb-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  box-sizing: border-box;
+}
+
+.color-switch__thumb-half--left {
+  left: 0;
+  background-color: #e7e6e5;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.color-switch__thumb-half--right {
+  right: 0;
+  background-color: #312e2b;
+  box-shadow:
+    inset 0 0 0 1px var(--color-border-default, rgba(255, 255, 255, 0.1)),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.color-switch__king-svg--overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
 }
 
 /* GNS piece-hollow-king-1.svg – scaled to 32×32 tile */

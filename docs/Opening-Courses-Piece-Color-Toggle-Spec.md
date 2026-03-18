@@ -28,7 +28,7 @@ Filter control in the Opening Courses list header: user selects **White** or **B
 | **V2** | (Reserved) Alternative UI if needed (e.g. chip or dropdown in header). | — | — |
 | **V3** | Toggle switch (56×30), tooltip “Openings for White/Black”. Default `white`. | **None** – resets to `white` on reload. | `ColorToggle.vue`; `openingFilterColor` ref only. |
 | **V4** | Same as V3 (same UI). | **sessionStorage** – key `openingCoursesV2FilterColor`, values `'white'` \| `'black'`. Restored on load. | `OpeningCoursesV2.vue`: init from storage, watch + save on change. |
-| **V5** | **Switch:** two **32×32** thumbs; **36×36** frame; **4px** gap; selected **2px** ring `rgba(129,182,76,1)`; inset tile stroke; king ~26px in tile. | Same as V4 (sessionStorage). | `ColorToggle.vue` with `variant="switch"`; `OpeningCoursesV2.vue` passes `variant="switch"`. |
+| **V5** | **Switch:** two (or three) thumbs; **36×36** frame; **4px** gap; selected **2px** ring; inset tile stroke; king ~26px. Optional **Both** tile (split white|black) only on **Your Openings**, default **both**. | Same as V4; values `'white'` \| `'black'` \| `'both'`; default `'both'`. | `ColorToggle.vue` `variant="switch"` + `allowBoth`; `OpeningCoursesV2.vue` passes `allow-both` only when Returning User + Your Openings tab. |
 
 **Current implementation:** **V5** (switch UI + V4 persistence).
 
@@ -112,33 +112,34 @@ watch(openingFilterColor, (val) => {
 
 ---
 
-## V5 spec (switch – two squares, outline on selected)
+## V5 spec (switch – two or three squares, outline on selected)
 
-**Intent:** Not a toggle; two thumb squares placed next to each other. Click White or Black to select. The selected color has an outline around its square (same treatment as course card “square-outline”: outline wrapper is larger than the thumb so there is visible distance).
+**Intent:** Not a toggle; thumb squares side by side. Click White, Black, or (when available) Both to select. The selected option has an outline around its square.
 
-**Component:** `ColorToggle.vue` with **`variant="switch"`**.  
-**Binding:** Same as V3/V4: `v-model:selected-color="openingFilterColor"`.  
-**Persistence:** Same as V4 (sessionStorage).
+**Component:** `ColorToggle.vue` with **`variant="switch"`**. Optional **`allowBoth`**: when true, show a third “Both” tile (left half white, right half black, same king icon); only on **Your Openings** screen (Returning User + “Your Openings” tab).  
+**Binding:** `v-model:selected-color="openingFilterColor"` (`'white' | 'black' | 'both'`).  
+**Persistence:** sessionStorage key `openingCoursesV2FilterColor`; values `'white'` | `'black'` | `'both'`; **default `'both'`**.
 
 ### UI (DS-aligned medium)
 
-- **Layout:** Two options side by side, **4px** gap.
+- **Layout:** Two or three options side by side, **4px** gap.
 - **Frame:** **36×36px** outer (`.color-switch__outline`); selected: **2px** ring `box-shadow: 0 0 0 2px rgba(129, 182, 76, 1)`.
-- **Tile:** **32×32px** thumb – Colorpicker pattern: White `#e7e6e5`, Black `#312e2b`; **inside stroke only** (`inset 0 0 0 1px` + subtle outer shadow); `border-radius: var(--radius-5, 5px)`.
-- **Icon:** Inline **piece-hollow-king-1**; **26×26px** in thumb; color `#8B8987`.
-- **Interaction:** Click White or Black to select; no sliding. Same tooltip as V3/V4 (“Openings for White” / “Openings for Black”).
-- **A11y:** Group `role="group"` `aria-label="Filter by piece color"`. Each option `aria-label="Openings for White"` / `"Openings for Black"`, `:aria-pressed`. Focus-visible: outline on the outline wrapper (2px `--color-border-focus`, offset 2px).
+- **Tiles:** **32×32px** – White `#e7e6e5`, Black `#312e2b`; **Both** = same size, left half white / right half black, same inset stroke per half; **inside stroke only**; `border-radius: var(--radius-5, 5px)`.
+- **Icon:** Inline **piece-hollow-king-1**; **26×26px**; color `#8B8987`; on Both tile, king centered on top of split.
+- **Interaction:** Click to select; tooltip “Openings for White” / “Openings for Black” / “Openings for White and Black”.
+- **Filter:** `'both'` = show all courses (no color filter); `'white'` / `'black'` = filter by `card.type === 'White'` / `'Black'`.
+- **A11y:** Group `role="group"` `aria-label="Filter by piece color"`. Each option has `aria-label` and `:aria-pressed`. Focus-visible: outline on the outline wrapper.
 
 ### Parent (OpeningCoursesV2.vue)
 
-- Use `<ColorToggle ... variant="switch" />`. Filter and persistence unchanged from V4.
+- Use `<ColorToggle ... variant="switch" :allow-both="openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'my-openings'" />`. Default stored value `'both'`; filter logic uses all cards when `'both'`.
 
 ### CSS (ColorToggle.vue – .color-switch*)
 
 - `.color-switch`: inline-flex, gap **4px**.
 - `.color-switch__option`: reset button; focus-visible → outline on `.color-switch__outline`.
 - `.color-switch__outline`: 36×36; selected `0 0 0 2px rgba(129, 182, 76, 1)`.
-- `.color-switch__thumb`: 32×32, radius `var(--radius-5)`; `.color-switch__king-svg` 26×26 (GNS piece-hollow-king-1).
+- `.color-switch__thumb`: 32×32, radius `var(--radius-5)`; `.color-switch__thumb--both`: two halves (`.color-switch__thumb-half--left` / `--right`) with same colors and inset stroke; `.color-switch__king-svg` 26×26, `--overlay` for Both tile (centered).
 
 ---
 
