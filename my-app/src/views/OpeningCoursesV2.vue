@@ -9561,7 +9561,7 @@ body {
   min-width: 0;
   min-height: 74px;
   height: fit-content;
-  padding: 4px 4px 0 16px;
+  padding: 6px 4px 0 16px;
   margin-top: 0;
   margin-bottom: 8px;
   flex-shrink: 0;
@@ -9574,7 +9574,7 @@ body {
   align-items: center;
   gap: 6px;
 }
-/* Up to 440px when space allows; shrinks when scrollbar-gutter reserves space so no horizontal scroll */
+/* Inputs row up to 436px; panel outer 440px */
 .opening-search-panel__row--inputs {
   width: 100%;
   max-width: 436px;
@@ -9791,7 +9791,7 @@ body {
 /* Opening Courses V1: course counter + filter (same width as search inputs row) */
 .opening-courses-meta-panel {
   width: 100%;
-  max-width: 440px;
+  max-width: 436px;
   min-width: 0;
   min-height: 20px;
   height: auto;
