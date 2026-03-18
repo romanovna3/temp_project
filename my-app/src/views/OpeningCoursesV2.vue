@@ -9559,6 +9559,7 @@ body {
   width: 440px;
   max-width: 100%;
   min-width: 0;
+  min-height: 74px;
   height: fit-content;
   padding: 4px 4px 0 16px;
   margin-top: 0;
@@ -9571,7 +9572,7 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: var(--space-8, 8px);
+  gap: 6px;
 }
 /* Up to 440px when space allows; shrinks when scrollbar-gutter reserves space so no horizontal scroll */
 .opening-search-panel__row--inputs {
@@ -9797,7 +9798,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: var(--space-8, 8px);
+  gap: 6px;
   background: unset;
   padding: 0;
   margin-bottom: 0;
