@@ -2,9 +2,21 @@
 
 Filter control in the Opening Courses list header: user selects **White** or **Black** to show only courses for that color. Used in **Opening Courses V2** (`OpeningCoursesV2.vue`); component: `my-app/src/views/opening-courses/ColorToggle.vue`.
 
-### GNS / DS: ColorPicker component
+### GNS / DS: ColorPicker component and tokens
 
-**Check:** Run `gns search "color-picker" --scope teams.design.public` (or list `teams.design.public.components`) when online. **In this repo’s installed `@chesscom/design-system` package there is no exported `CcColorPicker` / `ColorPicker` component** – the switch uses the same visual pattern as **PickYourColorV2** (Colorpicker white/black tiles + **piece-hollow-king-1**). When/if a DS `ColorPicker` ships with a `medium` size, prefer importing it here instead of custom markup.
+**Checked (GNS):** There is **no dedicated color-picker component** in `teams.design.public.components` (search and list input/display components). The switch is implemented with custom markup and aligned to GNS tokens below.
+
+**Tokens used (from GNS):**
+
+| Use | GNS key | Token |
+|-----|---------|--------|
+| Selected ring | `teams.design.public.tokens.semantic.color.border` | `--color-border-success` |
+| Black tile border | same | `--color-border-default` (transparent-white-10 dark) |
+| Focus ring | (semantic border) | `--color-border-focus` |
+| Radius (tile + frame) | `teams.design.public.tokens.semantic.dimensions.radius` | `--radius-5` (5px) |
+| Gap between options | `teams.design.public.tokens.semantic.dimensions.spacing` | `--space-8` (8px) |
+
+**Icon:** GNS `teams.design.public.icons.pieces.king` documents CDN piece images (wk/bk). This switch uses the **piece-hollow-king-1** SVG (Colorpicker / PickYourColorV2 pattern), not the CDN piece image. When/if a DS `ColorPicker` or icon set includes that asset, prefer it.
 
 ---
 
@@ -125,8 +137,8 @@ watch(openingFilterColor, (val) => {
 
 - `.color-switch`: inline-flex, gap 6px.
 - `.color-switch__option`: reset button; focus-visible → outline on `.color-switch__outline`.
-- `.color-switch__outline`: padding 3px, border-radius, transition box-shadow; `--selected` adds 2px green box-shadow.
-- `.color-switch__thumb`: 30×30, radius 4px; `--white` / `--black` background and same border/shadow as toggle thumb.
+- `.color-switch__outline`: 44×44, border-radius `calc(var(--radius-5) + 2px)`; selected adds 2px `var(--color-border-success)` (GNS).
+- `.color-switch__thumb`: 40×40, radius `var(--radius-5)`; white tile `#e7e6e5` + dark border; black tile `#312e2b` + `var(--color-border-default)`. King icon: piece-hollow-king-1 SVG (~28×32px).
 
 ---
 

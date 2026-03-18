@@ -286,18 +286,18 @@ function onToggleKeydown(event) {
 }
 
 .color-switch__option:focus-visible .color-switch__outline {
-  outline: 2px solid var(--color-border-focus, rgba(255, 255, 255, 0.6));
+  outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }
 
-/* DS medium: 44×44 frame, 40×40 tile (Colorpicker white/black – same as PickYourColorV2, scaled) */
+/* GNS: teams.design.public.tokens.semantic.dimensions (radius-5, space-8), color.border (border-success, border-default). No color-picker component in GNS; tile visuals follow Colorpicker pattern. */
 .color-switch__outline {
   width: 44px;
   height: 44px;
   min-width: 44px;
   min-height: 44px;
   box-sizing: border-box;
-  border-radius: calc(var(--radius-sm, 5px) + 2px);
+  border-radius: calc(var(--radius-5, 5px) + 2px);
   transition: box-shadow 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -305,7 +305,7 @@ function onToggleKeydown(event) {
 }
 
 .color-switch__option--selected .color-switch__outline {
-  box-shadow: 0 0 0 2px var(--color-border-success, var(--color-green-300, #81B64C));
+  box-shadow: 0 0 0 2px var(--color-border-success);
 }
 
 .color-switch__thumb {
@@ -314,14 +314,14 @@ function onToggleKeydown(event) {
   min-width: 40px;
   min-height: 40px;
   box-sizing: border-box;
-  border-radius: var(--radius-sm, 5px);
+  border-radius: var(--radius-5, 5px);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-/* DS Colorpicker tiles: .colorpicker-white-md / .colorpicker-black-md pattern */
+/* Tile colors: Colorpicker pattern (#e7e6e5 / #312e2b). Borders: GNS border-default (transparent-white-10) where applicable. */
 .color-switch__thumb--white {
   background-color: #e7e6e5;
   border: 1px solid rgba(0, 0, 0, 0.1);
@@ -330,7 +330,7 @@ function onToggleKeydown(event) {
 
 .color-switch__thumb--black {
   background-color: #312e2b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-border-default, rgba(255, 255, 255, 0.1));
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
