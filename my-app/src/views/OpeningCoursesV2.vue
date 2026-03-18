@@ -6290,7 +6290,7 @@ onUnmounted(() => {
                   <div class="opening-search-panel__row opening-search-panel__row--inputs">
                     <div
                       class="opening-search-panel__search-shell"
-                      :class="{ 'opening-search-panel__search-shell--all': openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'all' }"
+                      :class="{ 'opening-search-panel__search-shell--your-openings': openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'my-openings' }"
                     >
                       <div class="opening-search-panel__search">
                         <SearchInput
@@ -9757,44 +9757,36 @@ body {
   align-items: center;
   gap: 4px;
 }
-/* Inputs row up to 436px; panel outer 440px */
+/* Inputs row: 436px wide, 6px gap (search + color toggle on All / New User) */
 .opening-search-panel__row--inputs {
-  width: 100%;
-  max-width: 436px;
+  width: 436px;
+  max-width: 100%;
   min-width: 0;
-  gap: 4px;
+  gap: 6px;
   padding-left: 0;
   padding-right: 0;
 }
 .opening-search-panel__row--meta {
   justify-content: space-between;
 }
-/* All tab only: extra shell so search row can be 44px tall */
+/* Your Openings only: 44px-tall row band; search field stays default 40px (vertically centered) */
 .opening-search-panel__search-shell {
   display: contents;
 }
-.opening-search-panel__search-shell--all {
+.opening-search-panel__search-shell--your-openings {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  justify-content: stretch;
   flex: 1;
   min-width: 0;
   height: 44px;
   box-sizing: border-box;
 }
-.opening-search-panel__search-shell--all .opening-search-panel__search {
+.opening-search-panel__search-shell--your-openings .opening-search-panel__search {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: stretch;
-}
-.opening-search-panel__search-shell--all :deep(.search-input) {
-  width: 100%;
-  display: flex;
-  align-items: stretch;
-}
-.opening-search-panel__search-shell--all :deep(.search-input__field) {
-  height: 44px;
-  min-height: 44px;
+  align-items: center;
 }
 .opening-search-panel__search {
   flex: 1;
