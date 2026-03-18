@@ -6306,7 +6306,7 @@ onUnmounted(() => {
                     <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
                       <div class="opening-courses-meta-panel__sort">
                         <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
-                          <span class="text-small">Sort by </span><span class="text-small-bold">{{ openingSortLabel }}</span>
+                          <span class="text-small-bold">{{ openingSortLabel }}</span>
                           <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
                         </button>
                         <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
