@@ -108,7 +108,7 @@ const courseFromOCRoute = computed(() => {
   }
   // London System for White (course 12): use screenshot content – title and author
   if (card.title === 'London System' && card.type === 'White') {
-    return { ...base, title: 'Learn The London System For White', instructor: 'chesscomopenings', lines: 7 }
+    return { ...base, title: 'London System', instructor: 'chesscomopenings', lines: 7 }
   }
   return base
 })
@@ -229,6 +229,11 @@ function openingNameKey(name) {
 // URL slug from opening title (e.g. "Sicilian Defense" → "sicilian-defense").
 function openingSlug(title) {
   return (title || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+}
+/** Strip " For White" or " For Black" from course title for started-header display. */
+function openingCourseTitleForHeader(title) {
+  if (!title || typeof title !== 'string') return title || ''
+  return title.replace(/\s+For (White|Black)$/i, '').trim() || title
 }
 
 // Descriptions from opening course transcriptions. Kept to ~2 lines for card layout.
@@ -473,6 +478,11 @@ const displayCompletionFillWidthPx = computed(() => {
   return completionFillWidthPx.value
 })
 
+/** True when on opening course page and course is 100% complete (show check icon next to title). */
+const isOpeningCourseCompleted = computed(() =>
+  !!openingCourseIdFromRoute.value && displayCompletionPercentRounded.value === 100
+)
+
 // Mastery bar: level out of 8 sections (fill 3 sections = Level 3)
 const masteryLevel = ref(1)
 const masteryTotal = 8
@@ -624,6 +634,8 @@ function toggleStatsPanel() {
 const OPENING_COURSES_V1_PRESET_BAR_KEY = 'openingCoursesV1PresetBar'
 const OPENING_COURSES_V1_RETURN_STATE_KEY = 'openingCoursesV1ReturnState'
 const OPENING_COURSES_V1_STARTED_STATE_KEY = 'openingCoursesV1StartedState'
+/** Set by Opening page when user clicks Practice; course page opens with Practice tab active. */
+const OPENING_COURSES_V1_OPEN_IN_PRACTICE_KEY = 'openingCoursesV1OpenInPractice'
 
 function getOpeningStartedState() {
   try {
@@ -2952,9 +2964,9 @@ const courseSectionsOC = [
   { id: 'main-level', name: 'Main Level', completed: 0, total: 10, status: 'not_started', videoAvailable: true },
 ]
 
-// London System for White (course 12): one chapter "Learn the London System for White" with 7 lines
+// London System for White (course 12): one chapter "London System" with 7 lines
 const courseSectionsLondonSystemWhite = [
-  { id: 'london-system-white', name: 'Learn the London System for White', completed: 0, total: 7, status: 'not_started', videoAvailable: true },
+  { id: 'london-system-white', name: 'London System', completed: 0, total: 7, status: 'not_started', videoAvailable: true },
 ]
 
 const sectionMovesOC = {
@@ -3005,7 +3017,7 @@ const sectionMovesOCResolved = computed(() => {
   if (course?.title === 'French Defense' && course?.playSide === 'white') {
     return { 'main-level': FRENCH_DEFENSE_WHITE_MAIN_LEVEL }
   }
-  if (course?.title === 'Learn The London System For White' && course?.playSide === 'white') {
+  if (course?.title === 'London System' && course?.playSide === 'white') {
     return sectionMovesLondonSystemWhite
   }
   return sectionMovesOC
@@ -3014,7 +3026,7 @@ const sectionMovesOCResolved = computed(() => {
 /** OC sections: use London System (one chapter, 7 lines) when course is London System for White (e.g. courseId 12). */
 const courseSectionsOCResolved = computed(() => {
   const course = courseFromOCRoute.value
-  if (course?.title === 'Learn The London System For White' && course?.playSide === 'white') {
+  if (course?.title === 'London System' && course?.playSide === 'white') {
     return courseSectionsLondonSystemWhite
   }
   return courseSectionsOC
@@ -3023,7 +3035,7 @@ const courseSectionsOCResolved = computed(() => {
 /** When true, hide the chapter header and show only lines (London System for White). */
 const isLondonSystemWhiteCourse = computed(() => {
   const course = courseFromOCRoute.value
-  return course?.title === 'Learn The London System For White' && course?.playSide === 'white'
+  return course?.title === 'London System' && course?.playSide === 'white'
 })
 
 // V2.4: real course – 6 chapters (start-here removed)
@@ -3073,6 +3085,15 @@ const nextToLearnRef = computed(() => {
   return null
 })
 
+/** First line in Practice tab that is ready or uncompleted (next to practice); used for aqua highlight. */
+const nextToPracticeRef = computed(() => {
+  for (const section of courseSectionsForPractice.value) {
+    const idx = section.practiceMoves?.findIndex((item) => item.practiceType === 'ready' || item.practiceType === 'uncompleted')
+    if (idx >= 0 && section.practiceMoves?.[idx]) return { sectionId: section.id, moveId: section.practiceMoves[idx].move.id }
+  }
+  return null
+})
+
 // V7 only: tab labels – Learn (content) and Practice (stats)
 const courseTabContentLabel = computed(() => (isVideoV7OrV8OrV9.value ? 'Learn' : 'Content'))
 const courseTabStatsLabel = computed(() => (isVideoV7OrV8OrV9.value ? 'Practice' : 'Stats'))
@@ -3116,11 +3137,14 @@ const courseSectionsForPractice = computed(() => {
       const all = getSectionMovesForDisplay(section)
       const ready = all.filter((m) => getLineType(m) === 'ready')
       const completed = all.filter((m) => getLineType(m) === 'completed')
+      const uncompleted = all.filter((m) => getLineType(m) === 'uncompleted')
+      const hasStarted = ready.length > 0 || completed.length > 0
       const practiceMoves = nothingToPractice
         ? [...ready, ...completed].map((move) => ({ move, practiceType: 'completed', practiceInLabel: getPracticeInLabelForMove(move) }))
         : [
             ...ready.map((move) => ({ move, practiceType: 'ready', practiceInLabel: getPracticeInLabelForMove(move) })),
             ...completed.map((move) => ({ move, practiceType: 'completed', practiceInLabel: getPracticeInLabelForMove(move) })),
+            ...(hasStarted ? uncompleted.map((move) => ({ move, practiceType: 'uncompleted', practiceInLabel: getPracticeInLabelForMove(move) })) : []),
           ]
       if (!practiceMoves.length) return null
       return { ...section, practiceMoves, readyMoves: ready }
@@ -3471,9 +3495,10 @@ function squareToPercent(square) {
   const fileIndex = square.charCodeAt(0) - 97 // a=0 .. h=7
   const rank = parseInt(square[1], 10)
   if (fileIndex < 0 || fileIndex > 7 || rank < 1 || rank > 8) return { left: '0%', top: '0%' }
+  const topPct = boardViewBlack.value ? ((rank - 1) / 8) * 100 : ((8 - rank) / 8) * 100
   return {
     left: `${(fileIndex / 8) * 100}%`,
-    top: `${((8 - rank) / 8) * 100}%`,
+    top: `${topPct}%`,
   }
 }
 function clearOpeningAutoMove() {
@@ -3653,6 +3678,8 @@ const progressBarColor = computed(() => {
 // ============================================
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 const ranks = [8, 7, 6, 5, 4, 3, 2, 1]
+/** Main board: Black’s perspective (rank 8 at bottom). Updated by watcher after list selection / OC route. */
+const boardViewBlack = ref(false)
 const base = import.meta.env.BASE_URL
 const pieces = ref([])
 
@@ -3718,10 +3745,11 @@ const checkmateIconColor = computed(() => {
   return checkmateKingColor.value === 'black' ? '#262421' : '#ffffff'
 })
 
-// Generate all squares
+// Generate all squares (rank 1 at top when boardViewBlack so Black sits at bottom)
 const squares = computed(() => {
   const result = []
-  for (let rank of ranks) {
+  const rankOrder = boardViewBlack.value ? [1, 2, 3, 4, 5, 6, 7, 8] : ranks
+  for (let rank of rankOrder) {
     for (let file of files) {
       result.push(`${file}${rank}`)
     }
@@ -4497,6 +4525,28 @@ function toggleOpeningCardSelection(cardId) {
 function isOpeningCardSelected(cardId) {
   return selectedOpeningCardId.value === cardId
 }
+
+watch(
+  () => [
+    openingCourseIdFromRoute.value,
+    courseFromOCRoute.value?.playSide,
+    isOpeningCoursesOCList.value,
+    selectedOpeningCardId.value,
+  ],
+  () => {
+    if (openingCourseIdFromRoute.value && courseFromOCRoute.value?.playSide === 'black') {
+      boardViewBlack.value = true
+      return
+    }
+    if (isOpeningCoursesOCList.value && selectedOpeningCardId.value != null) {
+      const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
+      boardViewBlack.value = card?.type === 'Black'
+      return
+    }
+    boardViewBlack.value = false
+  },
+  { immediate: true }
+)
 
 // Opening Courses V1: search panel state (Figma 74-23788)
 const openingSearchQuery = ref('')
@@ -6171,11 +6221,21 @@ watch(courseTabsActive, (active) => {
   }
 })
 
-/** OC course page: land on Learn tab when entering; restore play side from Opening page color picker choice; expand single section so lines are visible. */
+/** OC course page: land on Learn or Practice tab when entering (Practice if user clicked Practice on Opening page); restore play side from Opening page; expand single section so lines are visible. */
 watch(openingCourseIdFromRoute, (courseId) => {
   openingStartedState.value = courseId ? getOpeningStartedState() : null
   if (courseId) {
-    courseTabsActive.value = 'content'
+    try {
+      const openInPractice = sessionStorage.getItem(OPENING_COURSES_V1_OPEN_IN_PRACTICE_KEY) === '1'
+      if (openInPractice) {
+        sessionStorage.removeItem(OPENING_COURSES_V1_OPEN_IN_PRACTICE_KEY)
+        courseTabsActive.value = 'stats'
+      } else {
+        courseTabsActive.value = 'content'
+      }
+    } catch (_) {
+      courseTabsActive.value = 'content'
+    }
     nextTick(() => {
       const sections = courseSections.value
       if (sections?.length) expandedSectionIds.value = new Set([sections[0].id])
@@ -6390,8 +6450,8 @@ onUnmounted(() => {
                 @mousedown="handleDragStart($event, square)"
                 @touchstart="handleDragStart($event, square)"
               />
-              <!-- File label (bottom row) -->
-              <span v-if="square[1] === '1'" class="coord file-coord">{{ square[0] }}</span>
+              <!-- File label (bottom row: rank 1 for White view, rank 8 for Black view) -->
+              <span v-if="square[1] === (boardViewBlack ? '8' : '1')" class="coord file-coord">{{ square[0] }}</span>
               <!-- Rank label (left column) -->
               <span v-if="square[0] === 'a'" class="coord rank-coord">{{ square[1] }}</span>
             </div>
@@ -6640,7 +6700,13 @@ onUnmounted(() => {
                     :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
                   >
                     <!-- CourseCoverBoard: from Extract Styles for AI zip – 4×4 SVG board + pieces -->
-                    <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                    <div
+                      class="course-cover-board"
+                      :class="{ 'course-cover-board--black-view': card.type === 'Black' }"
+                      aria-hidden="true"
+                      data-name="CourseCoverBoard"
+                      :title="card.firstMove"
+                    >
                     <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                       <g id="course-cover-board-grid">
                         <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -6787,8 +6853,13 @@ onUnmounted(() => {
                     </div>
                     <div class="opening-course-card__content" :class="{ 'opening-course-card__content--v7-completion': isVideoV7OrV8OrV9, 'opening-course-card__content--v7-practice': isVideoV7OrV8OrV9 && courseTabsActive === 'stats' }">
                       <div v-if="openingCourseIdFromRoute" class="opening-course-card__started-header">
-                        <h3 class="opening-course-card__title">{{ course.title }}</h3>
-                        <span class="opening-course-card__play-as-label course-card-completion__complete-label">{{ coursePlaySide === 'white' ? 'Play As White' : 'Play As Black' }}</span>
+                        <div class="opening-course-card__started-header-title-row">
+                          <h3 class="opening-course-card__title">{{ openingCourseTitleForHeader(course.title) }}</h3>
+                          <div v-if="isOpeningCourseCompleted && courseTabsActive !== 'stats'" class="opening-course-card__completed-check-wrap" aria-hidden="true">
+                          <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
+                        </div>
+                        </div>
+                        <CcChip :label="coursePlaySide === 'white' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
                       </div>
                       <div v-else class="opening-course-card__title-author">
                         <h3 class="opening-course-card__title">{{ course.title }}</h3>
@@ -6932,7 +7003,13 @@ onUnmounted(() => {
                     <div class="opening-course-card__cover-wrap" :class="{ 'opening-course-card__cover-wrap--board': openingCourseIdFromRoute && course.coverPieces?.length }">
                       <template v-if="openingCourseIdFromRoute && course.coverPieces?.length">
                         <div class="course-cover-board-wrap course-cover-board-wrap--64">
-                          <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="course.firstMove">
+                          <div
+                            class="course-cover-board"
+                            :class="{ 'course-cover-board--black-view': courseFromOCRoute?.playSide === 'black' }"
+                            aria-hidden="true"
+                            data-name="CourseCoverBoard"
+                            :title="course.firstMove"
+                          >
                             <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                               <g id="course-cover-board-grid">
                                 <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -6969,8 +7046,13 @@ onUnmounted(() => {
                     </div>
                     <div class="opening-course-card__content opening-course-card__content--v7-completion" :class="{ 'opening-course-card__content--v7-practice': courseTabsActive === 'stats' }">
                       <div v-if="openingCourseIdFromRoute" class="opening-course-card__started-header">
-                        <h3 class="opening-course-card__title">{{ course.title }}</h3>
-                        <span class="opening-course-card__play-as-label course-card-completion__complete-label">{{ coursePlaySide === 'white' ? 'Play As White' : 'Play As Black' }}</span>
+                        <div class="opening-course-card__started-header-title-row">
+                          <h3 class="opening-course-card__title">{{ openingCourseTitleForHeader(course.title) }}</h3>
+                          <div v-if="isOpeningCourseCompleted && courseTabsActive !== 'stats'" class="opening-course-card__completed-check-wrap" aria-hidden="true">
+                          <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
+                        </div>
+                        </div>
+                        <CcChip :label="coursePlaySide === 'white' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
                       </div>
                       <div v-else class="opening-course-card__title-author">
                         <h3 class="opening-course-card__title">{{ course.title }}</h3>
@@ -7256,7 +7338,8 @@ onUnmounted(() => {
           </template>
           <!-- V7 only: Practice tab – Ready + Completed lines, color-coded; vertical line masked at last card -->
           <template v-else-if="isVideoV7OrV8OrV9 && courseSectionsForPracticeDisplay.length && courseTabsActive === 'stats'">
-            <div class="sections-list">
+            <!-- Practice tab: same layout as Learn with --no-chapter (no chapter row, only vertical line + line cards) -->
+            <div class="sections-list sections-list--practice">
               <div
                 v-for="(section, sectionIndex) in courseSectionsForPracticeDisplay"
                 :key="section.id"
@@ -7266,32 +7349,12 @@ onUnmounted(() => {
               >
                 <div class="v23-section-sticky-wrap">
                   <div
-                    class="v23-section-timeline-wrap v23-section-timeline-wrap--v4 v23-section-timeline-wrap--v6"
+                    class="v23-section-timeline-wrap v23-section-timeline-wrap--v4 v23-section-timeline-wrap--v6 v23-section-timeline-wrap--no-chapter"
                     :ref="(el) => setPracticeSectionLineWrapRef(section.id, el)"
                   >
                     <div class="v23-section-timeline-wrap__line" aria-hidden="true" />
-                    <div
-                      class="chapter-v2 chapter-v2--header chapter-v2--sticky-title-v23 chapter-v2--no-accordion chapter-v2--v4-timeline chapter-v2--v6-timeline-right"
-                      data-name="Chapter V2"
-                    >
-                      <span class="chapter-v2-border" aria-hidden="true" />
-                      <div class="chapter-v2__timeline-col" aria-hidden="true">
-                        <ProgressCircle
-                          :key="`progress-practice-${section.id}`"
-                          :progress="0"
-                          :size="24"
-                          class="chapter-v2__timeline-progress"
-                        />
-                      </div>
-                      <div class="chapter-progress-name">
-                        <div class="chapter-content">
-                          <span class="chapter-title">{{ section.name }}</span>
-                        </div>
-                      </div>
-                    </div>
                     <div class="v23-expandable v23-expandable--open">
-                      <div class="v22-chapter-video-block">
-                      </div>
+                      <div class="v22-chapter-video-block" />
                       <Transition name="chapter-moves">
                         <div v-if="section.practiceMoves.length" class="move-list-wrap">
                           <div class="chapter-line-cards-list-wrapper">
@@ -7307,7 +7370,8 @@ onUnmounted(() => {
                                 class="opening-course-card opening-course-card--hover-v1 chapter-line-card chapter-line-card--v6-timeline-right chapter-line-card--v7-practice"
                                 :class="[
                                   item.practiceType === 'completed' && 'chapter-line-card--v7-practice-completed',
-                                  lineIndex === section.practiceMoves.length - 1 && 'chapter-line-card--last'
+                                  lineIndex === section.practiceMoves.length - 1 && 'chapter-line-card--last',
+                                  nextToPracticeRef && nextToPracticeRef.sectionId === section.id && nextToPracticeRef.moveId === item.move.id && !(sectionIndex === 0 && lineIndex === 0) && 'chapter-line-card--next-to-practice'
                                 ]"
                                 role="listitem"
                                 data-name="Line"
@@ -7315,6 +7379,19 @@ onUnmounted(() => {
                                 @mouseenter="setHoveredChapterLine(section, item.move)"
                                 @mouseleave="clearHoveredChapterLine()"
                               >
+                                <!-- Timeline-col first in DOM so checks are on the left (same as Learn) -->
+                                <div
+                                  class="chapter-line-card__timeline-col chapter-line-card__timeline-col--practice"
+                                  aria-hidden="true"
+                                  :ref="lineIndex === 0 ? (el => setPracticeSectionFirstCardColRef(section.id, el)) : (lineIndex === section.practiceMoves.length - 1 ? (el => setPracticeSectionLastCardColRef(section.id, el)) : undefined)"
+                                >
+                                  <span
+                                    class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6 chapter-line-card__timeline-node--practice"
+                                    :class="[
+                                      nextToPracticeRef && nextToPracticeRef.sectionId === section.id && nextToPracticeRef.moveId === item.move.id && !(sectionIndex === 0 && lineIndex === 0) && 'chapter-line-card__timeline-node--next-to-practice'
+                                    ]"
+                                  />
+                                </div>
                                 <div
                                   class="chapter-line-card__body chapter-line-card__body--no-click"
                                   :title="!(item.practiceType === 'completed' && item.practiceInLabel) ? item.move.text : undefined"
@@ -7408,16 +7485,6 @@ onUnmounted(() => {
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                                <div
-                                  class="chapter-line-card__timeline-col"
-                                  aria-hidden="true"
-                                  :ref="lineIndex === 0 ? (el => setPracticeSectionFirstCardColRef(section.id, el)) : (lineIndex === section.practiceMoves.length - 1 ? (el => setPracticeSectionLastCardColRef(section.id, el)) : undefined)"
-                                >
-                                  <span
-                                    class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6"
-                                  >
-                                  </span>
                                 </div>
                               </article>
                             </div>
@@ -10278,6 +10345,14 @@ body {
   object-fit: contain;
   flex-shrink: 0;
 }
+/* Black courses: flip cover board so Black is at bottom; counter-rotate piece art */
+.course-cover-board--black-view {
+  transform: rotate(180deg);
+  transition: none;
+}
+.course-cover-board--black-view .course-cover-board__piece-img {
+  transform: rotate(180deg);
+}
 /* Content section: padding 12px, gap 4px, fit-content height, centered */
 .opening-course-card__content {
   display: flex;
@@ -10305,23 +10380,55 @@ body {
   flex-shrink: 0;
   min-width: 0;
 }
-/* Course page: header (title) with color king icon placed under the header. */
+/* Course page: header (title) with color chip/label under the header. */
 .opening-course-card__started-header {
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 0;
+  gap: 4px;
   width: 100%;
+  max-width: 314px;
   flex-shrink: 0;
   min-width: 0;
 }
-.opening-course-card__started-header .opening-course-card__title {
-  width: fit-content;
+.opening-course-card__started-header-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
+.opening-course-card__started-header .opening-course-card__title {
+  flex: 1;
+  min-width: 0;
+}
+.opening-course-card__started-header .opening-course-card__completed-check-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding-top: 1px;
+}
+.opening-course-card__started-header .opening-course-card__completed-check-icon {
+  width: 13px;
+  height: 13px;
+}
+/* V7 course card (Learn/Practice): ensure completed-check-wrap is 20×20 with 1px top padding */
+.course-card-frame--with-completion .opening-course-card__content--v7-completion .opening-course-card__started-header .opening-course-card__completed-check-wrap {
+  width: 20px;
+  height: 20px;
+  padding-top: 1px;
+}
 .opening-course-card__play-as-label {
-  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.4);
+}
+/* London course page: grey [White]/[Black] chip (same as OpeningCoursesV2 piece-color-style-v2) */
+.opening-course-card__started-header :deep(.opening-course-card__chip-label) {
+  font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  font-size: 12px;
 }
 .opening-course-card__color-icon-wrap {
   flex-shrink: 0;
@@ -10564,16 +10671,52 @@ body {
   background: #81B64C;
   pointer-events: none;
 }
+
+/* Practice tab: hollow circles match Learn tab exactly (same specs as .courses-content--v6 .chapter-line-card__timeline-node--v6:not(.chapter-line-card__timeline-node--completed)) */
+.sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--next-to-practice) {
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  min-height: 13px;
+  border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
+  background: var(--color-bg-primary, #312e2b);
+}
+.sections-list--practice .chapter-line-card__timeline-node--next-to-practice {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  outline: 2px solid var(--color-aqua-300, #26C2A3);
+  outline-offset: 0;
+  box-shadow: none;
+}
+.sections-list--practice .chapter-line-card--next-to-practice {
+  position: relative;
+}
+.sections-list--practice .chapter-line-card--next-to-practice .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.72);
+}
+.sections-list--practice .chapter-line-card--next-to-practice::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-aqua-300, #26C2A3);
+  pointer-events: none;
+}
+
 .courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
   gap: 0;
-  padding-top: 4px;
+  padding-top: 0;
   padding-bottom: 4px;
   padding-left: 12px;
   padding-right: 12px;
 }
-/* First section (e.g. Introduction): 8px vertical list padding */
+/* First section (e.g. Introduction): no extra top padding; keep bottom */
 .courses-content--v6 .section-item:first-child .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
-  padding-top: 8px;
+  padding-top: 0;
   padding-bottom: 8px;
 }
 .courses-content--v6 .chapter-v2--v4-timeline.chapter-v2--v6-timeline-right {
@@ -11586,7 +11729,7 @@ body {
   width: 100%;
   min-width: 0;
   margin-top: 0;
-  height: 24px;
+  height: 22px;
   padding-bottom: 0;
   margin-bottom: 0;
   flex-shrink: 0;
@@ -12162,6 +12305,14 @@ body {
 .course-tab-panel--stats.course-tab-panel--v7 .section-item:first-child .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
   padding-top: 8px;
   padding-bottom: 8px;
+}
+/* Practice tab list: override stats panel padding so list has 0 top, 12px left */
+.course-tab-panel--stats .sections-list--practice .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  padding-top: 0;
+  padding-left: 12px;
+}
+.course-tab-panel--stats .sections-list--practice .section-item:first-child .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  padding-top: 0;
 }
 
 /* New Course: Practice tab empty state (visible when Scenarios = "New Course" and tab = Practice) */
