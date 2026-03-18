@@ -28,7 +28,7 @@ Filter control in the Opening Courses list header: user selects **White** or **B
 | **V2** | (Reserved) Alternative UI if needed (e.g. chip or dropdown in header). | — | — |
 | **V3** | Toggle switch (56×30), tooltip “Openings for White/Black”. Default `white`. | **None** – resets to `white` on reload. | `ColorToggle.vue`; `openingFilterColor` ref only. |
 | **V4** | Same as V3 (same UI). | **sessionStorage** – key `openingCoursesV2FilterColor`, values `'white'` \| `'black'`. Restored on load. | `OpeningCoursesV2.vue`: init from storage, watch + save on change. |
-| **V5** | **Switch:** two (or three) thumbs; **36×36** frame; **4px** gap; selected **2px** ring; inset tile stroke; king ~26px. Optional **Both** tile (split white|black) only on **Your Openings**, default **both**. | Same as V4; values `'white'` \| `'black'` \| `'both'`; default `'both'`. | `ColorToggle.vue` `variant="switch"` + `allowBoth`; `OpeningCoursesV2.vue` passes `allow-both` only when Returning User + Your Openings tab. |
+| **V5** | **Switch:** two thumbs (White / Black); **36×36** frame; **4px** gap; selected **2px** ring. **Color picker hidden on Your Openings**; shown only on New User or Returning User **All** tab. **Sort:** **Most Recent** added as default; options: Most Recent, Name, First Move, Popular. | Same as V4; color filter only when picker shown. | `ColorToggle.vue` with `v-if` so not rendered on Your Openings; sort default `recent`. |
 
 **Current implementation:** **V5** (switch UI + V4 persistence).
 
@@ -132,7 +132,8 @@ watch(openingFilterColor, (val) => {
 
 ### Parent (OpeningCoursesV2.vue)
 
-- Use `<ColorToggle ... variant="switch" :allow-both="openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'my-openings'" />`. Default stored value `'both'`; filter logic uses all cards when `'both'`.
+- **Color picker:** Rendered only when **not** on Your Openings: `v-if="openingV2ScenarioPreset !== 'returning-user' || openingV2RubActiveTab !== 'my-openings'"`. On Your Openings the picker is hidden; on New User or All tab, `<ColorToggle ... variant="switch" />` is shown.
+- **Sort:** Default `openingSortBy = 'recent'`; options: **Most Recent**, Name, First Move, Popular. “Most Recent” uses started-order for Returning User; otherwise same as Popular.
 
 ### CSS (ColorToggle.vue – .color-switch*)
 

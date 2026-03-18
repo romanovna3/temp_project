@@ -4268,7 +4268,7 @@ watch(openingFilterColor, (val) => {
     sessionStorage.setItem(OPENING_COURSES_V2_FILTER_COLOR_KEY, val)
   } catch (_) {}
 }, { immediate: false })
-const openingSortBy = ref('popular') // 'name' | 'type' | 'popular'
+const openingSortBy = ref('recent') // 'recent' | 'name' | 'type' | 'popular'
 const openingSortOpen = ref(false)
 // Opening V1: scroll-linked search bar – searchY in px clamped to [-H, 0]; searchY -= delta on scroll (no boolean).
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)) }
@@ -4311,6 +4311,7 @@ function measureOpeningSearchH() {
   })
 }
 const openingSortLabel = computed(() => {
+  if (openingSortBy.value === 'recent') return 'Most Recent'
   if (openingSortBy.value === 'type') return 'First Move'
   if (openingSortBy.value === 'popular') return 'Popular'
   return 'Name'
@@ -4368,22 +4369,37 @@ const openingCoursesFiltered = computed(() => {
       return lower.every((kw) => t.includes(kw) || d.includes(kw))
     })
   }
-  if (openingSortBy.value === 'name') {
-    list = list.slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''))
-  } else if (openingSortBy.value === 'type') {
-    list = list.slice().sort((a, b) => (a.type || '').localeCompare(b.type || ''))
-  } else if (openingSortBy.value === 'popular') {
-    list = list.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
-  }
-  if (isReturningUserScenario(openingV2ScenarioPreset.value)) {
-    list = list.slice().sort((a, b) => {
-      const aStarted = isOpeningCardStarted(a)
-      const bStarted = isOpeningCardStarted(b)
-      if (aStarted && !bStarted) return -1
-      if (!aStarted && bStarted) return 1
-      if (!aStarted && !bStarted) return 0
-      return getStartedCourseSortRank(a) - getStartedCourseSortRank(b)
-    })
+  if (openingSortBy.value === 'recent') {
+    if (isReturningUserScenario(openingV2ScenarioPreset.value)) {
+      list = list.slice().sort((a, b) => {
+        const aStarted = isOpeningCardStarted(a)
+        const bStarted = isOpeningCardStarted(b)
+        if (aStarted && !bStarted) return -1
+        if (!aStarted && bStarted) return 1
+        if (!aStarted && !bStarted) return 0
+        return getStartedCourseSortRank(a) - getStartedCourseSortRank(b)
+      })
+    } else {
+      list = list.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
+    }
+  } else {
+    if (openingSortBy.value === 'name') {
+      list = list.slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+    } else if (openingSortBy.value === 'type') {
+      list = list.slice().sort((a, b) => (a.type || '').localeCompare(b.type || ''))
+    } else if (openingSortBy.value === 'popular') {
+      list = list.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
+    }
+    if (isReturningUserScenario(openingV2ScenarioPreset.value)) {
+      list = list.slice().sort((a, b) => {
+        const aStarted = isOpeningCardStarted(a)
+        const bStarted = isOpeningCardStarted(b)
+        if (aStarted && !bStarted) return -1
+        if (!aStarted && bStarted) return 1
+        if (!aStarted && !bStarted) return 0
+        return getStartedCourseSortRank(a) - getStartedCourseSortRank(b)
+      })
+    }
   }
   return list
 })
@@ -6223,10 +6239,10 @@ onUnmounted(() => {
                       />
                     </div>
                     <ColorToggle
+                      v-if="openingV2ScenarioPreset !== 'returning-user' || openingV2RubActiveTab !== 'my-openings'"
                       v-model:selected-color="openingFilterColor"
                       :base-url="baseUrl"
                       variant="switch"
-                      :allow-both="openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'my-openings'"
                       class="opening-search-panel__color-toggle"
                     />
                   </div>
@@ -6239,6 +6255,7 @@ onUnmounted(() => {
                           <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
                         </button>
                         <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
+                          <button type="button" role="option" :aria-selected="openingSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
                           <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
                           <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
                           <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
