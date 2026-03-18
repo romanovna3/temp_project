@@ -107,7 +107,7 @@ function onToggleKeydown(event) {
             <CcIcon
               name="piece-hollow-king-1"
               variant="glyph"
-              :custom-size="28"
+              :custom-size="32"
               class="color-switch__king-icon"
               aria-hidden="true"
             />
@@ -127,7 +127,7 @@ function onToggleKeydown(event) {
             <CcIcon
               name="piece-hollow-king-1"
               variant="glyph"
-              :custom-size="28"
+              :custom-size="32"
               class="color-switch__king-icon"
               aria-hidden="true"
             />
@@ -259,7 +259,7 @@ function onToggleKeydown(event) {
 .color-switch {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-8, 8px);
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -282,7 +282,7 @@ function onToggleKeydown(event) {
   outline-offset: 2px;
 }
 
-/* GNS: teams.design.public.tokens.semantic.dimensions (radius-5, space-8), color.border (border-success, border-default). No color-picker component in GNS; tile visuals follow Colorpicker pattern. */
+/* GNS: radius-5, color.border (border-success, border-default). Gap 8px; selected ring 3px; tile stroke inset 1px. */
 .color-switch__outline {
   width: 44px;
   height: 44px;
@@ -297,7 +297,7 @@ function onToggleKeydown(event) {
 }
 
 .color-switch__option--selected .color-switch__outline {
-  box-shadow: 0 0 0 2px var(--color-border-success);
+  box-shadow: 0 0 0 3px var(--color-border-success);
 }
 
 .color-switch__thumb {
@@ -313,17 +313,21 @@ function onToggleKeydown(event) {
   flex-shrink: 0;
 }
 
-/* Tile colors: Colorpicker pattern (#e7e6e5 / #312e2b). Borders: GNS border-default (transparent-white-10) where applicable. */
+/* Tile colors: Colorpicker pattern. Inside stroke only (inset box-shadow, no outer border). */
 .color-switch__thumb--white {
   background-color: #e7e6e5;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  border: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .color-switch__thumb--black {
   background-color: #312e2b;
-  border: 1px solid var(--color-border-default, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  border: none;
+  box-shadow:
+    inset 0 0 0 1px var(--color-border-default, rgba(255, 255, 255, 0.1)),
+    0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 /* GNS glyph piece-hollow-king-1 – Colorpicker fill (#8B8987) */
