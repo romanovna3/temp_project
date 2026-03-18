@@ -9530,7 +9530,7 @@ body {
   flex-direction: column;
   gap: 6px;
   box-sizing: border-box;
-  width: 445px;
+  width: 440px;
   max-width: 100%;
   min-width: 0;
   height: fit-content;
@@ -9547,10 +9547,10 @@ body {
   align-items: center;
   gap: var(--space-8, 8px);
 }
-/* Up to 445px when space allows; shrinks when scrollbar-gutter reserves space so no horizontal scroll */
+/* Up to 440px when space allows; shrinks when scrollbar-gutter reserves space so no horizontal scroll */
 .opening-search-panel__row--inputs {
   width: 100%;
-  max-width: 445px;
+  max-width: 440px;
   min-width: 0;
   gap: var(--space-8, 8px);
   padding-left: 0;
@@ -9764,7 +9764,7 @@ body {
 /* Opening Courses V1: course counter + filter (same width as search inputs row) */
 .opening-courses-meta-panel {
   width: 100%;
-  max-width: 445px;
+  max-width: 440px;
   min-width: 0;
   min-height: 20px;
   height: auto;
