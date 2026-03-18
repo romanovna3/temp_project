@@ -9733,11 +9733,11 @@ body {
   max-height: none;
 }
 
-/* Opening Courses V1: search panel – 440×74; 6px top padding; 8px row gap; inputs row 436px, 4px gap */
+/* Opening Courses V1: search panel – 440×74; 6px top padding; 6px row gap; inputs row 436px, 4px gap */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   box-sizing: border-box;
   width: 440px;
   max-width: 100%;
