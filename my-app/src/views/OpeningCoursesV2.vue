@@ -507,11 +507,20 @@ function getStoredOpeningFilterColor() {
   return 'both'
 }
 
-/** Open opening course: pass a card when nothing is selected (e.g. Learn → latest); else uses selectedOpeningCard. options.openInPracticeTab = true to land on Practice tab. */
+/** When opening a started course in-place, which tab to show first (content = Learn, stats = Practice). */
+const openingCourseInitialTab = ref('content')
+/** Open opening course: pass a card when nothing is selected (e.g. Learn → latest); else uses selectedOpeningCard. options.openInPracticeTab = true to land on Practice tab.
+ * Started courses (Your Openings): open in-place with OpeningCoursePage (Practice tab has lines). Not started: navigate to OC route (Practice empty). */
 function openOpeningCourse(optionalCard, options) {
   const card = optionalCard ?? selectedOpeningCard.value
   if (!card) return
   const openInPracticeTab = options?.openInPracticeTab === true
+  const isStarted = isOpeningCardStarted(card)
+  if (isStarted) {
+    openingCourseInitialTab.value = openInPracticeTab ? 'stats' : 'content'
+    panelView.value = 'opening-course'
+    return
+  }
   const scrollEl = openingV2ScrollWrapRef.value
   const scrollTop = scrollEl != null && typeof scrollEl.scrollTop === 'number' ? scrollEl.scrollTop : 0
   try {
@@ -529,15 +538,7 @@ function openOpeningCourse(optionalCard, options) {
     } else {
       sessionStorage.removeItem(OPENING_COURSES_V1_OPEN_IN_PRACTICE_KEY)
     }
-    const startedData = isReturningUserScenario(openingV2ScenarioPreset.value) ? getOpeningCardStartedData(card) : null
-    if (startedData) {
-      sessionStorage.setItem(OPENING_COURSES_V1_STARTED_STATE_KEY, JSON.stringify({
-        reviewCount: startedData.reviewCount,
-        progressPercent: startedData.progressPercent,
-      }))
-    } else {
-      sessionStorage.removeItem(OPENING_COURSES_V1_STARTED_STATE_KEY)
-    }
+    sessionStorage.removeItem(OPENING_COURSES_V1_STARTED_STATE_KEY)
   } catch (_) {
     // ignore quota / private mode
   }
@@ -6316,6 +6317,7 @@ onUnmounted(() => {
             :card="selectedOpeningCard"
             :variations="OPENING_COURSE_VARIATIONS"
             :practice-line-count="openingCoursePracticeLineCount"
+            :initial-tab="openingCourseInitialTab"
             :base-url="baseUrl"
             :get-piece-image="getPieceImage"
           />
