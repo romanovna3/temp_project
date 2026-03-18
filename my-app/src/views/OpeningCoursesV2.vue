@@ -481,6 +481,16 @@ const OPENING_COURSES_V2_PRESET_BAR_KEY = 'openingCoursesV2PresetBar'
 const OPENING_COURSES_V1_STARTED_STATE_KEY = 'openingCoursesV1StartedState'
 /** When set, course page (CoursesV9OC) opens with Practice tab active. Set when user clicks Practice on Opening page. */
 const OPENING_COURSES_V1_OPEN_IN_PRACTICE_KEY = 'openingCoursesV1OpenInPractice'
+/** V4 piece color toggle: persist filter color (see docs/Opening-Courses-Piece-Color-Toggle-Spec.md). */
+const OPENING_COURSES_V2_FILTER_COLOR_KEY = 'openingCoursesV2FilterColor'
+
+function getStoredOpeningFilterColor() {
+  try {
+    const raw = sessionStorage.getItem(OPENING_COURSES_V2_FILTER_COLOR_KEY)
+    if (raw === 'white' || raw === 'black') return raw
+  } catch (_) {}
+  return 'white'
+}
 
 /** Open opening course: pass a card when nothing is selected (e.g. Learn → latest); else uses selectedOpeningCard. options.openInPracticeTab = true to land on Practice tab. */
 function openOpeningCourse(optionalCard, options) {
@@ -4251,8 +4261,13 @@ const openingSearchQuery = ref('')
 const openingFilterMoves = ref([])
 // Keyword tags from search (Enter): filter by title/description containing each
 const openingKeywordTags = ref([])
-/** Filter courses by piece color: 'white' | 'black' (Color Toggle in header) */
-const openingFilterColor = ref('white')
+/** Filter courses by piece color: 'white' | 'black' (Color Toggle in header). V4: init from sessionStorage. */
+const openingFilterColor = ref(getStoredOpeningFilterColor())
+watch(openingFilterColor, (val) => {
+  try {
+    sessionStorage.setItem(OPENING_COURSES_V2_FILTER_COLOR_KEY, val)
+  } catch (_) {}
+}, { immediate: false })
 const openingSortBy = ref('popular') // 'name' | 'type' | 'popular'
 const openingSortOpen = ref(false)
 // Opening V1: scroll-linked search bar – searchY in px clamped to [-H, 0]; searchY -= delta on scroll (no boolean).
