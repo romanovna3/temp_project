@@ -4278,18 +4278,6 @@ const openingPlaySide = ref('white')
 watch(selectedOpeningCard, (card) => {
   if (card) openingPlaySide.value = card.courseNumber === 2 ? 'white' : (card.type === 'Black' ? 'black' : 'white')
 }, { immediate: true })
-watch(
-  () => [selectedOpeningCardId.value, isOpeningCoursesV2.value],
-  () => {
-    if (!isOpeningCoursesV2.value) {
-      boardViewBlack.value = false
-      return
-    }
-    const card = selectedOpeningCardId.value != null ? openingCourseCards.find((c) => c.id === selectedOpeningCardId.value) : null
-    boardViewBlack.value = card?.type === 'Black' ?? false
-  },
-  { immediate: true }
-)
 watch(selectedOpeningCardId, (id) => {
   if (id != null && isOpeningCoursesV2.value) openingHintDismissed.value = true
 })
@@ -4323,6 +4311,44 @@ watch(openingFilterColor, (val) => {
     sessionStorage.setItem(OPENING_COURSES_V2_FILTER_COLOR_KEY, val)
   } catch (_) {}
 }, { immediate: false })
+/** Main board orientation + default position when switching White ↔ Black header toggle. */
+watch(
+  () => [isOpeningCoursesV2.value, openingFilterColor.value, selectedOpeningCardId.value],
+  (newVal, oldVal) => {
+    const onV2 = newVal[0]
+    const fc = newVal[1]
+    const prevFc = oldVal?.[1]
+    if (!onV2) {
+      boardViewBlack.value = false
+      return
+    }
+    if (fc === 'black') {
+      boardViewBlack.value = true
+      openingPlaySide.value = 'black'
+    } else if (fc === 'white') {
+      boardViewBlack.value = false
+      openingPlaySide.value = 'white'
+    } else {
+      const card = selectedOpeningCardId.value != null ? openingCourseCards.find((c) => c.id === selectedOpeningCardId.value) : null
+      boardViewBlack.value = card?.type === 'Black' ?? false
+    }
+    if (
+      onV2 &&
+      prevFc != null &&
+      (prevFc === 'white' || prevFc === 'black') &&
+      (fc === 'white' || fc === 'black') &&
+      prevFc !== fc
+    ) {
+      clearOpeningAutoMove()
+      openingFilterMoves.value = []
+      pieces.value = parseFEN(STARTING_FEN)
+      lastMove.value = null
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+    }
+  },
+  { immediate: true }
+)
 const openingSortBy = ref('recent') // 'recent' | 'name' | 'type' | 'popular'
 const openingSortOpen = ref(false)
 /** Your Openings tab (returning user): sort options are Most Recent, Name, First Move; default Most Recent. All/New User: Popular, Name, First Move only; default Popular. */
