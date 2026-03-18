@@ -9728,18 +9728,18 @@ body {
   max-height: none;
 }
 
-/* Opening Courses V1: search panel (Figma 74-23788) – search input, Filters button, count, Sort by. Minimal right padding so content sits close to scrollbar. */
+/* Opening Courses V1: search panel – 440×74 target; inputs row max 436px; 6px top padding; 4px gaps */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   box-sizing: border-box;
   width: 440px;
   max-width: 100%;
   min-width: 0;
   min-height: 74px;
   height: fit-content;
-  padding: 4px 4px 0 16px;
+  padding: 6px 4px 0 16px;
   margin-top: 0;
   margin-bottom: 8px;
   flex-shrink: 0;
@@ -9750,14 +9750,14 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 /* Inputs row up to 436px; panel outer 440px */
 .opening-search-panel__row--inputs {
   width: 100%;
   max-width: 436px;
   min-width: 0;
-  gap: 6px;
+  gap: 4px;
   padding-left: 0;
   padding-right: 0;
 }
