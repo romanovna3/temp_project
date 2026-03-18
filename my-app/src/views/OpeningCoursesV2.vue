@@ -9733,11 +9733,11 @@ body {
   max-height: none;
 }
 
-/* Opening Courses V1: search panel – 440×74 target; inputs row max 436px; 6px top padding; 4px gaps */
+/* Opening Courses V1: search panel – 440×74; 6px top padding; 8px row gap; inputs row 436px, 4px gap */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   box-sizing: border-box;
   width: 440px;
   max-width: 100%;
@@ -9757,19 +9757,19 @@ body {
   align-items: center;
   gap: 4px;
 }
-/* Inputs row: 436px wide, 6px gap (search + color toggle on All / New User) */
+/* Inputs row: 436px wide, 4px gap (search + color toggle on All / New User) */
 .opening-search-panel__row--inputs {
   width: 436px;
   max-width: 100%;
   min-width: 0;
-  gap: 6px;
+  gap: 4px;
   padding-left: 0;
   padding-right: 0;
 }
 .opening-search-panel__row--meta {
   justify-content: space-between;
 }
-/* Your Openings only: 44px-tall row band; search field stays default 40px (vertically centered) */
+/* Your Openings only: 40px-tall row band (matches search field); search field stays 40px, vertically centered */
 .opening-search-panel__search-shell {
   display: contents;
 }
@@ -9779,7 +9779,7 @@ body {
   justify-content: stretch;
   flex: 1;
   min-width: 0;
-  height: 44px;
+  height: 40px;
   box-sizing: border-box;
 }
 .opening-search-panel__search-shell--your-openings .opening-search-panel__search {
