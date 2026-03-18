@@ -123,8 +123,8 @@ watch(openingFilterColor, (val) => {
 ### UI (DS-aligned medium)
 
 - **Layout:** Two options side by side, gap `var(--space-8, 8px)`.
-- **Frame:** **44×44px** outer (`.color-switch__outline`); selected state: **2px green ring** (`box-shadow`, same as course card square-outline).
-- **Tile:** **40×40px** thumb – matches DS Colorpicker pattern (PickYourColorV2 scaled): White tile `#e7e6e5` + `border: 1px solid rgba(0,0,0,0.1)`; Black tile `#312e2b` + `border: 1px solid rgba(255,255,255,0.1)`; `border-radius: var(--radius-sm, 5px)`.
+- **Frame:** **36×36px** outer (`.color-switch__outline`); selected: **2px** ring `rgba(129, 182, 76, 1)`.
+- **Tile:** **32×32px** thumb – Colorpicker pattern: White `#e7e6e5` + dark border; Black `#312e2b` + `var(--color-border-default)`; `border-radius: var(--radius-5, 5px)`.
 - **Icon:** **piece-hollow-king-1** – same SVG path as GNS/DS PickYourColor (`data-name="piece-hollow-king-1"`), fill `var(--fill-0, #8B8987)`; ~28×32px inside the 40px tile.
 - **Interaction:** Click White or Black to select; no sliding. Same tooltip as V3/V4 (“Openings for White” / “Openings for Black”).
 - **A11y:** Group `role="group"` `aria-label="Filter by piece color"`. Each option `aria-label="Openings for White"` / `"Openings for Black"`, `:aria-pressed`. Focus-visible: outline on the outline wrapper (2px `--color-border-focus`, offset 2px).
@@ -137,8 +137,8 @@ watch(openingFilterColor, (val) => {
 
 - `.color-switch`: inline-flex, gap 6px.
 - `.color-switch__option`: reset button; focus-visible → outline on `.color-switch__outline`.
-- `.color-switch__outline`: 44×44, border-radius `calc(var(--radius-5) + 2px)`; selected adds 2px `var(--color-border-success)` (GNS).
-- `.color-switch__thumb`: 40×40, radius `var(--radius-5)`; white tile `#e7e6e5` + dark border; black tile `#312e2b` + `var(--color-border-default)`. King icon: piece-hollow-king-1 SVG (~28×32px).
+- `.color-switch__outline`: 36×36; selected ring `0 0 0 2px rgba(129, 182, 76, 1)`.
+- `.color-switch__thumb`: 32×32, radius `var(--radius-5)`; king SVG ~24×28px.
 
 ---
 
