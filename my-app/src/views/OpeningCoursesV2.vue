@@ -163,6 +163,8 @@ function openingNameKey(name) {
   if (name === 'Scotch Game') return 'Scotch'
   return name
 }
+/** Recommended openings for "Recommended" section (All tab + New User). Italian Game and Ruy Lopez. */
+const OPENING_RECOMMENDED_KEYS = ['Italian Game', 'Ruy Lopez']
 // URL slug from opening title (e.g. "Sicilian Defense" → "sicilian-defense").
 function openingSlug(title) {
   return (title || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -4431,6 +4433,35 @@ const openingCoursesRestList = computed(() => {
   return openingCoursesFiltered.value.filter((c) => !isOpeningCardStarted(c))
 })
 
+/** When to show Recommended + All Courses sections (New User, or Returning User on All tab). */
+const showRecommendedAndAllSections = computed(() =>
+  openingV2ScenarioPreset.value === 'new-user' ||
+  (openingV2ScenarioPreset.value === 'returning-user' && openingV2RubActiveTab.value === 'all')
+)
+/** Source list for sectioned view: New User = filtered; Returning All = rest list. */
+const openingCoursesListForSections = computed(() => {
+  if (openingV2ScenarioPreset.value === 'new-user') return openingCoursesFiltered.value
+  if (openingV2ScenarioPreset.value === 'returning-user' && openingV2RubActiveTab.value === 'all') return openingCoursesRestList.value
+  return []
+})
+/** Recommended section: Italian Game and Ruy Lopez from the sectioned list. */
+const openingCoursesRecommendedList = computed(() =>
+  openingCoursesListForSections.value.filter((c) => OPENING_RECOMMENDED_KEYS.includes(c.openingKey))
+)
+/** All Courses section: everything else in the sectioned list. */
+const openingCoursesAllOthersList = computed(() =>
+  openingCoursesListForSections.value.filter((c) => !OPENING_RECOMMENDED_KEYS.includes(c.openingKey))
+)
+/** Sections for template: Recommended (if any) then All Courses (if any), each with title and count. */
+const openingCoursesSections = computed(() => {
+  const rec = openingCoursesRecommendedList.value
+  const rest = openingCoursesAllOthersList.value
+  const sections = []
+  if (rec.length) sections.push({ id: 'recommended', title: 'Recommended', count: rec.length, list: rec })
+  if (rest.length) sections.push({ id: 'all-courses', title: 'All Courses', count: rest.length, list: rest })
+  return sections
+})
+
 watch(openingCoursesFiltered, () => {
   nextTick(() => requestAnimationFrame(measureOpeningCardTitleLines))
 }, { flush: 'post' })
@@ -6273,7 +6304,6 @@ onUnmounted(() => {
                   </div>
                   <div v-if="openingV2ScenarioPreset === 'new-user' || openingV2ScenarioPreset === 'returning-user'" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
                     <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
-                      <span class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} Courses</span>
                       <div class="opening-courses-meta-panel__sort">
                         <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
                           <span class="text-small">Sort by </span><span class="text-small-bold">{{ openingSortLabel }}</span>
@@ -6293,6 +6323,7 @@ onUnmounted(() => {
                           </template>
                         </div>
                       </div>
+                      <span class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} Courses</span>
                     </div>
                     <FilterChipV2
                       v-else
@@ -6316,11 +6347,17 @@ onUnmounted(() => {
                       </div>
                       <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                     </div>
-                    <div v-else class="opening-course-cards-list" data-name="Opening course cards">
-                      <article
-                        v-for="card in openingV2RubCourseList"
-                        :key="card.id"
-              class="opening-course-card"
+                    <template v-else-if="showRecommendedAndAllSections">
+                      <div v-for="section in openingCoursesSections" :key="section.id" class="opening-v1-section" data-name="Opening section">
+                        <div class="opening-v1-section-header">
+                          <span class="opening-v1-section-header__title">{{ section.title }}</span>
+                          <span class="opening-v1-section-header__count">{{ section.count }} courses</span>
+                        </div>
+                        <div class="opening-course-cards-list" data-name="Opening course cards">
+                          <article
+                            v-for="card in section.list"
+                            :key="card.id"
+                            class="opening-course-card"
               :class="[
                 `opening-course-card--variant-${OPENING_COURSE_CARD_VARIANT}`,
                 `opening-course-card--hover-${OPENING_COURSE_CARD_HOVER_VARIANT}`,
@@ -6443,11 +6480,142 @@ onUnmounted(() => {
               </div>
             </article>
                     </div>
+                      </div>
                   </template>
+                <template v-else>
+                    <div class="opening-course-cards-list" data-name="Opening course cards">
+                      <article
+                        v-for="card in openingV2RubCourseList"
+                        :key="card.id"
+                        class="opening-course-card"
+                        :class="[
+                          `opening-course-card--variant-${OPENING_COURSE_CARD_VARIANT}`,
+                          `opening-course-card--hover-${OPENING_COURSE_CARD_HOVER_VARIANT}`,
+                          { 'opening-course-card--selected': OPENING_COURSE_CARD_VARIANT === 'full-card-outline' && isOpeningCardSelected(card.id) },
+                          { 'opening-course-card--selected-hover': isOpeningCardSelected(card.id) && selectedOpeningCardHovered }
+                        ]"
+                        data-name="Course card"
+                        :title="card.firstMove"
+                        role="button"
+                        tabindex="0"
+                        @click="toggleOpeningCardSelection(card.id)"
+                        @keydown.enter.space.prevent="toggleOpeningCardSelection(card.id)"
+                        @pointerenter="onOpeningCardHover(card.id)"
+                        @pointerleave="onOpeningCardUnhover(card.id)"
+                      >
+                        <div class="opening-course-card__inner">
+                          <div class="opening-course-card__content-wrap">
+                            <div
+                              class="opening-course-card__cover-wrap"
+                              :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
+                            >
+                              <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                                <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
+                                  <g id="course-cover-board-grid">
+                                    <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M96 24H72V48H96V24Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M24 0H0V24H24V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M48 0H24V24H48V0Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M48 48H24V72H48V48Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M24 24H0V48H24V24Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M24 72H0V96H24V72Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 24H48V48H72V24Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 72H48V96H72V72Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M96 0H72V24H96V0Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M96 48H72V72H96V48Z" fill="var(--color-chess-dark, #779556)" />
+                                    <path d="M72 0H48V24H72V0Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M48 72H24V96H48V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M96 72H72V96H96V72Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M24 48H0V72H24V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                    <path d="M72 48H48V72H72V48Z" fill="var(--color-chess-light, #EBECD0)" />
+                                  </g>
+                                </svg>
+                                <div
+                                  v-for="(piece, i) in card.coverPieces"
+                                  :key="`${card.id}-${i}-${piece.type}`"
+                                  class="course-cover-board__piece"
+                                  :style="{ '--file': piece.col, '--rank': piece.row }"
+                                >
+                                  <img :src="getPieceImage({ type: piece.type })" alt="" class="course-cover-board__piece-img" width="24" height="24" aria-hidden="true" />
+                                </div>
+                              </div>
+                            </div>
+                            <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV2ScenarioPreset) && isOpeningCardStarted(card) }">
+                              <template v-if="isReturningUserScenario(openingV2ScenarioPreset) && isOpeningCardStarted(card)">
+                                <div class="opening-course-card__started-top">
+                                  <div class="opening-course-card__started-top-title-row">
+                                    <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                                    <div v-if="isOpeningCardCompleted(card)" class="opening-course-card__completed-check-wrap" aria-hidden="true">
+                                      <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
+                                    </div>
+                                  </div>
+                                  <div class="opening-course-card__started-top-row">
+                                    <CcChip :label="card.type === 'White' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
+                                  </div>
+                                </div>
+                                <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
+                                  <template v-if="isOpeningCardCompleted(card)">
+                                    <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Mastery:</span>
+                                    <div class="opening-course-card__progress-row opening-course-card__mastery-row">
+                                      <template v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'">
+                                        <span class="course-card-completion__complete-label opening-course-card__progress-label-inline">Mastery:</span>
+                                        <div class="extra-data-level-chip opening-course-card__level-chip" data-name="LevelChip">
+                                          <CcChip label="L4" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
+                                        </div>
+                                      </template>
+                                      <template v-else>
+                                        <div class="course-card-mastery-bar opening-course-card__mastery-bar" role="progressbar" aria-valuenow="4" aria-valuemin="0" aria-valuemax="8" aria-label="Mastery level 4 of 8">
+                                          <div class="course-card-mastery-bar__segments">
+                                            <div v-for="i in 8" :key="i" class="course-card-mastery-bar__segment" />
+                                          </div>
+                                          <div class="course-card-mastery-bar__fill" style="width: 50%">
+                                            <div class="course-card-mastery-bar__fill-gradient" aria-hidden="true" />
+                                          </div>
+                                        </div>
+                                      </template>
+                                    </div>
+                                  </template>
+                                  <template v-else>
+                                    <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Progress:</span>
+                                    <div class="opening-course-card__progress-row">
+                                      <span v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
+                                      <div
+                                        class="course-card-completion course-card-completion--in-mastery-row opening-course-card__completion opening-course-card__completion-bar"
+                                        role="progressbar"
+                                        :aria-valuenow="getOpeningCardStartedData(card)?.progressPercent ?? 0"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                        aria-label="Course progress"
+                                      >
+                                        <div class="course-card-completion__track" data-name="Progress bar">
+                                          <div class="course-card-completion__fill" data-name="Progress" :style="{ width: (getOpeningCardStartedData(card)?.progressPercent ?? 0) * 192 / 100 + 'px' }" />
+                                        </div>
+                                      </div>
+                                      <p class="course-card-completion__label opening-course-card__progress-percent">{{ Math.round(getOpeningCardStartedData(card)?.progressPercent ?? 0) }}%</p>
+                                    </div>
+                                  </template>
+                                </div>
+                              </template>
+                              <template v-else>
+                                <div class="opening-course-card__title-author">
+                                  <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                                  <p class="opening-course-card__description">{{ card.description }}</p>
+                                </div>
+                                <div class="opening-course-card__properties">
+                                  <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                                </div>
+                              </template>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    </div>
+                </template>
+                </template>
                 </template>
                 <template v-else>
-                  <!-- No courses match the current filters (board position and/or keywords) -->
-                  <div v-if="openingCoursesFiltered.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
+                  <!-- New User: Recommended + All Courses sections (same as All tab). No courses match the current filters. -->
+                  <div v-if="openingCoursesListForSections.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
                     <img :src="baseUrl + 'icons/empty-state-no-courses.png'" alt="" class="opening-courses-empty-state__image" />
                     <div class="opening-courses-empty-state__text-group">
                       <h3 class="opening-courses-empty-state__heading text-medium-bold">No courses found</h3>
@@ -6455,9 +6623,15 @@ onUnmounted(() => {
                     </div>
                     <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                   </div>
-                  <div v-else class="opening-course-cards-list" data-name="Opening course cards">
+                  <template v-else>
+                    <div v-for="section in openingCoursesSections" :key="section.id" class="opening-v1-section" data-name="Opening section">
+                      <div class="opening-v1-section-header">
+                        <span class="opening-v1-section-header__title">{{ section.title }}</span>
+                        <span class="opening-v1-section-header__count">{{ section.count }} courses</span>
+                      </div>
+                      <div class="opening-course-cards-list" data-name="Opening course cards">
                   <article
-                    v-for="card in openingCoursesFiltered"
+                    v-for="card in section.list"
                     :key="card.id"
                     class="opening-course-card"
                     :class="[
@@ -6582,6 +6756,8 @@ onUnmounted(() => {
                     </div>
                   </article>
                 </div>
+                      </div>
+                    </template>
                 </template>
               </div>
             </div>
@@ -9561,7 +9737,7 @@ body {
   min-width: 0;
   min-height: 74px;
   height: fit-content;
-  padding: 6px 4px 0 16px;
+  padding: 4px 4px 0 16px;
   margin-top: 0;
   margin-bottom: 8px;
   flex-shrink: 0;
@@ -9797,7 +9973,7 @@ body {
   height: auto;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 6px;
   background: unset;
   padding: 0;
@@ -9814,6 +9990,7 @@ body {
 }
 .opening-courses-meta-panel__count {
   flex-shrink: 0;
+  margin-left: auto;
   padding-left: 2px;
   padding-right: 2px;
   color: rgba(255, 255, 255, 0.5);
@@ -9837,7 +10014,6 @@ body {
 }
 .opening-courses-meta-panel__sort {
   position: relative;
-  margin-left: auto;
   flex-shrink: 0;
 }
 .opening-courses-meta-panel__sort-btn {
@@ -9860,8 +10036,8 @@ body {
   opacity: 0.8;
 }
 .opening-courses-meta-panel .opening-search-panel__sort-dropdown {
-  right: 0;
-  left: auto;
+  left: 0;
+  right: auto;
 }
 
 /* Opening Courses V1: section headers (My Openings / All Openings) – DS header xxx-small style (text/bolder) */
