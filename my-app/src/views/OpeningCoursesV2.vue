@@ -163,8 +163,14 @@ function openingNameKey(name) {
   if (name === 'Scotch Game') return 'Scotch'
   return name
 }
-/** Recommended openings for "Recommended" section (All tab + New User). Italian Game and Ruy Lopez. */
-const OPENING_RECOMMENDED_KEYS = ['Italian Game', 'Ruy Lopez']
+/** Recommended section: Italian (White only), Ruy Lopez (Black only). */
+const OPENING_RECOMMENDED = [
+  { openingKey: 'Italian Game', type: 'White' },
+  { openingKey: 'Ruy Lopez', type: 'Black' },
+]
+function isOpeningRecommended(card) {
+  return OPENING_RECOMMENDED.some((r) => r.openingKey === card.openingKey && r.type === card.type)
+}
 // URL slug from opening title (e.g. "Sicilian Defense" → "sicilian-defense").
 function openingSlug(title) {
   return (title || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -4491,13 +4497,13 @@ const openingCoursesListForSections = computed(() => {
   if (openingV2ScenarioPreset.value === 'returning-user' && openingV2RubActiveTab.value === 'all') return openingCoursesRestList.value
   return []
 })
-/** Recommended section: Italian Game and Ruy Lopez from the sectioned list. */
+/** Recommended section: Italian (White), Ruy Lopez (Black) from the sectioned list. */
 const openingCoursesRecommendedList = computed(() =>
-  openingCoursesListForSections.value.filter((c) => OPENING_RECOMMENDED_KEYS.includes(c.openingKey))
+  openingCoursesListForSections.value.filter((c) => isOpeningRecommended(c))
 )
 /** All Courses section: everything else in the sectioned list. */
 const openingCoursesAllOthersList = computed(() =>
-  openingCoursesListForSections.value.filter((c) => !OPENING_RECOMMENDED_KEYS.includes(c.openingKey))
+  openingCoursesListForSections.value.filter((c) => !isOpeningRecommended(c))
 )
 /** Sections for template: Recommended (if any) then All Courses (if any), each with title and count. */
 const openingCoursesSections = computed(() => {
