@@ -6373,20 +6373,11 @@ onUnmounted(() => {
                     <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
                       <div class="opening-course-card__started-header">
                         <h3 class="opening-course-card__title">{{ card.title }}</h3>
-                        <div class="opening-course-card__color-icon-wrap">
-                          <CcIcon
-                            :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
-                            variant="color"
-                            :size="16"
-                            class="opening-course-card__color-icon"
-                            aria-hidden="true"
-                            :title="card.type === 'White' ? 'White' : 'Black'"
-                          />
-                        </div>
                       </div>
                       <div class="opening-course-card__started-meta">
                         <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
                         <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                        <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
                       </div>
                       <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
                         <template v-if="isOpeningCardCompleted(card)">
@@ -6536,20 +6527,11 @@ onUnmounted(() => {
                               <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
                                 <div class="opening-course-card__started-header">
                                   <h3 class="opening-course-card__title">{{ card.title }}</h3>
-                                  <div class="opening-course-card__color-icon-wrap">
-                                    <CcIcon
-                                      :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
-                                      variant="color"
-                                      :size="16"
-                                      class="opening-course-card__color-icon"
-                                      aria-hidden="true"
-                                      :title="card.type === 'White' ? 'White' : 'Black'"
-                                    />
-                                  </div>
                                 </div>
                                 <div class="opening-course-card__started-meta">
                                   <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
                                   <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                                  <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
                                 </div>
                                 <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
                                   <template v-if="isOpeningCardCompleted(card)">
@@ -6696,20 +6678,11 @@ onUnmounted(() => {
                     <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
                       <div class="opening-course-card__started-header">
                         <h3 class="opening-course-card__title">{{ card.title }}</h3>
-                        <div class="opening-course-card__color-icon-wrap">
-                          <CcIcon
-                            :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
-                            variant="color"
-                            :size="16"
-                            class="opening-course-card__color-icon"
-                            aria-hidden="true"
-                            :title="card.type === 'White' ? 'White' : 'Black'"
-                          />
-                        </div>
                       </div>
                       <div class="opening-course-card__started-meta">
                         <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
                         <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                        <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
                       </div>
                       <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
                         <template v-if="isOpeningCardCompleted(card)">
@@ -6855,20 +6828,11 @@ onUnmounted(() => {
                           <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
                             <div class="opening-course-card__started-header">
                               <h3 class="opening-course-card__title">{{ card.title }}</h3>
-                              <div class="opening-course-card__color-icon-wrap">
-                                <CcIcon
-                                  :name="card.type === 'White' ? 'piece-white-king' : 'piece-black-king'"
-                                  variant="color"
-                                  :size="16"
-                                  class="opening-course-card__color-icon"
-                                  aria-hidden="true"
-                                  :title="card.type === 'White' ? 'White' : 'Black'"
-                                />
-                              </div>
                             </div>
                             <div class="opening-course-card__started-meta">
                               <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
                               <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                              <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
                             </div>
                             <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
                               <template v-if="isOpeningCardCompleted(card)">
@@ -10546,7 +10510,7 @@ body {
   width: fit-content;
   min-width: 0;
 }
-/* Row under header: king icon + chip next to each other */
+/* Row under header: Learn as White/Black label; when completed also Completed chip */
 .opening-course-card__started-meta {
   display: flex;
   align-items: center;
@@ -10555,7 +10519,17 @@ body {
   flex-shrink: 0;
   min-width: 0;
 }
-/* Wrapper for king icon in started-header */
+/* Learn as White/Black label: same as course page (CoursesV9OC .course-card-completion__complete-label) */
+.opening-course-card__learn-as-label,
+.opening-course-card__started-meta .course-card-completion__complete-label {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+/* Wrapper for king icon in started-header (legacy) */
 .opening-course-card__color-icon-wrap {
   flex-shrink: 0;
   display: inline-flex;

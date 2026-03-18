@@ -30,7 +30,7 @@ const coursesV23 = [
   { id: 1, title: "The Master's Hand: Capablanca's Endgame Technique", instructor: 'GM Alex Colovich', lines: 120, thumbnail: 'course-cover-gotham.png' },
 ]
 const coursesV24 = [
-  { id: 1, title: 'Learn The London System For White', instructor: 'chesscomopenings', lines: 7, thumbnail: 'course-cover-everything.png' },
+  { id: 1, title: 'London System', instructor: 'chesscomopenings', lines: 7, thumbnail: 'course-cover-everything.png' },
 ]
 const courses = computed(() => (isVideoV2_4.value ? coursesV24 : coursesV23))
 
@@ -2176,7 +2176,7 @@ function getSectionMoves(section) {
   }
 }
 
-// V2.4: London System for White – 7 lessons (Learn the London System for White)
+// V2.4: London System for White – 7 lessons
 const courseSectionsV24 = [
   { id: 'main-line', name: 'London System: Main Line', completed: 0, total: 1, status: 'not_started', videoAvailable: true },
   { id: 'black-attacks-center', name: 'London System: Black Attacks the Center', completed: 0, total: 1, status: 'not_started', videoAvailable: true },

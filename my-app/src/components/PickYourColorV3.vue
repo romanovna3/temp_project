@@ -1,6 +1,6 @@
 <template>
   <div class="pick-your-color-v3" data-name="Pick your color V3">
-    <span class="pick-your-color-v3__label">Play As:</span>
+    <span class="pick-your-color-v3__label">Learn as:</span>
     <div class="pick-your-color-v3__icons">
       <button
         type="button"

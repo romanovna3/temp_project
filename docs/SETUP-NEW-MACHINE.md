@@ -257,6 +257,42 @@ If the **chesscom-design-system** MCP shows `401 Unauthorized` when fetching `@c
 
 After changing `.cursor/mcp.json` or global MCP settings, **restart Cursor** so it reloads MCP servers. Then check **Cursor Settings → MCP** to see that the servers show as connected or running.
 
+### 5.7 GNS CLI (connect to GNS)
+
+The **GNS CLI** (`gns`) is used for design-system and knowledge queries (e.g. `gns search "color-picker" --scope teams.design.public`, `gns get gns.wake`). Rules like `.cursor/rules/gns-ecosystem.mdc` expect it to be available.
+
+**Install (if not already):**
+
+- See **`gns-install-commands.md`** in the project root. You need network access to `gns.int.sgns.chess-platform.com` (WARP/VPN may be required).
+- After install, ensure `gns` is on your PATH (e.g. `~/.local/bin`). Check: `gns version`.
+
+**If you see “failed to decrypt token” or auth errors:**
+
+The token in `~/.gns/` was encrypted for another machine or is invalid. Re-authenticate:
+
+1. **Log out** (clears the bad token):
+   ```bash
+   gns auth logout
+   ```
+2. **Log in** (opens browser for Google / Chess.com):
+   ```bash
+   gns auth login
+   ```
+3. **Verify:**
+   ```bash
+   gns auth status
+   # or
+   gns get gns.wake --json
+   ```
+
+**First-time or full setup:**
+
+```bash
+gns setup
+```
+
+This checks gcloud, creates `~/.gns`, runs auth, and can set up Cursor integration. Run it once per machine (or after reinstalling the CLI).
+
 ---
 
 ## Part 6: Cursor rules (in repo)
@@ -325,6 +361,7 @@ Use this to verify nothing was skipped:
 - [ ] **Cursor:** Installed and opened the project folder (the one with `my-app` and `.cursor`).
 - [ ] **Repo:** Cloned; `cd my-app && npm install` completed without 404/401.
 - [ ] **MCP:** Figma desktop running if using Figma MCP; global MCPs (e.g. Chess.com DS) added in Cursor Settings or `~/.cursor/mcp.json` if you use them; Cursor restarted after MCP changes.
+- [ ] **GNS (optional):** If you use GNS CLI: install per `gns-install-commands.md`, ensure `gns` on PATH; if you see “failed to decrypt token”, run `gns auth logout` then `gns auth login`.
 - [ ] **Run:** `cd my-app && npm run dev` and browser opened to the printed URL (e.g. `http://127.0.0.1:5173/`).
 - [ ] **Optional:** GitHub Pages source set to GitHub Actions; **NPM_TOKEN** secret added for CI.
 

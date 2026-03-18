@@ -6,7 +6,7 @@
     aria-label="Play as"
   >
     <div class="play-side-selector__label">
-      <p class="play-side-selector__label-text">Play As:</p>
+      <p class="play-side-selector__label-text">Learn as:</p>
     </div>
     <div class="play-side-selector__icons" data-name="Icons">
       <!-- White (Figma ColorpickerWhiteSm: 208-19855) -->

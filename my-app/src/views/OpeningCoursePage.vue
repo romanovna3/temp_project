@@ -323,29 +323,10 @@ const masteryLevelItems = [
           <div v-else class="sections-list sections-list--practice">
             <div class="section-item" data-section-id="opening-course-practice">
               <div class="v23-section-sticky-wrap">
-                <div class="v23-section-timeline-wrap v23-section-timeline-wrap--v4 v23-section-timeline-wrap--v6">
+                <div class="v23-section-timeline-wrap v23-section-timeline-wrap--v4 v23-section-timeline-wrap--v6 v23-section-timeline-wrap--no-chapter">
                   <div class="v23-section-timeline-wrap__line" aria-hidden="true" />
-                  <div
-                    class="chapter-v2 chapter-v2--header chapter-v2--sticky-title-v23 chapter-v2--no-accordion chapter-v2--v4-timeline chapter-v2--v6-timeline-right"
-                    data-name="Chapter V2"
-                  >
-                    <span class="chapter-v2-border" aria-hidden="true" />
-                    <div class="chapter-v2__timeline-col" aria-hidden="true">
-                      <ProgressCircle :key="'opening-practice-progress'" :progress="0" :size="24" class="chapter-v2__timeline-progress" />
-                    </div>
-                    <div class="chapter-progress-name">
-                      <div class="chapter-content">
-                        <span class="chapter-title">{{ card?.title ?? 'Course' }}</span>
-                      </div>
-                      <div class="chapter-variations">
-                        <span class="chapter-count">0/{{ practiceLineItems.length }}</span>
-                        <span class="chapter-chevron-wrap" aria-hidden="true">
-                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="chapter-chevron" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
                   <div class="v23-expandable v23-expandable--open">
+                    <div class="v22-chapter-video-block" />
                     <div class="move-list-wrap">
                       <div class="chapter-line-cards-list-wrapper">
                         <div
@@ -366,6 +347,26 @@ const masteryLevelItems = [
                             role="listitem"
                             data-name="Line"
                           >
+                            <!-- Timeline-col first in DOM so checks are on the left (same as Learn) -->
+                            <div class="chapter-line-card__timeline-col chapter-line-card__timeline-col--practice" aria-hidden="true">
+                              <span
+                                class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6 chapter-line-card__timeline-node--practice"
+                                :class="[
+                                  item.completed && 'chapter-line-card__timeline-node--completed',
+                                  item.isNext && 'chapter-line-card__timeline-node--next-to-practice'
+                                ]"
+                              >
+                                <img
+                                  v-if="item.completed"
+                                  :src="baseUrl + 'icons/circle-fill-check.png'"
+                                  alt=""
+                                  class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--practice"
+                                  width="13"
+                                  height="13"
+                                  aria-hidden="true"
+                                />
+                              </span>
+                            </div>
                             <div class="chapter-line-card__body chapter-line-card__body--no-click" :title="item.text">
                               <div class="opening-course-card__inner">
                                 <div class="opening-course-card__content-wrap">
@@ -389,25 +390,6 @@ const masteryLevelItems = [
                                 </div>
                               </div>
                             </div>
-                            <div class="chapter-line-card__timeline-col chapter-line-card__timeline-col--practice" aria-hidden="true">
-                              <span
-                                class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6 chapter-line-card__timeline-node--practice"
-                                :class="[
-                                  item.completed && 'chapter-line-card__timeline-node--completed',
-                                  item.isNext && 'chapter-line-card__timeline-node--next-to-practice'
-                                ]"
-                              >
-                                <img
-                                  v-if="item.completed"
-                                  :src="baseUrl + 'icons/circle-fill-check.png'"
-                                  alt=""
-                                  class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--practice"
-                                  width="13"
-                                  height="13"
-                                  aria-hidden="true"
-                                />
-                              </span>
-                            </div>
                           </article>
                         </div>
                       </div>
@@ -424,6 +406,10 @@ const masteryLevelItems = [
 </template>
 
 <style scoped>
+/* No chapter row: vertical line starts at top (same as Learn no-chapter) */
+.opening-course-page :deep(.v23-section-timeline-wrap--no-chapter .v23-section-timeline-wrap__line) {
+  top: 0;
+}
 .opening-course-page__title-row {
   display: flex;
   flex-wrap: wrap;
@@ -450,10 +436,7 @@ const masteryLevelItems = [
 </style>
 
 <style>
-/* Opening course page: Practice tab aqua timeline (matches OpeningCoursesV2 Practice styling) */
-.opening-course-page .sections-list--practice .v23-section-timeline-wrap__line {
-  background: var(--color-aqua-300, #26c2a3);
-}
+/* Opening course page: Practice tab aqua nodes/checks (vertical line same as Learn) */
 .opening-course-page .sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--completed):not(.chapter-line-card__timeline-node--next-to-practice) {
   border: 2px solid rgba(38, 194, 163, 0.45);
   background: var(--color-bg-primary, #312e2b);

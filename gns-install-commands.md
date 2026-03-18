@@ -1,5 +1,7 @@
 # Run these in your terminal (one at a time, with WARP connected)
 
+**After install:** Ensure `gns` is on your PATH (e.g. add `~/.local/bin` to PATH). Then run `gns auth login` to authenticate (opens browser). If you later see **"failed to decrypt token"**, run `gns auth logout` then `gns auth login`. See also **docs/SETUP-NEW-MACHINE.md** § 5.7.
+
 ## Step 1: Download the install script
 ```bash
 curl -v -o ~/Downloads/gns-install.sh "https://gns.int.sgns.chess-platform.com/releases/install.sh"
