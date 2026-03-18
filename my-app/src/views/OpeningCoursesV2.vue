@@ -4350,20 +4350,19 @@ function courseMatchesMoveSequence(card, filterMoves) {
   return filterSans.every((san, i) => courseSans[i] === san)
 }
 
-const openingCoursesFiltered = computed(() => {
-  const colorFilter = openingFilterColor.value
-  const typeMatch = colorFilter === 'both' ? null : (colorFilter === 'white' ? 'White' : 'Black')
-  let list = typeMatch == null ? openingCourseCards : openingCourseCards.filter((c) => c.type === typeMatch)
+/** Search, board moves, keywords, sort — used after optional color filter. */
+function applyOpeningCoursesHeaderFilters(list) {
+  let out = list.slice()
   const q = (openingSearchQuery.value || '').trim().toLowerCase()
-  if (q) list = list.filter((c) => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
+  if (q) out = out.filter((c) => (c.title || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
   const filterMoves = openingFilterMoves.value
   if (filterMoves.length) {
-    list = list.filter((c) => courseMatchesMoveSequence(c, filterMoves))
+    out = out.filter((c) => courseMatchesMoveSequence(c, filterMoves))
   }
   const keywords = openingKeywordTags.value
   if (keywords.length) {
     const lower = keywords.map((k) => (k || '').toLowerCase())
-    list = list.filter((c) => {
+    out = out.filter((c) => {
       const t = (c.title || '').toLowerCase()
       const d = (c.description || '').toLowerCase()
       return lower.every((kw) => t.includes(kw) || d.includes(kw))
@@ -4371,7 +4370,7 @@ const openingCoursesFiltered = computed(() => {
   }
   if (openingSortBy.value === 'recent') {
     if (isReturningUserScenario(openingV2ScenarioPreset.value)) {
-      list = list.slice().sort((a, b) => {
+      out = out.slice().sort((a, b) => {
         const aStarted = isOpeningCardStarted(a)
         const bStarted = isOpeningCardStarted(b)
         if (aStarted && !bStarted) return -1
@@ -4380,18 +4379,18 @@ const openingCoursesFiltered = computed(() => {
         return getStartedCourseSortRank(a) - getStartedCourseSortRank(b)
       })
     } else {
-      list = list.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
+      out = out.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
     }
   } else {
     if (openingSortBy.value === 'name') {
-      list = list.slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+      out = out.slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''))
     } else if (openingSortBy.value === 'type') {
-      list = list.slice().sort((a, b) => (a.type || '').localeCompare(b.type || ''))
+      out = out.slice().sort((a, b) => (a.type || '').localeCompare(b.type || ''))
     } else if (openingSortBy.value === 'popular') {
-      list = list.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
+      out = out.slice().sort((a, b) => (b.frequencyPercent ?? 0) - (a.frequencyPercent ?? 0))
     }
     if (isReturningUserScenario(openingV2ScenarioPreset.value)) {
-      list = list.slice().sort((a, b) => {
+      out = out.slice().sort((a, b) => {
         const aStarted = isOpeningCardStarted(a)
         const bStarted = isOpeningCardStarted(b)
         if (aStarted && !bStarted) return -1
@@ -4401,13 +4400,20 @@ const openingCoursesFiltered = computed(() => {
       })
     }
   }
-  return list
+  return out
+}
+
+const openingCoursesFiltered = computed(() => {
+  const colorFilter = openingFilterColor.value
+  const typeMatch = colorFilter === 'both' ? null : (colorFilter === 'white' ? 'White' : 'Black')
+  const base = typeMatch == null ? openingCourseCards : openingCourseCards.filter((c) => c.type === typeMatch)
+  return applyOpeningCoursesHeaderFilters(base)
 })
 
-/** Returning user: started courses only (for "My Openings" section). */
+/** Returning user: started courses on Your Openings — all White + Black started (no piece-color filter). */
 const openingCoursesStartedList = computed(() => {
   if (!isReturningUserScenario(openingV2ScenarioPreset.value)) return []
-  return openingCoursesFiltered.value.filter((c) => isOpeningCardStarted(c))
+  return applyOpeningCoursesHeaderFilters(openingCourseCards).filter((c) => isOpeningCardStarted(c))
 })
 /** Returning user: non-started courses only (for "All Openings" section). Each card is per color; once started it is in My Openings only. Both colors can be started for openings with two courses; only the other color remains in All Openings until started. */
 const openingCoursesRestList = computed(() => {

@@ -132,7 +132,8 @@ watch(openingFilterColor, (val) => {
 
 ### Parent (OpeningCoursesV2.vue)
 
-- **Color picker:** Rendered only when **not** on Your Openings: `v-if="openingV2ScenarioPreset !== 'returning-user' || openingV2RubActiveTab !== 'my-openings'"`. On Your Openings the picker is hidden; on New User or All tab, `<ColorToggle ... variant="switch" />` is shown.
+- **Color picker:** Rendered only when **not** on Your Openings: `v-if="openingV2ScenarioPreset !== 'returning-user' || openingV2RubActiveTab !== 'my-openings'"`. On New User or All tab, `<ColorToggle ... variant="switch" />` filters by White/Black.
+- **Your Openings list:** Shows **all started courses for White and Black** (piece-color filter does not apply). Search, move, keyword, and sort still apply.
 - **Sort:** Default `openingSortBy = 'recent'`; options: **Most Recent**, Name, First Move, Popular. “Most Recent” uses started-order for Returning User; otherwise same as Popular.
 
 ### CSS (ColorToggle.vue – .color-switch*)
