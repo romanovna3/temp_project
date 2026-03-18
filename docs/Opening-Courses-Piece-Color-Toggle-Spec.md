@@ -2,6 +2,10 @@
 
 Filter control in the Opening Courses list header: user selects **White** or **Black** to show only courses for that color. Used in **Opening Courses V2** (`OpeningCoursesV2.vue`); component: `my-app/src/views/opening-courses/ColorToggle.vue`.
 
+### GNS / DS: ColorPicker component
+
+**Check:** Run `gns search "color-picker" --scope teams.design.public` (or list `teams.design.public.components`) when online. **In this repo’s installed `@chesscom/design-system` package there is no exported `CcColorPicker` / `ColorPicker` component** – the switch uses the same visual pattern as **PickYourColorV2** (Colorpicker white/black tiles + **piece-hollow-king-1**). When/if a DS `ColorPicker` ships with a `medium` size, prefer importing it here instead of custom markup.
+
 ---
 
 ## Version summary
@@ -104,11 +108,12 @@ watch(openingFilterColor, (val) => {
 **Binding:** Same as V3/V4: `v-model:selected-color="openingFilterColor"`.  
 **Persistence:** Same as V4 (sessionStorage).
 
-### UI
+### UI (DS-aligned medium)
 
-- **Layout:** Two options side by side, gap 6px. Each option is a button containing an outline wrapper and a thumb square.
-- **Thumb:** 30×30px, border-radius 4px. White = `#ffffff`, Black = `#2d2d2d`; 1px border `var(--color-transparent-white-10)`; shadow `0 1px 2px rgba(0,0,0,0.12)`. Same king icon as V3/V4 (20×24px).
-- **Outline wrapper:** Wraps each thumb; padding 3px (so outline has “distance” from the square, like course card). Border-radius `calc(var(--radius-xs, 2px) + 3px)`. When **selected**, `box-shadow: 0 0 0 2px var(--color-border-success, var(--color-green-300, #81B64C))` (same as `.opening-course-card__cover-wrap--selected`). Transition `box-shadow 0.15s ease`.
+- **Layout:** Two options side by side, gap `var(--space-8, 8px)`.
+- **Frame:** **44×44px** outer (`.color-switch__outline`); selected state: **2px green ring** (`box-shadow`, same as course card square-outline).
+- **Tile:** **40×40px** thumb – matches DS Colorpicker pattern (PickYourColorV2 scaled): White tile `#e7e6e5` + `border: 1px solid rgba(0,0,0,0.1)`; Black tile `#312e2b` + `border: 1px solid rgba(255,255,255,0.1)`; `border-radius: var(--radius-sm, 5px)`.
+- **Icon:** **piece-hollow-king-1** – same SVG path as GNS/DS PickYourColor (`data-name="piece-hollow-king-1"`), fill `var(--fill-0, #8B8987)`; ~28×32px inside the 40px tile.
 - **Interaction:** Click White or Black to select; no sliding. Same tooltip as V3/V4 (“Openings for White” / “Openings for Black”).
 - **A11y:** Group `role="group"` `aria-label="Filter by piece color"`. Each option `aria-label="Openings for White"` / `"Openings for Black"`, `:aria-pressed`. Focus-visible: outline on the outline wrapper (2px `--color-border-focus`, offset 2px).
 
