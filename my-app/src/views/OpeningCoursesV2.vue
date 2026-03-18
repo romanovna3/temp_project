@@ -4208,6 +4208,15 @@ const openingV2RubCourseList = computed(() =>
   openingV2RubActiveTab.value === 'my-openings' ? openingCoursesStartedList.value : openingCoursesRestList.value
 )
 
+/** Returning + Your Openings: always "Learn" (including disabled when nothing selected). Else Learn only if selected course is started. */
+const openingV2FooterPrimaryLabel = computed(() => {
+  if (isReturningUserScenario(openingV2ScenarioPreset.value) && openingV2RubActiveTab.value === 'my-openings') {
+    return 'Learn'
+  }
+  const card = selectedOpeningCard.value
+  return card && isOpeningCardStarted(card) ? 'Learn' : 'Start Course'
+})
+
 const selectedOpeningCardId = ref(null)
 // True when the selected card is currently hovered (pointer over it) – board does not reset while true
 const selectedOpeningCardHovered = ref(false)
@@ -6146,7 +6155,7 @@ onUnmounted(() => {
               class="opening-v1-rub-tabs-wrap opening-v1-rub-tabs-wrap--fixed"
             >
               <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
-                <cc-tab-item id="my-openings" label="My Openings" :isActive="openingV2RubActiveTab === 'my-openings'" @click="openingV2RubActiveTab = 'my-openings'" />
+                <cc-tab-item id="my-openings" label="Your Openings" :isActive="openingV2RubActiveTab === 'my-openings'" @click="openingV2RubActiveTab = 'my-openings'" />
                 <cc-tab-item id="all" label="All" :isActive="openingV2RubActiveTab === 'all'" @click="openingV2RubActiveTab = 'all'" />
               </cc-tab-group>
             </div>
@@ -8178,7 +8187,7 @@ v-if="isVideoV6OrV7"
                 </button>
               </div>
             </div>
-            <!-- Opening Courses V2 (courses view): single primary CTA (Learn / Start Course). -->
+            <!-- Opening Courses V2 (courses view): single primary CTA (Learn on Your Openings; Learn / Start Course on All / New User). -->
             <div v-else-if="isOpeningCoursesV2 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-full">
                 <CcButton
@@ -8187,7 +8196,7 @@ v-if="isVideoV6OrV7"
                   class="footer-btn-full"
                   :disabled="!selectedOpeningCardId"
                   @click="openOpeningCourse()"
-                >{{ selectedOpeningCard && isReturningUserScenario(openingV2ScenarioPreset) && isOpeningCardStarted(selectedOpeningCard) ? 'Learn' : 'Start Course' }}</CcButton>
+                >{{ openingV2FooterPrimaryLabel }}</CcButton>
               </div>
             </div>
             <!-- Read mode ON: Back (S) exits read mode + nav; Continue (P) -->

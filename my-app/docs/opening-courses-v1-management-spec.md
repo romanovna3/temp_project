@@ -21,8 +21,8 @@ We support three scenarios, selectable from a **preset bar** at the top of the s
 | Scenario | Who it’s for | Main behavior |
 |----------|--------------|----------------|
 | **New User** | First-time or no progress | Single list of all openings. Search, sort, and “X Courses” + Sort by row. One CTA: Start Course. |
-| **Returning User A** | Has started some courses | Two sections: **“My Openings”** (started + completed) and **“All Openings”** (the rest). Each section has a header with a course count. No Sort by row. |
-| **Returning User B** | Same as A, different layout | Same split of content (My Openings vs All), but with **tabs** and **Sort by**, and no section headers with counts. |
+| **Returning User A** | Has started some courses | Two sections: **“Your Openings”** (started + completed) and **“All Openings”** (the rest). Each section has a header with a course count. No Sort by row. |
+| **Returning User B** | Same as A, different layout | Same split of content (Your Openings vs All), but with **tabs** and **Sort by**, and no section headers with counts. |
 
 **Product decision:** Returning User B gives a cleaner, tabbed layout and a Sort by control similar to New User, while still separating “my” courses from “all” courses.
 
@@ -31,12 +31,12 @@ We support three scenarios, selectable from a **preset bar** at the top of the s
 ## 3. Layout and Navigation
 
 - **Coach** at the top with avatar and message bubble (fixed; content scrolls below).
-- **Returning User B only:** Two tabs under the coach: **“My Openings”** and **“All”**. Same tab style as the Course page (Learn / Practice). Tabs stay visible when scrolling (sticky).
+- **Returning User B only:** Two tabs under the coach: **“Your Openings”** and **“All”**. Same tab style as the Course page (Learn / Practice). Tabs stay visible when scrolling (sticky).
 - **Search bar** below coach (or below tabs for Returning User B): search field + Filters button. Sticky behavior so it can hide on scroll down and show on scroll up.
 - **Course list** in the scrollable area:
   - **New User:** One list; optional “X Courses” and **Sort by** (Name, Lines, Type, Popular).
-  - **Returning User A:** Two sections with headers: “My Openings (X courses)” and “All Openings (X courses).”
-  - **Returning User B:** Tabs “My Openings” | “All”; no section headers; “X Courses” + Sort by row (same as New User).
+  - **Returning User A:** Two sections with headers: “Your Openings (X courses)” and “All Openings (X courses).”
+  - **Returning User B:** Tabs “Your Openings” | “All”; no section headers; “X Courses” + Sort by row (same as New User).
 
 ---
 
@@ -90,7 +90,7 @@ The same data can be maintained in a source like Notion (e.g. “Course number�
 
 | Area | New User | Returning User A | Returning User B |
 |------|----------|------------------|-------------------|
-| List structure | One list | Two sections with headers + counts | Tabs: My Openings \| All (no section headers) |
+| List structure | One list | Two sections with headers + counts | Tabs: Your Openings \| All (no section headers) |
 | Sort by | Yes | No | Yes |
 | “X Courses” row | Yes | No | Yes (per tab) |
 | Tabs under coach | No | No | Yes (sticky) |
