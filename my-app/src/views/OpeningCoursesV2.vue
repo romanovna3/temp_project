@@ -9550,9 +9550,9 @@ body {
 /* Up to 440px when space allows; shrinks when scrollbar-gutter reserves space so no horizontal scroll */
 .opening-search-panel__row--inputs {
   width: 100%;
-  max-width: 440px;
+  max-width: 436px;
   min-width: 0;
-  gap: var(--space-8, 8px);
+  gap: 6px;
   padding-left: 0;
   padding-right: 0;
 }
