@@ -9510,7 +9510,7 @@ body {
   max-width: 100%;
   min-width: 0;
   height: fit-content;
-  padding: 2px 4px 0 16px;
+  padding: 4px 4px 0 16px;
   margin-top: 0;
   margin-bottom: 8px;
   flex-shrink: 0;
