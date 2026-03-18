@@ -9746,7 +9746,7 @@ body {
   padding-bottom: 4px;
 }
 /* Only this element scrolls in the middle region; min-height: 0 critical in flex so it gets a real height */
-/* scrollbar-gutter: stable reserves space for scrollbar; overflow-x: hidden prevents horizontal scroll */
+/* auto: use full panel width when gutter not needed so .opening-search-panel inner hits 436px (stable was capping row ~413px) */
 .opening-v1-scroll-wrap {
   display: flex;
   flex-direction: column;
@@ -9756,7 +9756,7 @@ body {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
   scrollbar-color: rgba(0, 0, 0, 0.45) transparent;
   z-index: 1;
 }
