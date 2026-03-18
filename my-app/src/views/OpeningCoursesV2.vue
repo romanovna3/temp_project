@@ -13316,6 +13316,11 @@ body {
   min-width: 0;
   max-height: 4.8rem;
 }
+/* Opening V2 footer: full-width aqua Practice CTA (completed courses) */
+.opening-v2-footer-aqua-practice {
+  display: flex;
+  width: 100%;
+}
 .footer-buttons-row-split > * {
   flex: 1 0 0;
   min-width: 0;
