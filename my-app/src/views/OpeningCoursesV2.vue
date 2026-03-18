@@ -6323,7 +6323,7 @@ onUnmounted(() => {
                           </template>
                         </div>
                       </div>
-                      <span class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} Courses</span>
+                      <span v-if="!showRecommendedAndAllSections" class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} Courses</span>
                     </div>
                     <FilterChipV2
                       v-else
