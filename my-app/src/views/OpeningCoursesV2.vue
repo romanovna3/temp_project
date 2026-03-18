@@ -6288,13 +6288,18 @@ onUnmounted(() => {
               >
                 <div class="opening-search-panel">
                   <div class="opening-search-panel__row opening-search-panel__row--inputs">
-                    <div class="opening-search-panel__search">
-                      <SearchInput
-                        v-model="openingSearchQuery"
-                        placeholder="Search openings"
-                        aria-label="Search openings"
-                        @enter="onOpeningSearchEnter"
-                      />
+                    <div
+                      class="opening-search-panel__search-shell"
+                      :class="{ 'opening-search-panel__search-shell--all': openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'all' }"
+                    >
+                      <div class="opening-search-panel__search">
+                        <SearchInput
+                          v-model="openingSearchQuery"
+                          placeholder="Search openings"
+                          aria-label="Search openings"
+                          @enter="onOpeningSearchEnter"
+                        />
+                      </div>
                     </div>
                     <ColorToggle
                       v-if="openingV2ScenarioPreset !== 'returning-user' || openingV2RubActiveTab !== 'my-openings'"
@@ -9763,6 +9768,33 @@ body {
 }
 .opening-search-panel__row--meta {
   justify-content: space-between;
+}
+/* All tab only: extra shell so search row can be 44px tall */
+.opening-search-panel__search-shell {
+  display: contents;
+}
+.opening-search-panel__search-shell--all {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  box-sizing: border-box;
+}
+.opening-search-panel__search-shell--all .opening-search-panel__search {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+}
+.opening-search-panel__search-shell--all :deep(.search-input) {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+}
+.opening-search-panel__search-shell--all :deep(.search-input__field) {
+  height: 44px;
+  min-height: 44px;
 }
 .opening-search-panel__search {
   flex: 1;
