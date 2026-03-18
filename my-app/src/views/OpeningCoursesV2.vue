@@ -3117,9 +3117,10 @@ function squareToPercent(square) {
   const fileIndex = square.charCodeAt(0) - 97 // a=0 .. h=7
   const rank = parseInt(square[1], 10)
   if (fileIndex < 0 || fileIndex > 7 || rank < 1 || rank > 8) return { left: '0%', top: '0%' }
+  const topPct = boardViewBlack.value ? ((rank - 1) / 8) * 100 : ((8 - rank) / 8) * 100
   return {
     left: `${(fileIndex / 8) * 100}%`,
-    top: `${((8 - rank) / 8) * 100}%`,
+    top: `${topPct}%`,
   }
 }
 function clearOpeningAutoMove() {
@@ -3299,6 +3300,8 @@ const progressBarColor = computed(() => {
 // ============================================
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 const ranks = [8, 7, 6, 5, 4, 3, 2, 1]
+/** Main board: Black’s perspective (rank 8 at bottom) when a Black opening card is selected. */
+const boardViewBlack = ref(false)
 const base = import.meta.env.BASE_URL
 const pieces = ref([])
 
@@ -3364,10 +3367,11 @@ const checkmateIconColor = computed(() => {
   return checkmateKingColor.value === 'black' ? '#262421' : '#ffffff'
 })
 
-// Generate all squares
+// Generate all squares (rank 1 at top when boardViewBlack so Black sits at bottom)
 const squares = computed(() => {
   const result = []
-  for (let rank of ranks) {
+  const rankOrder = boardViewBlack.value ? [1, 2, 3, 4, 5, 6, 7, 8] : ranks
+  for (let rank of rankOrder) {
     for (let file of files) {
       result.push(`${file}${rank}`)
     }
@@ -4268,6 +4272,18 @@ const openingPlaySide = ref('white')
 watch(selectedOpeningCard, (card) => {
   if (card) openingPlaySide.value = card.courseNumber === 2 ? 'white' : (card.type === 'Black' ? 'black' : 'white')
 }, { immediate: true })
+watch(
+  () => [selectedOpeningCardId.value, isOpeningCoursesV2.value],
+  () => {
+    if (!isOpeningCoursesV2.value) {
+      boardViewBlack.value = false
+      return
+    }
+    const card = selectedOpeningCardId.value != null ? openingCourseCards.find((c) => c.id === selectedOpeningCardId.value) : null
+    boardViewBlack.value = card?.type === 'Black' ?? false
+  },
+  { immediate: true }
+)
 watch(selectedOpeningCardId, (id) => {
   if (id != null && isOpeningCoursesV2.value) openingHintDismissed.value = true
 })
@@ -6162,8 +6178,8 @@ onUnmounted(() => {
                 @mousedown="handleDragStart($event, square)"
                 @touchstart="handleDragStart($event, square)"
               />
-              <!-- File label (bottom row) -->
-              <span v-if="square[1] === '1'" class="coord file-coord">{{ square[0] }}</span>
+              <!-- File label (bottom row: rank 1 for White view, rank 8 for Black view) -->
+              <span v-if="square[1] === (boardViewBlack ? '8' : '1')" class="coord file-coord">{{ square[0] }}</span>
               <!-- Rank label (left column) -->
               <span v-if="square[0] === 'a'" class="coord rank-coord">{{ square[1] }}</span>
             </div>
@@ -6423,7 +6439,7 @@ onUnmounted(() => {
                     class="opening-course-card__cover-wrap"
                     :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
                   >
-                    <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                    <div class="course-cover-board" :class="{ 'course-cover-board--black-view': card.type === 'Black' }" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
                     <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                       <g id="course-cover-board-grid">
                         <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -6553,7 +6569,7 @@ onUnmounted(() => {
                               class="opening-course-card__cover-wrap"
                               :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
                             >
-                              <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                              <div class="course-cover-board" :class="{ 'course-cover-board--black-view': card.type === 'Black' }" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
                                 <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                                   <g id="course-cover-board-grid">
                                     <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -6699,7 +6715,7 @@ onUnmounted(() => {
                           class="opening-course-card__cover-wrap"
                           :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
                         >
-                          <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                          <div class="course-cover-board" :class="{ 'course-cover-board--black-view': card.type === 'Black' }" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
                             <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                               <g id="course-cover-board-grid">
                                 <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -10384,6 +10400,14 @@ body {
   height: 100%;
   object-fit: contain;
   flex-shrink: 0;
+}
+/* Black courses: flip cover board so Black is at bottom; counter-rotate piece art */
+.course-cover-board--black-view {
+  transform: rotate(180deg);
+  transition: none;
+}
+.course-cover-board--black-view .course-cover-board__piece-img {
+  transform: rotate(180deg);
 }
 /* Content section: padding 12px, gap 4px, fit-content height, centered */
 .opening-course-card__content {
