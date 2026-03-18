@@ -4272,7 +4272,7 @@ watch(openingFilterColor, (val) => {
 }, { immediate: false })
 const openingSortBy = ref('recent') // 'recent' | 'name' | 'type' | 'popular'
 const openingSortOpen = ref(false)
-/** Your Openings tab (returning user): sort options are Most Recent, Name, First Move; default Most Recent. All/New User: Popular, Name, First Move, Most Recent; default Popular. */
+/** Your Openings tab (returning user): sort options are Most Recent, Name, First Move; default Most Recent. All/New User: Popular, Name, First Move only; default Popular. */
 const isYourOpeningsSortContext = computed(() =>
   openingV2RubActiveTab.value === 'my-openings' && isReturningUserScenario(openingV2ScenarioPreset.value)
 )
@@ -4494,9 +4494,11 @@ watch(openingV2ScenarioPreset, () => {
   }
 })
 
-/** Your Openings: default Most Recent (no Popular). All / New User: default Popular. Coerce when switching. */
+/** Your Openings: default Most Recent (no Popular). All / New User: default Popular, no Most Recent option. Coerce when switching. */
 watch([openingV2ScenarioPreset, openingV2RubActiveTab], () => {
   if (openingV2ScenarioPreset.value === 'new-user') {
+    openingSortBy.value = 'popular'
+  } else if (openingV2RubActiveTab.value === 'all' && openingSortBy.value === 'recent') {
     openingSortBy.value = 'popular'
   } else if (openingV2RubActiveTab.value === 'my-openings' && openingSortBy.value === 'popular') {
     openingSortBy.value = 'recent'
@@ -6319,7 +6321,6 @@ onUnmounted(() => {
                             <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
                             <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
                             <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
-                            <button type="button" role="option" :aria-selected="openingSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
                           </template>
                         </div>
                       </div>
