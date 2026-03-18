@@ -10077,16 +10077,16 @@ body {
   height: 32px;
   flex-shrink: 0;
 }
-/* Heading xxx-small: only on section title (My Openings / All Openings). GNS: teams.design.public.tokens.semantic.typography.headings */
-/* – font-family: var(--font-family-heading) → Chess Sans */
-/* – font-size: 14px | line-height: 16px | weight: 700 (Bold) */
+/* Section title (Recommended / All Courses): system UI, 15px semibold */
 .opening-v1-section-header__title {
   flex-shrink: 0;
-  font-family: var(--font-family-heading, 'Chess Sans', sans-serif);
-  font-size: var(--heading-xxx-small, 14px);
+  padding-left: 2px;
+  padding-right: 2px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
   line-height: var(--leading-4, 16px);
-  font-weight: var(--font-weight-bold, 700);
-  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
 }
 /* Counter: same style as "31 Courses" label (text-small-bold + meta panel count color) */
 .opening-v1-section-header__count {
