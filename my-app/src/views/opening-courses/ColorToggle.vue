@@ -273,7 +273,7 @@ function onToggleKeydown(event) {
 .color-switch {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -296,14 +296,14 @@ function onToggleKeydown(event) {
   outline-offset: 2px;
 }
 
-/* GNS: radius-5, color.border (border-success, border-default). Gap 8px; selected ring 3px; tile stroke inset 1px. */
+/* Selected ring 2px rgba success green; outline 36×36; thumb 32×32; gap 4px; tile inset stroke. */
 .color-switch__outline {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   box-sizing: border-box;
-  border-radius: calc(var(--radius-5, 5px) + 2px);
+  border-radius: calc(var(--radius-5, 5px) + 1px);
   transition: box-shadow 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -311,14 +311,14 @@ function onToggleKeydown(event) {
 }
 
 .color-switch__option--selected .color-switch__outline {
-  box-shadow: 0 0 0 3px var(--color-border-success);
+  box-shadow: 0 0 0 2px rgba(129, 182, 76, 1);
 }
 
 .color-switch__thumb {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  min-height: 40px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
   box-sizing: border-box;
   border-radius: var(--radius-5, 5px);
   display: flex;
@@ -344,10 +344,10 @@ function onToggleKeydown(event) {
     0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* GNS piece-hollow-king-1.svg – inline; Colorpicker fill #8B8987 */
+/* GNS piece-hollow-king-1.svg – scaled to 32×32 tile */
 .color-switch__king-svg {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
   color: #8b8987;
   pointer-events: none;

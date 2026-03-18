@@ -28,7 +28,7 @@ Filter control in the Opening Courses list header: user selects **White** or **B
 | **V2** | (Reserved) Alternative UI if needed (e.g. chip or dropdown in header). | — | — |
 | **V3** | Toggle switch (56×30), tooltip “Openings for White/Black”. Default `white`. | **None** – resets to `white` on reload. | `ColorToggle.vue`; `openingFilterColor` ref only. |
 | **V4** | Same as V3 (same UI). | **sessionStorage** – key `openingCoursesV2FilterColor`, values `'white'` \| `'black'`. Restored on load. | `OpeningCoursesV2.vue`: init from storage, watch + save on change. |
-| **V5** | **Switch:** two thumb squares side by side (not a sliding toggle). Selected option has a **3px** green ring; **8px** gap; tiles use **inset** 1px stroke; king icon **32×32**. | Same as V4 (sessionStorage). | `ColorToggle.vue` with `variant="switch"`; `OpeningCoursesV2.vue` passes `variant="switch"`. |
+| **V5** | **Switch:** two **32×32** thumbs; **36×36** frame; **4px** gap; selected **2px** ring `rgba(129,182,76,1)`; inset tile stroke; king ~26px in tile. | Same as V4 (sessionStorage). | `ColorToggle.vue` with `variant="switch"`; `OpeningCoursesV2.vue` passes `variant="switch"`. |
 
 **Current implementation:** **V5** (switch UI + V4 persistence).
 
@@ -122,10 +122,10 @@ watch(openingFilterColor, (val) => {
 
 ### UI (DS-aligned medium)
 
-- **Layout:** Two options side by side, **8px** gap.
-- **Frame:** **44×44px** outer (`.color-switch__outline`); selected: **3px** green ring (`box-shadow`, `--color-border-success`).
-- **Tile:** **40×40px** thumb – Colorpicker pattern: White `#e7e6e5`, Black `#312e2b`; **inside stroke only** (`inset 0 0 0 1px` + subtle outer shadow); `border-radius: var(--radius-5, 5px)`.
-- **Icon:** Inline SVG for **piece-hollow-king-1** (GNS glyph); **32×32** box; color `#8B8987`.
+- **Layout:** Two options side by side, **4px** gap.
+- **Frame:** **36×36px** outer (`.color-switch__outline`); selected: **2px** ring `box-shadow: 0 0 0 2px rgba(129, 182, 76, 1)`.
+- **Tile:** **32×32px** thumb – Colorpicker pattern: White `#e7e6e5`, Black `#312e2b`; **inside stroke only** (`inset 0 0 0 1px` + subtle outer shadow); `border-radius: var(--radius-5, 5px)`.
+- **Icon:** Inline **piece-hollow-king-1**; **26×26px** in thumb; color `#8B8987`.
 - **Interaction:** Click White or Black to select; no sliding. Same tooltip as V3/V4 (“Openings for White” / “Openings for Black”).
 - **A11y:** Group `role="group"` `aria-label="Filter by piece color"`. Each option `aria-label="Openings for White"` / `"Openings for Black"`, `:aria-pressed`. Focus-visible: outline on the outline wrapper (2px `--color-border-focus`, offset 2px).
 
@@ -135,10 +135,10 @@ watch(openingFilterColor, (val) => {
 
 ### CSS (ColorToggle.vue – .color-switch*)
 
-- `.color-switch`: inline-flex, gap **8px**.
+- `.color-switch`: inline-flex, gap **4px**.
 - `.color-switch__option`: reset button; focus-visible → outline on `.color-switch__outline`.
-- `.color-switch__outline`: 44×44; selected `0 0 0 3px var(--color-border-success)`.
-- `.color-switch__thumb`: 40×40, radius `var(--radius-5)`; `.color-switch__king-svg` 32×32 (GNS piece-hollow-king-1).
+- `.color-switch__outline`: 36×36; selected `0 0 0 2px rgba(129, 182, 76, 1)`.
+- `.color-switch__thumb`: 32×32, radius `var(--radius-5)`; `.color-switch__king-svg` 26×26 (GNS piece-hollow-king-1).
 
 ---
 
