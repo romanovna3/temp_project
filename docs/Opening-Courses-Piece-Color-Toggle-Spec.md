@@ -12,8 +12,9 @@ Filter control in the Opening Courses list header: user selects **White** or **B
 | **V2** | (Reserved) Alternative UI if needed (e.g. chip or dropdown in header). | — | — |
 | **V3** | Toggle switch (56×30), tooltip “Openings for White/Black”. Default `white`. | **None** – resets to `white` on reload. | `ColorToggle.vue`; `openingFilterColor` ref only. |
 | **V4** | Same as V3 (same UI). | **sessionStorage** – key `openingCoursesV2FilterColor`, values `'white'` \| `'black'`. Restored on load. | `OpeningCoursesV2.vue`: init from storage, watch + save on change. |
+| **V5** | **Switch:** two thumb squares side by side (not a sliding toggle). Selected option has an outline around the square (same as course card square-outline: wrapper larger than thumb, 2px green box-shadow). | Same as V4 (sessionStorage). | `ColorToggle.vue` with `variant="switch"`; `OpeningCoursesV2.vue` passes `variant="switch"`. |
 
-**Current implementation:** **V4** (V3 UI + persistence).
+**Current implementation:** **V5** (switch UI + V4 persistence).
 
 ---
 
@@ -95,6 +96,35 @@ watch(openingFilterColor, (val) => {
 
 ---
 
+## V5 spec (switch – two squares, outline on selected)
+
+**Intent:** Not a toggle; two thumb squares placed next to each other. Click White or Black to select. The selected color has an outline around its square (same treatment as course card “square-outline”: outline wrapper is larger than the thumb so there is visible distance).
+
+**Component:** `ColorToggle.vue` with **`variant="switch"`**.  
+**Binding:** Same as V3/V4: `v-model:selected-color="openingFilterColor"`.  
+**Persistence:** Same as V4 (sessionStorage).
+
+### UI
+
+- **Layout:** Two options side by side, gap 6px. Each option is a button containing an outline wrapper and a thumb square.
+- **Thumb:** 30×30px, border-radius 4px. White = `#ffffff`, Black = `#2d2d2d`; 1px border `var(--color-transparent-white-10)`; shadow `0 1px 2px rgba(0,0,0,0.12)`. Same king icon as V3/V4 (20×24px).
+- **Outline wrapper:** Wraps each thumb; padding 3px (so outline has “distance” from the square, like course card). Border-radius `calc(var(--radius-xs, 2px) + 3px)`. When **selected**, `box-shadow: 0 0 0 2px var(--color-border-success, var(--color-green-300, #81B64C))` (same as `.opening-course-card__cover-wrap--selected`). Transition `box-shadow 0.15s ease`.
+- **Interaction:** Click White or Black to select; no sliding. Same tooltip as V3/V4 (“Openings for White” / “Openings for Black”).
+- **A11y:** Group `role="group"` `aria-label="Filter by piece color"`. Each option `aria-label="Openings for White"` / `"Openings for Black"`, `:aria-pressed`. Focus-visible: outline on the outline wrapper (2px `--color-border-focus`, offset 2px).
+
+### Parent (OpeningCoursesV2.vue)
+
+- Use `<ColorToggle ... variant="switch" />`. Filter and persistence unchanged from V4.
+
+### CSS (ColorToggle.vue – .color-switch*)
+
+- `.color-switch`: inline-flex, gap 6px.
+- `.color-switch__option`: reset button; focus-visible → outline on `.color-switch__outline`.
+- `.color-switch__outline`: padding 3px, border-radius, transition box-shadow; `--selected` adds 2px green box-shadow.
+- `.color-switch__thumb`: 30×30, radius 4px; `--white` / `--black` background and same border/shadow as toggle thumb.
+
+---
+
 ## Card display (separate from toggle)
 
 How **each course card** shows its color (White/Black) is documented under **piece-color-style** in `docs/Courses-Local-Components.md`:
@@ -108,5 +138,6 @@ The **header toggle** (this spec) only filters the list; it does not change how 
 
 ## Switch version
 
-- **V3:** In `OpeningCoursesV2.vue`, use `const openingFilterColor = ref('white')` and remove the watch + `getStoredOpeningFilterColor` / storage key.
-- **V4:** Use init from `getStoredOpeningFilterColor()` and the `watch` above (current).
+- **V3:** In `OpeningCoursesV2.vue`, use `const openingFilterColor = ref('white')`, remove the watch + storage; use `<ColorToggle ... />` (no variant, or `variant="toggle"`).
+- **V4:** Same as V3 but with init from `getStoredOpeningFilterColor()` and the watch; `<ColorToggle ... />` (toggle UI).
+- **V5:** Use `<ColorToggle ... variant="switch" />`; keep V4 persistence (current).

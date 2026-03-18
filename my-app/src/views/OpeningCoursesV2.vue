@@ -6225,6 +6225,7 @@ onUnmounted(() => {
                     <ColorToggle
                       v-model:selected-color="openingFilterColor"
                       :base-url="baseUrl"
+                      variant="switch"
                       class="opening-search-panel__color-toggle"
                     />
                   </div>
