@@ -9785,7 +9785,7 @@ body {
   max-height: none;
 }
 
-/* Opening Courses V1: search panel – 456px so inputs row is 436px (440 content + 16L+4R padding); 6px top, 6px row gap */
+/* Opening Courses V1: search panel – 456px so inputs row is 436px (436 content + 4L+4R padding); 6px top, 6px row gap */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
@@ -9796,7 +9796,7 @@ body {
   min-width: 0;
   min-height: 74px;
   height: fit-content;
-  padding: 6px 4px 0 16px;
+  padding: 6px 4px 0 4px;
   margin-top: 0;
   margin-bottom: 8px;
   flex-shrink: 0;
@@ -9809,12 +9809,12 @@ body {
   align-items: center;
   gap: 4px;
 }
-/* Inputs row: 436px wide, 4px gap (search + color toggle on All / New User) */
+/* Inputs row: 436px wide, 8px gap (search + color toggle on All / New User) */
 .opening-search-panel__row--inputs {
   width: 436px;
   max-width: 100%;
   min-width: 0;
-  gap: 4px;
+  gap: 8px;
   padding-left: 0;
   padding-right: 0;
 }
