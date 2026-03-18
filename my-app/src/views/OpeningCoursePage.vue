@@ -4,7 +4,7 @@
  * Self-contained so design changes here do not affect Courses.vue or CoursesV9.vue.
  * Used when user clicks "Start Course" from the Opening Courses V1 list.
  */
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { CcButton, CcChip, CcIcon, CcTabGroup, CcTabItem } from '@chesscom/design-system'
 import ProgressCircle from '../components/ProgressCircle.vue'
 import StatsCards from '../components/StatsCards.vue'
@@ -16,8 +16,6 @@ const props = defineProps({
   variations: { type: Array, default: () => [] },
   /** Your Openings started courses only: first N lines from Learn on Practice tab (0 = not started / from All tab) */
   practiceLineCount: { type: Number, default: 0 },
-  /** Initial tab when opening: 'content' (Learn) or 'stats' (Practice). Used when opening a started course from Your Openings. */
-  initialTab: { type: String, default: 'content' },
   /** Base URL for assets (e.g. '' or '/temp_project/') */
   baseUrl: { type: String, default: '/' },
   /** Function (piece) => image URL for piece thumbnails on cover */
@@ -27,10 +25,7 @@ const props = defineProps({
 /** White vs Black chip + copy (normalize in case of casing quirks) */
 const isLearnAsBlack = computed(() => String(props.card?.type ?? '').toLowerCase() === 'black')
 
-const tabsActive = ref(props.initialTab === 'stats' ? 'stats' : 'content')
-watch(() => props.initialTab, (tab) => {
-  if (tab === 'stats' || tab === 'content') tabsActive.value = tab
-})
+const tabsActive = ref('content')
 const statsPanelExpanded = ref(false)
 function toggleStatsPanel() {
   statsPanelExpanded.value = !statsPanelExpanded.value
