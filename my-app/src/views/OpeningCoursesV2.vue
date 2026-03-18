@@ -9505,10 +9505,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 100%;
+  box-sizing: border-box;
+  width: 428px;
+  max-width: 100%;
   min-width: 0;
   height: fit-content;
-  padding: 0 4px 0 16px;
+  padding: 2px 4px 0 16px;
   margin-top: 0;
   margin-bottom: 8px;
   flex-shrink: 0;
