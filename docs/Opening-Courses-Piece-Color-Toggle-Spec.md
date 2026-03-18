@@ -16,7 +16,7 @@ Filter control in the Opening Courses list header: user selects **White** or **B
 | Radius (tile + frame) | `teams.design.public.tokens.semantic.dimensions.radius` | `--radius-5` (5px) |
 | Gap between options | `teams.design.public.tokens.semantic.dimensions.spacing` | `--space-8` (8px) |
 
-**Icon:** GNS `teams.design.public.icons.pieces.king` documents CDN piece images (wk/bk). This switch uses the **piece-hollow-king-1** SVG (Colorpicker / PickYourColorV2 pattern), not the CDN piece image. When/if a DS `ColorPicker` or icon set includes that asset, prefer it.
+**Icon:** **GNS glyph** `piece-hollow-king-1.svg` (`teams.design.public.icons.glyphs`). Rendered via **`CcIcon`** `name="piece-hollow-king-1"` `variant="glyph"` (loads `…/bundles/web/images/glyphs/piece-hollow-king-1.svg`). Fill color `#8B8987` (Colorpicker) via `color` on the icon wrapper.
 
 ---
 
@@ -125,7 +125,7 @@ watch(openingFilterColor, (val) => {
 - **Layout:** Two options side by side, gap `var(--space-8, 8px)`.
 - **Frame:** **44×44px** outer (`.color-switch__outline`); selected: **2px** green ring (`box-shadow`, `--color-border-success`).
 - **Tile:** **40×40px** thumb – Colorpicker pattern: White `#e7e6e5` + dark border; Black `#312e2b` + `var(--color-border-default)`; `border-radius: var(--radius-5, 5px)`.
-- **Icon:** **piece-hollow-king-1** – same SVG path as GNS/DS PickYourColor (`data-name="piece-hollow-king-1"`), fill `var(--fill-0, #8B8987)`; ~28×32px inside the 40px tile.
+- **Icon:** **CcIcon** `piece-hollow-king-1` (GNS glyph); `customSize` 28px; color `#8B8987`.
 - **Interaction:** Click White or Black to select; no sliding. Same tooltip as V3/V4 (“Openings for White” / “Openings for Black”).
 - **A11y:** Group `role="group"` `aria-label="Filter by piece color"`. Each option `aria-label="Openings for White"` / `"Openings for Black"`, `:aria-pressed`. Focus-visible: outline on the outline wrapper (2px `--color-border-focus`, offset 2px).
 
@@ -138,7 +138,7 @@ watch(openingFilterColor, (val) => {
 - `.color-switch`: inline-flex, gap 6px.
 - `.color-switch__option`: reset button; focus-visible → outline on `.color-switch__outline`.
 - `.color-switch__outline`: 44×44; selected `0 0 0 2px var(--color-border-success)`.
-- `.color-switch__thumb`: 40×40, radius `var(--radius-5)`; king SVG ~28×32px.
+- `.color-switch__thumb`: 40×40, radius `var(--radius-5)`; `CcIcon` piece-hollow-king-1 glyph.
 
 ---
 
