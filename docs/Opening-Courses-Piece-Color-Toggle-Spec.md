@@ -28,7 +28,7 @@ Filter control in the Opening Courses list header: user selects **White** or **B
 | **V2** | (Reserved) Alternative UI if needed (e.g. chip or dropdown in header). | — | — |
 | **V3** | Toggle switch (56×30), tooltip “Openings for White/Black”. Default `white`. | **None** – resets to `white` on reload. | `ColorToggle.vue`; `openingFilterColor` ref only. |
 | **V4** | Same as V3 (same UI). | **sessionStorage** – key `openingCoursesV2FilterColor`, values `'white'` \| `'black'`. Restored on load. | `OpeningCoursesV2.vue`: init from storage, watch + save on change. |
-| **V5** | **Switch:** two thumbs (White / Black); **36×36** frame; **4px** gap; selected **2px** ring. **Color picker hidden on Your Openings**; shown only on New User or Returning User **All** tab. **Sort:** **Most Recent** added as default; options: Most Recent, Name, First Move, Popular. | Same as V4; color filter only when picker shown. | `ColorToggle.vue` with `v-if` so not rendered on Your Openings; sort default `recent`. |
+| **V5** | **Switch:** two thumbs **40×40**; frame **44×44**; **3px** selection ring; **4px** gap; icon **32×32**. Color picker hidden on Your Openings; sort default Most Recent. | Same as V4; color filter only when picker shown. | `ColorToggle.vue` with `v-if` so not rendered on Your Openings; sort default `recent`. |
 
 **Current implementation:** **V5** (switch UI + V4 persistence).
 
@@ -123,9 +123,9 @@ watch(openingFilterColor, (val) => {
 ### UI (DS-aligned medium)
 
 - **Layout:** Two or three options side by side, **4px** gap.
-- **Frame:** **36×36px** outer (`.color-switch__outline`); selected: **2px** ring `box-shadow: 0 0 0 2px rgba(129, 182, 76, 1)`.
-- **Tiles:** **32×32px** – White `#e7e6e5`, Black `#312e2b`; **Both** = same size, left half white / right half black, same inset stroke per half; **inside stroke only**; `border-radius: var(--radius-5, 5px)`.
-- **Icon:** Inline **piece-hollow-king-1**; **26×26px**; color `#8B8987`; on Both tile, king centered on top of split.
+- **Frame:** **44×44px** outer (`.color-switch__outline`); selected: **3px** ring `box-shadow: 0 0 0 3px rgba(129, 182, 76, 1)`.
+- **Tiles:** **40×40px** thumb – White `#e7e6e5`, Black `#312e2b`; **Both** = same size, left half white / right half black, same inset stroke per half; **inside stroke only**; `border-radius: var(--radius-5, 5px)`.
+- **Icon:** Inline **piece-hollow-king-1**; **32×32px**; color `#8B8987`; on Both tile, king centered on top of split.
 - **Interaction:** Click to select; tooltip “Openings for White” / “Openings for Black” / “Openings for White and Black”.
 - **Filter:** `'both'` = show all courses (no color filter); `'white'` / `'black'` = filter by `card.type === 'White'` / `'Black'`.
 - **A11y:** Group `role="group"` `aria-label="Filter by piece color"`. Each option has `aria-label` and `:aria-pressed`. Focus-visible: outline on the outline wrapper.
@@ -139,8 +139,8 @@ watch(openingFilterColor, (val) => {
 
 - `.color-switch`: inline-flex, gap **4px**.
 - `.color-switch__option`: reset button; focus-visible → outline on `.color-switch__outline`.
-- `.color-switch__outline`: 36×36; selected `0 0 0 2px rgba(129, 182, 76, 1)`.
-- `.color-switch__thumb`: 32×32, radius `var(--radius-5)`; `.color-switch__thumb--both`: two halves (`.color-switch__thumb-half--left` / `--right`) with same colors and inset stroke; `.color-switch__king-svg` 26×26, `--overlay` for Both tile (centered).
+- `.color-switch__outline`: **44×44**; selected **3px** ring `0 0 0 3px rgba(129, 182, 76, 1)`.
+- `.color-switch__thumb`: **40×40**, radius `var(--radius-5)`; `.color-switch__thumb--both`: two halves with same colors and inset stroke; `.color-switch__king-svg` **32×32**, `--overlay` for Both tile (centered).
 
 ---
 

@@ -271,4 +271,126 @@ Dropdown to select piece color: “play for white” or “play for black”. Tr
 
 ---
 
+## Piece color style (Opening course card – Returning User)
+
+**Name:** `piece-color-style-v1` (saved for easy restore).  
+**Used in:** Opening course cards (Returning User) in `OpeningCoursesV2.vue`; also `Courses.vue` (V1), `CoursesV9OC.vue` (course page card), `OpeningCoursePage.vue`.
+
+### piece-color-style-v1 – Full specs (restore reference)
+
+**Intent:** Show play side as text label “Learn as White” / “Learn as Black” (no king icon). On opening list, group title + Completed chip (when completed) + this label; Completed and “Learn as…” on same row.
+
+**Template structure (OpeningCoursesV2.vue):**
+
+```html
+<div class="opening-course-card__started-top">
+  <h3 class="opening-course-card__title">{{ card.title }}</h3>
+  <div class="opening-course-card__started-top-row">
+    <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
+    <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
+  </div>
+</div>
+```
+
+**CSS – OpeningCoursesV2.vue:**
+
+```css
+/* Group: header (title) + Learn as White/Black + Completed chip (when completed); gap 4px */
+.opening-course-card__started-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 314px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.opening-course-card__started-top .opening-course-card__title {
+  width: fit-content;
+  min-width: 0;
+}
+.opening-course-card__started-top-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding-left: 0;
+  padding-right: 0;
+}
+/* Learn as White/Black label */
+.opening-course-card__learn-as-label,
+.opening-course-card__started-top .course-card-completion__complete-label {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+```
+
+Chip styling (already scoped to `.opening-course-card__started-top`): `:deep(.cc-chip-fg)`, `:deep(.opening-course-card__chip-label)` → font-family system, font-size 12px; `:deep(.cc-chip-component.cc-chip-gray.cc-chip-translucent)` → background-color: var(--color-bg-subtle).
+
+**Narrow/mobile (OpeningCoursesV2.vue):**
+
+```css
+.app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__started-top,
+.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__started-top,
+.app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__started-footer,
+.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__started-footer {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+```
+
+**Course page (CoursesV9OC.vue) – same label, different layout:**  
+Label lives inside `.opening-course-card__started-header` (flex column).  
+`.opening-course-card__play-as-label { margin-top: 2px; color: rgba(255, 255, 255, 0.4); }`  
+Label copy: “Learn as White” / “Learn as Black”.
+
+**Other files (v1):**  
+- `Courses.vue`: same started-header + started-meta structure; learn-as-label + same typography/color in started-meta.  
+- `OpeningCoursePage.vue`: label inside started-header with classes `opening-course-card__learn-as-label course-card-completion__complete-label`.
+
+**Copy:** “Learn as White” / “Learn as Black” everywhere. PickYourColorV3 / PlaySideSelector: “Learn as:” (not “Play As:”).
+
+---
+
+### piece-color-style-v2
+
+**Intent:** Use a grey chip (same style as “X Lines”) for color: label `White` or `Black` instead of text “Learn as White/Black”.
+
+**Implementation:** Replace the `<span class="opening-course-card__learn-as-label ...">` with:
+
+```html
+<CcChip :label="card.type === 'White' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
+```
+
+Same CcChip API as Lines chip: `color="gray"`, `variant="translucent"`, `label-class="opening-course-card__chip-label"`. No extra CSS needed; `.opening-course-card__started-top :deep(...)` already styles gray chips.
+
+---
+
+## Opening Courses header color picker (ColorToggle switch variant)
+
+**File:** `my-app/src/views/opening-courses/ColorToggle.vue`  
+**Usage:** Opening Courses V2 search panel; filter by piece color (White / Black). Rendered only when **not** on Your Openings (New User or Returning User → All tab). See `docs/Opening-Courses-Piece-Color-Toggle-Spec.md` for full version history and persistence.
+
+### Switch variant – canonical dimensions
+
+| Element | Size | Notes |
+|--------|------|--------|
+| **Outline** (`.color-switch__outline`) | **44×44px** | Frame around each option; selected gets ring |
+| **Thumb / square** (`.color-switch__thumb`) | **40×40px** | White `#e7e6e5`, Black `#312e2b`; inset stroke only |
+| **Selection ring** (selected outline) | **3px** | `box-shadow: 0 0 0 3px rgba(129, 182, 76, 1)` |
+| **Icon** (`.color-switch__king-svg`) | **32×32px** | GNS piece-hollow-king-1 inline; color `#8B8987` |
+| **Gap** (`.color-switch`) | **4px** | Space between options |
+
+- **Border radius:** Thumb `var(--radius-5, 5px)`; outline `calc(var(--radius-5, 5px) + 2px)`.
+- **Tile stroke:** Inside only (`inset 0 0 0 1px` + subtle outer shadow); no outer border.
+- **Optional Both tile:** When `allowBoth` is true, same 40×40 with left half white / right half black; king 32×32 centered on top.
+
+---
+
 *Add more Courses local components below as needed.*
