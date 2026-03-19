@@ -7616,16 +7616,16 @@ onUnmounted(() => {
                                   <span
                                     class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6 chapter-line-card__timeline-node--practice"
                                     :class="{
-                                      'chapter-line-card__timeline-node--practice-completed-aqua': showFrenchDefensePracticeTimelineAquaCheck(item, section),
+                                      'chapter-line-card__timeline-node--completed': showFrenchDefensePracticeTimelineAquaCheck(item, section),
                                     }"
                                   >
-                                    <!-- DS: teams.design.public.tokens.semantic.color (aqua scale) → --color-aqua-300; solid fill + glyph (no PNG filter drift) -->
-                                    <CcIcon
+                                    <img
                                       v-if="showFrenchDefensePracticeTimelineAquaCheck(item, section)"
-                                      name="mark-check"
-                                      variant="glyph"
-                                      :size="13"
-                                      class="chapter-line-card__timeline-node-check chapter-line-card__timeline-node-check--ds-aqua-fill"
+                                      :src="baseUrl + 'icons/circle-fill-check.png'"
+                                      alt=""
+                                      class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--aqua"
+                                      width="13"
+                                      height="13"
                                       aria-hidden="true"
                                     />
                                   </span>
@@ -11014,8 +11014,8 @@ body {
   pointer-events: none;
 }
 
-/* Practice tab: hollow circles (Learn parity); French lines 1–3 + clock = semantic aqua fill + inverse check (DS --color-aqua-300) */
-.sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--practice-completed-aqua) {
+/* Practice tab: hollow circles — same 13px ring/fill as Learn (.chapter-line-card__timeline-node--v6:not(.completed)) */
+.sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--completed) {
   width: 13px;
   height: 13px;
   min-width: 13px;
@@ -11023,18 +11023,16 @@ body {
   border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
   background: var(--color-bg-primary, #312e2b);
 }
-.courses-content--v6 .sections-list--practice .chapter-line-card__timeline-node--v6.chapter-line-card__timeline-node--practice-completed-aqua {
+/* French lines 1–3: same structure as Learn completed (transparent node + 13×13 circle-fill-check.png); tint only → DS --color-aqua-300 */
+.sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--completed {
+  background: transparent;
+  border-color: transparent;
+}
+.sections-list--practice .chapter-line-card__timeline-node-icon--aqua {
   width: 13px;
   height: 13px;
-  min-width: 13px;
-  min-height: 13px;
-  border: none !important;
-  background: var(--color-aqua-300, #26c2a3) !important;
-  box-shadow: none;
-}
-.chapter-line-card__timeline-node-check--ds-aqua-fill {
-  flex-shrink: 0;
-  color: var(--color-text-inverse, #fff);
+  display: block;
+  filter: invert(72%) sepia(42%) saturate(800%) hue-rotate(120deg) brightness(95%) contrast(88%);
 }
 
 .courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
