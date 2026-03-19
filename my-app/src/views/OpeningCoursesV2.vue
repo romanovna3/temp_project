@@ -169,12 +169,17 @@ const OPENING_RECOMMENDED_NEW_USER = [
   { openingKey: 'Ruy Lopez', type: 'Black' },
 ]
 /**
- * Returning User → All tab: Italian White is often already in Your Openings, so recommend
- * two strong defaults that stay in the "rest" list for the demo dataset.
+ * Returning User → All tab (color picker):
+ * - White: Italian is often started; use Queen's Gambit + Fried Liver on the rest list.
+ * - Black: restore classic Ruy Lopez (Black), matching the original New User pair.
+ * - Both: show White + Black picks together.
  */
-const OPENING_RECOMMENDED_RETURNING_ALL = [
+const OPENING_RECOMMENDED_RETURNING_ALL_WHITE = [
   { openingKey: "Queen's Gambit", type: 'White' },
   { openingKey: 'Fried Liver', type: 'White' },
+]
+const OPENING_RECOMMENDED_RETURNING_ALL_BLACK = [
+  { openingKey: 'Ruy Lopez', type: 'Black' },
 ]
 function isOpeningRecommended(card, entries) {
   return entries.some((r) => r.openingKey === card.openingKey && r.type === card.type)
@@ -4547,12 +4552,16 @@ const openingCoursesListForSections = computed(() => {
   if (openingV2ScenarioPreset.value === 'returning-user' && openingV2RubActiveTab.value === 'all') return openingCoursesRestList.value
   return []
 })
-/** Which pairs (openingKey + color) count as "Recommended" for the current scenario/tab. */
-const openingRecommendedEntries = computed(() =>
-  openingV2ScenarioPreset.value === 'returning-user' && openingV2RubActiveTab.value === 'all'
-    ? OPENING_RECOMMENDED_RETURNING_ALL
-    : OPENING_RECOMMENDED_NEW_USER
-)
+/** Which pairs (openingKey + color) count as "Recommended" for the current scenario/tab + color filter. */
+const openingRecommendedEntries = computed(() => {
+  if (openingV2ScenarioPreset.value === 'returning-user' && openingV2RubActiveTab.value === 'all') {
+    const col = openingFilterColor.value
+    if (col === 'black') return OPENING_RECOMMENDED_RETURNING_ALL_BLACK
+    if (col === 'white') return OPENING_RECOMMENDED_RETURNING_ALL_WHITE
+    return [...OPENING_RECOMMENDED_RETURNING_ALL_WHITE, ...OPENING_RECOMMENDED_RETURNING_ALL_BLACK]
+  }
+  return OPENING_RECOMMENDED_NEW_USER
+})
 /** Recommended section: from the sectioned list, using scenario-specific picks. */
 const openingCoursesRecommendedList = computed(() => {
   const entries = openingRecommendedEntries.value
