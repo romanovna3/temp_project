@@ -6524,7 +6524,9 @@ onUnmounted(() => {
                         <div class="opening-course-card__started-top-title-row">
                           <h3 class="opening-course-card__title">{{ card.title }}</h3>
                           <div v-if="isOpeningCardCompleted(card)" class="opening-course-card__completed-check-wrap" aria-hidden="true">
-                            <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
+                            <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                              <CcIcon name="mark-check" variant="glyph" :size="8" class="chapter-line-card__timeline-node-check-stack__icon" />
+                            </span>
                           </div>
                         </div>
                         <div class="opening-course-card__started-top-row">
@@ -6654,7 +6656,9 @@ onUnmounted(() => {
                                   <div class="opening-course-card__started-top-title-row">
                                     <h3 class="opening-course-card__title">{{ card.title }}</h3>
                                     <div v-if="isOpeningCardCompleted(card)" class="opening-course-card__completed-check-wrap" aria-hidden="true">
-                                      <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
+                                      <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                                        <CcIcon name="mark-check" variant="glyph" :size="8" class="chapter-line-card__timeline-node-check-stack__icon" />
+                                      </span>
                                     </div>
                                   </div>
                                   <div class="opening-course-card__started-top-row">
@@ -6800,7 +6804,9 @@ onUnmounted(() => {
                               <div class="opening-course-card__started-top-title-row">
                                 <h3 class="opening-course-card__title">{{ card.title }}</h3>
                                 <div v-if="isOpeningCardCompleted(card)" class="opening-course-card__completed-check-wrap" aria-hidden="true">
-                                  <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
+                                  <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                                    <CcIcon name="mark-check" variant="glyph" :size="8" class="chapter-line-card__timeline-node-check-stack__icon" />
+                                  </span>
                                 </div>
                               </div>
                               <div class="opening-course-card__started-top-row">
@@ -7396,7 +7402,13 @@ onUnmounted(() => {
                                       nextToPracticeRef && nextToPracticeRef.sectionId === section.id && nextToPracticeRef.moveId === item.move.id && 'chapter-line-card__timeline-node--next-to-practice'
                                     ]"
                                   >
-                                    <img v-if="item.practiceType === 'completed' || item.practiceType === 'ready'" :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--practice" width="13" height="13" aria-hidden="true" />
+                                    <span
+                                      v-if="item.practiceType === 'completed' || item.practiceType === 'ready'"
+                                      class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--aqua"
+                                      aria-hidden="true"
+                                    >
+                                      <CcIcon name="mark-check" variant="glyph" :size="8" class="chapter-line-card__timeline-node-check-stack__icon" />
+                                    </span>
                                   </span>
                                 </div>
                               </article>
@@ -7818,7 +7830,13 @@ v-if="isVideoV6OrV7"
                               'chapter-line-card__timeline-node--next-to-learn': isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id
                             }"
                           >
-                            <img v-if="move.completed" :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="chapter-line-card__timeline-node-icon" width="13" height="13" aria-hidden="true" />
+                            <span
+                              v-if="move.completed"
+                              class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success"
+                              aria-hidden="true"
+                            >
+                              <CcIcon name="mark-check" variant="glyph" :size="8" class="chapter-line-card__timeline-node-check-stack__icon" />
+                            </span>
                           </span>
                         </div>
                       </article>
@@ -10582,9 +10600,27 @@ body {
   height: 20px;
   padding-top: 2px;
 }
-.opening-course-card__completed-check-icon {
-  width: 13px;
-  height: 13px;
+/* Opening list + line timelines: 12×12 circle + mark-check (Learn success green / Practice aqua) */
+.chapter-line-card__timeline-node-check-stack {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chapter-line-card__timeline-node-check-stack--success {
+  background: var(--color-border-success, var(--color-green-300, #81b64c));
+}
+.chapter-line-card__timeline-node-check-stack--aqua {
+  background: var(--color-aqua-300, #26c2a3);
+}
+.chapter-line-card__timeline-node-check-stack__icon {
+  flex-shrink: 0;
+  color: var(--color-text-inverse, #fff);
 }
 .opening-course-card__started-top-row {
   display: flex;
@@ -10818,10 +10854,10 @@ body {
   border-radius: 3px;
 }
 .courses-content--v6 .chapter-line-card__timeline-node--v6 {
-  width: 13px;
-  height: 13px;
-  min-width: 13px;
-  min-height: 13px;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
 }
 /* Uncompleted: same visible circle as others (ring + fill) */
 .courses-content--v6 .chapter-line-card__timeline-node--v6:not(.chapter-line-card__timeline-node--completed) {
@@ -10833,8 +10869,8 @@ body {
   border-color: transparent;
 }
 .courses-content--v6 .chapter-line-card__timeline-node--v6 .chapter-line-card__timeline-node-icon {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   display: block;
 }
 /* Next-to-learn line: 8×8 node, brand green outline + glow (70% intensity) */
@@ -10871,19 +10907,16 @@ body {
   background: var(--color-aqua-300, #26C2A3);
 }
 .sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--completed) {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
   border: 2px solid var(--color-aqua-300, rgba(38, 194, 163, 0.5));
   background: var(--color-bg-primary, #312e2b);
 }
 .sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--completed {
   background: transparent;
   border-color: transparent;
-}
-.sections-list--practice .chapter-line-card__timeline-node-icon--practice {
-  display: block;
-  width: 13px;
-  height: 13px;
-  /* Tint check icon to aqua (same as --color-aqua-300) */
-  filter: invert(72%) sepia(42%) saturate(800%) hue-rotate(120deg) brightness(95%) contrast(88%);
 }
 .sections-list--practice .chapter-line-card__timeline-node--next-to-practice {
   width: 8px;
@@ -11014,6 +11047,11 @@ body {
 .chapter-line-card__timeline-node--completed {
   border-color: var(--color-border-success, var(--color-green-300, #81B64C));
   background: var(--color-border-success, var(--color-green-300, #81B64C));
+}
+/* Completed row uses inner check-stack; keep outer ring transparent (Learn / Practice) */
+.chapter-line-card__timeline-node--completed:has(.chapter-line-card__timeline-node-check-stack) {
+  background: transparent;
+  border-color: transparent;
 }
 .chapter-line-card__timeline-node-icon {
   color: var(--color-text-inverse, #fff);

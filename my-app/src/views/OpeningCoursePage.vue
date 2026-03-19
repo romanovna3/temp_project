@@ -356,15 +356,13 @@ const masteryLevelItems = [
                                   item.isNext && 'chapter-line-card__timeline-node--next-to-practice'
                                 ]"
                               >
-                                <img
+                                <span
                                   v-if="item.completed"
-                                  :src="baseUrl + 'icons/circle-fill-check.png'"
-                                  alt=""
-                                  class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--practice"
-                                  width="13"
-                                  height="13"
+                                  class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--aqua"
                                   aria-hidden="true"
-                                />
+                                >
+                                  <CcIcon name="mark-check" variant="glyph" :size="8" class="chapter-line-card__timeline-node-check-stack__icon" />
+                                </span>
                               </span>
                             </div>
                             <div class="chapter-line-card__body chapter-line-card__body--no-click" :title="item.text">
@@ -445,12 +443,6 @@ const masteryLevelItems = [
   background: transparent;
   border-color: transparent;
 }
-.opening-course-page .sections-list--practice .chapter-line-card__timeline-node-icon--practice {
-  display: block;
-  width: 13px;
-  height: 13px;
-  filter: invert(72%) sepia(42%) saturate(800%) hue-rotate(120deg) brightness(95%) contrast(88%);
-}
 .opening-course-page .sections-list--practice .chapter-line-card__timeline-node--next-to-practice {
   width: 8px;
   height: 8px;
@@ -487,13 +479,35 @@ const masteryLevelItems = [
   border-radius: 3px;
 }
 .opening-course-page .chapter-line-card__timeline-node--v6 {
-  width: 13px;
-  height: 13px;
-  min-width: 13px;
-  min-height: 13px;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.opening-course-page .chapter-line-card__timeline-node--completed:has(.chapter-line-card__timeline-node-check-stack) {
+  background: transparent;
+  border-color: transparent;
+}
+.opening-course-page .chapter-line-card__timeline-node-check-stack {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.opening-course-page .chapter-line-card__timeline-node-check-stack--aqua {
+  background: var(--color-aqua-300, #26c2a3);
+}
+.opening-course-page .chapter-line-card__timeline-node-check-stack__icon {
+  flex-shrink: 0;
+  color: var(--color-text-inverse, #fff);
 }
 </style>

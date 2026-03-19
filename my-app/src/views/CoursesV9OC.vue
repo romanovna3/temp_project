@@ -7082,7 +7082,7 @@ onUnmounted(() => {
                           <h3 class="opening-course-card__title">{{ openingCourseTitleForHeader(course.title) }}</h3>
                           <div v-if="isOpeningCourseCompleted && courseTabsActive !== 'stats'" class="opening-course-card__completed-check-wrap" aria-hidden="true">
                             <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
-                              <CcIcon name="mark-check" variant="glyph" :size="9" class="chapter-line-card__timeline-node-check-stack__icon" />
+                              <CcIcon name="mark-check" variant="glyph" :size="8" class="chapter-line-card__timeline-node-check-stack__icon" />
                             </span>
                           </div>
                         </div>
@@ -7279,7 +7279,7 @@ onUnmounted(() => {
                           <h3 class="opening-course-card__title">{{ openingCourseTitleForHeader(course.title) }}</h3>
                           <div v-if="isOpeningCourseCompleted && courseTabsActive !== 'stats'" class="opening-course-card__completed-check-wrap" aria-hidden="true">
                             <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
-                              <CcIcon name="mark-check" variant="glyph" :size="9" class="chapter-line-card__timeline-node-check-stack__icon" />
+                              <CcIcon name="mark-check" variant="glyph" :size="8" class="chapter-line-card__timeline-node-check-stack__icon" />
                             </span>
                           </div>
                         </div>
@@ -7631,7 +7631,7 @@ onUnmounted(() => {
                                       <CcIcon
                                         name="mark-check"
                                         variant="glyph"
-                                        :size="9"
+                                        :size="8"
                                         class="chapter-line-card__timeline-node-check-stack__icon"
                                       />
                                     </span>
@@ -8071,7 +8071,7 @@ onUnmounted(() => {
                               <CcIcon
                                 name="mark-check"
                                 variant="glyph"
-                                :size="9"
+                                :size="8"
                                 class="chapter-line-card__timeline-node-check-stack__icon"
                               />
                             </span>
@@ -8220,7 +8220,7 @@ v-if="isVideoV6OrV7"
                               <CcIcon
                                 name="mark-check"
                                 variant="glyph"
-                                :size="9"
+                                :size="8"
                                 class="chapter-line-card__timeline-node-check-stack__icon"
                               />
                             </span>
@@ -10987,10 +10987,10 @@ body {
   border-radius: 3px;
 }
 .courses-content--v6 .chapter-line-card__timeline-node--v6 {
-  width: 13px;
-  height: 13px;
-  min-width: 13px;
-  min-height: 13px;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
 }
 /* Uncompleted: same visible circle as others (ring + fill) */
 .courses-content--v6 .chapter-line-card__timeline-node--v6:not(.chapter-line-card__timeline-node--completed) {
@@ -11001,12 +11001,12 @@ body {
   background: transparent;
   border-color: transparent;
 }
-/* Learn + Practice: same 13×13 circle + mark-check (Learn/DS success green; Practice French = aqua) */
+/* Learn + Practice: same 12×12 circle + mark-check (Learn/DS success green; Practice French = aqua) */
 .chapter-line-card__timeline-node-check-stack {
-  width: 13px;
-  height: 13px;
-  min-width: 13px;
-  min-height: 13px;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -11056,12 +11056,12 @@ body {
   pointer-events: none;
 }
 
-/* Practice tab: hollow circles — same 13px ring/fill as Learn (.chapter-line-card__timeline-node--v6:not(.completed)) */
+/* Practice tab: hollow circles — same 12px ring/fill as Learn (.chapter-line-card__timeline-node--v6:not(.completed)) */
 .sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--completed) {
-  width: 13px;
-  height: 13px;
-  min-width: 13px;
-  min-height: 13px;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
   border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
   background: var(--color-bg-primary, #312e2b);
 }
