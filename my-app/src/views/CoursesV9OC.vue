@@ -7624,7 +7624,7 @@ onUnmounted(() => {
                                       v-if="showFrenchDefensePracticeTimelineAquaCheck(item, section)"
                                       name="mark-check"
                                       variant="glyph"
-                                      :size="11"
+                                      :size="13"
                                       class="chapter-line-card__timeline-node-check chapter-line-card__timeline-node-check--ds-aqua-fill"
                                       aria-hidden="true"
                                     />
