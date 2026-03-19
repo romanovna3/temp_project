@@ -493,17 +493,30 @@ const masteryPercent = computed(() =>
 // Panel view: in course view hide lesson action buttons (show only toolbar)
 const showLessonActions = ref(true)
 
-/** Play side for course. Color picker is shown only on the Opening page (Courses.vue), not on the Course page. */
+/** Play side for course. When opened from list, URL query ?side=white|black is the source of truth (the card clicked). Otherwise use course resolved from route. */
 const coursePlaySide = ref('white')
 
-// Sync play side when opening course is single-color (so CTA and logic use correct color)
+// Effective play side: query param (from opening list click) wins, then courseFromOCRoute.
+const effectivePlaySide = computed(() => {
+  const q = route.query?.side
+  if (q === 'white' || q === 'black') return q
+  return courseFromOCRoute.value?.playSide === 'white' || courseFromOCRoute.value?.playSide === 'black' ? courseFromOCRoute.value.playSide : 'white'
+})
+
 watch(
-  () => courseFromOCRoute.value?.playSide,
+  () => effectivePlaySide.value,
   (playSide) => {
-    if (playSide === 'white' || playSide === 'black') coursePlaySide.value = playSide
+    coursePlaySide.value = playSide
   },
   { immediate: true }
 )
+
+/** Toggle play side from the course card chip: updates URL so board flips (White ↔ Black). */
+function toggleCoursePlaySide() {
+  if (!openingCourseIdFromRoute.value) return
+  const next = effectivePlaySide.value === 'black' ? 'white' : 'black'
+  router.replace({ path: route.path, query: { ...route.query, side: next } })
+}
 
 // Practice button badge uses practiceReadyCount (computed from sectionMoves)
 
@@ -2935,9 +2948,9 @@ const displayMovesBySectionIdNewCourse = computed(() => {
   return bySection
 })
 
-/** Same as getSectionMoves (used for display and progress so one source of truth). Started from Opening page: first reviewCount lines completed. Nothing-to-learn / New-course: as below. */
+/** Same as getSectionMoves (used for display and progress so one source of truth). Started from Opening page: first reviewCount lines completed (any OC section). Nothing-to-learn / New-course: as below. */
 function getSectionMovesForDisplay(section) {
-  if (openingCourseIdFromRoute.value && openingStartedState.value?.reviewCount != null && section.id === 'main-level') {
+  if (openingCourseIdFromRoute.value && openingStartedState.value?.reviewCount != null && section?.id) {
     const moves = getSectionMoves(section)
     const n = Math.min(openingStartedState.value.reviewCount, moves.length)
     return moves.map((m, i) => ({ ...m, completed: i < n }))
@@ -3113,10 +3126,11 @@ const courseSectionsReadyForReview = computed(() => {
 /** Level order for sort: L7 top, L1 and ready bottom. */
 const LEVEL_WEIGHT = { L7: 7, L6: 6, L5: 5, L4: 4, L3: 3, L2: 2, L1: 1 }
 
-/** V7 Practice tab: sections with ready and/or completed lines; each section has practiceMoves: { move, practiceType: 'ready'|'completed', practiceInLabel? } (ready first, then completed). Nothing-to-practice: ready shown as completed with clock. Nothing-to-learn: full course, all completed, ordered L7→L1→ready. New-course: empty (show empty state). */
+/** V7 Practice tab: sections with ready and/or completed lines; each section has practiceMoves: { move, practiceType: 'ready'|'completed', practiceInLabel? } (ready first, then completed). Nothing-to-practice: ready shown as completed with clock. Nothing-to-learn: full course, all completed, ordered L7→L1→ready. New-course: empty (show empty state), unless we have started state from Opening page – then show Practice lines. */
 const courseSectionsForPractice = computed(() => {
   if (!isVideoV7OrV8OrV9.value) return []
-  if (scenarioPreset.value === 'new-course') return []
+  const hasStartedState = openingCourseIdFromRoute.value && openingStartedState.value?.reviewCount != null
+  if (scenarioPreset.value === 'new-course' && !hasStartedState) return []
   const nothingToPractice = scenarioPreset.value === 'nothing-to-practice'
   const nothingToLearn = scenarioPreset.value === 'nothing-to-learn'
   if (nothingToLearn) {
@@ -3139,13 +3153,20 @@ const courseSectionsForPractice = computed(() => {
       const completed = all.filter((m) => getLineType(m) === 'completed')
       const uncompleted = all.filter((m) => getLineType(m) === 'uncompleted')
       const hasStarted = ready.length > 0 || completed.length > 0
+      // OC started from Opening page: show only reviewCount lines (match CTA/badge); do not add uncompleted
+      const capToStartedCount = hasStartedState
       const practiceMoves = nothingToPractice
         ? [...ready, ...completed].map((move) => ({ move, practiceType: 'completed', practiceInLabel: getPracticeInLabelForMove(move) }))
-        : [
-            ...ready.map((move) => ({ move, practiceType: 'ready', practiceInLabel: getPracticeInLabelForMove(move) })),
-            ...completed.map((move) => ({ move, practiceType: 'completed', practiceInLabel: getPracticeInLabelForMove(move) })),
-            ...(hasStarted ? uncompleted.map((move) => ({ move, practiceType: 'uncompleted', practiceInLabel: getPracticeInLabelForMove(move) })) : []),
-          ]
+        : capToStartedCount
+          ? [
+              ...ready.map((move) => ({ move, practiceType: 'ready', practiceInLabel: getPracticeInLabelForMove(move) })),
+              ...completed.map((move) => ({ move, practiceType: 'completed', practiceInLabel: getPracticeInLabelForMove(move) })),
+            ]
+          : [
+              ...ready.map((move) => ({ move, practiceType: 'ready', practiceInLabel: getPracticeInLabelForMove(move) })),
+              ...completed.map((move) => ({ move, practiceType: 'completed', practiceInLabel: getPracticeInLabelForMove(move) })),
+              ...(hasStarted ? uncompleted.map((move) => ({ move, practiceType: 'uncompleted', practiceInLabel: getPracticeInLabelForMove(move) })) : []),
+            ]
       if (!practiceMoves.length) return null
       return { ...section, practiceMoves, readyMoves: ready }
     })
@@ -3157,7 +3178,10 @@ const courseSectionsForPracticeDisplay = computed(() => {
   const sections = courseSectionsForPractice.value
   const n = openingCourseIdFromRoute.value && openingStartedState.value?.reviewCount
   if (n == null || n <= 0 || sections.length > 0) return sections
-  const ocMoves = sectionMovesOCResolved.value['main-level'] || []
+  const courseSectionsList = courseSections.value
+  const firstSection = courseSectionsList?.[0]
+  const sectionId = firstSection?.id || 'main-level'
+  const ocMoves = sectionMovesOCResolved.value[sectionId] || sectionMovesOCResolved.value['main-level'] || []
   const slice = ocMoves.slice(0, n)
   const practiceMoves = slice.map((move) => ({
     move: { id: move.id, text: move.text },
@@ -3166,7 +3190,7 @@ const courseSectionsForPracticeDisplay = computed(() => {
   }))
   const placeholderSection = {
     id: 'started-placeholder',
-    name: 'Main Level',
+    name: firstSection?.name || 'Main Level',
     practiceMoves,
     readyMoves: practiceMoves,
   }
@@ -4529,13 +4553,13 @@ function isOpeningCardSelected(cardId) {
 watch(
   () => [
     openingCourseIdFromRoute.value,
-    courseFromOCRoute.value?.playSide,
+    effectivePlaySide.value,
     isOpeningCoursesOCList.value,
     selectedOpeningCardId.value,
   ],
   () => {
-    if (openingCourseIdFromRoute.value && courseFromOCRoute.value?.playSide === 'black') {
-      boardViewBlack.value = true
+    if (openingCourseIdFromRoute.value) {
+      boardViewBlack.value = effectivePlaySide.value === 'black'
       return
     }
     if (isOpeningCoursesOCList.value && selectedOpeningCardId.value != null) {
@@ -6240,16 +6264,6 @@ watch(openingCourseIdFromRoute, (courseId) => {
       const sections = courseSections.value
       if (sections?.length) expandedSectionIds.value = new Set([sections[0].id])
     })
-    try {
-      const raw = sessionStorage.getItem(OPENING_COURSES_V1_RETURN_STATE_KEY)
-      if (raw) {
-        const data = JSON.parse(raw)
-        const playSide = data?.playSide
-        if (playSide === 'white' || playSide === 'black') coursePlaySide.value = playSide
-      }
-    } catch (_) {
-      // ignore
-    }
   }
 }, { immediate: true })
 
@@ -6859,7 +6873,9 @@ onUnmounted(() => {
                           <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
                         </div>
                         </div>
-                        <CcChip :label="coursePlaySide === 'white' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
+                        <button type="button" class="opening-course-card__chip-button" :aria-label="(coursePlaySide === 'white' ? 'Playing as White; click to flip board to Black' : 'Playing as Black; click to flip board to White')" @click.stop="toggleCoursePlaySide">
+                          <CcChip :label="coursePlaySide === 'white' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
+                        </button>
                       </div>
                       <div v-else class="opening-course-card__title-author">
                         <h3 class="opening-course-card__title">{{ course.title }}</h3>
@@ -7052,7 +7068,9 @@ onUnmounted(() => {
                           <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
                         </div>
                         </div>
-                        <CcChip :label="coursePlaySide === 'white' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
+                        <button type="button" class="opening-course-card__chip-button" :aria-label="(coursePlaySide === 'white' ? 'Playing as White; click to flip board to Black' : 'Playing as Black; click to flip board to White')" @click.stop="toggleCoursePlaySide">
+                          <CcChip :label="coursePlaySide === 'white' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
+                        </button>
                       </div>
                       <div v-else class="opening-course-card__title-author">
                         <h3 class="opening-course-card__title">{{ course.title }}</h3>
@@ -10386,9 +10404,10 @@ body {
   flex-direction: column;
   flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 4px;
-  width: 100%;
+  gap: 2px;
+  width: 314px;
   max-width: 314px;
+  height: 44px;
   flex-shrink: 0;
   min-width: 0;
 }
@@ -10396,12 +10415,14 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
 }
 .opening-course-card__started-header .opening-course-card__title {
   flex: 1;
   min-width: 0;
+  line-height: 20px;
+  height: 20px;
 }
 .opening-course-card__started-header .opening-course-card__completed-check-wrap {
   display: inline-flex;
@@ -10429,6 +10450,14 @@ body {
 .opening-course-card__started-header :deep(.opening-course-card__chip-label) {
   font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
   font-size: 12px;
+}
+.opening-course-card__chip-button {
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
 }
 .opening-course-card__color-icon-wrap {
   flex-shrink: 0;
@@ -11717,7 +11746,7 @@ body {
   max-height: 66px;
   justify-content: space-between;
   width: 100%;
-  gap: 8px;
+  gap: 0;
   overflow: visible;
 }
 /* V7 Practice tab: mastery bar + Mastery on course card (same size as course progress bar) */

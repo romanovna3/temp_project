@@ -494,6 +494,8 @@ const OPENING_COURSES_V1_RETURN_STATE_KEY = 'openingCoursesV1ReturnState'
 const OPENING_COURSES_V2_PRESET_BAR_KEY = 'openingCoursesV2PresetBar'
 
 const OPENING_COURSES_V1_STARTED_STATE_KEY = 'openingCoursesV1StartedState'
+/** Course page (CoursesV9OC) reads this for scenario (New User / Returning User). Sync from V2 when opening a course so Practice tab gets lines for started courses. */
+const OPENING_COURSES_V1_PRESET_BAR_KEY = 'openingCoursesV1PresetBar'
 /** When set, course page (CoursesV9OC) opens with Practice tab active. Set when user clicks Practice on Opening page. */
 const OPENING_COURSES_V1_OPEN_IN_PRACTICE_KEY = 'openingCoursesV1OpenInPractice'
 /** V4 piece color toggle: persist filter color (see docs/Opening-Courses-Piece-Color-Toggle-Spec.md). */
@@ -518,9 +520,13 @@ function openOpeningCourse(optionalCard, options) {
     sessionStorage.setItem(OPENING_COURSES_V1_RETURN_STATE_KEY, JSON.stringify({
       scrollTop,
       selectedOpeningCardId: selectedOpeningCardId.value ?? card.id,
-      playSide: openingPlaySide.value,
+      playSide: card.type === 'White' ? 'white' : card.type === 'Black' ? 'black' : openingPlaySide.value,
     }))
     sessionStorage.setItem(OPENING_COURSES_V2_PRESET_BAR_KEY, JSON.stringify({
+      viewportPreset: viewportPreset.value,
+      scenarioPreset: openingV2ScenarioPreset.value,
+    }))
+    sessionStorage.setItem(OPENING_COURSES_V1_PRESET_BAR_KEY, JSON.stringify({
       viewportPreset: viewportPreset.value,
       scenarioPreset: openingV2ScenarioPreset.value,
     }))
@@ -542,10 +548,15 @@ function openOpeningCourse(optionalCard, options) {
     // ignore quota / private mode
   }
   const isLearn = route.path.startsWith('/learn/')
+  const side = card.type === 'White' ? 'white' : card.type === 'Black' ? 'black' : undefined
   if (openingSlug(card.title) === 'sicilian-defense') {
     router.push(isLearn ? { path: '/learn/sicilian-defense' } : { path: '/courses/sicilian-defense' }).catch(() => {})
   } else {
-    router.push({ name: isLearn ? 'learn-opening-courses-oc-course' : 'courses-opening-courses-oc-course', params: { courseId: String(card.id) } }).catch(() => {})
+    router.push({
+      name: isLearn ? 'learn-opening-courses-oc-course' : 'courses-opening-courses-oc-course',
+      params: { courseId: String(card.id) },
+      query: side ? { side } : {},
+    }).catch(() => {})
   }
 }
 function backFromOpeningCourse() {
@@ -4290,6 +4301,11 @@ function toggleOpeningCardSelection(cardId) {
   if (newId != null) {
     selectedOpeningCardHovered.value = true
     openingCardSelectionTime = Date.now()
+    // Sync board and color picker to the selected card's chip (White → default, Black → flipped)
+    const card = openingCourseCards.find((c) => c.id === newId)
+    if (card?.type === 'White' || card?.type === 'Black') {
+      openingFilterColor.value = card.type === 'Black' ? 'black' : 'white'
+    }
   } else {
     selectedOpeningCardHovered.value = false
   }
@@ -9833,18 +9849,18 @@ body {
   max-height: none;
 }
 
-/* Opening Courses V1: search panel – 456px so inputs row is 436px (436 content + 4L+4R padding); 6px top, 6px row gap */
+/* Opening Courses V1: search panel – 436px width, 74px min-height, 6px top padding, 16px left padding; inputs row 440px, 8px gap */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
   box-sizing: border-box;
-  width: 456px;
+  width: 436px;
   max-width: 100%;
   min-width: 0;
   min-height: 74px;
   height: fit-content;
-  padding: 6px 4px 0 4px;
+  padding: 6px 4px 0 16px;
   margin-top: 0;
   margin-bottom: 8px;
   flex-shrink: 0;
@@ -9855,13 +9871,15 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
-/* Inputs row: 436px wide, 8px gap (search + color toggle on All / New User) */
+/* Inputs row: 440px wide, 8px gap, 40px height (search + color toggle on All / New User) */
 .opening-search-panel__row--inputs {
-  width: 436px;
+  width: 440px;
   max-width: 100%;
   min-width: 0;
+  height: 40px;
+  min-height: 40px;
   gap: 8px;
   padding-left: 0;
   padding-right: 0;
@@ -10201,8 +10219,8 @@ body {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 8px 16px 4px;
-  height: 32px;
+  padding: 8px 2px 0 16px;
+  height: 28px;
   flex-shrink: 0;
 }
 /* Section title (Recommended / All Courses): system UI, 15px semibold */
