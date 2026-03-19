@@ -7619,13 +7619,13 @@ onUnmounted(() => {
                                       'chapter-line-card__timeline-node--practice-completed-aqua': showFrenchDefensePracticeTimelineAquaCheck(item, section),
                                     }"
                                   >
-                                    <img
+                                    <!-- DS: teams.design.public.tokens.semantic.color (aqua scale) → --color-aqua-300; solid fill + glyph (no PNG filter drift) -->
+                                    <CcIcon
                                       v-if="showFrenchDefensePracticeTimelineAquaCheck(item, section)"
-                                      :src="baseUrl + 'icons/circle-fill-check.png'"
-                                      alt=""
-                                      class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--practice-aqua"
-                                      width="13"
-                                      height="13"
+                                      name="mark-check"
+                                      variant="glyph"
+                                      :size="11"
+                                      class="chapter-line-card__timeline-node-check chapter-line-card__timeline-node-check--ds-aqua-fill"
                                       aria-hidden="true"
                                     />
                                   </span>
@@ -11014,7 +11014,7 @@ body {
   pointer-events: none;
 }
 
-/* Practice tab: hollow circles (Learn parity); French lines 1–3 + clock = same asset as Learn, tinted aqua (override V6 “uncompleted” ring) */
+/* Practice tab: hollow circles (Learn parity); French lines 1–3 + clock = semantic aqua fill + inverse check (DS --color-aqua-300) */
 .sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--practice-completed-aqua) {
   width: 13px;
   height: 13px;
@@ -11029,16 +11029,12 @@ body {
   min-width: 13px;
   min-height: 13px;
   border: none !important;
-  background: transparent !important;
+  background: var(--color-aqua-300, #26c2a3) !important;
   box-shadow: none;
 }
-.sections-list--practice .chapter-line-card__timeline-node-icon--practice-aqua {
-  display: block;
+.chapter-line-card__timeline-node-check--ds-aqua-fill {
   flex-shrink: 0;
-  width: 13px;
-  height: 13px;
-  /* Green circle-fill-check → ~aqua-300 */
-  filter: hue-rotate(28deg) saturate(1.25) brightness(1.08);
+  color: var(--color-text-inverse, #fff);
 }
 
 .courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
