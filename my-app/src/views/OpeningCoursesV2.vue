@@ -163,13 +163,21 @@ function openingNameKey(name) {
   if (name === 'Scotch Game') return 'Scotch'
   return name
 }
-/** Recommended section: Italian (White only), Ruy Lopez (Black only). */
-const OPENING_RECOMMENDED = [
+/** Recommended (New User + All tab list): Italian (White), Ruy Lopez (Black). */
+const OPENING_RECOMMENDED_NEW_USER = [
   { openingKey: 'Italian Game', type: 'White' },
   { openingKey: 'Ruy Lopez', type: 'Black' },
 ]
-function isOpeningRecommended(card) {
-  return OPENING_RECOMMENDED.some((r) => r.openingKey === card.openingKey && r.type === card.type)
+/**
+ * Returning User → All tab: Italian White is often already in Your Openings, so recommend
+ * two strong defaults that stay in the "rest" list for the demo dataset.
+ */
+const OPENING_RECOMMENDED_RETURNING_ALL = [
+  { openingKey: "Queen's Gambit", type: 'White' },
+  { openingKey: 'Fried Liver', type: 'White' },
+]
+function isOpeningRecommended(card, entries) {
+  return entries.some((r) => r.openingKey === card.openingKey && r.type === card.type)
 }
 // URL slug from opening title (e.g. "Sicilian Defense" → "sicilian-defense").
 function openingSlug(title) {
@@ -4539,14 +4547,22 @@ const openingCoursesListForSections = computed(() => {
   if (openingV2ScenarioPreset.value === 'returning-user' && openingV2RubActiveTab.value === 'all') return openingCoursesRestList.value
   return []
 })
-/** Recommended section: Italian (White), Ruy Lopez (Black) from the sectioned list. */
-const openingCoursesRecommendedList = computed(() =>
-  openingCoursesListForSections.value.filter((c) => isOpeningRecommended(c))
+/** Which pairs (openingKey + color) count as "Recommended" for the current scenario/tab. */
+const openingRecommendedEntries = computed(() =>
+  openingV2ScenarioPreset.value === 'returning-user' && openingV2RubActiveTab.value === 'all'
+    ? OPENING_RECOMMENDED_RETURNING_ALL
+    : OPENING_RECOMMENDED_NEW_USER
 )
+/** Recommended section: from the sectioned list, using scenario-specific picks. */
+const openingCoursesRecommendedList = computed(() => {
+  const entries = openingRecommendedEntries.value
+  return openingCoursesListForSections.value.filter((c) => isOpeningRecommended(c, entries))
+})
 /** All Courses section: everything else in the sectioned list. */
-const openingCoursesAllOthersList = computed(() =>
-  openingCoursesListForSections.value.filter((c) => !isOpeningRecommended(c))
-)
+const openingCoursesAllOthersList = computed(() => {
+  const entries = openingRecommendedEntries.value
+  return openingCoursesListForSections.value.filter((c) => !isOpeningRecommended(c, entries))
+})
 /** Sections for template: Recommended (if any) then All Courses (if any), each with title and count. */
 const openingCoursesSections = computed(() => {
   const rec = openingCoursesRecommendedList.value
