@@ -10598,7 +10598,7 @@ body {
   flex-shrink: 0;
   width: 20px;
   height: 20px;
-  padding-top: 2px;
+  padding-top: 0;
 }
 /* Opening list + line timelines: 12×12 circle + mark-check (Learn success green / Practice aqua) */
 .chapter-line-card__timeline-node-check-stack {

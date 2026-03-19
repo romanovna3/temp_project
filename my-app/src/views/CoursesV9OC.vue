@@ -10773,13 +10773,13 @@ body {
   flex-shrink: 0;
   width: 20px;
   height: 20px;
-  padding-top: 1px;
+  padding-top: 0;
 }
-/* V7 course card (Learn/Practice): ensure completed-check-wrap is 20×20 with 1px top padding */
+/* V7 course card (Learn/Practice): ensure completed-check-wrap is 20×20 */
 .course-card-frame--with-completion .opening-course-card__content--v7-completion .opening-course-card__started-header .opening-course-card__completed-check-wrap {
   width: 20px;
   height: 20px;
-  padding-top: 1px;
+  padding-top: 0;
 }
 .opening-course-card__play-as-label {
   color: rgba(255, 255, 255, 0.4);

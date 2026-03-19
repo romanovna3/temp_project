@@ -10557,7 +10557,7 @@ body {
   flex-shrink: 0;
   width: 20px;
   height: 20px;
-  padding-top: 1px;
+  padding-top: 0;
 }
 /* Same 12×12 circle + mark-check as CoursesV9OC Learn line timeline (success green) */
 .chapter-line-card__timeline-node-check-stack {
