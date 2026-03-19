@@ -1950,6 +1950,25 @@ function getLineType(move) {
   return move.level ? 'completed' : 'ready'
 }
 
+/** French main-level lines 1–3 when the opening course is complete: Learn uses type "ready" (no L chip). Practice must use practiceType "completed" (grey clock + Practice in), not "ready" (synthetic L1 / Ready for Practice). */
+function isFrenchDefensePracticeTabCompletedLine(move, sectionId) {
+  if (courseFromOCRoute.value?.title !== 'French Defense') return false
+  if (sectionId !== 'main-level') return false
+  const mid = String(move?.id ?? '')
+  if (mid !== '1' && mid !== '2' && mid !== '3') return false
+  const courseComplete =
+    scenarioPreset.value === 'nothing-to-learn' ||
+    openingStartedState.value?.progressPercent === 100
+  return courseComplete
+}
+
+/** Buckets for Practice tab rows (can differ from Learn getLineType). */
+function getLineTypeForPracticeTab(move, section) {
+  const sectionId = typeof section === 'string' ? section : section?.id
+  if (isFrenchDefensePracticeTabCompletedLine(move, sectionId)) return 'completed'
+  return getLineType(move)
+}
+
 /** Ready lines only: level chip next to name – L1 for all Ready lines; L2 when nextLevel is L3. */
 function getReadyLineLevelChip(move) {
   if (!move || move.level) return null
@@ -3322,7 +3341,12 @@ const courseSectionsForPractice = computed(() => {
         const moves = bySection[section.id] || []
         const practiceMoves = [...moves]
           .sort((a, b) => (LEVEL_WEIGHT[b.level] ?? 0) - (LEVEL_WEIGHT[a.level] ?? 0))
-          .map((move) => ({ move, practiceType: 'ready', practiceInLabel: getPracticeInLabelForMove(move) }))
+          .map((move) => ({
+            move,
+            // Lines with mastery level (L6–L1): "ready" row (aqua L chip). No level (e.g. French first 3): "completed" (clock + Practice in).
+            practiceType: move.level && LEVEL_WEIGHT[move.level] != null ? 'ready' : 'completed',
+            practiceInLabel: getPracticeInLabelForMove(move),
+          }))
         if (!practiceMoves.length) return null
         return { ...section, practiceMoves, readyMoves: moves }
       })
@@ -3331,9 +3355,9 @@ const courseSectionsForPractice = computed(() => {
   return courseSections.value
     .map((section) => {
       const all = getSectionMovesForDisplay(section)
-      const ready = all.filter((m) => getLineType(m) === 'ready')
-      const completed = all.filter((m) => getLineType(m) === 'completed')
-      const uncompleted = all.filter((m) => getLineType(m) === 'uncompleted')
+      const ready = all.filter((m) => getLineTypeForPracticeTab(m, section) === 'ready')
+      const completed = all.filter((m) => getLineTypeForPracticeTab(m, section) === 'completed')
+      const uncompleted = all.filter((m) => getLineTypeForPracticeTab(m, section) === 'uncompleted')
       const hasStarted = ready.length > 0 || completed.length > 0
       // OC started from Opening page: show only reviewCount lines (match CTA/badge); do not add uncompleted
       const capToStartedCount = hasStartedState
@@ -3349,6 +3373,9 @@ const courseSectionsForPractice = computed(() => {
               ...completed.map((move) => ({ move, practiceType: 'completed', practiceInLabel: getPracticeInLabelForMove(move) })),
               ...(hasStarted ? uncompleted.map((move) => ({ move, practiceType: 'uncompleted', practiceInLabel: getPracticeInLabelForMove(move) })) : []),
             ]
+      // Keep Practice list in same order as Learn (avoid "completed" bucket sending French lines 1–3 to the bottom).
+      const orderInSection = new Map(all.map((m, i) => [m.id, i]))
+      practiceMoves.sort((a, b) => (orderInSection.get(a.move.id) ?? 0) - (orderInSection.get(b.move.id) ?? 0))
       if (!practiceMoves.length) return null
       return { ...section, practiceMoves, readyMoves: ready }
     })
