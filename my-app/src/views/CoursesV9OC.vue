@@ -3299,14 +3299,10 @@ const nextToLearnRef = computed(() => {
   return null
 })
 
-/** First line in Practice tab that is ready or uncompleted (next to practice); used for aqua highlight. */
-const nextToPracticeRef = computed(() => {
-  for (const section of courseSectionsForPractice.value) {
-    const idx = section.practiceMoves?.findIndex((item) => item.practiceType === 'ready' || item.practiceType === 'uncompleted')
-    if (idx >= 0 && section.practiceMoves?.[idx]) return { sectionId: section.id, moveId: section.practiceMoves[idx].move.id }
-  }
-  return null
-})
+/** Practice tab: French lines 1–3 (completed + clock) show Learn-style aqua check in timeline column. */
+function showFrenchDefensePracticeTimelineAquaCheck(item, section) {
+  return item?.practiceType === 'completed' && isFrenchDefensePracticeTabCompletedLine(item.move, section?.id)
+}
 
 // V7 only: tab labels – Learn (content) and Practice (stats)
 const courseTabContentLabel = computed(() => (isVideoV7OrV8OrV9.value ? 'Learn' : 'Content'))
@@ -7598,7 +7594,6 @@ onUnmounted(() => {
                                 :class="[
                                   item.practiceType === 'completed' && 'chapter-line-card--v7-practice-completed',
                                   lineIndex === section.practiceMoves.length - 1 && 'chapter-line-card--last',
-                                  nextToPracticeRef && nextToPracticeRef.sectionId === section.id && nextToPracticeRef.moveId === item.move.id && !(sectionIndex === 0 && lineIndex === 0) && 'chapter-line-card--next-to-practice'
                                 ]"
                                 role="listitem"
                                 data-name="Line"
@@ -7614,10 +7609,19 @@ onUnmounted(() => {
                                 >
                                   <span
                                     class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6 chapter-line-card__timeline-node--practice"
-                                    :class="[
-                                      nextToPracticeRef && nextToPracticeRef.sectionId === section.id && nextToPracticeRef.moveId === item.move.id && !(sectionIndex === 0 && lineIndex === 0) && 'chapter-line-card__timeline-node--next-to-practice'
-                                    ]"
-                                  />
+                                    :class="{
+                                      'chapter-line-card__timeline-node--practice-completed-aqua': showFrenchDefensePracticeTimelineAquaCheck(item, section),
+                                    }"
+                                  >
+                                    <CcIcon
+                                      v-if="showFrenchDefensePracticeTimelineAquaCheck(item, section)"
+                                      name="mark-check"
+                                      variant="glyph"
+                                      :size="12"
+                                      class="chapter-line-card__timeline-node-check chapter-line-card__timeline-node-check--aqua-practice"
+                                      aria-hidden="true"
+                                    />
+                                  </span>
                                 </div>
                                 <div
                                   class="chapter-line-card__body chapter-line-card__body--no-click"
@@ -11003,8 +11007,8 @@ body {
   pointer-events: none;
 }
 
-/* Practice tab: hollow circles match Learn tab exactly (same specs as .courses-content--v6 .chapter-line-card__timeline-node--v6:not(.chapter-line-card__timeline-node--completed)) */
-.sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--next-to-practice) {
+/* Practice tab: hollow circles (Learn parity); French lines 1–3 + clock use filled aqua + check like Learn completed */
+.sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--practice-completed-aqua) {
   width: 13px;
   height: 13px;
   min-width: 13px;
@@ -11012,30 +11016,17 @@ body {
   border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
   background: var(--color-bg-primary, #312e2b);
 }
-.sections-list--practice .chapter-line-card__timeline-node--next-to-practice {
-  width: 8px;
-  height: 8px;
-  min-width: 8px;
-  min-height: 8px;
-  outline: 2px solid var(--color-aqua-300, #26C2A3);
-  outline-offset: 0;
+.sections-list--practice .chapter-line-card__timeline-node--practice-completed-aqua {
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  min-height: 13px;
+  border: none;
+  background: var(--color-aqua-300, #26C2A3);
   box-shadow: none;
 }
-.sections-list--practice .chapter-line-card--next-to-practice {
-  position: relative;
-}
-.sections-list--practice .chapter-line-card--next-to-practice .opening-course-card__title {
-  color: rgba(255, 255, 255, 0.72);
-}
-.sections-list--practice .chapter-line-card--next-to-practice::before {
-  content: '';
-  position: absolute;
-  left: -12px;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--color-aqua-300, #26C2A3);
-  pointer-events: none;
+.sections-list--practice .chapter-line-card__timeline-node-check--aqua-practice {
+  color: var(--color-text-inverse, #fff);
 }
 
 .courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
