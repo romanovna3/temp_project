@@ -2843,7 +2843,7 @@ function getSectionMoves(section) {
   const total = typeof section === 'object' && section?.total != null ? section.total : 0
   const baseId = (sectionId || '').replace(/-2$/, '')
   const moves = sectionMoves.value
-  if (moves[baseId]) return moves[baseId]
+  if (moves && moves[baseId]) return moves[baseId]
   const shuffled = seededShuffle(uncompletedMoveTitles, sectionId)
   const count = Math.min(total, shuffled.length)
   return shuffled.slice(0, count).map((text, i) => ({
@@ -2853,9 +2853,12 @@ function getSectionMoves(section) {
   }))
 }
 
-/** Nothing-to-learn: all moves in course order. Top of list = L6, then L5→L4→L3→L2→L1, bottom = ready (no level). Levels decrease as user scrolls down. */
+/** Nothing-to-learn: all moves in course order. Top of list = L6, then L5→L4→L3→L2→L1, bottom = ready (no level). Levels decrease as user scrolls down. French Defense completed: first 3 lines have no level (show Practice in chip). */
 const displayMovesBySectionIdNothingToLearn = computed(() => {
   if (scenarioPreset.value !== 'nothing-to-learn') return {}
+  const course = courseFromOCRoute.value
+  // Do not use isOpeningCourseCompleted here — it depends on progress computeds that call getSectionMoves (cycle).
+  const isFrenchNothingToLearn = course?.title === 'French Defense'
   const levelOrder = ['L6', 'L5', 'L4', 'L3', 'L2', 'L1', null] // null = ready (completed, no level)
   const bySection = {}
   let globalIndex = 0
@@ -2863,7 +2866,11 @@ const displayMovesBySectionIdNothingToLearn = computed(() => {
   const totalMoves = sections.reduce((sum, s) => sum + (getSectionMoves(s).length), 0)
   for (const section of sections) {
     const moves = getSectionMoves(section)
-    const displayMoves = moves.map((move) => {
+    const displayMoves = moves.map((move, moveIndex) => {
+      // French Defense in nothing-to-learn: first 3 lines have no level (show Practice in chip)
+      if (isFrenchNothingToLearn && section.id === 'main-level' && moveIndex < 3) {
+        return { ...move, completed: true, level: undefined }
+      }
       const bucket = totalMoves > 0 ? Math.floor((globalIndex / totalMoves) * 7) : 0
       const level = levelOrder[Math.min(bucket, 6)]
       globalIndex += 1
@@ -2948,22 +2955,39 @@ const displayMovesBySectionIdNewCourse = computed(() => {
   return bySection
 })
 
+/** French Defense 100% (or nothing-to-learn): first 3 main-level lines show aqua + Practice in chip (no L chip). Uses only route/state — not isOpeningCourseCompleted — to avoid circular dependency with progress computeds. */
+function applyFrenchDefenseCompletedFirstThreeDisplay(moves, section) {
+  if (!moves?.length) return moves
+  if (!openingCourseIdFromRoute.value) return moves
+  if (courseFromOCRoute.value?.title !== 'French Defense') return moves
+  const sid = typeof section === 'string' ? section : section?.id
+  if (sid !== 'main-level') return moves
+  const courseComplete =
+    scenarioPreset.value === 'nothing-to-learn' ||
+    openingStartedState.value?.progressPercent === 100
+  if (!courseComplete) return moves
+  return moves.map((m, i) => (i < 3 ? { ...m, completed: true, level: undefined } : m))
+}
+
 /** Same as getSectionMoves (used for display and progress so one source of truth). Started from Opening page: first reviewCount lines completed (any OC section). Nothing-to-learn / New-course: as below. */
 function getSectionMovesForDisplay(section) {
   if (openingCourseIdFromRoute.value && openingStartedState.value?.reviewCount != null && section?.id) {
     const moves = getSectionMoves(section)
     const n = Math.min(openingStartedState.value.reviewCount, moves.length)
-    return moves.map((m, i) => ({ ...m, completed: i < n }))
+    return applyFrenchDefenseCompletedFirstThreeDisplay(
+      moves.map((m, i) => ({ ...m, completed: i < n })),
+      section
+    )
   }
   if (scenarioPreset.value === 'nothing-to-learn' && courseTabsActive.value === 'content') {
     const display = displayMovesBySectionIdNothingToLearn.value[section.id]
-    if (display) return display
+    if (display) return applyFrenchDefenseCompletedFirstThreeDisplay(display, section)
   }
   if (scenarioPreset.value === 'new-course' && courseTabsActive.value === 'content') {
     const display = displayMovesBySectionIdNewCourse.value[section.id]
-    if (display) return display
+    if (display) return applyFrenchDefenseCompletedFirstThreeDisplay(display, section)
   }
-  return getSectionMoves(section)
+  return applyFrenchDefenseCompletedFirstThreeDisplay(getSectionMoves(section), section)
 }
 
 /** Number of moves not yet completed in a section (for "# moves" under line card header). */
@@ -3158,6 +3182,7 @@ const sectionMovesOCResolved = computed(() => {
   const course = courseFromOCRoute.value
   if (!course?.title) return sectionMovesOC
   if (course.title === 'French Defense') {
+    // Static list only — do not read completion computeds here (see getSectionMovesForDisplay: avoids circular dependency with progressCompleted).
     return { 'main-level': FRENCH_DEFENSE_WHITE_MAIN_LEVEL }
   }
   if (course.title === 'London System' && course?.playSide === 'white') {
@@ -7799,8 +7824,36 @@ onUnmounted(() => {
                                 label-class="move-item-level-chip-label"
                               />
                             </span>
-                            <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
-                              <span class="move-item-dot" />
+                            <span v-else-if="move.completed" class="chapter-line-card__practice-in-chip-wrap" aria-hidden="true">
+                              <CcChip
+                                label=""
+                                icon="time-clock"
+                                color="gray"
+                                variant="translucent"
+                                :is-uppercase="false"
+                                class="chapter-line-card__practice-in-chip"
+                                aria-label="Practice in"
+                              />
+                              <CcTooltip
+                                for-previous-element
+                                class="practice-in-tooltip-no-fade"
+                                :delay="0"
+                                position="top"
+                                anchor="center"
+                              >
+                                <div class="extra-data-practice-in practice-in-tooltip__content">
+                                  <span class="extra-data-label">Practice in:</span>
+                                  <CcChip
+                                    :label="getPracticeInLabelForMove(move)"
+                                    icon="time-clock"
+                                    color="gray"
+                                    variant="translucent"
+                                    :is-uppercase="true"
+                                    label-class="extra-data-time-chip-label"
+                                    class="extra-data-time-chip"
+                                  />
+                                </div>
+                              </CcTooltip>
                             </span>
                           </div>
                         </div>
@@ -8145,8 +8198,36 @@ v-if="isVideoV6OrV7"
                                   label-class="move-item-level-chip-label"
                                 />
                               </span>
-                              <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
-                                <span class="move-item-dot" />
+                              <span v-else-if="move.completed" class="chapter-line-card__practice-in-chip-wrap" aria-hidden="true">
+                                <CcChip
+                                  label=""
+                                  icon="time-clock"
+                                  color="gray"
+                                  variant="translucent"
+                                  :is-uppercase="false"
+                                  class="chapter-line-card__practice-in-chip"
+                                  aria-label="Practice in"
+                                />
+                                <CcTooltip
+                                  for-previous-element
+                                  class="practice-in-tooltip-no-fade"
+                                  :delay="0"
+                                  position="top"
+                                  anchor="center"
+                                >
+                                  <div class="extra-data-practice-in practice-in-tooltip__content">
+                                    <span class="extra-data-label">Practice in:</span>
+                                    <CcChip
+                                      :label="getPracticeInLabelForMove(move)"
+                                      icon="time-clock"
+                                      color="gray"
+                                      variant="translucent"
+                                      :is-uppercase="true"
+                                      label-class="extra-data-time-chip-label"
+                                      class="extra-data-time-chip"
+                                    />
+                                  </div>
+                                </CcTooltip>
                               </span>
                             </div>
                           </div>
@@ -8266,8 +8347,36 @@ v-if="isVideoV6OrV7"
                                 label-class="move-item-level-chip-label"
                               />
                             </span>
-                            <span v-else-if="move.completed" class="move-item-indicator-wrap" aria-hidden="true">
-                              <span class="move-item-dot" />
+                            <span v-else-if="move.completed" class="chapter-line-card__practice-in-chip-wrap" aria-hidden="true">
+                              <CcChip
+                                label=""
+                                icon="time-clock"
+                                color="gray"
+                                variant="translucent"
+                                :is-uppercase="false"
+                                class="chapter-line-card__practice-in-chip"
+                                aria-label="Practice in"
+                              />
+                              <CcTooltip
+                                for-previous-element
+                                class="practice-in-tooltip-no-fade"
+                                :delay="0"
+                                position="top"
+                                anchor="center"
+                              >
+                                <div class="extra-data-practice-in practice-in-tooltip__content">
+                                  <span class="extra-data-label">Practice in:</span>
+                                  <CcChip
+                                    :label="getPracticeInLabelForMove(move)"
+                                    icon="time-clock"
+                                    color="gray"
+                                    variant="translucent"
+                                    :is-uppercase="true"
+                                    label-class="extra-data-time-chip-label"
+                                    class="extra-data-time-chip"
+                                  />
+                                </div>
+                              </CcTooltip>
                             </span>
                           </div>
                         </div>
@@ -13404,6 +13513,13 @@ body {
 /* Line type layouts – Completed | Uncompleted | Ready (customize per type) */
 .move-item--completed {
   /* layout / styling for completed lines (green check + level chip) */
+}
+/* Completed opening course: aqua check icon for completed lines (instead of green) */
+.move-item--completed .move-item-check {
+  color: var(--color-aqua-300, #26C2A3);
+}
+.move-item--completed:hover .move-item-check {
+  color: var(--color-aqua-400, #62f6ca);
 }
 .move-item--uncompleted {
   /* layout / styling for uncompleted lines (dimmed check) */
