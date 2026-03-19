@@ -7619,15 +7619,19 @@ onUnmounted(() => {
                                       'chapter-line-card__timeline-node--completed': showFrenchDefensePracticeTimelineAquaCheck(item, section),
                                     }"
                                   >
-                                    <img
+                                    <!-- Learn-sized 13×13: exact DS aqua fill, white check (no CSS filter — filter read as darker overlay) -->
+                                    <span
                                       v-if="showFrenchDefensePracticeTimelineAquaCheck(item, section)"
-                                      :src="baseUrl + 'icons/circle-fill-check.png'"
-                                      alt=""
-                                      class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--aqua"
-                                      width="13"
-                                      height="13"
+                                      class="chapter-line-card__timeline-node-aqua-stack"
                                       aria-hidden="true"
-                                    />
+                                    >
+                                      <CcIcon
+                                        name="mark-check"
+                                        variant="glyph"
+                                        :size="9"
+                                        class="chapter-line-card__timeline-node-aqua-stack__check"
+                                      />
+                                    </span>
                                   </span>
                                 </div>
                                 <div
@@ -11028,11 +11032,26 @@ body {
   background: transparent;
   border-color: transparent;
 }
-.sections-list--practice .chapter-line-card__timeline-node-icon--aqua {
+/* Learn-sized 13×13 circle + check: solid var(--color-aqua-300) only (no bitmap filter) */
+.sections-list--practice .chapter-line-card__timeline-node-aqua-stack {
   width: 13px;
   height: 13px;
-  display: block;
-  filter: invert(72%) sepia(42%) saturate(800%) hue-rotate(120deg) brightness(95%) contrast(88%);
+  min-width: 13px;
+  min-height: 13px;
+  border-radius: 50%;
+  background: var(--color-aqua-300, #26c2a3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sections-list--practice .chapter-line-card__timeline-node-aqua-stack__check {
+  flex-shrink: 0;
+  color: var(--color-text-inverse, #fff);
+}
+/* Practice rows: no body hover dim (was reading like a darker overlay) */
+.course-tab-panel--stats .sections-list--practice .chapter-line-card__body:hover {
+  background: transparent;
 }
 
 .courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
