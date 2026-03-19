@@ -6372,11 +6372,17 @@ onUnmounted(() => {
                   <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card) }">
                     <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
                       <div class="opening-course-card__started-header">
-                        <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                        <div class="opening-course-card__started-header-title-row">
+                          <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                          <div v-if="isOpeningCardCompleted(card)" class="opening-course-card__completed-check-wrap" aria-hidden="true">
+                            <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                              <CcIcon name="mark-check" variant="glyph" :size="9" class="chapter-line-card__timeline-node-check-stack__icon" />
+                            </span>
+                          </div>
+                        </div>
                       </div>
                       <div class="opening-course-card__started-meta">
-                        <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
-                        <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                        <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
                         <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
                       </div>
                       <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
@@ -6526,11 +6532,17 @@ onUnmounted(() => {
                             <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card) }">
                               <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
                                 <div class="opening-course-card__started-header">
-                                  <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                                  <div class="opening-course-card__started-header-title-row">
+                                    <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                                    <div v-if="isOpeningCardCompleted(card)" class="opening-course-card__completed-check-wrap" aria-hidden="true">
+                                      <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                                        <CcIcon name="mark-check" variant="glyph" :size="9" class="chapter-line-card__timeline-node-check-stack__icon" />
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                                 <div class="opening-course-card__started-meta">
-                                  <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
-                                  <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                                  <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
                                   <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
                                 </div>
                                 <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
@@ -6677,11 +6689,17 @@ onUnmounted(() => {
                   <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card) }">
                     <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
                       <div class="opening-course-card__started-header">
-                        <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                        <div class="opening-course-card__started-header-title-row">
+                          <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                          <div v-if="isOpeningCardCompleted(card)" class="opening-course-card__completed-check-wrap" aria-hidden="true">
+                            <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                              <CcIcon name="mark-check" variant="glyph" :size="9" class="chapter-line-card__timeline-node-check-stack__icon" />
+                            </span>
+                          </div>
+                        </div>
                       </div>
                       <div class="opening-course-card__started-meta">
-                        <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
-                        <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                        <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
                         <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
                       </div>
                       <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
@@ -6827,11 +6845,17 @@ onUnmounted(() => {
                         <div class="opening-course-card__content" :class="{ 'opening-course-card__content--started': isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card) }">
                           <template v-if="isReturningUserScenario(openingV1ScenarioPreset) && isOpeningCardStarted(card)">
                             <div class="opening-course-card__started-header">
-                              <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                              <div class="opening-course-card__started-header-title-row">
+                                <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                                <div v-if="isOpeningCardCompleted(card)" class="opening-course-card__completed-check-wrap" aria-hidden="true">
+                                  <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                                    <CcIcon name="mark-check" variant="glyph" :size="9" class="chapter-line-card__timeline-node-check-stack__icon" />
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                             <div class="opening-course-card__started-meta">
-                              <CcChip v-if="isOpeningCardCompleted(card)" label="Completed" color="green" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__completed-chip" />
-                              <CcChip v-else :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                              <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
                               <span class="opening-course-card__learn-as-label course-card-completion__complete-label">{{ card.type === 'White' ? 'Learn as White' : 'Learn as Black' }}</span>
                             </div>
                             <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
@@ -10507,10 +10531,48 @@ body {
   min-width: 0;
 }
 .opening-course-card__started-header .opening-course-card__title {
-  width: fit-content;
+  flex: 1;
   min-width: 0;
+  line-height: 20px;
+  height: 20px;
 }
-/* Row under header: Learn as White/Black label; when completed also Completed chip */
+.opening-course-card__started-header-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.opening-course-card__started-header .opening-course-card__completed-check-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding-top: 1px;
+}
+/* Same 13×13 circle + mark-check as CoursesV9OC Learn line timeline (success green) */
+.chapter-line-card__timeline-node-check-stack {
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  min-height: 13px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chapter-line-card__timeline-node-check-stack--success {
+  background: var(--color-border-success, var(--color-green-300, #81b64c));
+}
+.chapter-line-card__timeline-node-check-stack__icon {
+  flex-shrink: 0;
+  color: var(--color-text-inverse, #fff);
+}
+/* Row under header: Lines chip + Learn as White/Black label */
 .opening-course-card__started-meta {
   display: flex;
   align-items: center;

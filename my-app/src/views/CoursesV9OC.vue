@@ -7081,8 +7081,10 @@ onUnmounted(() => {
                         <div class="opening-course-card__started-header-title-row">
                           <h3 class="opening-course-card__title">{{ openingCourseTitleForHeader(course.title) }}</h3>
                           <div v-if="isOpeningCourseCompleted && courseTabsActive !== 'stats'" class="opening-course-card__completed-check-wrap" aria-hidden="true">
-                          <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
-                        </div>
+                            <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                              <CcIcon name="mark-check" variant="glyph" :size="9" class="chapter-line-card__timeline-node-check-stack__icon" />
+                            </span>
+                          </div>
                         </div>
                         <button type="button" class="opening-course-card__chip-button" :aria-label="(coursePlaySide === 'white' ? 'Playing as White; click to flip board to Black' : 'Playing as Black; click to flip board to White')" @click.stop="toggleCoursePlaySide">
                           <CcChip :label="coursePlaySide === 'white' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
@@ -7276,8 +7278,10 @@ onUnmounted(() => {
                         <div class="opening-course-card__started-header-title-row">
                           <h3 class="opening-course-card__title">{{ openingCourseTitleForHeader(course.title) }}</h3>
                           <div v-if="isOpeningCourseCompleted && courseTabsActive !== 'stats'" class="opening-course-card__completed-check-wrap" aria-hidden="true">
-                          <img :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="opening-course-card__completed-check-icon" width="13" height="13" />
-                        </div>
+                            <span class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success">
+                              <CcIcon name="mark-check" variant="glyph" :size="9" class="chapter-line-card__timeline-node-check-stack__icon" />
+                            </span>
+                          </div>
                         </div>
                         <button type="button" class="opening-course-card__chip-button" :aria-label="(coursePlaySide === 'white' ? 'Playing as White; click to flip board to Black' : 'Playing as Black; click to flip board to White')" @click.stop="toggleCoursePlaySide">
                           <CcChip :label="coursePlaySide === 'white' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
@@ -10770,10 +10774,6 @@ body {
   width: 20px;
   height: 20px;
   padding-top: 1px;
-}
-.opening-course-card__started-header .opening-course-card__completed-check-icon {
-  width: 13px;
-  height: 13px;
 }
 /* V7 course card (Learn/Practice): ensure completed-check-wrap is 20×20 with 1px top padding */
 .course-card-frame--with-completion .opening-course-card__content--v7-completion .opening-course-card__started-header .opening-course-card__completed-check-wrap {
