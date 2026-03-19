@@ -1956,9 +1956,10 @@ function isFrenchDefensePracticeTabCompletedLine(move, sectionId) {
   if (sectionId !== 'main-level') return false
   const mid = String(move?.id ?? '')
   if (mid !== '1' && mid !== '2' && mid !== '3') return false
+  const pct = Number(openingStartedState.value?.progressPercent)
   const courseComplete =
     scenarioPreset.value === 'nothing-to-learn' ||
-    openingStartedState.value?.progressPercent === 100
+    (Number.isFinite(pct) && pct >= 100)
   return courseComplete
 }
 
@@ -2981,9 +2982,10 @@ function applyFrenchDefenseCompletedFirstThreeDisplay(moves, section) {
   if (courseFromOCRoute.value?.title !== 'French Defense') return moves
   const sid = typeof section === 'string' ? section : section?.id
   if (sid !== 'main-level') return moves
+  const pct = Number(openingStartedState.value?.progressPercent)
   const courseComplete =
     scenarioPreset.value === 'nothing-to-learn' ||
-    openingStartedState.value?.progressPercent === 100
+    (Number.isFinite(pct) && pct >= 100)
   if (!courseComplete) return moves
   return moves.map((m, i) => (i < 3 ? { ...m, completed: true, level: undefined } : m))
 }
@@ -3299,9 +3301,13 @@ const nextToLearnRef = computed(() => {
   return null
 })
 
-/** Practice tab: French lines 1–3 (completed + clock) show Learn-style aqua check in timeline column. */
+/** Practice tab: French main-level lines 1–3 that use the clock row — show Learn-style check in timeline (don’t gate on session progress; if the row is practice-completed + clock, show check). */
 function showFrenchDefensePracticeTimelineAquaCheck(item, section) {
-  return item?.practiceType === 'completed' && isFrenchDefensePracticeTabCompletedLine(item.move, section?.id)
+  if (courseFromOCRoute.value?.title !== 'French Defense') return false
+  if (section?.id !== 'main-level') return false
+  if (item?.practiceType !== 'completed') return false
+  const mid = String(item.move?.id ?? '')
+  return mid === '1' || mid === '2' || mid === '3'
 }
 
 // V7 only: tab labels – Learn (content) and Practice (stats)
@@ -7613,12 +7619,13 @@ onUnmounted(() => {
                                       'chapter-line-card__timeline-node--practice-completed-aqua': showFrenchDefensePracticeTimelineAquaCheck(item, section),
                                     }"
                                   >
-                                    <CcIcon
+                                    <img
                                       v-if="showFrenchDefensePracticeTimelineAquaCheck(item, section)"
-                                      name="mark-check"
-                                      variant="glyph"
-                                      :size="12"
-                                      class="chapter-line-card__timeline-node-check chapter-line-card__timeline-node-check--aqua-practice"
+                                      :src="baseUrl + 'icons/circle-fill-check.png'"
+                                      alt=""
+                                      class="chapter-line-card__timeline-node-icon chapter-line-card__timeline-node-icon--practice-aqua"
+                                      width="13"
+                                      height="13"
                                       aria-hidden="true"
                                     />
                                   </span>
@@ -11007,7 +11014,7 @@ body {
   pointer-events: none;
 }
 
-/* Practice tab: hollow circles (Learn parity); French lines 1–3 + clock use filled aqua + check like Learn completed */
+/* Practice tab: hollow circles (Learn parity); French lines 1–3 + clock = same asset as Learn, tinted aqua (override V6 “uncompleted” ring) */
 .sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--practice-completed-aqua) {
   width: 13px;
   height: 13px;
@@ -11016,17 +11023,22 @@ body {
   border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
   background: var(--color-bg-primary, #312e2b);
 }
-.sections-list--practice .chapter-line-card__timeline-node--practice-completed-aqua {
+.courses-content--v6 .sections-list--practice .chapter-line-card__timeline-node--v6.chapter-line-card__timeline-node--practice-completed-aqua {
   width: 13px;
   height: 13px;
   min-width: 13px;
   min-height: 13px;
-  border: none;
-  background: var(--color-aqua-300, #26C2A3);
+  border: none !important;
+  background: transparent !important;
   box-shadow: none;
 }
-.sections-list--practice .chapter-line-card__timeline-node-check--aqua-practice {
-  color: var(--color-text-inverse, #fff);
+.sections-list--practice .chapter-line-card__timeline-node-icon--practice-aqua {
+  display: block;
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  /* Green circle-fill-check → ~aqua-300 */
+  filter: hue-rotate(28deg) saturate(1.25) brightness(1.08);
 }
 
 .courses-content--v6 .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
