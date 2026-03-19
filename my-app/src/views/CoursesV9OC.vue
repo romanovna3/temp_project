@@ -7619,17 +7619,16 @@ onUnmounted(() => {
                                       'chapter-line-card__timeline-node--completed': showFrenchDefensePracticeTimelineAquaCheck(item, section),
                                     }"
                                   >
-                                    <!-- Learn-sized 13×13: exact DS aqua fill, white check (no CSS filter — filter read as darker overlay) -->
                                     <span
                                       v-if="showFrenchDefensePracticeTimelineAquaCheck(item, section)"
-                                      class="chapter-line-card__timeline-node-aqua-stack"
+                                      class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--aqua"
                                       aria-hidden="true"
                                     >
                                       <CcIcon
                                         name="mark-check"
                                         variant="glyph"
                                         :size="9"
-                                        class="chapter-line-card__timeline-node-aqua-stack__check"
+                                        class="chapter-line-card__timeline-node-check-stack__icon"
                                       />
                                     </span>
                                   </span>
@@ -8060,7 +8059,18 @@ onUnmounted(() => {
                               'chapter-line-card__timeline-node--next-to-learn': isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id
                             }"
                           >
-                            <img v-if="move.completed" :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="chapter-line-card__timeline-node-icon" width="13" height="13" aria-hidden="true" />
+                            <span
+                              v-if="move.completed"
+                              class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success"
+                              aria-hidden="true"
+                            >
+                              <CcIcon
+                                name="mark-check"
+                                variant="glyph"
+                                :size="9"
+                                class="chapter-line-card__timeline-node-check-stack__icon"
+                              />
+                            </span>
                           </span>
                         </div>
                         <div
@@ -8198,7 +8208,18 @@ v-if="isVideoV6OrV7"
                               'chapter-line-card__timeline-node--next-to-learn': isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id
                             }"
                           >
-                            <img v-if="move.completed" :src="baseUrl + 'icons/circle-fill-check.png'" alt="" class="chapter-line-card__timeline-node-icon" width="13" height="13" aria-hidden="true" />
+                            <span
+                              v-if="move.completed"
+                              class="chapter-line-card__timeline-node-check-stack chapter-line-card__timeline-node-check-stack--success"
+                              aria-hidden="true"
+                            >
+                              <CcIcon
+                                name="mark-check"
+                                variant="glyph"
+                                :size="9"
+                                class="chapter-line-card__timeline-node-check-stack__icon"
+                              />
+                            </span>
                           </span>
                         </div>
                       </article>
@@ -10980,10 +11001,27 @@ body {
   background: transparent;
   border-color: transparent;
 }
-.courses-content--v6 .chapter-line-card__timeline-node--v6 .chapter-line-card__timeline-node-icon {
+/* Learn + Practice: same 13×13 circle + mark-check (Learn/DS success green; Practice French = aqua) */
+.chapter-line-card__timeline-node-check-stack {
   width: 13px;
   height: 13px;
-  display: block;
+  min-width: 13px;
+  min-height: 13px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chapter-line-card__timeline-node-check-stack--success {
+  background: var(--color-border-success, var(--color-green-300, #81b64c));
+}
+.chapter-line-card__timeline-node-check-stack--aqua {
+  background: var(--color-aqua-300, #26c2a3);
+}
+.chapter-line-card__timeline-node-check-stack__icon {
+  flex-shrink: 0;
+  color: var(--color-text-inverse, #fff);
 }
 /* Next-to-learn line: 8×8 node, brand green outline (no glow) */
 .courses-content--v6 .chapter-line-card__timeline-node--next-to-learn {
@@ -11027,27 +11065,9 @@ body {
   border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
   background: var(--color-bg-primary, #312e2b);
 }
-/* French lines 1–3: same structure as Learn completed (transparent node + 13×13 circle-fill-check.png); tint only → DS --color-aqua-300 */
 .sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--completed {
   background: transparent;
   border-color: transparent;
-}
-/* Learn-sized 13×13 circle + check: solid var(--color-aqua-300) only (no bitmap filter) */
-.sections-list--practice .chapter-line-card__timeline-node-aqua-stack {
-  width: 13px;
-  height: 13px;
-  min-width: 13px;
-  min-height: 13px;
-  border-radius: 50%;
-  background: var(--color-aqua-300, #26c2a3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.sections-list--practice .chapter-line-card__timeline-node-aqua-stack__check {
-  flex-shrink: 0;
-  color: var(--color-text-inverse, #fff);
 }
 /* Practice rows: no body hover dim (was reading like a darker overlay) */
 .course-tab-panel--stats .sections-list--practice .chapter-line-card__body:hover {
@@ -11158,8 +11178,10 @@ body {
   border-color: var(--color-border-success, var(--color-green-300, #81B64C));
   background: var(--color-border-success, var(--color-green-300, #81B64C));
 }
-.chapter-line-card__timeline-node-icon {
-  color: var(--color-text-inverse, #fff);
+/* Completed row uses inner check-stack for color (Learn green / Practice aqua); keep outer ring invisible to avoid double fill (V4/V5 + V6) */
+.chapter-line-card__timeline-node--completed:has(.chapter-line-card__timeline-node-check-stack) {
+  background: transparent;
+  border-color: transparent;
 }
 /* Card body only: interactive area; hover/click apply here, not to the timeline (V4 default) */
 .chapter-line-card__body {
