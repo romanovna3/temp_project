@@ -485,7 +485,7 @@ function openOpeningCourse() {
     sessionStorage.setItem(OPENING_COURSES_V1_RETURN_STATE_KEY, JSON.stringify({
       scrollTop,
       selectedOpeningCardId: selectedOpeningCardId.value,
-      playSide: openingPlaySide.value,
+      playSide: card.type === 'White' ? 'white' : card.type === 'Black' ? 'black' : openingPlaySide.value,
     }))
     sessionStorage.setItem(OPENING_COURSES_V1_PRESET_BAR_KEY, JSON.stringify({
       viewportPreset: viewportPreset.value,
@@ -9870,7 +9870,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin-top: -16px;
+  margin-top: -8px;
   position: relative;
   overflow: visible;
   height: auto;

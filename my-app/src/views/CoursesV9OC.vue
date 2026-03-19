@@ -2982,19 +2982,148 @@ const courseSectionsLondonSystemWhite = [
   { id: 'london-system-white', name: 'London System', completed: 0, total: 7, status: 'not_started', videoAvailable: true },
 ]
 
+// Default OC lines: proper variation names (no notation). Same line count (10) for fallback.
+const OC_MAIN_LEVEL_DEFAULT = [
+  { id: '1', text: 'Main Line', completed: false },
+  { id: '2', text: 'Classical Variation', completed: false },
+  { id: '3', text: 'Exchange Variation', completed: false },
+  { id: '4', text: 'Alternative Line', completed: false },
+  { id: '5', text: 'Central Variation', completed: false },
+  { id: '6', text: 'Developmental Variation', completed: false },
+  { id: '7', text: 'Strategic Variation', completed: false },
+  { id: '8', text: 'Counterplay Variation', completed: false },
+  { id: '9', text: 'Sideline Variation', completed: false },
+  { id: '10', text: 'Practical Variation', completed: false },
+]
+
+// Scandinavian Defense: proper names (same for White and Black). 10 lines.
+const SCANDINAVIAN_DEFENSE_LINES = [
+  { id: '1', text: 'Pin Variation', completed: false },
+  { id: '2', text: 'Pin Variation: Black Castles Queenside', completed: false },
+  { id: '3', text: 'Pin Variation: Queen Check', completed: false },
+  { id: '4', text: 'Queen to the Edge Variation', completed: false },
+  { id: '5', text: 'Double Center Counter Variation', completed: false },
+  { id: '6', text: 'Early Queen Check Variation', completed: false },
+  { id: '7', text: 'Marshall Variation', completed: false },
+  { id: '8', text: 'Main Line', completed: false },
+  { id: '9', text: 'Icelandic Gambit', completed: false },
+  { id: '10', text: 'Portuguese Variation', completed: false },
+]
+
+// Caro-Kann Defense: proper names (same for White and Black). 10 lines.
+const CARO_KANN_DEFENSE_LINES = [
+  { id: '1', text: 'Classical Variation: Main Line', completed: false },
+  { id: '2', text: 'Tartakower Variation', completed: false },
+  { id: '3', text: 'Tartakower Variation: Black Captures', completed: false },
+  { id: '4', text: 'Black Builds A Pawn Triangle', completed: false },
+  { id: '5', text: 'Gurgenidze Variation', completed: false },
+  { id: '6', text: 'Campomanes Attack', completed: false },
+  { id: '7', text: 'Bronstein Variation', completed: false },
+  { id: '8', text: 'Advance Variation', completed: false },
+  { id: '9', text: 'Two Knights Variation', completed: false },
+  { id: '10', text: 'Panov Attack', completed: false },
+]
+
+// Scotch: proper names (same for White and Black). 10 lines.
+const SCOTCH_LINES = [
+  { id: '1', text: 'Classical Variation', completed: false },
+  { id: '2', text: 'Classical Variation Trap', completed: false },
+  { id: '3', text: 'Exchange Variation', completed: false },
+  { id: '4', text: 'Queen Chase Variation', completed: false },
+  { id: '5', text: 'Schmidt Variation: Main Line', completed: false },
+  { id: '6', text: 'Schmidt Variation with No Pin', completed: false },
+  { id: '7', text: 'Closed Variation', completed: false },
+  { id: '8', text: 'Counterattack Variation', completed: false },
+  { id: '9', text: 'Steinitz Variation', completed: false },
+  { id: '10', text: 'Göring Gambit', completed: false },
+]
+
+// Four Knights: proper names (same for White and Black). 10 lines.
+const FOUR_KNIGHTS_LINES = [
+  { id: '1', text: 'Scotch Four Knights', completed: false },
+  { id: '2', text: 'Four Knights: Queen Trade Variation', completed: false },
+  { id: '3', text: 'Classical Variation', completed: false },
+  { id: '4', text: 'Exchange Variation', completed: false },
+  { id: '5', text: 'Closed Variation', completed: false },
+  { id: '6', text: 'Three Knights Game', completed: false },
+  { id: '7', text: 'Three Knights Game: Counter-Sacrifice', completed: false },
+  { id: '8', text: 'Spanish Four Knights', completed: false },
+  { id: '9', text: 'Symmetrical Variation', completed: false },
+  { id: '10', text: 'Belgrade Gambit', completed: false },
+]
+
+// Italian Game: proper names (same for White and Black). 10 lines.
+const ITALIAN_GAME_LINES = [
+  { id: '1', text: 'Giuoco Piano', completed: false },
+  { id: '2', text: 'Evans Gambit', completed: false },
+  { id: '3', text: 'Fried Liver Attack', completed: false },
+  { id: '4', text: 'Two Knights Defense', completed: false },
+  { id: '5', text: 'Classical Variation', completed: false },
+  { id: '6', text: 'Moller Attack', completed: false },
+  { id: '7', text: 'Anti-Fried Liver', completed: false },
+  { id: '8', text: 'Gambit Line', completed: false },
+  { id: '9', text: 'Quiet Variation', completed: false },
+  { id: '10', text: 'Main Line', completed: false },
+]
+
+// Ruy Lopez: proper names (same for White and Black). 10 lines.
+const RUY_LOPEZ_LINES = [
+  { id: '1', text: 'Closed: Main Line', completed: false },
+  { id: '2', text: 'Morphy Defense', completed: false },
+  { id: '3', text: 'Berlin Defense', completed: false },
+  { id: '4', text: 'Exchange Variation', completed: false },
+  { id: '5', text: 'Open: Norwegian Variation', completed: false },
+  { id: '6', text: 'Schliemann Defense', completed: false },
+  { id: '7', text: 'Marshall Attack', completed: false },
+  { id: '8', text: 'Classical Variation', completed: false },
+  { id: '9', text: 'Archangel Variation', completed: false },
+  { id: '10', text: 'Breyer Variation', completed: false },
+]
+
+// Sicilian Defense: proper names (same for White and Black). 10 lines.
+const SICILIAN_DEFENSE_LINES = [
+  { id: '1', text: 'Open Sicilian', completed: false },
+  { id: '2', text: 'Najdorf Variation', completed: false },
+  { id: '3', text: 'Dragon Variation', completed: false },
+  { id: '4', text: 'Classical Variation', completed: false },
+  { id: '5', text: 'Scheveningen Variation', completed: false },
+  { id: '6', text: 'Alapin Variation', completed: false },
+  { id: '7', text: 'Closed Variation', completed: false },
+  { id: '8', text: 'Smith-Morra Gambit', completed: false },
+  { id: '9', text: 'Canal Attack', completed: false },
+  { id: '10', text: 'Grand Prix Attack', completed: false },
+]
+
+// Queen's Gambit: proper names (same for White and Black). 10 lines.
+const QUEENS_GAMBIT_LINES = [
+  { id: '1', text: 'Queen\'s Gambit Declined', completed: false },
+  { id: '2', text: 'Slav Defense', completed: false },
+  { id: '3', text: 'Queen\'s Gambit Accepted', completed: false },
+  { id: '4', text: 'Classical Variation', completed: false },
+  { id: '5', text: 'Tartakower Variation', completed: false },
+  { id: '6', text: 'Lasker Defense', completed: false },
+  { id: '7', text: 'Cambridge Springs', completed: false },
+  { id: '8', text: 'Exchange Variation', completed: false },
+  { id: '9', text: 'Semi-Slav', completed: false },
+  { id: '10', text: 'Main Line', completed: false },
+]
+
+// Petroff Defense: proper names (same for White and Black). 10 lines.
+const PETROFF_DEFENSE_LINES = [
+  { id: '1', text: 'Classical Variation', completed: false },
+  { id: '2', text: 'Steinitz Variation', completed: false },
+  { id: '3', text: 'Modern Attack', completed: false },
+  { id: '4', text: 'Exchange Variation', completed: false },
+  { id: '5', text: 'Three Knights Variation', completed: false },
+  { id: '6', text: 'Cochrane Gambit', completed: false },
+  { id: '7', text: 'Main Line', completed: false },
+  { id: '8', text: 'Symmetric Variation', completed: false },
+  { id: '9', text: 'Quiet Line', completed: false },
+  { id: '10', text: 'Alternative Line', completed: false },
+]
+
 const sectionMovesOC = {
-  'main-level': [
-    { id: '1', text: '2...d6 with 3...Nf6 4.Bd3 cxd4', completed: false },
-    { id: '2', text: '2...d6 with 3...Nf6 4.Bd3 g6', completed: false },
-    { id: '3', text: '2...e6 with 3...d5 4.exd5 exd5', completed: false },
-    { id: '4', text: '2...e6 with 3...cxd4 4.cxd4 d5', completed: false },
-    { id: '5', text: '2...d5 with 3...Qxd5 4.d4 Nf6', completed: false },
-    { id: '6', text: '2...d5 with 3...Qxd5 4.d4 cxd4 #1', completed: false },
-    { id: '7', text: '2...d5 with 3...Qxd5 4.d4 cxd4 #2', completed: false },
-    { id: '8', text: '2...Nc6 with 3...cxd4 4.cxd4 e6', completed: false },
-    { id: '9', text: '2...Nf6 with 3...Nd5 4.d4 cxd4 #1', completed: false },
-    { id: '10', text: '2...Nf6 with 3...Nd5 4.d4 cxd4 #2', completed: false },
-  ],
+  'main-level': OC_MAIN_LEVEL_DEFAULT,
 }
 
 // French Defense for White: real course content (10 variations from spec)
@@ -3024,14 +3153,42 @@ const sectionMovesLondonSystemWhite = {
   ],
 }
 
-/** OC section moves: use course-specific content when available (e.g. French Defense for White, London System for White). */
+/** OC section moves: use course-specific content when available. Same line names for White and Black (ignore "for white"/"for black"). */
 const sectionMovesOCResolved = computed(() => {
   const course = courseFromOCRoute.value
-  if (course?.title === 'French Defense' && course?.playSide === 'white') {
+  if (!course?.title) return sectionMovesOC
+  if (course.title === 'French Defense') {
     return { 'main-level': FRENCH_DEFENSE_WHITE_MAIN_LEVEL }
   }
-  if (course?.title === 'London System' && course?.playSide === 'white') {
+  if (course.title === 'London System' && course?.playSide === 'white') {
     return sectionMovesLondonSystemWhite
+  }
+  if (course.title === 'Scandinavian Defense') {
+    return { 'main-level': SCANDINAVIAN_DEFENSE_LINES }
+  }
+  if (course.title === 'Caro-Kann Defense') {
+    return { 'main-level': CARO_KANN_DEFENSE_LINES }
+  }
+  if (course.title === 'Scotch') {
+    return { 'main-level': SCOTCH_LINES }
+  }
+  if (course.title === 'Four Knights') {
+    return { 'main-level': FOUR_KNIGHTS_LINES }
+  }
+  if (course.title === 'Italian Game') {
+    return { 'main-level': ITALIAN_GAME_LINES }
+  }
+  if (course.title === 'Ruy Lopez') {
+    return { 'main-level': RUY_LOPEZ_LINES }
+  }
+  if (course.title === 'Sicilian Defense') {
+    return { 'main-level': SICILIAN_DEFENSE_LINES }
+  }
+  if (course.title === "Queen's Gambit" || course.title === "Queen's Gambit Accepted" || course.title === "Queen's Gambit Declined") {
+    return { 'main-level': QUEENS_GAMBIT_LINES }
+  }
+  if (course.title === 'Petroff Defense') {
+    return { 'main-level': PETROFF_DEFENSE_LINES }
   }
   return sectionMovesOC
 })
@@ -9894,14 +10051,18 @@ body {
   max-height: none;
 }
 
-/* Opening Courses V1: search panel (Figma 74-23788) – search input, Filters button, count, Sort by */
+/* Opening Courses V1: search panel (Figma 74-23788) – 436px width, 74px min-height, 6px top padding, 16px left padding; inputs row 440px, 8px gap, 40px height */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 100%;
+  box-sizing: border-box;
+  width: 436px;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 74px;
   height: fit-content;
-  padding: 0 16px 4px;
+  padding: 6px 16px 4px 16px;
   flex-shrink: 0;
   box-shadow: none;
   background-color: rgba(39, 37, 34, 1);
@@ -9910,12 +10071,17 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: var(--space-8, 8px);
+  gap: 8px;
 }
 .opening-search-panel__row--inputs {
-  gap: var(--space-8, 8px);
-  padding-left: 4px;
-  padding-right: 4px;
+  width: 440px;
+  max-width: 100%;
+  min-width: 0;
+  height: 40px;
+  min-height: 40px;
+  gap: 8px;
+  padding-left: 16px;
+  padding-right: 0;
 }
 .opening-search-panel__row--meta {
   justify-content: space-between;

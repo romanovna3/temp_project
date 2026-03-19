@@ -235,6 +235,9 @@ onMounted(() => nextTick(updateChipsOverflow))
 .opening-move-chip:hover {
   background: rgba(255, 255, 255, 0.18);
 }
+.opening-move-chip__label {
+  color: rgba(255, 255, 255, 0.7);
+}
 .opening-move-chip__x {
   font-size: 16px;
   line-height: 1;

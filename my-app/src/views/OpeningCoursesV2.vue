@@ -9788,7 +9788,7 @@ body {
   min-width: 0;
   height: fit-content;
   flex-shrink: 0;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
   padding-bottom: 0;
   background-color: rgba(39, 37, 34, 1);
   box-shadow: none;
@@ -9842,14 +9842,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin-top: -16px;
+  margin-top: -8px;
   position: relative;
   overflow: visible;
   height: auto;
   max-height: none;
 }
 
-/* Opening Courses V1: search panel – 436px width, 74px min-height, 6px top padding, 16px left padding; inputs row 440px, 8px gap */
+/* Opening Courses V1: search panel – 436px width, 82px min-height, 6px top padding, 16px left padding; inputs row 440px, 8px gap */
 .opening-search-panel {
   display: flex;
   flex-direction: column;
@@ -9858,11 +9858,11 @@ body {
   width: 436px;
   max-width: 100%;
   min-width: 0;
-  min-height: 74px;
+  min-height: 82px;
   height: fit-content;
   padding: 6px 4px 0 16px;
   margin-top: 0;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   flex-shrink: 0;
   box-shadow: none;
   background-color: rgba(39, 37, 34, 1);
