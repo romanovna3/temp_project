@@ -5073,6 +5073,13 @@ watch(
       openingCardPreviewSans.value = sans
       openingCardPreviewPlyIndex.value = getOpeningCardKeyPlyCount(sans.length)
       applyOpeningCardPreviewBoard()
+      // Movelist shares the sticky search block; openingSearchY at -H hides the whole strip. After picking a course, show it again.
+      openingSearchY.value = 0
+      nextTick(() => {
+        const wrap = openingV3ScrollWrapRef.value
+        if (wrap && typeof wrap.scrollTop === 'number') lastOpeningScrollTop = wrap.scrollTop
+        measureOpeningSearchH()
+      })
     } catch (_) {
       clearOpeningAutoMove()
       openingCardPreviewSans.value = []
