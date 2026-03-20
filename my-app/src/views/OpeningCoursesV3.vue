@@ -4516,6 +4516,11 @@ const openingRecommendedEntries = computed(() => {
   }
   return OPENING_RECOMMENDED_NEW_USER
 })
+/** Gold “Recommended” CcChip on flat explore list — uses `openingRecommendedEntries` + `isOpeningRecommended`. */
+function isExploreListRecommended(card) {
+  if (!card) return false
+  return isOpeningRecommended(card, openingRecommendedEntries.value)
+}
 /** Recommended section: from the sectioned list, using scenario-specific picks. */
 const openingCoursesRecommendedList = computed(() => {
   const entries = openingRecommendedEntries.value
@@ -4526,7 +4531,7 @@ const openingCoursesAllOthersList = computed(() => {
   const entries = openingRecommendedEntries.value
   return openingCoursesListForSections.value.filter((c) => !isOpeningRecommended(c, entries))
 })
-/** Sections for template: Recommended (if any) then All Courses (if any), each with title and count. */
+/** Logical sections (spec / ordering): Recommended entries + remainder. UI uses a single flat list (`openingCoursesFlatOrderedForExplore`). */
 const openingCoursesSections = computed(() => {
   const rec = openingCoursesRecommendedList.value
   const rest = openingCoursesAllOthersList.value
@@ -4534,6 +4539,12 @@ const openingCoursesSections = computed(() => {
   if (rec.length) sections.push({ id: 'recommended', title: 'Recommended', count: rec.length, list: rec })
   if (rest.length) sections.push({ id: 'all-courses', title: 'All Courses', count: rest.length, list: rest })
   return sections
+})
+/** New User + All tab: one scroll list — recommended first, then others (same order as former section headers). */
+const openingCoursesFlatOrderedForExplore = computed(() => {
+  const rec = openingCoursesRecommendedList.value
+  const rest = openingCoursesAllOthersList.value
+  return [...rec, ...rest]
 })
 
 /** First visit (no Back-from-chapter state): select first Recommended course so board + movelist match. */
@@ -6692,14 +6703,9 @@ onUnmounted(() => {
                       <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                     </div>
                     <template v-else-if="showRecommendedAndAllSections">
-                      <div v-for="section in openingCoursesSections" :key="section.id" class="opening-v1-section" data-name="Opening section">
-                        <div class="opening-v1-section-header">
-                          <span class="opening-v1-section-header__title">{{ section.title }}</span>
-                          <span class="opening-v1-section-header__count">{{ section.count }} {{ section.count === 1 ? 'course' : 'courses' }}</span>
-                        </div>
-                        <div class="opening-course-cards-list" data-name="Opening course cards">
+                      <div class="opening-course-cards-list opening-course-cards-list--flat" data-name="Opening course cards">
                           <article
-                            v-for="card in section.list"
+                            v-for="card in openingCoursesFlatOrderedForExplore"
                             :key="card.id"
                             class="opening-course-card"
               :class="[
@@ -6814,7 +6820,18 @@ onUnmounted(() => {
                     </template>
                     <template v-else>
                       <div class="opening-course-card__title-author">
-                        <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                        <div class="opening-course-card__title-row opening-course-card__title-row--with-chips">
+                          <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                          <CcChip
+                            v-if="isExploreListRecommended(card)"
+                            label="Recommended"
+                            color="gold"
+                            variant="translucent"
+                            :is-uppercase="false"
+                            label-class="opening-course-card__chip-label"
+                            class="opening-course-card__recommended-chip"
+                          />
+                        </div>
                         <p class="opening-course-card__description">{{ card.description }}</p>
                       </div>
                       <div class="opening-course-card__properties">
@@ -6825,7 +6842,6 @@ onUnmounted(() => {
                 </div>
               </div>
             </article>
-                    </div>
                       </div>
                   </template>
                 <template v-else>
@@ -6962,7 +6978,7 @@ onUnmounted(() => {
                 </template>
                 </template>
                 <template v-else>
-                  <!-- New User: Recommended + All Courses sections (same as All tab). No courses match the current filters. -->
+                  <!-- New User: flat list (recommended first + gold chip); same data rules as Returning All tab. Empty = no courses match filters. -->
                   <div v-if="openingCoursesListForSections.length === 0" class="opening-courses-empty-state" data-name="Opening courses empty state">
                     <img :src="baseUrl + 'icons/empty-state-no-courses.png'" alt="" class="opening-courses-empty-state__image" />
                     <div class="opening-courses-empty-state__text-group">
@@ -6972,14 +6988,9 @@ onUnmounted(() => {
                     <CcButton variant="secondary" size="medium" class="opening-courses-empty-state__btn" @click="clearAllOpeningFilters">Reset Search</CcButton>
                   </div>
                   <template v-else>
-                    <div v-for="section in openingCoursesSections" :key="section.id" class="opening-v1-section" data-name="Opening section">
-                      <div class="opening-v1-section-header">
-                        <span class="opening-v1-section-header__title">{{ section.title }}</span>
-                        <span class="opening-v1-section-header__count">{{ section.count }} {{ section.count === 1 ? 'course' : 'courses' }}</span>
-                      </div>
-                      <div class="opening-course-cards-list" data-name="Opening course cards">
+                    <div class="opening-course-cards-list opening-course-cards-list--flat" data-name="Opening course cards">
                   <article
-                    v-for="card in section.list"
+                    v-for="card in openingCoursesFlatOrderedForExplore"
                     :key="card.id"
                     class="opening-course-card"
                     :class="[
@@ -7094,7 +7105,18 @@ onUnmounted(() => {
                           </template>
                           <template v-else>
                             <div class="opening-course-card__title-author">
-                              <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                              <div class="opening-course-card__title-row opening-course-card__title-row--with-chips">
+                                <h3 class="opening-course-card__title">{{ card.title }}</h3>
+                                <CcChip
+                                  v-if="isExploreListRecommended(card)"
+                                  label="Recommended"
+                                  color="gold"
+                                  variant="translucent"
+                                  :is-uppercase="false"
+                                  label-class="opening-course-card__chip-label"
+                                  class="opening-course-card__recommended-chip"
+                                />
+                              </div>
                               <p class="opening-course-card__description">{{ card.description }}</p>
                             </div>
                             <div class="opening-course-card__properties">
@@ -7105,8 +7127,7 @@ onUnmounted(() => {
                       </div>
                     </div>
                   </article>
-                </div>
-                      </div>
+                    </div>
                     </template>
                 </template>
               </div>
@@ -10914,6 +10935,31 @@ body {
   position: relative;
   flex-shrink: 0;
   min-width: 0;
+}
+/* Flat explore list: course title + gold “Recommended” CcChip (GNS chip color gold, variant translucent). */
+.opening-course-card__title-row--with-chips {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+.opening-course-card__title-row--with-chips .opening-course-card__title {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+.opening-course-card__title-row--with-chips .opening-course-card__recommended-chip {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.opening-course-card__title-row--with-chips :deep(.cc-chip-fg),
+.opening-course-card__title-row--with-chips :deep(.opening-course-card__chip-label),
+.opening-course-card__recommended-chip :deep(.cc-chip-fg),
+.opening-course-card__recommended-chip :deep(.opening-course-card__chip-label) {
+  font-family: var(--font-family-system, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  font-size: 12px;
 }
 /* Title: card header – DS Heading XX-small (GNS: teams.design.public.tokens.semantic.typography.headings) */
 /* Scale: … x-small > xx-small > xxx-small (smallest). So XX-small is larger than XXX-small (14px). */

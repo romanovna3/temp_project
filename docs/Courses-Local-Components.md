@@ -184,9 +184,9 @@ const checkIconSize = computed(() => Math.max(12, Math.round(props.size * (2 / 3
 
 ---
 
-## Opening course card (V1)
+## Opening course card (V1 / V3)
 
-**Context:** Opening Courses V1 course list (`Courses.vue`, `.opening-v1-scroll`). Card shows cover, title, description, and “N Lines” chip.
+**Context:** Opening course list — legacy **V1** in `Courses.vue` (`.opening-v1-scroll`, “N Lines” chip in older builds); **V3** in `OpeningCoursesV3.vue`. Card shows cover, title, description; **V3** uses **White/Black** gray chip under description and optional **gold Recommended** chip beside the title on the explore list (New User + All tab). See **Opening Courses V3 – course list layout** below.
 
 ### Description truncation when headline wraps to 2 lines
 
@@ -390,6 +390,118 @@ Same CcChip API as Lines chip: `color="gray"`, `variant="translucent"`, `label-c
 - **Border radius:** Thumb `var(--radius-5, 5px)`; outline `calc(var(--radius-5, 5px) + 2px)`.
 - **Tile stroke:** Inside only (`inset 0 0 0 1px` + subtle outer shadow); no outer border.
 - **Optional Both tile:** When `allowBoth` is true, same 40×40 with left half white / right half black; king 32×32 centered on top.
+
+---
+
+## Design System: CcChip (`cc-chip`)
+
+**GNS key:** `teams.design.public.components.display.chip`
+
+Compact element for tags, labels, categorization. Multiple colors and opacity variants.
+
+### Props (canonical)
+
+| Prop | Type | Default | Description |
+|------|--------|---------|-------------|
+| `label` | `string \| number` | — | Chip label text |
+| `color` | `'aqua' \| 'blue' \| 'brown' \| 'fuchsia' \| 'gold' \| 'gray' \| 'green' \| 'orange' \| 'purple' \| 'red' \| 'skin' \| 'slate'` | `'gray'` | Chip color (**12** options; **gold** = Recommended badge on Opening V3) |
+| `variant` | `'opaque' \| 'translucent'` | `'translucent'` | Opacity variant |
+| `icon` | `string` | — | Icon glyph name |
+| `tooltip` | `string` | — | Tooltip on hover |
+| `labelClass` | `string` | — | Custom class on label |
+| `isUppercase` | `boolean` | `true` | Uppercase transform |
+
+**Platform (internal):** Web `cc-chip` — `client/shared/design-system/components/cc-chip/`
+
+### Opening Courses V3 – chip recipes
+
+| Role | `color` | `variant` | `is-uppercase` | `label-class` | `class` (wrapper) | `label` |
+|------|---------|-----------|----------------|---------------|-------------------|---------|
+| Play side | `gray` | `translucent` | `false` | `opening-course-card__chip-label` | `opening-course-card__color-chip` | `White` / `Black` |
+| Recommended | `gold` | `translucent` | `false` | `opening-course-card__chip-label` | `opening-course-card__recommended-chip` | `Recommended` |
+
+Typography overrides (system 12px) use the same `:deep(.opening-course-card__chip-label)` / `:deep(.cc-chip-fg)` patterns as gray chips.
+
+---
+
+## Opening Courses V3 – course list layout (flat + Recommended chip)
+
+**File:** `my-app/src/views/OpeningCoursesV3.vue`  
+**Routes:** `/courses/opening-courses-v3`, `/learn/opening-courses-v3`
+
+### Explore list (New User scenario, or Returning User → **All** tab)
+
+- **UI:** Single vertical list — same structural pattern as **Your Openings** (one `.opening-course-cards-list`, no in-list section chrome).
+- **Modifier:** `.opening-course-cards-list--flat` on the list container (semantic hook for “no section headers”).
+- **Order:** All **recommended** courses first (same set as former “Recommended” section), then **all others** (same as former “All Courses”).
+
+### Data model (retain for library, tests, and docs)
+
+| Name | Role |
+|------|------|
+| `openingCoursesListForSections` | Source array: New User → `openingCoursesFiltered`; All tab → `openingCoursesRestList`. |
+| `openingRecommendedEntries` | `ComputedRef<{ openingKey, type }[]>` — picks depend on scenario + (All tab) color filter. |
+| `openingCoursesRecommendedList` | Filter: cards in `openingCoursesListForSections` that match `openingRecommendedEntries`. |
+| `openingCoursesAllOthersList` | Filter: same list, **not** recommended. |
+| `openingCoursesSections` | **Logical** shape only: `[{ id: 'recommended', title, count, list }, { id: 'all-courses', … }]`. **Not** rendered as headers in V3 UI; preserves the old “two sections” spec. |
+| `openingCoursesFlatOrderedForExplore` | Rendered array: `[...openingCoursesRecommendedList, ...openingCoursesAllOthersList]`. |
+
+### Template – not-started card (explore)
+
+Title row + optional gold chip + description + properties row:
+
+```vue
+<div class="opening-course-card__title-author">
+  <div class="opening-course-card__title-row opening-course-card__title-row--with-chips">
+    <h3 class="opening-course-card__title">{{ card.title }}</h3>
+    <CcChip
+      v-if="isExploreListRecommended(card)"
+      label="Recommended"
+      color="gold"
+      variant="translucent"
+      :is-uppercase="false"
+      label-class="opening-course-card__chip-label"
+      class="opening-course-card__recommended-chip"
+    />
+  </div>
+  <p class="opening-course-card__description">{{ card.description }}</p>
+</div>
+<div class="opening-course-card__properties">
+  <CcChip
+    :label="card.type === 'White' ? 'White' : 'Black'"
+    color="gray"
+    variant="translucent"
+    :is-uppercase="false"
+    label-class="opening-course-card__chip-label"
+    class="opening-course-card__color-chip"
+  />
+</div>
+```
+
+### Helpers
+
+- `isOpeningRecommended(card, entries)` — `entries.some(r => r.openingKey === card.openingKey && r.type === card.type)`.
+- `isExploreListRecommended(card)` — `isOpeningRecommended(card, openingRecommendedEntries.value)`.
+
+### Retired in V3 UI (spec kept above)
+
+- Visible **section headers** (“Recommended”, “All Courses”) and **per-section counts** in the scroll list.
+- Styles `.opening-v1-section`, `.opening-v1-section-header`, `.opening-v1-section-header__title`, `.opening-v1-section-header__count` remain in the stylesheet for reference / reuse.
+
+### CSS highlights (`OpeningCoursesV3.vue` unscoped styles)
+
+- `.opening-course-card__title-row--with-chips` — `display: flex`; `align-items: flex-start`; `gap: 6px`; full width; `min-width: 0`.
+- Title inside row: `flex: 1`; `min-width: 0`; `width: auto` (overrides default full-width title when in row).
+- `.opening-course-card__recommended-chip` — `flex-shrink: 0`; `margin-top: 1px`.
+- `:deep(.cc-chip-fg)` / `:deep(.opening-course-card__chip-label)` on row + recommended chip → system font, **12px**.
+
+### Preselection
+
+- On first load (no back-from-chapter state), **first recommended** card: `openingCoursesRecommendedList[0]` → `preselectFirstRecommendedOpeningCard()`.
+
+### Your Openings tab
+
+- Still uses flat `openingV3RubCourseList` only; **no** gold Recommended chip (explore-only).
 
 ---
 
