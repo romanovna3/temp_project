@@ -6532,7 +6532,7 @@ onUnmounted(() => {
                             @click="onOpeningMovelistSegmentClick(i + 1)"
                           >
                             <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                            <template v-else>&nbsp;{{ san }}</template>
+                            <template v-else>{{ san }}</template>
                           </button>
                         </template>
                       </div>
@@ -10345,6 +10345,10 @@ body {
   text-align: left;
   vertical-align: baseline;
   border-radius: 2px;
+}
+/* Explicit gap between move buttons (avoids collapsed space between inline controls). */
+.opening-card-movelist__segment + .opening-card-movelist__segment {
+  margin-left: 0.35em;
 }
 .opening-card-movelist__segment:hover {
   color: rgba(255, 255, 255, 0.9);
