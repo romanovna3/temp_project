@@ -17,6 +17,7 @@ import OpeningCoursePage from './OpeningCoursePage.vue'
 import AquaBadge from '../components/AquaBadge.vue'
 import ColorToggle from './opening-courses/ColorToggle.vue'
 import FilterChipV2 from './opening-courses/FilterChipV2.vue'
+import { OPENING_FIRST_10_MOVES } from '../data/openingFirst10Moves.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -125,9 +126,9 @@ function getCoverPieceFromMove(san, isWhite) {
   return null
 }
 
-// Build cover pieces from opening title (uses OPENING_FIRST_5_MOVES)
+// Build cover pieces from opening title (uses OPENING_FIRST_10_MOVES)
 function coverPiecesFromOpening(title) {
-  const moves = OPENING_FIRST_5_MOVES[title]
+  const moves = OPENING_FIRST_10_MOVES[title]
   if (!moves?.length) return []
   const pieces = []
   // 1st White move
@@ -148,7 +149,7 @@ function coverPiecesFromOpening(title) {
   return pieces
 }
 
-// Fallback for openings not in OPENING_FIRST_5_MOVES
+// Fallback for openings not in OPENING_FIRST_10_MOVES
 function coverPiecesFromFirstMove(firstMove) {
   const m = (firstMove || '').toLowerCase()
   if (m.includes('1. e4') || m.includes('1.e4')) return [{ type: 'wp', col: 2, row: 2 }, { type: 'bp', col: 2, row: 1 }] // e4 e5
@@ -213,157 +214,7 @@ const OPENING_DESCRIPTIONS = {
   "Sicilian Defense": "Ambitious reply to 1.e4. Black unbalances from move one for complex, tactical games.",
 }
 
-// First 5 moves (main line) per opening – used to show position on main board and filter courses. Format: array of { white, black }.
-// Edit this data in docs/opening-moves-data.md then copy here.
-const OPENING_FIRST_5_MOVES = {
-  "Alapin": [
-    { white: 'e4', black: 'c5' },
-    { white: 'c3', black: 'd5' },
-    { white: 'exd5', black: 'Qxd5' },
-    { white: 'd4', black: 'Nf6' },
-    { white: 'Nf3', black: 'e6' }
-  ],
-  "Against 1. c4 & 1. Nf3": [
-    { white: 'c4', black: 'e5' },
-    { white: 'Nc3', black: 'Nf6' },
-    { white: 'Nf3', black: 'Nc6' },
-    { white: 'g3', black: 'd5' },
-    { white: 'cxd5', black: 'Nxd5' }
-  ],
-  "Caro-Kann Defense": [
-    { white: 'e4', black: 'c6' },
-    { white: 'd4', black: 'd5' },
-    { white: 'Nc3', black: 'dxe4' },
-    { white: 'Nxe4', black: 'Bf5' },
-    { white: 'Ng3', black: 'Bg6' }
-  ],
-  "English Opening": [
-    { white: 'c4', black: 'e5' },
-    { white: 'Nc3', black: 'Nf6' },
-    { white: 'Nf3', black: 'Nc6' },
-    { white: 'g3', black: 'Bb4' },
-    { white: 'Bg2', black: 'O-O' }
-  ],
-  "Four Knights": [
-    { white: 'e4', black: 'e5' },
-    { white: 'Nf3', black: 'Nc6' },
-    { white: 'Nc3', black: 'Nf6' },
-    { white: 'Bb5', black: 'Bb4' },
-    { white: 'O-O', black: 'O-O' }
-  ],
-  "French Defense": [
-    { white: 'e4', black: 'e6' },
-    { white: 'd4', black: 'd5' },
-    { white: 'Nd2', black: 'Nf6' },
-    { white: 'e5', black: 'Nfd7' },
-    { white: 'Bd3', black: 'c5' }
-  ],
-  "Fried Liver": [
-    { white: 'e4', black: 'e5' },
-    { white: 'Nf3', black: 'Nc6' },
-    { white: 'Bc4', black: 'Nf6' },
-    { white: 'Ng5', black: 'd5' },
-    { white: 'exd5', black: 'Nxd5' }
-  ],
-  "Italian Game": [
-    { white: 'e4', black: 'e5' },
-    { white: 'Nf3', black: 'Nc6' },
-    { white: 'Bc4', black: 'Bc5' },
-    { white: 'c3', black: 'Nf6' },
-    { white: 'd4', black: 'exd4' }
-  ],
-  "King's Indian Defense": [
-    { white: 'd4', black: 'Nf6' },
-    { white: 'c4', black: 'g6' },
-    { white: 'Nc3', black: 'Bg7' },
-    { white: 'e4', black: 'd6' },
-    { white: 'Nf3', black: 'O-O' }
-  ],
-  "London System": [
-    { white: 'd4', black: 'd5' },
-    { white: 'Bf4', black: 'Nf6' },
-    { white: 'e3', black: 'e6' },
-    { white: 'Nf3', black: 'c5' },
-    { white: 'c3', black: 'Nc6' }
-  ],
-  "Nimzo-Indian Defense": [
-    { white: 'd4', black: 'Nf6' },
-    { white: 'c4', black: 'e6' },
-    { white: 'Nc3', black: 'Bb4' },
-    { white: 'Qc2', black: 'O-O' },
-    { white: 'a3', black: 'Bxc3+' }
-  ],
-  "Open Sicilian": [
-    { white: 'e4', black: 'c5' },
-    { white: 'Nf3', black: 'd6' },
-    { white: 'd4', black: 'cxd4' },
-    { white: 'Nxd4', black: 'Nf6' },
-    { white: 'Nc3', black: 'a6' }
-  ],
-  "Petroff Defense": [
-    { white: 'e4', black: 'e5' },
-    { white: 'Nf3', black: 'Nf6' },
-    { white: 'Nxe5', black: 'd6' },
-    { white: 'Nf3', black: 'Nxe4' },
-    { white: 'd4', black: 'd5' }
-  ],
-  "Pirc Defense": [
-    { white: 'e4', black: 'd6' },
-    { white: 'd4', black: 'Nf6' },
-    { white: 'Nc3', black: 'g6' },
-    { white: 'f4', black: 'Bg7' },
-    { white: 'Nf3', black: 'O-O' }
-  ],
-  "Queen's Gambit": [
-    { white: 'd4', black: 'd5' },
-    { white: 'c4', black: 'e6' },
-    { white: 'Nc3', black: 'Nf6' },
-    { white: 'Bg5', black: 'Be7' },
-    { white: 'e3', black: 'O-O' }
-  ],
-  "Queen's Gambit Accepted": [
-    { white: 'd4', black: 'd5' },
-    { white: 'c4', black: 'dxc4' },
-    { white: 'e3', black: 'e5' },
-    { white: 'Bxc4', black: 'exd4' },
-    { white: 'exd4', black: 'Nf6' }
-  ],
-  "Queen's Gambit Declined": [
-    { white: 'd4', black: 'd5' },
-    { white: 'c4', black: 'e6' },
-    { white: 'Nc3', black: 'Nf6' },
-    { white: 'Bg5', black: 'Be7' },
-    { white: 'e3', black: 'O-O' }
-  ],
-  "Ruy Lopez": [
-    { white: 'e4', black: 'e5' },
-    { white: 'Nf3', black: 'Nc6' },
-    { white: 'Bb5', black: 'a6' },
-    { white: 'Ba4', black: 'Nf6' },
-    { white: 'O-O', black: 'Be7' }
-  ],
-  "Scandinavian Defense": [
-    { white: 'e4', black: 'd5' },
-    { white: 'exd5', black: 'Qxd5' },
-    { white: 'Nc3', black: 'Qa5' },
-    { white: 'd4', black: 'Nf6' },
-    { white: 'Nf3', black: 'Bf5' }
-  ],
-  "Scotch": [
-    { white: 'e4', black: 'e5' },
-    { white: 'Nf3', black: 'Nc6' },
-    { white: 'd4', black: 'exd4' },
-    { white: 'Nxd4', black: 'Bc5' },
-    { white: 'Be3', black: 'Qf6' }
-  ],
-  "Sicilian Defense": [
-    { white: 'e4', black: 'c5' },
-    { white: 'Nf3', black: 'd6' },
-    { white: 'd4', black: 'cxd4' },
-    { white: 'Nxd4', black: 'Nf6' },
-    { white: 'Nc3', black: 'a6' }
-  ],
-}
+// Main-line moves: 10 full moves per opening (`{ white, black }` pairs). Source: `src/data/openingFirst10Moves.js` — validate with `node scripts/validate-opening-lines.mjs` after edits.
 
 // Two courses per opening (white and black). One card per row; same opening name can appear twice (White + Black).
 // courseNumber from raw: 2 = both colors (dropdown, default White); 1 = single color (indicator from Color column).
@@ -3555,7 +3406,7 @@ watchEffect(() => {
         return
       }
       const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
-      const moves = card ? OPENING_FIRST_5_MOVES[card.title] : null
+      const moves = card ? OPENING_FIRST_10_MOVES[card.title] : null
       if (moves?.length) {
         const firstTwo = moves.slice(0, 2)
         const { fen, lastMove: last } = getPositionAtEndOfLine(firstTwo)
@@ -4531,7 +4382,7 @@ function getPositionFromFilterMoves(filterMoves) {
 function courseMatchesMoveSequence(card, filterMoves) {
   if (!filterMoves?.length) return true
   const filterSans = filterMoves.map((m) => m.san)
-  const courseMoves = OPENING_FIRST_5_MOVES[card.title]
+  const courseMoves = OPENING_FIRST_10_MOVES[card.title]
   const courseSans = courseMoves
     ? courseMoves.flatMap((p) => [p.white, p.black].filter(Boolean))
     : (() => {
@@ -4949,12 +4800,12 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
   }
 }, { immediate: true })
 
-// Dedicated watcher: when an opening card is selected on Opening Courses V3, sync the main board to that opening’s full main line from OPENING_FIRST_5_MOVES.
+// Dedicated watcher: when an opening card is selected on Opening Courses V3, sync the main board to that opening’s full main line from OPENING_FIRST_10_MOVES.
 // If Error -102 on /#/courses/opening-courses-v3: apply .cursor/rules/opening-courses-v3-crash-102.mdc
-// Fallback: if OPENING_FIRST_5_MOVES[card.title] is missing, build a 1-move array from card.firstMove (e.g. "1. e4" → e4).
+// Fallback: if OPENING_FIRST_10_MOVES[card.title] is missing, build a 1-move array from card.firstMove (e.g. "1. e4" → e4).
 function getOpeningMovesForCard(card) {
   if (!card) return null
-  const fromMap = OPENING_FIRST_5_MOVES[card.title]
+  const fromMap = OPENING_FIRST_10_MOVES[card.title]
   if (fromMap?.length) return fromMap
   const m = (card.firstMove || '').match(/\d+\.\s*(\S+)/)
   if (m) return [{ white: m[1], black: '' }]
