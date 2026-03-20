@@ -491,7 +491,7 @@ Title row + optional gold chip + description + properties row:
 ### CSS highlights (`OpeningCoursesV3.vue` unscoped styles)
 
 - `.opening-course-card__title-row--with-chips` — `display: flex`; `align-items: flex-start`; `gap: 6px`; full width; `min-width: 0`.
-- Title inside row: `flex: 1`; `min-width: 0`; `width: auto` (overrides default full-width title when in row).
+- Title inside row: `flex: 0 1 auto`; `width: fit-content`; `max-width: 100%`; `min-width: 0` — intrinsic width so the gold chip sits next to the title; can shrink for ellipsis when long.
 - `.opening-course-card__recommended-chip` — `flex-shrink: 0`; `margin-top: 1px`.
 - `:deep(.cc-chip-fg)` / `:deep(.opening-course-card__chip-label)` on row + recommended chip → system font, **12px**.
 
