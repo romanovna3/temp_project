@@ -164,21 +164,18 @@ function openingNameKey(name) {
   if (name === 'Scotch Game') return 'Scotch'
   return name
 }
-/** Recommended (New User + All tab list): Italian (White), Ruy Lopez (Black). */
+/** Recommended (New User + All tab list): Queen's Gambit (White), Ruy Lopez (Black). */
 const OPENING_RECOMMENDED_NEW_USER = [
-  { openingKey: 'Italian Game', type: 'White' },
+  { openingKey: "Queen's Gambit", type: 'White' },
   { openingKey: 'Ruy Lopez', type: 'Black' },
 ]
 /**
  * Returning User → All tab (color picker):
- * - White: Italian is often started; use Queen's Gambit + Fried Liver on the rest list.
- * - Black: restore classic Ruy Lopez (Black), matching the original New User pair.
- * - Both: show White + Black picks together.
+ * - White: Queen's Gambit only.
+ * - Black: Ruy Lopez (Black).
+ * - Both: White + Black picks together.
  */
-const OPENING_RECOMMENDED_RETURNING_ALL_WHITE = [
-  { openingKey: "Queen's Gambit", type: 'White' },
-  { openingKey: 'Fried Liver', type: 'White' },
-]
+const OPENING_RECOMMENDED_RETURNING_ALL_WHITE = [{ openingKey: "Queen's Gambit", type: 'White' }]
 const OPENING_RECOMMENDED_RETURNING_ALL_BLACK = [
   { openingKey: 'Ruy Lopez', type: 'Black' },
 ]
@@ -4547,12 +4544,22 @@ const openingCoursesFlatOrderedForExplore = computed(() => {
   return [...rec, ...rest]
 })
 
-/** First visit (no Back-from-chapter state): select first Recommended course so board + movelist match. */
+/** Select first recommended course in **entries order** (not filtered sort order) so e.g. Queen's Gambit wins over Ruy Lopez. */
 function preselectFirstRecommendedOpeningCard() {
   if (!isOpeningCoursesV3.value || !openingV3Ready.value) return
   if (!showRecommendedAndAllSections.value) return
   if (selectedOpeningCardId.value != null) return
-  const first = openingCoursesRecommendedList.value[0]
+  const list = openingCoursesListForSections.value
+  const entries = openingRecommendedEntries.value
+  let first = null
+  for (const spec of entries) {
+    const card = list.find((c) => c.openingKey === spec.openingKey && c.type === spec.type)
+    if (card) {
+      first = card
+      break
+    }
+  }
+  if (!first) first = openingCoursesRecommendedList.value[0]
   if (!first) return
   selectedOpeningCardId.value = first.id
   selectedOpeningCardHovered.value = true
@@ -4561,6 +4568,23 @@ function preselectFirstRecommendedOpeningCard() {
     openingFilterColor.value = first.type === 'Black' ? 'black' : 'white'
   }
 }
+
+/** Ready + explore context: preselect after layout (fixes race with v-if openingV3Ready and tab default My Openings → All). */
+watch(
+  () =>
+    isOpeningCoursesV3.value &&
+    openingV3Ready.value &&
+    showRecommendedAndAllSections.value,
+  (ok) => {
+    if (!ok) return
+    nextTick(() => {
+      nextTick(() => {
+        requestAnimationFrame(() => preselectFirstRecommendedOpeningCard())
+      })
+    })
+  },
+  { flush: 'post' }
+)
 
 watch(openingCoursesFiltered, () => {
   nextTick(() => requestAnimationFrame(measureOpeningCardTitleLines))

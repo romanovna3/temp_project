@@ -497,7 +497,7 @@ Title row + optional gold chip + description + properties row:
 
 ### Preselection
 
-- On first load (no back-from-chapter state), **first recommended** card: `openingCoursesRecommendedList[0]` → `preselectFirstRecommendedOpeningCard()`.
+- On load / when **explore** becomes active (`openingV3Ready` + New User or All tab), `preselectFirstRecommendedOpeningCard()` runs (after `nextTick` ×2 + `requestAnimationFrame`). It picks the **first card matching `openingRecommendedEntries` in entry order** inside `openingCoursesListForSections` (so e.g. Queen’s Gambit White before Ruy Lopez Black), not `openingCoursesRecommendedList[0]` sort order. Skips if `selectedOpeningCardId` already set (e.g. back-from-chapter restore).
 
 ### Your Openings tab
 
