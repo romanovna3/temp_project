@@ -10105,10 +10105,10 @@ body {
 /* Taller row when movelist is shown (selected move uses 16px / 20px line + glass pill). */
 .opening-meta-slot--movelist-active {
   height: auto;
-  min-height: 28px;
+  min-height: 24px;
 }
 .opening-meta-slot--movelist-active.opening-meta-slot--with-chips {
-  min-height: 34px;
+  min-height: 32px;
 }
 /* Chips row: scrollable left + fixed right (chevron + Clear all); height fits content */
 .opening-chips-row {
@@ -10341,12 +10341,13 @@ body {
   width: 100%;
   max-width: 436px;
   min-width: 0;
-  min-height: 28px;
+  min-height: 24px;
   height: auto;
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
+/* DS text/medium: 14px / 16px, weight 400 */
 .opening-card-movelist {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -10355,7 +10356,7 @@ body {
   flex: 1;
   padding-bottom: 2px; /* room for selected pill bottom border (inset -2px) */
   font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 16px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
@@ -10415,13 +10416,14 @@ body {
   border-radius: 2px;
   pointer-events: none;
 }
+/* DS text/medium-bold: 14px / 16px, weight 600 */
 .opening-card-movelist__pill-text {
   position: relative;
   z-index: 1;
   flex-shrink: 0;
-  font-family: 'Inter', var(--font-family-system, system-ui, sans-serif);
-  font-size: 16px;
-  line-height: 20px;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 16px;
   font-weight: 600;
   font-style: normal;
   color: #ffffff;
