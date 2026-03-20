@@ -1764,11 +1764,28 @@ function hasPreviousPlyInLine() {
 }
 
 function onFooterNextClick() {
-  if (panelView.value !== 'line') {
-    nextQuestion()
+  if (panelView.value === 'line') {
+    if (hasNextPlyInLine()) selectNextPly()
     return
   }
-  if (hasNextPlyInLine()) selectNextPly()
+  if (openingFooterCanRedo.value) {
+    redoOpeningFreePlayMove()
+    return
+  }
+  nextQuestion()
+}
+
+function onFooterPreviousClick() {
+  if (panelView.value === 'line') {
+    selectPreviousPly()
+    return
+  }
+  if (openingFooterCanUndo.value) {
+    playSound('move')
+    removeOpeningFilterMoveAt(openingFilterMoves.value.length - 1)
+    return
+  }
+  prevQuestion()
 }
 
 function selectPreviousPly() {
@@ -3965,6 +3982,7 @@ const tryMove = (from, to) => {
       const n = filterMoves.length
       const moveNum = Math.floor(n / 2) + 1
       const display = n % 2 === 0 ? `${moveNum}.${san}` : `${moveNum}...${san}`
+      openingFreePlayRedoStack.value = []
       openingFilterMoves.value = [...filterMoves, { san, display }]
       const isCapture = getPieceOnSquare(to) !== undefined
       makeMove(from, to)
@@ -4331,6 +4349,17 @@ function isOpeningCardSelected(cardId) {
 const openingSearchQuery = ref('')
 // Opening V1: move sequence from board – filters courses; each item { san, display } e.g. { san: 'e4', display: '1.e4' }
 const openingFilterMoves = ref([])
+/** Moves undone from the opening list board (LIFO); footer Next replays them until a new move clears this stack. */
+const openingFreePlayRedoStack = ref([])
+const openingListFreePlay = computed(
+  () => isOpeningCoursesV3.value && panelView.value === 'courses' && currentQuestionIndex.value < 0
+)
+const openingFooterCanUndo = computed(
+  () => openingListFreePlay.value && openingFilterMoves.value.length > 0
+)
+const openingFooterCanRedo = computed(
+  () => openingListFreePlay.value && openingFreePlayRedoStack.value.length > 0
+)
 // Keyword tags from search (Enter): filter by title/description containing each
 const openingKeywordTags = ref([])
 /** Filter courses by piece color: 'white' | 'black' (Color Toggle in header). V4: init from sessionStorage. */
@@ -4370,6 +4399,7 @@ watch(
     ) {
       clearOpeningAutoMove()
       openingFilterMoves.value = []
+      openingFreePlayRedoStack.value = []
       pieces.value = parseFEN(STARTING_FEN)
       lastMove.value = null
       selectedSquare.value = null
@@ -4631,18 +4661,53 @@ watch(openingV3RubActiveTab, () => {
   if (el && typeof el.scrollTop === 'number') el.scrollTop = 0
 })
 
-// Remove move at index and all after; sync board to new position
+// Remove move at index and all after; sync board to new position. Single-move pop → push to redo stack; multi → clear redo.
 function removeOpeningFilterMoveAt(index) {
   clearOpeningCardPreviewTimeout()
   clearOpeningAutoMove()
   selectedOpeningCardId.value = null
-  const next = openingFilterMoves.value.slice(0, index)
+  const prev = openingFilterMoves.value
+  if (index < 0 || index >= prev.length) return
+  const removed = prev.slice(index)
+  const next = prev.slice(0, index)
+  if (removed.length === 1) {
+    openingFreePlayRedoStack.value = [...openingFreePlayRedoStack.value, removed[0]]
+  } else {
+    openingFreePlayRedoStack.value = []
+  }
   openingFilterMoves.value = next
   const { fen, lastMove: last } = getPositionFromFilterMoves(next)
   pieces.value = parseFEN(fen)
   lastMove.value = last
   selectedSquare.value = null
   checkmateHighlight.value = null
+}
+
+function redoOpeningFreePlayMove() {
+  const stack = openingFreePlayRedoStack.value
+  if (!stack.length) return
+  const move = stack[stack.length - 1]
+  clearOpeningCardPreviewTimeout()
+  clearOpeningAutoMove()
+  selectedOpeningCardId.value = null
+  const chess = new Chess()
+  for (const m of openingFilterMoves.value) {
+    const ok = chess.move(m.san)
+    if (!ok) return
+  }
+  const result = chess.move(move.san)
+  if (!result) return
+  openingFreePlayRedoStack.value = stack.slice(0, -1)
+  const n = openingFilterMoves.value.length
+  const moveNum = Math.floor(n / 2) + 1
+  const display = n % 2 === 0 ? `${moveNum}.${result.san}` : `${moveNum}...${result.san}`
+  openingFilterMoves.value = [...openingFilterMoves.value, { san: result.san, display }]
+  const { fen, lastMove: last } = getPositionFromFilterMoves(openingFilterMoves.value)
+  pieces.value = parseFEN(fen)
+  lastMove.value = last
+  selectedSquare.value = null
+  checkmateHighlight.value = null
+  playSound('move')
 }
 
 // Parse search text as SAN (strip "1.", "1...", "2.", etc.)
@@ -4672,6 +4737,7 @@ function onOpeningSearchEnter() {
         const n = filterMoves.length
         const moveNum = Math.floor(n / 2) + 1
         const display = n % 2 === 0 ? `${moveNum}.${result.san}` : `${moveNum}...${result.san}`
+        openingFreePlayRedoStack.value = []
         openingFilterMoves.value = [...filterMoves, { san: result.san, display }]
         const { fen, lastMove: last } = getPositionFromFilterMoves(openingFilterMoves.value)
         pieces.value = parseFEN(fen)
@@ -4702,6 +4768,7 @@ function clearAllOpeningFilters() {
   clearOpeningAutoMove()
   selectedOpeningCardId.value = null
   openingFilterMoves.value = []
+  openingFreePlayRedoStack.value = []
   openingKeywordTags.value = []
   const { fen, lastMove: last } = getPositionFromFilterMoves([])
   pieces.value = parseFEN(fen)
@@ -4716,6 +4783,7 @@ function clearBoardPosition() {
   clearOpeningAutoMove()
   selectedOpeningCardId.value = null
   openingFilterMoves.value = []
+  openingFreePlayRedoStack.value = []
   const { fen, lastMove: last } = getPositionFromFilterMoves([])
   pieces.value = parseFEN(fen)
   lastMove.value = last
@@ -8729,16 +8797,16 @@ v-if="isVideoV6OrV7"
               <button
                 type="button"
                 class="footer-icon-btn"
-                :disabled="!(panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasPreviousPlyInLine())"
+                :disabled="!((panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasPreviousPlyInLine()) || openingFooterCanUndo)"
                 aria-label="Previous"
-                @click="panelView === 'line' ? selectPreviousPly() : prevQuestion()"
+                @click="onFooterPreviousClick"
               >
                 <CcIcon name="arrow-chevron-left" variant="glyph" :size="20" class="footer-icon" />
               </button>
               <button
                 type="button"
                 class="footer-icon-btn"
-                :disabled="!(panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasNextPlyInLine())"
+                :disabled="!((panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasNextPlyInLine()) || openingFooterCanRedo)"
                 aria-label="Next"
                 @click="onFooterNextClick"
               >
