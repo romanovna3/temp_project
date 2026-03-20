@@ -4356,6 +4356,32 @@ function measureOpeningSearchH() {
     }
   })
 }
+
+/** Selected course: slide sticky strip so the search row is off-screen; movelist (meta row) stays visible. */
+function positionOpeningStickyMovelistOnly() {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      const filter = openingSearchRef.value
+      const wrap = openingV3ScrollWrapRef.value
+      if (!filter) return
+      const panel = filter.querySelector('.opening-search-panel')
+      const row = filter.querySelector('.opening-search-panel__row--inputs')
+      let hidePx = 52
+      if (panel && row) {
+        const gapStr = getComputedStyle(panel).gap
+        const gap = parseFloat(gapStr) || 6
+        hidePx = row.offsetTop + row.offsetHeight + gap
+      }
+      const h = filter.offsetHeight || 92
+      openingSearchH.value = h
+      openingSearchY.value = clamp(-hidePx, -h, 0)
+      if (wrap) {
+        wrap.style.setProperty('--opening-search-h', `${h}px`)
+        if (typeof wrap.scrollTop === 'number') lastOpeningScrollTop = wrap.scrollTop
+      }
+    })
+  })
+}
 const openingSortLabel = computed(() => {
   const sort = effectiveOpeningSortBy.value
   if (sort === 'recent') return 'Most Recent'
@@ -5073,13 +5099,7 @@ watch(
       openingCardPreviewSans.value = sans
       openingCardPreviewPlyIndex.value = getOpeningCardKeyPlyCount(sans.length)
       applyOpeningCardPreviewBoard()
-      // Movelist shares the sticky search block; openingSearchY at -H hides the whole strip. After picking a course, show it again.
-      openingSearchY.value = 0
-      nextTick(() => {
-        const wrap = openingV3ScrollWrapRef.value
-        if (wrap && typeof wrap.scrollTop === 'number') lastOpeningScrollTop = wrap.scrollTop
-        measureOpeningSearchH()
-      })
+      positionOpeningStickyMovelistOnly()
     } catch (_) {
       clearOpeningAutoMove()
       openingCardPreviewSans.value = []
