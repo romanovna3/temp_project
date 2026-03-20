@@ -5017,10 +5017,7 @@ function applyOpeningCardPreviewBoard() {
   }
 }
 
-// How long to show card preview before resetting board to filter position (ms)
-const OPENING_CARD_PREVIEW_DURATION_MS = 2000
 let openingCardPreviewResetTimeoutId = null
-let openingCardPreviewStartTime = null // When the preview animation finished and timer started
 
 // Reset board to current filter position (or starting position if no filter)
 function resetBoardToFilterPosition() {
@@ -5041,37 +5038,18 @@ function clearOpeningCardPreviewTimeout() {
   }
 }
 
-// Start the reset timer (called after animation completes)
-function startOpeningCardResetTimer(delayMs) {
-  clearOpeningCardPreviewTimeout()
-  openingCardPreviewStartTime = Date.now()
-  // Do not start timer while selected card is hovered – board stays on preview until hover ends
-  if (!selectedOpeningCardHovered.value) {
-    openingCardPreviewResetTimeoutId = setTimeout(() => {
-      resetBoardToFilterPosition()
-    }, delayMs)
-  }
-}
-
-// Selected card hover: keep full preview while pointer on card; restore full line if board was collapsed on unhover
+// Selected card hover: UI state only — board stays on selected opening until another card is chosen or same card toggled off
 function onOpeningCardHover(cardId) {
   if (cardId !== selectedOpeningCardId.value) return
   selectedOpeningCardHovered.value = true
   clearOpeningCardPreviewTimeout()
-  if (openingCardPreviewSans.value.length > 0 && openingCardPreviewPlyIndex.value === 0) {
-    openingCardPreviewPlyIndex.value = openingCardPreviewSans.value.length
-    applyOpeningCardPreviewBoard()
-  }
 }
 
-// Selected card unhover: collapse to filter-only board while selection stays (card branch in watchEffect would otherwise keep full preview)
 function onOpeningCardUnhover(cardId) {
   if (cardId !== selectedOpeningCardId.value) return
-  // Ignore spurious pointerleave that can fire during/right after click
   if (Date.now() - openingCardSelectionTime < OPENING_CARD_IGNORE_UNHOVER_MS) return
   selectedOpeningCardHovered.value = false
   clearOpeningCardPreviewTimeout()
-  resetBoardToFilterPosition()
 }
 
 watch(
@@ -5080,7 +5058,6 @@ watch(
     try {
       clearOpeningAutoMove()
       clearOpeningCardPreviewTimeout()
-      openingCardPreviewStartTime = null
       if (id == null) {
         selectedOpeningCardHovered.value = false
         openingCardPreviewSans.value = []
@@ -5096,16 +5073,6 @@ watch(
       openingCardPreviewSans.value = sans
       openingCardPreviewPlyIndex.value = sans.length
       applyOpeningCardPreviewBoard()
-      // watchEffect also syncs on deps; explicit apply avoids ordering gaps. Auto-collapse preview to filter-only after delay (footer can step forward again).
-      if (sans.length > 0) {
-        nextTick(() => {
-          try {
-            startOpeningCardResetTimer(OPENING_CARD_PREVIEW_DURATION_MS)
-          } catch (_) {
-            openingCardAnimatingMove.value = null
-          }
-        })
-      }
     } catch (_) {
       clearOpeningAutoMove()
       openingCardPreviewSans.value = []
