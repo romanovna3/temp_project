@@ -10163,10 +10163,10 @@ body {
   flex-direction: column;
   align-items: stretch;
 }
-/* Taller row when movelist is shown (selected move uses 16px / 20px line + glass pill). */
+/* Taller row when movelist is shown (12/16 type + glass pill bottom border). */
 .opening-meta-slot--movelist-active {
   height: auto;
-  min-height: 24px;
+  min-height: 22px;
 }
 .opening-meta-slot--movelist-active.opening-meta-slot--with-chips {
   min-height: 32px;
@@ -10403,7 +10403,7 @@ body {
   width: 100%;
   max-width: 436px;
   min-width: 0;
-  min-height: 24px;
+  min-height: 22px;
   height: auto;
   display: flex;
   flex-direction: row;
@@ -10411,21 +10411,21 @@ body {
   gap: 6px;
   flex-shrink: 0;
 }
-/* Same box model as selected move pill (padding + 14/16 semibold); stays outside scroll. */
+/* Eval chip: text-small (12/16 semibold); stays outside scroll. */
 .opening-card-movelist-eval {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  min-width: 44px;
-  min-height: 20px;
+  min-width: 40px;
+  min-height: 18px;
   padding: 2px 6px;
   border-radius: 2px;
   background: #ffffff;
   color: rgba(55, 53, 50, 0.92);
   font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -10454,16 +10454,16 @@ body {
   width: 0;
   height: 0;
 }
-/* DS text/medium: 14px / 16px, weight 400 */
+/* DS text-small: 12px / 16px, weight 400 */
 .opening-card-movelist {
   display: inline-flex;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   width: max-content;
-  min-height: 20px;
+  min-height: 16px;
   font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 16px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
@@ -10546,13 +10546,13 @@ body {
   border-radius: 2px;
   pointer-events: none;
 }
-/* DS text/medium-bold: 14px / 16px, weight 600 */
+/* DS text-small-bold: 12px / 16px, weight 600 */
 .opening-card-movelist__pill-text {
   position: relative;
   z-index: 1;
   flex-shrink: 0;
   font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 16px;
   font-weight: 600;
   font-style: normal;
