@@ -6786,7 +6786,7 @@ onUnmounted(() => {
                         <p class="opening-course-card__description">{{ card.description }}</p>
                       </div>
                       <div class="opening-course-card__properties">
-                        <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                        <CcChip :label="card.type === 'White' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
                       </div>
                     </template>
                   </div>
@@ -6918,7 +6918,7 @@ onUnmounted(() => {
                                   <p class="opening-course-card__description">{{ card.description }}</p>
                                 </div>
                                 <div class="opening-course-card__properties">
-                                  <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                                  <CcChip :label="card.type === 'White' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
                                 </div>
                               </template>
                             </div>
@@ -7066,7 +7066,7 @@ onUnmounted(() => {
                               <p class="opening-course-card__description">{{ card.description }}</p>
                             </div>
                             <div class="opening-course-card__properties">
-                              <CcChip :label="`${card.linesCount} Lines`" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" />
+                              <CcChip :label="card.type === 'White' ? 'White' : 'Black'" color="gray" variant="translucent" :is-uppercase="false" label-class="opening-course-card__chip-label" class="opening-course-card__color-chip" />
                             </div>
                           </template>
                         </div>
