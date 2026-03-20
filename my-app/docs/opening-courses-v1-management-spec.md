@@ -104,7 +104,8 @@ The same data can be maintained in a source like Notion (e.g. “Course number�
 - Content of coach messages, filters logic, or sort algorithm details.
 - Opening course page (chapter view) after “Start Course” / “Continue.”
 - Board behavior (e.g. syncing to selected opening) is a feature but not described in detail here.
+- **Opening Courses V3 (list):** Tapping a course card replaces the **Sort by / course count** row (same height) with a **single-line movelist** showing the **full main line** from `OPENING_FIRST_5_MOVES` (five full moves per opening in the data file). The line does not wrap and **truncates with an ellipsis** when it overflows. Each move is a small **link-style** control: it updates the **main board** to the position after that move and stays in sync with **footer chevrons**. If the user has **filter chips** under the search bar, the movelist appears **above** the chip row.
 
 ---
 
-*Document generated from implementation in `Courses.vue` and related components. Last updated to reflect: preset bar (New User, Returning User A/B), tabs and Sort by for RUB, header icon, color picker (dropdown vs indicator), course card layout (king icon, chips, aqua badge), and Course number–based behavior.*
+*Document generated from implementation in `Courses.vue` and related components. Last updated to reflect: preset bar (New User, Returning User A/B), tabs and Sort by for RUB, header icon, color picker (dropdown vs indicator), course card layout (king icon, chips, aqua badge), Course number–based behavior, and Opening Courses V3 selectable movelist strip.*

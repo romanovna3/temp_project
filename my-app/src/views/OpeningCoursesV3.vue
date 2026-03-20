@@ -4949,7 +4949,7 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
   }
 }, { immediate: true })
 
-// Dedicated watcher: when an opening card is selected on Opening Courses V1, sync the main board to that opening’s first 3 moves.
+// Dedicated watcher: when an opening card is selected on Opening Courses V3, sync the main board to that opening’s full main line from OPENING_FIRST_5_MOVES.
 // If Error -102 on /#/courses/opening-courses-v3: apply .cursor/rules/opening-courses-v3-crash-102.mdc
 // Fallback: if OPENING_FIRST_5_MOVES[card.title] is missing, build a 1-move array from card.firstMove (e.g. "1. e4" → e4).
 function getOpeningMovesForCard(card) {
@@ -4960,37 +4960,28 @@ function getOpeningMovesForCard(card) {
   if (m) return [{ white: m[1], black: '' }]
   return null
 }
-// Opening Courses V1: show only first 2 moves on the board.
-const OPENING_BOARD_MOVE_COUNT = 2
 
-/** Flat SANs for the full card preview position (same branches as legacy card animation: 2 pairs + optional 3rd white, etc.). */
+/** Flat SANs for full main line (all { white, black } pairs) — board + under-search movelist use the same list. */
 function buildOpeningCardPreviewSansList(card) {
   const moves = getOpeningMovesForCard(card)
   if (!moves?.length) return []
-  if (moves.length >= 3 && moves[2]?.white) {
-    const flat = []
-    for (let i = 0; i < 2; i++) {
-      const p = moves[i]
-      if (p?.white) flat.push(p.white)
-      if (p?.black) flat.push(p.black)
-    }
-    flat.push(moves[2].white)
-    return flat
-  }
-  if (moves.length >= 2 && moves[1]?.white && !moves[1]?.black) {
-    const flat = []
-    if (moves[0]?.white) flat.push(moves[0].white)
-    if (moves[0]?.black) flat.push(moves[0].black)
-    flat.push(moves[1].white)
-    return flat
-  }
-  const firstTwo = moves.slice(0, OPENING_BOARD_MOVE_COUNT)
   const flat = []
-  for (const p of firstTwo) {
+  for (const p of moves) {
     if (p?.white) flat.push(p.white)
     if (p?.black) flat.push(p.black)
   }
   return flat
+}
+
+/** Jump board to position after half-move `plyCount` (1 = after first SAN of the line). */
+function onOpeningMovelistSegmentClick(plyCount) {
+  if (selectedOpeningCardId.value == null || !openingCardPreviewSans.value.length) return
+  const max = openingCardPreviewSans.value.length
+  const n = Math.min(Math.max(1, plyCount), max)
+  clearOpeningCardPreviewTimeout()
+  openingCardPreviewPlyIndex.value = n
+  applyOpeningCardPreviewBoard()
+  playSound('move')
 }
 
 /** Apply filter moves + first N card preview SANs to the main board (Opening list). Uses same pairing as getPositionFromFilterMoves (avoids silent chess.move failures). */
@@ -5070,6 +5061,7 @@ watch(
         resetBoardToFilterPosition()
         return
       }
+      openingSortOpen.value = false
       const card = openingCourseCards.find((c) => c.id === id)
       const sans = buildOpeningCardPreviewSansList(card)
       openingCardPreviewSans.value = sans
@@ -6522,7 +6514,30 @@ onUnmounted(() => {
                     />
                   </div>
                   <div v-if="openingV3ScenarioPreset === 'new-user' || openingV3ScenarioPreset === 'returning-user'" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
-                    <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
+                    <div
+                      v-if="selectedOpeningCardId != null && openingCardPreviewSans.length"
+                      class="opening-card-movelist-wrap"
+                      role="navigation"
+                      aria-label="Opening main line"
+                    >
+                      <div class="opening-card-movelist" role="list">
+                        <template v-for="(san, i) in openingCardPreviewSans" :key="`${selectedOpeningCardId}-movelist-${i}`">
+                          <button
+                            type="button"
+                            role="listitem"
+                            class="opening-card-movelist__segment"
+                            :class="{ 'opening-card-movelist__segment--current': openingCardPreviewPlyIndex === i + 1 }"
+                            :aria-current="openingCardPreviewPlyIndex === i + 1 ? 'step' : undefined"
+                            :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
+                            @click="onOpeningMovelistSegmentClick(i + 1)"
+                          >
+                            <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                            <template v-else>&nbsp;{{ san }}</template>
+                          </button>
+                        </template>
+                      </div>
+                    </div>
+                    <div v-else-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
                       <div class="opening-courses-meta-panel__sort">
                         <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
                           <span class="text-small-bold">{{ openingSortLabel }}</span>
@@ -6544,7 +6559,7 @@ onUnmounted(() => {
                       <span v-if="!showRecommendedAndAllSections" class="opening-courses-meta-panel__count text-small-bold">{{ openingV3ScenarioMetaCount }} {{ openingV3ScenarioMetaCount === 1 ? 'course' : 'Courses' }}</span>
                     </div>
                     <FilterChipV2
-                      v-else
+                      v-if="openingFilterMoves.length || openingKeywordTags.length"
                       :filter-moves="openingFilterMoves"
                       :keyword-tags="openingKeywordTags"
                       @clear-board-position="clearBoardPosition"
@@ -10294,6 +10309,55 @@ body {
   line-height: 16px;
   font-weight: 600;
 }
+
+/* Selected opening: one-line PGN strip under search (replaces sort row; stacks above filter chips). */
+.opening-card-movelist-wrap {
+  width: 100%;
+  max-width: 436px;
+  min-width: 0;
+  min-height: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.opening-card-movelist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+}
+.opening-card-movelist__segment {
+  display: inline;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  vertical-align: baseline;
+  border-radius: 2px;
+}
+.opening-card-movelist__segment:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+.opening-card-movelist__segment:focus-visible {
+  outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
+  outline-offset: 2px;
+}
+.opening-card-movelist__segment--current {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
 .opening-courses-meta-panel__sort {
   position: relative;
   flex-shrink: 0;
