@@ -1771,6 +1771,7 @@ function onFooterNextClick() {
   if (openingCardPreviewCanRedo.value) {
     clearOpeningCardPreviewTimeout()
     openingCardPreviewPlyIndex.value++
+    applyOpeningCardPreviewBoard()
     playSound('move')
     return
   }
@@ -1789,6 +1790,7 @@ function onFooterPreviousClick() {
   if (openingCardPreviewCanUndo.value) {
     clearOpeningCardPreviewTimeout()
     openingCardPreviewPlyIndex.value--
+    applyOpeningCardPreviewBoard()
     playSound('move')
     return
   }
