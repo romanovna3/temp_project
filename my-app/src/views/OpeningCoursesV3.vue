@@ -3524,8 +3524,8 @@ function setBoardToDefault() {
   checkmateHighlight.value = null
 }
 
-// Board sync: Line view (selected ply), Opening Courses V1 (selected card), or Chapter page (hovered line).
-// Opening Courses branch is checked before chapter hover so selected card always wins on that page.
+// Board sync: Line view (selected ply), Opening Courses V3 selected card, chapter hover, then default.
+// On Opening V3, selected course card wins over hoveredChapterLine so the main board matches the card.
 // Wrapped in try/catch so a reactive error here cannot break the app or leave global listeners dangling.
 watchEffect(() => {
   try {
@@ -3546,7 +3546,25 @@ watchEffect(() => {
       checkmateHighlight.value = null
       return
     }
-    // Chapter page / Opening Courses: hovered line preview (checked first so hover wins over selected card)
+    // Opening Courses V3: selected card – must win over chapter hover (same component also drives chapter list hover).
+    if (panelView.value === 'courses' && isOpeningCoursesV3.value && selectedOpeningCardId.value != null) {
+      if (openingCardPreviewSans.value.length > 0) {
+        applyOpeningCardPreviewBoard()
+        return
+      }
+      const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
+      const moves = card ? OPENING_FIRST_5_MOVES[card.title] : null
+      if (moves?.length) {
+        const firstTwo = moves.slice(0, 2)
+        const { fen, lastMove: last } = getPositionAtEndOfLine(firstTwo)
+        pieces.value = parseFEN(fen)
+        lastMove.value = last
+        selectedSquare.value = null
+        checkmateHighlight.value = null
+        return
+      }
+    }
+    // Chapter page / Opening Courses: hovered line preview (after Opening V3 selected-card branch)
     if (panelView.value === 'courses' && hoveredChapterLine.value) {
       const { section, move } = hoveredChapterLine.value
       const moves = getMovesForLine(section, move)
@@ -3567,24 +3585,6 @@ watchEffect(() => {
       selectedSquare.value = null
       checkmateHighlight.value = null
       return
-    }
-    // Opening Courses V3: selected card – board = filter moves + N preview plies (footer steps N).
-    if (panelView.value === 'courses' && isOpeningCoursesV3.value && selectedOpeningCardId.value != null) {
-      if (openingCardPreviewSans.value.length > 0) {
-        applyOpeningCardPreviewBoard()
-        return
-      }
-      const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
-      const moves = card ? OPENING_FIRST_5_MOVES[card.title] : null
-      if (moves?.length) {
-        const firstTwo = moves.slice(0, 2)
-        const { fen, lastMove: last } = getPositionAtEndOfLine(firstTwo)
-        pieces.value = parseFEN(fen)
-        lastMove.value = last
-        selectedSquare.value = null
-        checkmateHighlight.value = null
-        return
-      }
     }
     // Courses, no hover / no opening selected: show default position
     // BUT: if Opening V1 and user has played filter moves, keep the board at their position
@@ -4991,22 +4991,25 @@ function buildOpeningCardPreviewSansList(card) {
   return flat
 }
 
-/** Apply filter moves + first N card preview SANs to the main board (Opening list). */
+/** Apply filter moves + first N card preview SANs to the main board (Opening list). Uses same pairing as getPositionFromFilterMoves (avoids silent chess.move failures). */
 function applyOpeningCardPreviewBoard() {
   try {
     const previewSans = openingCardPreviewSans.value
-    const n = openingCardPreviewPlyIndex.value
-    const chess = new Chess()
-    for (const m of openingFilterMoves.value) {
-      if (!chess.move(m.san)) return
+    const n = Math.min(openingCardPreviewPlyIndex.value, previewSans.length)
+    const filterSans = openingFilterMoves.value.map((m) => m.san)
+    const combined = [...filterSans, ...previewSans.slice(0, n)]
+    if (!combined.length) {
+      const { fen, lastMove: last } = getPositionFromFilterMoves([])
+      pieces.value = parseFEN(fen)
+      lastMove.value = last
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+      return
     }
-    for (let i = 0; i < n && i < previewSans.length; i++) {
-      if (!chess.move(previewSans[i])) return
-    }
-    pieces.value = parseFEN(chess.fen())
-    const hist = chess.history({ verbose: true })
-    const h = hist[hist.length - 1]
-    lastMove.value = h ? { from: h.from, to: h.to } : null
+    const pairs = filterMovesToPairs(combined)
+    const { fen, lastMove: last } = getPositionAtEndOfLine(pairs)
+    pieces.value = parseFEN(fen)
+    lastMove.value = last
     selectedSquare.value = null
     checkmateHighlight.value = null
   } catch (_) {
@@ -5097,7 +5100,8 @@ watch(
       const sans = buildOpeningCardPreviewSansList(card)
       openingCardPreviewSans.value = sans
       openingCardPreviewPlyIndex.value = sans.length
-      // Board paints via watchEffect (applyOpeningCardPreviewBoard). Auto-collapse preview to filter-only after delay (footer can step forward again).
+      applyOpeningCardPreviewBoard()
+      // watchEffect also syncs on deps; explicit apply avoids ordering gaps. Auto-collapse preview to filter-only after delay (footer can step forward again).
       if (sans.length > 0) {
         nextTick(() => {
           try {
