@@ -4833,7 +4833,91 @@ function onOpeningMovelistSegmentClick(plyCount) {
   openingCardPreviewPlyIndex.value = n
   applyOpeningCardPreviewBoard()
   playSound('move')
+  nextTick(() => updateOpeningMovelistScrollFades())
 }
+
+/** Horizontal movelist strip: scroll container ref + edge fades (dissolve) when content overflows. */
+const openingCardMovelistScrollRef = ref(null)
+const openingMovelistFadeLeftVisible = ref(false)
+const openingMovelistFadeRightVisible = ref(false)
+let openingMovelistResizeObserver = null
+
+function updateOpeningMovelistScrollFades() {
+  const el = openingCardMovelistScrollRef.value
+  if (!el) {
+    openingMovelistFadeLeftVisible.value = false
+    openingMovelistFadeRightVisible.value = false
+    return
+  }
+  const maxScroll = el.scrollWidth - el.clientWidth
+  if (maxScroll <= 6) {
+    openingMovelistFadeLeftVisible.value = false
+    openingMovelistFadeRightVisible.value = false
+    return
+  }
+  const edge = 6
+  const sl = el.scrollLeft
+  openingMovelistFadeLeftVisible.value = sl > edge
+  openingMovelistFadeRightVisible.value = sl < maxScroll - edge
+}
+
+function onOpeningCardMovelistScroll() {
+  updateOpeningMovelistScrollFades()
+}
+
+function teardownOpeningMovelistScrollObserver() {
+  openingMovelistResizeObserver?.disconnect()
+  openingMovelistResizeObserver = null
+}
+
+function setupOpeningMovelistScrollObserver() {
+  teardownOpeningMovelistScrollObserver()
+  const el = openingCardMovelistScrollRef.value
+  if (!el) return
+  updateOpeningMovelistScrollFades()
+  openingMovelistResizeObserver = new ResizeObserver(() => {
+    updateOpeningMovelistScrollFades()
+  })
+  openingMovelistResizeObserver.observe(el)
+}
+
+watch(
+  () =>
+    isOpeningCoursesV3.value &&
+    selectedOpeningCardId.value != null &&
+    openingCardPreviewSans.value.length > 0
+      ? `${selectedOpeningCardId.value}:${openingCardPreviewSans.value.length}`
+      : '',
+  async (key) => {
+    teardownOpeningMovelistScrollObserver()
+    if (!key) {
+      openingMovelistFadeLeftVisible.value = false
+      openingMovelistFadeRightVisible.value = false
+      return
+    }
+    await nextTick()
+    setupOpeningMovelistScrollObserver()
+    const el = openingCardMovelistScrollRef.value
+    if (el) {
+      el.scrollLeft = el.scrollWidth - el.clientWidth
+      updateOpeningMovelistScrollFades()
+    }
+  },
+  { flush: 'post' }
+)
+
+watch(openingCardPreviewPlyIndex, () => {
+  nextTick(() => {
+    const wrap = openingCardMovelistScrollRef.value
+    if (wrap) {
+      const current = wrap.querySelector('.opening-card-movelist__segment--current')
+      if (current && typeof current.scrollIntoView === 'function') {
+        current.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+      }
+    }
+    updateOpeningMovelistScrollFades()
+  })
+})
 
 /** Apply filter moves + first N card preview SANs to the main board (Opening list). Uses same pairing as getPositionFromFilterMoves (avoids silent chess.move failures). */
 function applyOpeningCardPreviewBoard() {
@@ -6058,6 +6142,7 @@ onUnmounted(() => {
   v3ScrollCleanup?.()
   courseTabsScrollCleanup?.()
   teardownVideoSectionResizeObserver()
+  teardownOpeningMovelistScrollObserver()
   document.removeEventListener('mousemove', handleDragMove)
   document.removeEventListener('mouseup', handleDragEnd)
   document.removeEventListener('touchmove', handleDragMove)
@@ -6378,33 +6463,49 @@ onUnmounted(() => {
                       role="navigation"
                       aria-label="Opening main line"
                     >
-                      <div class="opening-card-movelist" role="list">
-                        <template v-for="(san, i) in openingCardPreviewSans" :key="`${selectedOpeningCardId}-movelist-${i}`">
-                          <button
-                            type="button"
-                            role="listitem"
-                            class="opening-card-movelist__segment"
-                            :class="{ 'opening-card-movelist__segment--current': openingCardPreviewPlyIndex === i + 1 }"
-                            :aria-current="openingCardPreviewPlyIndex === i + 1 ? 'step' : undefined"
-                            :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
-                            @click="onOpeningMovelistSegmentClick(i + 1)"
-                          >
-                            <template v-if="openingCardPreviewPlyIndex === i + 1">
-                              <span class="opening-card-movelist__pill" data-name="Container">
-                                <span class="opening-card-movelist__pill-border" aria-hidden="true" />
-                                <span class="opening-card-movelist__pill-text">
-                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                  <template v-else>{{ san }}</template>
+                      <div
+                        ref="openingCardMovelistScrollRef"
+                        class="opening-card-movelist-scroll"
+                        @scroll.passive="onOpeningCardMovelistScroll"
+                      >
+                        <div class="opening-card-movelist" role="list">
+                          <template v-for="(san, i) in openingCardPreviewSans" :key="`${selectedOpeningCardId}-movelist-${i}`">
+                            <button
+                              type="button"
+                              role="listitem"
+                              class="opening-card-movelist__segment"
+                              :class="{ 'opening-card-movelist__segment--current': openingCardPreviewPlyIndex === i + 1 }"
+                              :aria-current="openingCardPreviewPlyIndex === i + 1 ? 'step' : undefined"
+                              :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
+                              @click="onOpeningMovelistSegmentClick(i + 1)"
+                            >
+                              <template v-if="openingCardPreviewPlyIndex === i + 1">
+                                <span class="opening-card-movelist__pill" data-name="Container">
+                                  <span class="opening-card-movelist__pill-border" aria-hidden="true" />
+                                  <span class="opening-card-movelist__pill-text">
+                                    <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                    <template v-else>{{ san }}</template>
+                                  </span>
                                 </span>
-                              </span>
-                            </template>
-                            <template v-else>
-                              <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                              <template v-else>{{ san }}</template>
-                            </template>
-                          </button>
-                        </template>
+                              </template>
+                              <template v-else>
+                                <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                <template v-else>{{ san }}</template>
+                              </template>
+                            </button>
+                          </template>
+                        </div>
                       </div>
+                      <div
+                        class="opening-card-movelist-fade opening-card-movelist-fade--left"
+                        :class="{ 'opening-card-movelist-fade--visible': openingMovelistFadeLeftVisible }"
+                        aria-hidden="true"
+                      />
+                      <div
+                        class="opening-card-movelist-fade opening-card-movelist-fade--right"
+                        :class="{ 'opening-card-movelist-fade--visible': openingMovelistFadeRightVisible }"
+                        aria-hidden="true"
+                      />
                     </div>
                     <div v-else-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
                       <div class="opening-courses-meta-panel__sort">
@@ -10187,8 +10288,10 @@ body {
   font-weight: 600;
 }
 
-/* Selected opening: one-line PGN strip under search (replaces sort row; stacks above filter chips). */
+/* Selected opening: horizontal-scroll PGN strip + edge dissolves (matches .opening-search-panel bg). */
 .opening-card-movelist-wrap {
+  --opening-movelist-fade-bg: rgba(39, 37, 34, 1);
+  position: relative;
   width: 100%;
   max-width: 436px;
   min-width: 0;
@@ -10198,22 +10301,66 @@ body {
   align-items: center;
   flex-shrink: 0;
 }
+.opening-card-movelist-scroll {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  padding-bottom: 2px; /* room for selected pill bottom border (inset -2px) */
+}
+.opening-card-movelist-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.opening-card-movelist-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.opening-card-movelist-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+}
 /* DS text/medium: 14px / 16px, weight 400 */
 .opening-card-movelist {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  flex: 1;
-  padding-bottom: 2px; /* room for selected pill bottom border (inset -2px) */
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: max-content;
+  min-height: 20px;
   font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 14px;
   line-height: 16px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
 }
+.opening-card-movelist-fade {
+  position: absolute;
+  top: 0;
+  bottom: 2px;
+  width: 32px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.opening-card-movelist-fade--visible {
+  opacity: 1;
+}
+.opening-card-movelist-fade--left {
+  left: 0;
+  background: linear-gradient(to right, var(--opening-movelist-fade-bg) 0%, rgba(39, 37, 34, 0) 100%);
+}
+.opening-card-movelist-fade--right {
+  right: 0;
+  background: linear-gradient(to left, var(--opening-movelist-fade-bg) 0%, rgba(39, 37, 34, 0) 100%);
+}
 .opening-card-movelist__segment {
-  display: inline;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
   border: none;
   background: none;
   padding: 0;
