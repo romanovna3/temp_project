@@ -4481,10 +4481,13 @@ const openingCoursesFiltered = computed(() => {
   return applyOpeningCoursesHeaderFilters(base)
 })
 
-/** Returning user: started courses on Your Openings — all White + Black started; sort uses effective (popular → recent). */
+/** Returning user: started courses on Your Openings — respects piece-color toggle like All / New User; sort uses effective (popular → recent). */
 const openingCoursesStartedList = computed(() => {
   if (!isReturningUserScenario(openingV3ScenarioPreset.value)) return []
-  return applyOpeningCoursesHeaderFilters(openingCourseCards, effectiveOpeningSortBy.value).filter((c) => isOpeningCardStarted(c))
+  const started = applyOpeningCoursesHeaderFilters(openingCourseCards, effectiveOpeningSortBy.value).filter((c) => isOpeningCardStarted(c))
+  const colorFilter = openingFilterColor.value
+  const typeMatch = colorFilter === 'both' ? null : (colorFilter === 'white' ? 'White' : 'Black')
+  return typeMatch == null ? started : started.filter((c) => c.type === typeMatch)
 })
 /** Returning user: non-started courses only (for "All Openings" section). Each card is per color; once started it is in My Openings only. Both colors can be started for openings with two courses; only the other color remains in All Openings until started. */
 const openingCoursesRestList = computed(() => {
@@ -6599,10 +6602,7 @@ onUnmounted(() => {
               >
                 <div class="opening-search-panel">
                   <div class="opening-search-panel__row opening-search-panel__row--inputs">
-                    <div
-                      class="opening-search-panel__search-shell"
-                      :class="{ 'opening-search-panel__search-shell--your-openings': openingV3ScenarioPreset === 'returning-user' && openingV3RubActiveTab === 'my-openings' }"
-                    >
+                    <div class="opening-search-panel__search-shell">
                       <div class="opening-search-panel__search">
                         <SearchInput
                           v-model="openingSearchQuery"
@@ -6613,7 +6613,6 @@ onUnmounted(() => {
                       </div>
                     </div>
                     <ColorToggle
-                      v-if="openingV3ScenarioPreset !== 'returning-user' || openingV3RubActiveTab !== 'my-openings'"
                       v-model:selected-color="openingFilterColor"
                       :base-url="baseUrl"
                       variant="switch"
@@ -10186,24 +10185,8 @@ body {
 .opening-search-panel__row--meta {
   justify-content: space-between;
 }
-/* Your Openings only: 40px-tall row band (matches search field); search field stays 40px, vertically centered */
 .opening-search-panel__search-shell {
   display: contents;
-}
-.opening-search-panel__search-shell--your-openings {
-  display: flex;
-  align-items: center;
-  justify-content: stretch;
-  flex: 1;
-  min-width: 0;
-  height: 40px;
-  box-sizing: border-box;
-}
-.opening-search-panel__search-shell--your-openings .opening-search-panel__search {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
 }
 .opening-search-panel__search {
   flex: 1;

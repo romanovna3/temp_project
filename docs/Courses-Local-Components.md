@@ -375,7 +375,7 @@ Same CcChip API as Lines chip: `color="gray"`, `variant="translucent"`, `label-c
 ## Opening Courses header color picker (ColorToggle switch variant)
 
 **File:** `my-app/src/views/opening-courses/ColorToggle.vue`  
-**Usage:** Opening Courses V2 search panel; filter by piece color (White / Black). Rendered only when **not** on Your Openings (New User or Returning User → All tab). See `docs/Opening-Courses-Piece-Color-Toggle-Spec.md` for full version history and persistence.
+**Usage:** Opening Courses search panel; filter by piece color (White / Black / Both). **V2:** hidden on Your Openings tab. **V3:** shown on Your Openings as well (same row as search). See `docs/Opening-Courses-Piece-Color-Toggle-Spec.md` for full version history and persistence.
 
 ### Switch variant – canonical dimensions
 
@@ -502,6 +502,7 @@ Title row + optional gold chip + description + properties row:
 ### Your Openings tab
 
 - Still uses flat `openingV3RubCourseList` only; **no** gold Recommended chip (explore-only).
+- **V3:** Header **ColorToggle** next to search; `openingCoursesStartedList` respects the same color filter as All / New User.
 
 ---
 
