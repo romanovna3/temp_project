@@ -911,7 +911,7 @@ function backToCourses() {
 function onHeaderBackClick() {
   if (panelView.value === 'line') backToCourses()
   // OC: when on course route (opening-courses-oc/:courseId), back goes to Opening Courses V2 list
-  else if (openingCourseIdFromRoute.value) router.push(route.path.startsWith('/learn/') ? '/learn/opening-courses-v2' : '/courses/opening-courses-v2')
+  else if (openingCourseIdFromRoute.value) router.push(route.path.startsWith('/learn/') ? '/learn/opening-courses-v3' : '/courses/opening-courses-v3')
 }
 
 /** V2.3 Line view: prev/next line for headline chevrons; can cross chapter boundaries */

@@ -8516,7 +8516,7 @@ v-if="isVideoV6OrV7"
         </div>
         <!-- Footer frame: bg/secondary; inner container has primary + overlay -->
         <div class="panel-footer-frame">
-        <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV3 && panelView !== 'opening-course') }">
+        <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV3 && panelView === 'line') }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
             <!-- Completed lines: Practice in + time chip -->
@@ -8698,13 +8698,20 @@ v-if="isVideoV6OrV7"
             </div>
           </section>
 
-          <!-- Icon footer (3rd footer): Chapter + Line; Opening course page; hidden on Opening Courses V1 list (courses view only) -->
-          <section v-if="panelView === 'opening-course' || panelView === 'line' || (panelView === 'courses' && !isOpeningCoursesV3)" class="footer-section footer-section-toolbar" data-name="IconFooter">
+          <!-- Icon footer (3rd footer): Opening list + opening course page + Line (same toolbar row as CoursesV9OC; list view: ellipsis + nav only) -->
+          <section v-if="panelView === 'opening-course' || panelView === 'line' || panelView === 'courses'" class="footer-section footer-section-toolbar" data-name="IconFooter">
             <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
               <button type="button" class="footer-icon-btn" aria-label="More options">
                 <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
               </button>
-              <button type="button" class="footer-icon-btn" :aria-label="(isVideoV2_4OrV5 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSectionVisible) ? 'Hide video' : 'Show video'" :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && selectedLine?.section?.id === 'intro' || isQuizLine)" @click="openVideo">
+              <button
+                v-if="panelView !== 'courses'"
+                type="button"
+                class="footer-icon-btn"
+                :aria-label="(isVideoV2_4OrV5 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSectionVisible) ? 'Hide video' : 'Show video'"
+                :disabled="panelView === 'line' && !isLineReadMode && (currentLineType === 'info' && selectedLine?.section?.id === 'intro' || isQuizLine)"
+                @click="openVideo"
+              >
                 <CcIcon :name="(isVideoV2_4OrV5 && panelView === 'line' && currentLineType === 'ready' ? readyLineVideoVisible : showVideoSectionVisible) ? icons.videoOff : icons.videoOn" variant="glyph" :size="20" class="footer-icon" />
               </button>
               <button
