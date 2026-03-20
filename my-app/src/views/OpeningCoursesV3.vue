@@ -6513,7 +6513,14 @@ onUnmounted(() => {
                       class="opening-search-panel__color-toggle"
                     />
                   </div>
-                  <div v-if="openingV3ScenarioPreset === 'new-user' || openingV3ScenarioPreset === 'returning-user'" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
+                  <div
+                    v-if="openingV3ScenarioPreset === 'new-user' || openingV3ScenarioPreset === 'returning-user'"
+                    class="opening-meta-slot"
+                    :class="{
+                      'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length,
+                      'opening-meta-slot--movelist-active': selectedOpeningCardId != null && openingCardPreviewSans.length,
+                    }"
+                  >
                     <div
                       v-if="selectedOpeningCardId != null && openingCardPreviewSans.length"
                       class="opening-card-movelist-wrap"
@@ -6531,8 +6538,19 @@ onUnmounted(() => {
                             :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
                             @click="onOpeningMovelistSegmentClick(i + 1)"
                           >
-                            <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                            <template v-else>{{ san }}</template>
+                            <template v-if="openingCardPreviewPlyIndex === i + 1">
+                              <span class="opening-card-movelist__pill" data-name="Container">
+                                <span class="opening-card-movelist__pill-border" aria-hidden="true" />
+                                <span class="opening-card-movelist__pill-text">
+                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                  <template v-else>{{ san }}</template>
+                                </span>
+                              </span>
+                            </template>
+                            <template v-else>
+                              <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                              <template v-else>{{ san }}</template>
+                            </template>
                           </button>
                         </template>
                       </div>
@@ -10084,6 +10102,14 @@ body {
   flex-direction: column;
   align-items: stretch;
 }
+/* Taller row when movelist is shown (selected move uses 16px / 20px line + glass pill). */
+.opening-meta-slot--movelist-active {
+  height: auto;
+  min-height: 28px;
+}
+.opening-meta-slot--movelist-active.opening-meta-slot--with-chips {
+  min-height: 34px;
+}
 /* Chips row: scrollable left + fixed right (chevron + Clear all); height fits content */
 .opening-chips-row {
   display: flex;
@@ -10315,8 +10341,8 @@ body {
   width: 100%;
   max-width: 436px;
   min-width: 0;
-  min-height: 20px;
-  height: 20px;
+  min-height: 28px;
+  height: auto;
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -10327,6 +10353,7 @@ body {
   white-space: nowrap;
   min-width: 0;
   flex: 1;
+  padding-bottom: 2px; /* room for selected pill bottom border (inset -2px) */
   font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 12px;
   line-height: 16px;
@@ -10343,7 +10370,7 @@ body {
   color: inherit;
   cursor: pointer;
   text-align: left;
-  vertical-align: baseline;
+  vertical-align: middle;
   border-radius: 2px;
 }
 /* Explicit gap between move buttons (avoids collapsed space between inline controls). */
@@ -10357,9 +10384,51 @@ body {
   outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
   outline-offset: 2px;
 }
+/* Current move: glass container + bottom accent (notation display spec). */
 .opening-card-movelist__segment--current {
-  color: rgba(255, 255, 255, 0.95);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  color: inherit;
+  font-weight: inherit;
+}
+.opening-card-movelist__pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.opening-card-movelist__pill-border {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: -2px;
+  box-sizing: border-box;
+  border: none;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.opening-card-movelist__pill-text {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  font-family: 'Inter', var(--font-family-system, system-ui, sans-serif);
+  font-size: 16px;
+  line-height: 20px;
   font-weight: 600;
+  font-style: normal;
+  color: #ffffff;
+  white-space: nowrap;
+}
+.opening-card-movelist__segment--current:hover .opening-card-movelist__pill {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .opening-courses-meta-panel__sort {
