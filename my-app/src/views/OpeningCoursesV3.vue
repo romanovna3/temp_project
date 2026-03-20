@@ -4824,6 +4824,24 @@ function buildOpeningCardPreviewSansList(card) {
   return flat
 }
 
+/** Demo-only: deterministic “engine” eval from card + ply (e.g. +0.17 … +0.48). */
+function hashOpeningMovelistEvalSeed(cardId, ply) {
+  const s = `${cardId ?? 0}:${ply ?? 0}`
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+const openingMovelistEngineEvalDisplay = computed(() => {
+  if (selectedOpeningCardId.value == null) return '+0.28'
+  const h = hashOpeningMovelistEvalSeed(selectedOpeningCardId.value, openingCardPreviewPlyIndex.value)
+  const t = (h % 10000) / 10000
+  const v = 0.09 + t * 0.38
+  return `+${v.toFixed(2)}`
+})
+
 /** Jump board to position after half-move `plyCount` (1 = after first SAN of the line). */
 function onOpeningMovelistSegmentClick(plyCount) {
   if (selectedOpeningCardId.value == null || !openingCardPreviewSans.value.length) return
@@ -6463,49 +6481,54 @@ onUnmounted(() => {
                       role="navigation"
                       aria-label="Opening main line"
                     >
-                      <div
-                        ref="openingCardMovelistScrollRef"
-                        class="opening-card-movelist-scroll"
-                        @scroll.passive="onOpeningCardMovelistScroll"
-                      >
-                        <div class="opening-card-movelist" role="list">
-                          <template v-for="(san, i) in openingCardPreviewSans" :key="`${selectedOpeningCardId}-movelist-${i}`">
-                            <button
-                              type="button"
-                              role="listitem"
-                              class="opening-card-movelist__segment"
-                              :class="{ 'opening-card-movelist__segment--current': openingCardPreviewPlyIndex === i + 1 }"
-                              :aria-current="openingCardPreviewPlyIndex === i + 1 ? 'step' : undefined"
-                              :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
-                              @click="onOpeningMovelistSegmentClick(i + 1)"
-                            >
-                              <template v-if="openingCardPreviewPlyIndex === i + 1">
-                                <span class="opening-card-movelist__pill" data-name="Container">
-                                  <span class="opening-card-movelist__pill-border" aria-hidden="true" />
-                                  <span class="opening-card-movelist__pill-text">
-                                    <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                    <template v-else>{{ san }}</template>
-                                  </span>
-                                </span>
-                              </template>
-                              <template v-else>
-                                <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                <template v-else>{{ san }}</template>
-                              </template>
-                            </button>
-                          </template>
-                        </div>
+                      <div class="opening-card-movelist-eval" aria-hidden="true" title="Illustrative evaluation (demo)">
+                        {{ openingMovelistEngineEvalDisplay }}
                       </div>
-                      <div
-                        class="opening-card-movelist-fade opening-card-movelist-fade--left"
-                        :class="{ 'opening-card-movelist-fade--visible': openingMovelistFadeLeftVisible }"
-                        aria-hidden="true"
-                      />
-                      <div
-                        class="opening-card-movelist-fade opening-card-movelist-fade--right"
-                        :class="{ 'opening-card-movelist-fade--visible': openingMovelistFadeRightVisible }"
-                        aria-hidden="true"
-                      />
+                      <div class="opening-card-movelist-scroll-col">
+                        <div
+                          ref="openingCardMovelistScrollRef"
+                          class="opening-card-movelist-scroll"
+                          @scroll.passive="onOpeningCardMovelistScroll"
+                        >
+                          <div class="opening-card-movelist" role="list">
+                            <template v-for="(san, i) in openingCardPreviewSans" :key="`${selectedOpeningCardId}-movelist-${i}`">
+                              <button
+                                type="button"
+                                role="listitem"
+                                class="opening-card-movelist__segment"
+                                :class="{ 'opening-card-movelist__segment--current': openingCardPreviewPlyIndex === i + 1 }"
+                                :aria-current="openingCardPreviewPlyIndex === i + 1 ? 'step' : undefined"
+                                :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
+                                @click="onOpeningMovelistSegmentClick(i + 1)"
+                              >
+                                <template v-if="openingCardPreviewPlyIndex === i + 1">
+                                  <span class="opening-card-movelist__pill" data-name="Container">
+                                    <span class="opening-card-movelist__pill-border" aria-hidden="true" />
+                                    <span class="opening-card-movelist__pill-text">
+                                      <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                      <template v-else>{{ san }}</template>
+                                    </span>
+                                  </span>
+                                </template>
+                                <template v-else>
+                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                  <template v-else>{{ san }}</template>
+                                </template>
+                              </button>
+                            </template>
+                          </div>
+                        </div>
+                        <div
+                          class="opening-card-movelist-fade opening-card-movelist-fade--left"
+                          :class="{ 'opening-card-movelist-fade--visible': openingMovelistFadeLeftVisible }"
+                          aria-hidden="true"
+                        />
+                        <div
+                          class="opening-card-movelist-fade opening-card-movelist-fade--right"
+                          :class="{ 'opening-card-movelist-fade--visible': openingMovelistFadeRightVisible }"
+                          aria-hidden="true"
+                        />
+                      </div>
                     </div>
                     <div v-else-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
                       <div class="opening-courses-meta-panel__sort">
@@ -10288,18 +10311,46 @@ body {
   font-weight: 600;
 }
 
-/* Selected opening: horizontal-scroll PGN strip + edge dissolves (matches .opening-search-panel bg). */
+/* Selected opening: fixed eval chip + horizontal-scroll PGN (no scrollbar) + edge dissolves. */
 .opening-card-movelist-wrap {
   --opening-movelist-fade-bg: rgba(39, 37, 34, 1);
-  position: relative;
   width: 100%;
   max-width: 436px;
   min-width: 0;
   min-height: 24px;
   height: auto;
   display: flex;
+  flex-direction: row;
   align-items: center;
+  gap: 6px;
   flex-shrink: 0;
+}
+/* Same box model as selected move pill (padding + 14/16 semibold); stays outside scroll. */
+.opening-card-movelist-eval {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 20px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: #ffffff;
+  color: rgba(55, 53, 50, 0.92);
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.opening-card-movelist-scroll-col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
 }
 .opening-card-movelist-scroll {
   flex: 1;
@@ -10308,19 +10359,14 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding-bottom: 2px; /* room for selected pill bottom border (inset -2px) */
 }
 .opening-card-movelist-scroll::-webkit-scrollbar {
-  height: 4px;
-}
-.opening-card-movelist-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.opening-card-movelist-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 4px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 /* DS text/medium: 14px / 16px, weight 400 */
 .opening-card-movelist {
@@ -10349,11 +10395,11 @@ body {
 .opening-card-movelist-fade--visible {
   opacity: 1;
 }
-.opening-card-movelist-fade--left {
+.opening-card-movelist-scroll-col .opening-card-movelist-fade--left {
   left: 0;
   background: linear-gradient(to right, var(--opening-movelist-fade-bg) 0%, rgba(39, 37, 34, 0) 100%);
 }
-.opening-card-movelist-fade--right {
+.opening-card-movelist-scroll-col .opening-card-movelist-fade--right {
   right: 0;
   background: linear-gradient(to left, var(--opening-movelist-fade-bg) 0%, rgba(39, 37, 34, 0) 100%);
 }
