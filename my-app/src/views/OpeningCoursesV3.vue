@@ -10972,10 +10972,12 @@ body {
 }
 /* Title only as wide as text so the Recommended chip sits beside the heading, not at the far end. */
 .opening-course-card__title-row--with-chips .opening-course-card__title {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
   width: fit-content;
   max-width: 100%;
+  margin-bottom: 0;
+  padding-top: 1px;
 }
 .opening-course-card__title-row--with-chips .opening-course-card__recommended-chip {
   flex-shrink: 0;
