@@ -4824,6 +4824,16 @@ function buildOpeningCardPreviewSansList(card) {
   return flat
 }
 
+/**
+ * Ply index (1…N half-moves) to show when a card is selected: opening “key” idea (~3rd white move),
+ * e.g. Italian with Bc4 already on the board — not the end of the stored main line.
+ */
+function getOpeningCardKeyPlyCount(flatLength) {
+  if (flatLength <= 0) return 0
+  if (flatLength < 5) return flatLength
+  return Math.min(flatLength, 5)
+}
+
 /** Demo-only: deterministic “engine” eval from card + ply (e.g. +0.17 … +0.48). */
 function hashOpeningMovelistEvalSeed(cardId, ply) {
   const s = `${cardId ?? 0}:${ply ?? 0}`
@@ -4917,7 +4927,12 @@ watch(
     setupOpeningMovelistScrollObserver()
     const el = openingCardMovelistScrollRef.value
     if (el) {
-      el.scrollLeft = el.scrollWidth - el.clientWidth
+      const current = el.querySelector('.opening-card-movelist__segment--current')
+      if (current && typeof current.scrollIntoView === 'function') {
+        current.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'instant' })
+      } else {
+        el.scrollLeft = 0
+      }
       updateOpeningMovelistScrollFades()
     }
   },
@@ -4930,7 +4945,7 @@ watch(openingCardPreviewPlyIndex, () => {
     if (wrap) {
       const current = wrap.querySelector('.opening-card-movelist__segment--current')
       if (current && typeof current.scrollIntoView === 'function') {
-        current.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+        current.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'instant' })
       }
     }
     updateOpeningMovelistScrollFades()
@@ -5018,7 +5033,7 @@ watch(
       const card = openingCourseCards.find((c) => c.id === id)
       const sans = buildOpeningCardPreviewSansList(card)
       openingCardPreviewSans.value = sans
-      openingCardPreviewPlyIndex.value = sans.length
+      openingCardPreviewPlyIndex.value = getOpeningCardKeyPlyCount(sans.length)
       applyOpeningCardPreviewBoard()
     } catch (_) {
       clearOpeningAutoMove()
