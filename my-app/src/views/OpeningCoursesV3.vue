@@ -4143,13 +4143,6 @@ const effectiveViewportPreset = computed(() => (SHOW_VIEWPORT_PRESET_IN_BAR ? vi
 const openingV3ScenarioPreset = ref(_initialOpeningV1Preset.scenarioPreset)
 /** RUB only: active tab 'my-openings' | 'all' */
 const openingV3RubActiveTab = ref('my-openings')
-/** Meta panel count: New User = filtered; RUB = started or rest by tab */
-const openingV3ScenarioMetaCount = computed(() => {
-  if (openingV3ScenarioPreset.value === 'returning-user') {
-    return openingV3RubActiveTab.value === 'my-openings' ? openingCoursesStartedList.value.length : openingCoursesRestList.value.length
-  }
-  return openingCoursesFiltered.value.length
-})
 /** RUB only: list for active tab (started or rest) */
 const openingV3RubCourseList = computed(() =>
   openingV3RubActiveTab.value === 'my-openings' ? openingCoursesStartedList.value : openingCoursesRestList.value
@@ -6682,7 +6675,7 @@ onUnmounted(() => {
                         />
                       </div>
                     </div>
-                    <div v-else-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
+                    <div v-else-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Sort">
                       <div class="opening-courses-meta-panel__sort">
                         <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
                           <span class="text-small-bold">{{ openingSortLabel }}</span>
@@ -6701,7 +6694,6 @@ onUnmounted(() => {
                           </template>
                         </div>
                       </div>
-                      <span v-if="!showRecommendedAndAllSections" class="opening-courses-meta-panel__count text-small-bold">{{ openingV3ScenarioMetaCount }} {{ openingV3ScenarioMetaCount === 1 ? 'course' : 'Courses' }}</span>
                     </div>
                     <FilterChipV2
                       v-if="openingFilterMoves.length || openingKeywordTags.length"
