@@ -9279,14 +9279,7 @@ body {
   min-height: 80px;
 }
 
-/* Opening Courses V3: hide # of lines chip on all course cards (not-started and started) */
-.opening-v1-scroll .opening-course-card__properties {
-  display: none;
-}
-/* Opening Courses V1: Mobile only – hide # of moves chip, truncate description at 3 lines */
-.app.app--viewport-mobile .opening-course-card__properties {
-  display: none;
-}
+/* White/Black chip lives in .opening-course-card__properties (under description); keep visible on V3. */
 .app.app--viewport-mobile .opening-course-card__description {
   -webkit-line-clamp: 3;
   line-clamp: 3;
