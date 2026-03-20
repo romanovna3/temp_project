@@ -5053,30 +5053,25 @@ function startOpeningCardResetTimer(delayMs) {
   }
 }
 
-// Selected card hover: keep board on preview, no reset until pointer leaves
+// Selected card hover: keep full preview while pointer on card; restore full line if board was collapsed on unhover
 function onOpeningCardHover(cardId) {
   if (cardId !== selectedOpeningCardId.value) return
   selectedOpeningCardHovered.value = true
   clearOpeningCardPreviewTimeout()
+  if (openingCardPreviewSans.value.length > 0 && openingCardPreviewPlyIndex.value === 0) {
+    openingCardPreviewPlyIndex.value = openingCardPreviewSans.value.length
+    applyOpeningCardPreviewBoard()
+  }
 }
 
-// Selected card unhover: reset board now (if ≥2s elapsed) or after remaining time
+// Selected card unhover: collapse to filter-only board while selection stays (card branch in watchEffect would otherwise keep full preview)
 function onOpeningCardUnhover(cardId) {
   if (cardId !== selectedOpeningCardId.value) return
   // Ignore spurious pointerleave that can fire during/right after click
   if (Date.now() - openingCardSelectionTime < OPENING_CARD_IGNORE_UNHOVER_MS) return
   selectedOpeningCardHovered.value = false
-  if (openingCardPreviewStartTime == null) return
   clearOpeningCardPreviewTimeout()
-  const elapsed = Date.now() - openingCardPreviewStartTime
-  if (elapsed >= OPENING_CARD_PREVIEW_DURATION_MS) {
-    resetBoardToFilterPosition()
-  } else {
-    const remaining = OPENING_CARD_PREVIEW_DURATION_MS - elapsed
-    openingCardPreviewResetTimeoutId = setTimeout(() => {
-      resetBoardToFilterPosition()
-    }, remaining)
-  }
+  resetBoardToFilterPosition()
 }
 
 watch(
