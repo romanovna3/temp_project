@@ -4536,6 +4536,21 @@ const openingCoursesSections = computed(() => {
   return sections
 })
 
+/** First visit (no Back-from-chapter state): select first Recommended course so board + movelist match. */
+function preselectFirstRecommendedOpeningCard() {
+  if (!isOpeningCoursesV3.value || !openingV3Ready.value) return
+  if (!showRecommendedAndAllSections.value) return
+  if (selectedOpeningCardId.value != null) return
+  const first = openingCoursesRecommendedList.value[0]
+  if (!first) return
+  selectedOpeningCardId.value = first.id
+  selectedOpeningCardHovered.value = true
+  openingCardSelectionTime = Date.now()
+  if (first.type === 'White' || first.type === 'Black') {
+    openingFilterColor.value = first.type === 'Black' ? 'black' : 'white'
+  }
+}
+
 watch(openingCoursesFiltered, () => {
   nextTick(() => requestAnimationFrame(measureOpeningCardTitleLines))
 }, { flush: 'post' })
@@ -4816,13 +4831,16 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
   } catch (_) {
     // ignore
   }
-  let raw
+  let raw = null
   try {
     raw = sessionStorage.getItem(OPENING_COURSES_V1_RETURN_STATE_KEY)
   } catch (_) {
+    raw = null
+  }
+  if (!raw) {
+    nextTick(() => preselectFirstRecommendedOpeningCard())
     return
   }
-  if (!raw) return
   try {
     sessionStorage.removeItem(OPENING_COURSES_V1_RETURN_STATE_KEY)
   } catch (_) {
@@ -4832,13 +4850,24 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
   try {
     state = JSON.parse(raw)
   } catch (_) {
+    nextTick(() => preselectFirstRecommendedOpeningCard())
     return
   }
-  if (state == null || typeof state !== 'object') return
+  if (state == null || typeof state !== 'object') {
+    nextTick(() => preselectFirstRecommendedOpeningCard())
+    return
+  }
   const { scrollTop: savedScrollTop, selectedOpeningCardId: savedCardId } = state
   if (savedCardId != null) {
     const card = openingCourseCards.find((c) => c.id === savedCardId || c.id === Number(savedCardId))
-    if (card) selectedOpeningCardId.value = card.id
+    if (card) {
+      selectedOpeningCardId.value = card.id
+      selectedOpeningCardHovered.value = true
+      openingCardSelectionTime = Date.now()
+      if (card.type === 'White' || card.type === 'Black') {
+        openingFilterColor.value = card.type === 'Black' ? 'black' : 'white'
+      }
+    }
   }
   if (typeof savedScrollTop === 'number' && savedScrollTop >= 0) {
     nextTick(() => {
@@ -4850,6 +4879,9 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
         }
       })
     })
+  }
+  if (savedCardId == null || !openingCourseCards.find((c) => c.id === savedCardId || c.id === Number(savedCardId))) {
+    nextTick(() => preselectFirstRecommendedOpeningCard())
   }
 }, { immediate: true })
 
