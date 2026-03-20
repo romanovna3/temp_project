@@ -4357,7 +4357,7 @@ function measureOpeningSearchH() {
   })
 }
 
-/** Selected course: slide sticky strip so the search row is off-screen; movelist (meta row) stays visible. */
+/** When strip was already tucked (user scrolled): show only movelist row; search inputs stay off-screen. */
 function positionOpeningStickyMovelistOnly() {
   nextTick(() => {
     requestAnimationFrame(() => {
@@ -5099,7 +5099,12 @@ watch(
       openingCardPreviewSans.value = sans
       openingCardPreviewPlyIndex.value = getOpeningCardKeyPlyCount(sans.length)
       applyOpeningCardPreviewBoard()
-      positionOpeningStickyMovelistOnly()
+      // Movelist-only (hide search): only if user had scrolled the strip up (Y < 0). If full panel still visible, keep search row.
+      if (openingSearchY.value < 0) {
+        positionOpeningStickyMovelistOnly()
+      } else {
+        nextTick(() => measureOpeningSearchH())
+      }
     } catch (_) {
       clearOpeningAutoMove()
       openingCardPreviewSans.value = []
