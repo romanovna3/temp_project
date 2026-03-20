@@ -10940,7 +10940,8 @@ body {
 .opening-course-card__title-row--with-chips {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  justify-content: flex-start;
+  align-items: flex-end;
   gap: 6px;
   width: 100%;
   min-width: 0;
@@ -10954,7 +10955,6 @@ body {
 }
 .opening-course-card__title-row--with-chips .opening-course-card__recommended-chip {
   flex-shrink: 0;
-  margin-top: 1px;
 }
 .opening-course-card__title-row--with-chips :deep(.cc-chip-fg),
 .opening-course-card__title-row--with-chips :deep(.opening-course-card__chip-label),
