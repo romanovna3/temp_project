@@ -4348,7 +4348,11 @@ function measureOpeningSearchH() {
     if (el) {
       openingSearchH.value = el.offsetHeight || 92
       openingSearchY.value = clamp(openingSearchY.value, -openingSearchH.value, 0)
-      if (wrap) wrap.style.setProperty('--opening-search-h', openingSearchH.value + 'px')
+      if (wrap) {
+        wrap.style.setProperty('--opening-search-h', openingSearchH.value + 'px')
+        // Resync after layout/movelist height changes so the next scroll delta is not huge (avoids search bar jumping into view).
+        if (typeof wrap.scrollTop === 'number') lastOpeningScrollTop = wrap.scrollTop
+      }
     }
   })
 }
@@ -4732,8 +4736,31 @@ function onOpeningContentScroll() {
 watch(isOpeningCoursesV3, (isV1) => {
   if (isV1) clearHoveredChapterLine()
 }, { immediate: true })
+let openingSearchBarResizeObserver = null
+function teardownOpeningSearchBarResizeObserver() {
+  openingSearchBarResizeObserver?.disconnect()
+  openingSearchBarResizeObserver = null
+}
+function setupOpeningSearchBarResizeObserver() {
+  teardownOpeningSearchBarResizeObserver()
+  if (!isOpeningCoursesV3.value || !openingV3Ready.value) return
+  const el = openingSearchRef.value
+  if (!el) return
+  openingSearchBarResizeObserver = new ResizeObserver(() => {
+    measureOpeningSearchH()
+  })
+  openingSearchBarResizeObserver.observe(el)
+}
+
 watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
-  if (isV1 && ready) nextTick(measureOpeningSearchH)
+  if (!isV1 || !ready) {
+    teardownOpeningSearchBarResizeObserver()
+    return
+  }
+  nextTick(() => {
+    measureOpeningSearchH()
+    setupOpeningSearchBarResizeObserver()
+  })
 }, { immediate: true })
 watch([isOpeningCoursesV3, openingV3ScenarioPreset], ([isV1, preset]) => {
   if (isV1 && preset === 'returning-user') {
@@ -4909,6 +4936,28 @@ function setupOpeningMovelistScrollObserver() {
   openingMovelistResizeObserver.observe(el)
 }
 
+/**
+ * Scroll only the horizontal movelist strip. `Element.scrollIntoView` can scroll vertical ancestors
+ * (opening-v1-scroll-wrap), which desyncs lastOpeningScrollTop and drives openingSearchY toward 0 — search row “sticks out” again.
+ */
+function scrollOpeningMovelistCurrentIntoViewHoriz() {
+  const el = openingCardMovelistScrollRef.value
+  if (!el) return
+  const current = el.querySelector('.opening-card-movelist__segment--current')
+  if (!current) {
+    el.scrollLeft = 0
+    return
+  }
+  const pad = 8
+  const cr = current.getBoundingClientRect()
+  const wr = el.getBoundingClientRect()
+  if (cr.left < wr.left + pad) {
+    el.scrollLeft -= wr.left + pad - cr.left
+  } else if (cr.right > wr.right - pad) {
+    el.scrollLeft += cr.right - (wr.right - pad)
+  }
+}
+
 watch(
   () =>
     isOpeningCoursesV3.value &&
@@ -4927,12 +4976,7 @@ watch(
     setupOpeningMovelistScrollObserver()
     const el = openingCardMovelistScrollRef.value
     if (el) {
-      const current = el.querySelector('.opening-card-movelist__segment--current')
-      if (current && typeof current.scrollIntoView === 'function') {
-        current.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'instant' })
-      } else {
-        el.scrollLeft = 0
-      }
+      scrollOpeningMovelistCurrentIntoViewHoriz()
       updateOpeningMovelistScrollFades()
     }
   },
@@ -4941,13 +4985,7 @@ watch(
 
 watch(openingCardPreviewPlyIndex, () => {
   nextTick(() => {
-    const wrap = openingCardMovelistScrollRef.value
-    if (wrap) {
-      const current = wrap.querySelector('.opening-card-movelist__segment--current')
-      if (current && typeof current.scrollIntoView === 'function') {
-        current.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'instant' })
-      }
-    }
+    scrollOpeningMovelistCurrentIntoViewHoriz()
     updateOpeningMovelistScrollFades()
   })
 })
@@ -6176,6 +6214,7 @@ onUnmounted(() => {
   courseTabsScrollCleanup?.()
   teardownVideoSectionResizeObserver()
   teardownOpeningMovelistScrollObserver()
+  teardownOpeningSearchBarResizeObserver()
   document.removeEventListener('mousemove', handleDragMove)
   document.removeEventListener('mouseup', handleDragEnd)
   document.removeEventListener('touchmove', handleDragMove)
