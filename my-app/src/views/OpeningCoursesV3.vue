@@ -1768,7 +1768,13 @@ function onFooterNextClick() {
     if (hasNextPlyInLine()) selectNextPly()
     return
   }
-  if (openingFooterCanRedo.value) {
+  if (openingCardPreviewCanRedo.value) {
+    clearOpeningCardPreviewTimeout()
+    openingCardPreviewPlyIndex.value++
+    playSound('move')
+    return
+  }
+  if (openingListFreePlay.value && openingFreePlayRedoStack.value.length > 0) {
     redoOpeningFreePlayMove()
     return
   }
@@ -1780,7 +1786,13 @@ function onFooterPreviousClick() {
     selectPreviousPly()
     return
   }
-  if (openingFooterCanUndo.value) {
+  if (openingCardPreviewCanUndo.value) {
+    clearOpeningCardPreviewTimeout()
+    openingCardPreviewPlyIndex.value--
+    playSound('move')
+    return
+  }
+  if (openingListFreePlay.value && openingFilterMoves.value.length > 0) {
     playSound('move')
     removeOpeningFilterMoveAt(openingFilterMoves.value.length - 1)
     return
@@ -3556,8 +3568,12 @@ watchEffect(() => {
       checkmateHighlight.value = null
       return
     }
-    // Opening Courses V1: when a course card is selected (and no line hover), show first 2 moves of that opening
+    // Opening Courses V3: selected card – board = filter moves + N preview plies (footer steps N).
     if (panelView.value === 'courses' && isOpeningCoursesV3.value && selectedOpeningCardId.value != null) {
+      if (openingCardPreviewSans.value.length > 0) {
+        applyOpeningCardPreviewBoard()
+        return
+      }
       const card = openingCourseCards.find((c) => c.id === selectedOpeningCardId.value)
       const moves = card ? OPENING_FIRST_5_MOVES[card.title] : null
       if (moves?.length) {
@@ -4315,6 +4331,9 @@ const selectedOpeningCardPracticeCount = computed(() => {
 const selectedOpeningCardId = ref(null)
 // True when the selected card is currently hovered (pointer over it) – board does not reset while true
 const selectedOpeningCardHovered = ref(false)
+/** Flat SAN list for the selected card’s board preview (played on top of openingFilterMoves). Ply index steps undo/redo via footer. */
+const openingCardPreviewSans = ref([])
+const openingCardPreviewPlyIndex = ref(0)
 /** Opening V1: play side for selected card (used by color picker in footer; can be passed when starting course) */
 const openingPlaySide = ref('white')
 watch(selectedOpeningCard, (card) => {
@@ -4354,11 +4373,33 @@ const openingFreePlayRedoStack = ref([])
 const openingListFreePlay = computed(
   () => isOpeningCoursesV3.value && panelView.value === 'courses' && currentQuestionIndex.value < 0
 )
+const openingCardPreviewCanUndo = computed(
+  () =>
+    isOpeningCoursesV3.value &&
+    panelView.value === 'courses' &&
+    currentQuestionIndex.value < 0 &&
+    selectedOpeningCardId.value != null &&
+    openingCardPreviewSans.value.length > 0 &&
+    openingCardPreviewPlyIndex.value > 0
+)
+const openingCardPreviewCanRedo = computed(
+  () =>
+    isOpeningCoursesV3.value &&
+    panelView.value === 'courses' &&
+    currentQuestionIndex.value < 0 &&
+    selectedOpeningCardId.value != null &&
+    openingCardPreviewSans.value.length > 0 &&
+    openingCardPreviewPlyIndex.value < openingCardPreviewSans.value.length
+)
 const openingFooterCanUndo = computed(
-  () => openingListFreePlay.value && openingFilterMoves.value.length > 0
+  () =>
+    openingCardPreviewCanUndo.value ||
+    (openingListFreePlay.value && openingFilterMoves.value.length > 0)
 )
 const openingFooterCanRedo = computed(
-  () => openingListFreePlay.value && openingFreePlayRedoStack.value.length > 0
+  () =>
+    openingCardPreviewCanRedo.value ||
+    (openingListFreePlay.value && openingFreePlayRedoStack.value.length > 0)
 )
 // Keyword tags from search (Enter): filter by title/description containing each
 const openingKeywordTags = ref([])
@@ -4919,6 +4960,60 @@ function getOpeningMovesForCard(card) {
 }
 // Opening Courses V1: show only first 2 moves on the board.
 const OPENING_BOARD_MOVE_COUNT = 2
+
+/** Flat SANs for the full card preview position (same branches as legacy card animation: 2 pairs + optional 3rd white, etc.). */
+function buildOpeningCardPreviewSansList(card) {
+  const moves = getOpeningMovesForCard(card)
+  if (!moves?.length) return []
+  if (moves.length >= 3 && moves[2]?.white) {
+    const flat = []
+    for (let i = 0; i < 2; i++) {
+      const p = moves[i]
+      if (p?.white) flat.push(p.white)
+      if (p?.black) flat.push(p.black)
+    }
+    flat.push(moves[2].white)
+    return flat
+  }
+  if (moves.length >= 2 && moves[1]?.white && !moves[1]?.black) {
+    const flat = []
+    if (moves[0]?.white) flat.push(moves[0].white)
+    if (moves[0]?.black) flat.push(moves[0].black)
+    flat.push(moves[1].white)
+    return flat
+  }
+  const firstTwo = moves.slice(0, OPENING_BOARD_MOVE_COUNT)
+  const flat = []
+  for (const p of firstTwo) {
+    if (p?.white) flat.push(p.white)
+    if (p?.black) flat.push(p.black)
+  }
+  return flat
+}
+
+/** Apply filter moves + first N card preview SANs to the main board (Opening list). */
+function applyOpeningCardPreviewBoard() {
+  try {
+    const previewSans = openingCardPreviewSans.value
+    const n = openingCardPreviewPlyIndex.value
+    const chess = new Chess()
+    for (const m of openingFilterMoves.value) {
+      if (!chess.move(m.san)) return
+    }
+    for (let i = 0; i < n && i < previewSans.length; i++) {
+      if (!chess.move(previewSans[i])) return
+    }
+    pieces.value = parseFEN(chess.fen())
+    const hist = chess.history({ verbose: true })
+    const h = hist[hist.length - 1]
+    lastMove.value = h ? { from: h.from, to: h.to } : null
+    selectedSquare.value = null
+    checkmateHighlight.value = null
+  } catch (_) {
+    // keep prior board
+  }
+}
+
 // How long to show card preview before resetting board to filter position (ms)
 const OPENING_CARD_PREVIEW_DURATION_MS = 2000
 let openingCardPreviewResetTimeoutId = null
@@ -4926,6 +5021,9 @@ let openingCardPreviewStartTime = null // When the preview animation finished an
 
 // Reset board to current filter position (or starting position if no filter)
 function resetBoardToFilterPosition() {
+  if (selectedOpeningCardId.value != null && openingCardPreviewSans.value.length > 0) {
+    openingCardPreviewPlyIndex.value = 0
+  }
   const { fen, lastMove: last } = getPositionFromFilterMoves(openingFilterMoves.value)
   pieces.value = parseFEN(fen)
   lastMove.value = last
@@ -4985,83 +5083,34 @@ watch(
       clearOpeningAutoMove()
       clearOpeningCardPreviewTimeout()
       openingCardPreviewStartTime = null
-      if (id == null) selectedOpeningCardHovered.value = false
+      if (id == null) {
+        selectedOpeningCardHovered.value = false
+        openingCardPreviewSans.value = []
+        openingCardPreviewPlyIndex.value = 0
+      }
       if (!isOpeningCoursesV3.value) return
-      // Card deselected: reset board to filter position (don't touch filter moves)
       if (id == null) {
         resetBoardToFilterPosition()
         return
       }
-      // Card selected: show preview, then reset board after delay (keep card selected, don't touch filter moves)
       const card = openingCourseCards.find((c) => c.id === id)
-      const moves = getOpeningMovesForCard(card)
-      if (moves?.length) {
-        try {
-          // Decide what position to show and which white move to animate (e.g. Italian: show 2 moves then Bc4; Alapin: only 2 pairs, 2nd has white only → show 1 move then animate c3)
-          let fenBeforeWhiteMove = null
-          let whiteMoveToAnimate = null
-          if (moves.length >= 3 && moves[2]?.white) {
-            const firstTwo = moves.slice(0, OPENING_BOARD_MOVE_COUNT)
-            const { fen } = getPositionAtEndOfLine(firstTwo)
-            fenBeforeWhiteMove = fen
-            whiteMoveToAnimate = moves[2].white
-          } else if (moves.length >= 2 && moves[1]?.white && !moves[1]?.black) {
-            const firstOne = moves.slice(0, 1)
-            const { fen } = getPositionAtEndOfLine(firstOne)
-            fenBeforeWhiteMove = fen
-            whiteMoveToAnimate = moves[1].white
+      const sans = buildOpeningCardPreviewSansList(card)
+      openingCardPreviewSans.value = sans
+      openingCardPreviewPlyIndex.value = sans.length
+      // Board paints via watchEffect (applyOpeningCardPreviewBoard). Auto-collapse preview to filter-only after delay (footer can step forward again).
+      if (sans.length > 0) {
+        nextTick(() => {
+          try {
+            startOpeningCardResetTimer(OPENING_CARD_PREVIEW_DURATION_MS)
+          } catch (_) {
+            openingCardAnimatingMove.value = null
           }
-          if (fenBeforeWhiteMove && whiteMoveToAnimate) {
-            const movesForPosition = moves.length >= 3 && moves[2]?.white ? moves.slice(0, 2) : moves.slice(0, 1)
-            const { lastMove: last } = getPositionAtEndOfLine(movesForPosition)
-            pieces.value = parseFEN(fenBeforeWhiteMove)
-            lastMove.value = last
-            selectedSquare.value = null
-            checkmateHighlight.value = null
-            openingAutoMoveTimeoutId = setTimeout(() => {
-              try {
-                playOpeningThirdMove(fenBeforeWhiteMove, whiteMoveToAnimate)
-              } catch (_) {
-                openingCardAnimatingMove.value = null
-              }
-            }, OPENING_AUTO_MOVE_DELAY_MS)
-            // Start reset timer after animation completes (hover-aware)
-            const totalAnimTime = OPENING_AUTO_MOVE_DELAY_MS + OPENING_AUTO_MOVE_DURATION_MS
-            setTimeout(() => {
-              try {
-                startOpeningCardResetTimer(OPENING_CARD_PREVIEW_DURATION_MS)
-              } catch (_) {
-                openingCardAnimatingMove.value = null
-              }
-            }, totalAnimTime)
-          } else {
-            const firstTwo = moves.slice(0, OPENING_BOARD_MOVE_COUNT)
-            const { fen: fenAfterTwo, lastMove: last } = getPositionAtEndOfLine(firstTwo)
-            pieces.value = parseFEN(fenAfterTwo)
-            lastMove.value = last
-            selectedSquare.value = null
-            checkmateHighlight.value = null
-            // Start reset timer immediately (hover-aware)
-            try {
-              startOpeningCardResetTimer(OPENING_CARD_PREVIEW_DURATION_MS)
-            } catch (_) {
-              openingCardAnimatingMove.value = null
-            }
-          }
-        } catch (_) {
-          pieces.value = parseFEN(STARTING_FEN)
-          lastMove.value = null
-          selectedSquare.value = null
-          checkmateHighlight.value = null
-        }
-      } else {
-        pieces.value = parseFEN(STARTING_FEN)
-        lastMove.value = null
-        selectedSquare.value = null
-        checkmateHighlight.value = null
+        })
       }
     } catch (_) {
       clearOpeningAutoMove()
+      openingCardPreviewSans.value = []
+      openingCardPreviewPlyIndex.value = 0
       try {
         pieces.value = parseFEN(STARTING_FEN)
         lastMove.value = null
@@ -5070,7 +5119,7 @@ watch(
       } catch (__) {}
     }
   },
-  { immediate: true }
+  { flush: 'sync', immediate: true }
 )
 
 // Opening course card variant: 'full-card-outline' | 'square-outline'. Switch to compare for PMs; replace as needed.
