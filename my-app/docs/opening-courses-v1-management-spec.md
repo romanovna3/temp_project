@@ -4,7 +4,8 @@
 
 **Design versions (separate files, like chapter page versions):**
 - **V1:** `my-app/src/views/Courses.vue` — routes `/courses/opening-courses-v1`, `/learn/opening-courses-v1`.
-- **V2:** `my-app/src/views/OpeningCoursesV2.vue` — routes `/courses/opening-courses-v2`, `/learn/opening-courses-v2`. New design changes are applied to V2 only.
+- **V2:** `my-app/src/views/OpeningCoursesV2.vue` — routes `/courses/opening-courses-v2`, `/learn/opening-courses-v2`.
+- **V3:** `my-app/src/views/OpeningCoursesV3.vue` — routes `/courses/opening-courses-v3`, `/learn/opening-courses-v3`. Iteration fork of V2 (separate file and session keys).
 
 ---
 

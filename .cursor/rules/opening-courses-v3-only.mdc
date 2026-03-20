@@ -1,0 +1,14 @@
+---
+description: All Opening Courses changes in scope are for V3 only (OpeningCoursesV3.vue).
+globs: ["**/OpeningCoursesV3.vue", "**/OpeningCoursesV3WithErrorBoundary.vue"]
+alwaysApply: false
+---
+
+# Opening Courses – V3 only
+
+When working on Opening Courses in this context:
+
+- **Apply changes only to V3:** Edit `my-app/src/views/OpeningCoursesV3.vue` (and its error-boundary wrapper if needed). Do not change `OpeningCoursesV2.vue`, `Courses.vue`, or other course views for Opening Courses V3 behavior unless explicitly requested.
+- **V2 is the prior snapshot:** Opening Courses V2 lives in `OpeningCoursesV2.vue` (`/courses/opening-courses-v2`, `/learn/opening-courses-v2`).
+
+This keeps design files separate (same pattern as V1 vs V2).
