@@ -4558,48 +4558,6 @@ const openingCoursesFlatOrderedForExplore = computed(() => {
   return [...rec, ...rest]
 })
 
-/** Select first recommended course in **entries order** (not filtered sort order) so e.g. Queen's Gambit wins over Ruy Lopez. */
-function preselectFirstRecommendedOpeningCard() {
-  if (!isOpeningCoursesV3.value || !openingV3Ready.value) return
-  if (!showRecommendedAndAllSections.value) return
-  if (selectedOpeningCardId.value != null) return
-  const list = openingCoursesListForSections.value
-  const entries = openingRecommendedEntries.value
-  let first = null
-  for (const spec of entries) {
-    const card = list.find((c) => c.openingKey === spec.openingKey && c.type === spec.type)
-    if (card) {
-      first = card
-      break
-    }
-  }
-  if (!first) first = openingCoursesRecommendedList.value[0]
-  if (!first) return
-  selectedOpeningCardId.value = first.id
-  selectedOpeningCardHovered.value = true
-  openingCardSelectionTime = Date.now()
-  if (first.type === 'White' || first.type === 'Black') {
-    openingFilterColor.value = first.type === 'Black' ? 'black' : 'white'
-  }
-}
-
-/** Ready + explore context: preselect after layout (fixes race with v-if openingV3Ready and tab default My Openings → All). */
-watch(
-  () =>
-    isOpeningCoursesV3.value &&
-    openingV3Ready.value &&
-    showRecommendedAndAllSections.value,
-  (ok) => {
-    if (!ok) return
-    nextTick(() => {
-      nextTick(() => {
-        requestAnimationFrame(() => preselectFirstRecommendedOpeningCard())
-      })
-    })
-  },
-  { flush: 'post' }
-)
-
 watch(openingCoursesFiltered, () => {
   nextTick(() => requestAnimationFrame(measureOpeningCardTitleLines))
 }, { flush: 'post' })
@@ -4887,7 +4845,6 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
     raw = null
   }
   if (!raw) {
-    nextTick(() => preselectFirstRecommendedOpeningCard())
     return
   }
   try {
@@ -4899,11 +4856,9 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
   try {
     state = JSON.parse(raw)
   } catch (_) {
-    nextTick(() => preselectFirstRecommendedOpeningCard())
     return
   }
   if (state == null || typeof state !== 'object') {
-    nextTick(() => preselectFirstRecommendedOpeningCard())
     return
   }
   const { scrollTop: savedScrollTop, selectedOpeningCardId: savedCardId } = state
@@ -4928,9 +4883,6 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
         }
       })
     })
-  }
-  if (savedCardId == null || !openingCourseCards.find((c) => c.id === savedCardId || c.id === Number(savedCardId))) {
-    nextTick(() => preselectFirstRecommendedOpeningCard())
   }
 }, { immediate: true })
 
