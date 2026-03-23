@@ -6488,12 +6488,12 @@ watch([courseTabsActive, courseSectionsForPracticeDisplay], () => {
   }
 }, { immediate: true })
 
-/** Scroll Learn tab to the next-to-learn line (smooth). Used on first load (Nothing to practice). */
-function scrollToNextToLearn() {
+/** Scroll Learn tab to the default-selected line (smooth). Selection is synced from next-to-learn on load; no separate “next to learn” styling. */
+function scrollToSelectedLearnLine() {
   const scrollEl = isVideoV9.value ? v9ScrollRef.value : coursesContentRef.value
-  if (!scrollEl || !nextToLearnRef.value) return
+  if (!scrollEl || !courseListSelectedLineLearn.value) return
   nextTick(() => {
-    const card = scrollEl.querySelector('.chapter-line-card--next-to-learn')
+    const card = scrollEl.querySelector('.chapter-line-card--line-selected-learn')
     if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' })
   })
 }
@@ -6544,7 +6544,7 @@ watch(courseTabsActive, (active) => {
       const el = isVideoV9.value ? v9ScrollRef.value : coursesContentRef.value
       if (!el) return
       if (isFirstOpenToLearn) {
-        scrollToNextToLearn()
+        scrollToSelectedLearnLine()
         learnTabAutoscrollDone.value = true
         setTimeout(() => {
           learnTabFirstOpenHideFlash.value = false
@@ -6603,8 +6603,8 @@ watch(scenarioPreset, (s) => {
     previousCourseTabsActive.value = 'content'
     courseTabsActive.value = 'content'
     nextTick(() => {
-      if (nextToLearnRef.value && coursesContentRef.value) {
-        scrollToNextToLearn()
+      if (courseListSelectedLineLearn.value && coursesContentRef.value) {
+        scrollToSelectedLearnLine()
         keepTabsVisibleAfterTabSwitch()
       }
     })
@@ -6627,11 +6627,11 @@ onMounted(() => {
   } catch (_) {
     // ignore
   }
-  if (isVideoV6OrV7.value && courseTabsActive.value === 'content' && nextToLearnRef.value) {
+  if (isVideoV6OrV7.value && courseTabsActive.value === 'content' && courseListSelectedLineLearn.value) {
     nextTick(() => {
       requestAnimationFrame(() => {
-        scrollToNextToLearn()
-        if (!coursesContentRef.value) setTimeout(scrollToNextToLearn, 100)
+        scrollToSelectedLearnLine()
+        if (!coursesContentRef.value) setTimeout(scrollToSelectedLearnLine, 100)
       })
     })
   }
@@ -8160,7 +8160,6 @@ onUnmounted(() => {
                           { 'move-item--inactive': !move.completed },
                           lineIndex === getSectionMovesForDisplay(section).length - 1 && 'chapter-line-card--last',
                           isVideoV6OrV7 && 'chapter-line-card--v6-timeline-right',
-                          isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id && 'chapter-line-card--next-to-learn',
                           isVideoV6OrV7 && isCourseListLineSelectedLearn(section, move) && 'chapter-line-card--line-selected-learn'
                         ]"
                         role="listitem"
@@ -8186,7 +8185,7 @@ onUnmounted(() => {
                             :class="{
                               'chapter-line-card__timeline-node--completed': move.completed,
                               'chapter-line-card__timeline-node--v6': isVideoV6OrV7,
-                              'chapter-line-card__timeline-node--next-to-learn': isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id
+                              'chapter-line-card__timeline-node--line-selected-learn': isVideoV6OrV7 && isCourseListLineSelectedLearn(section, move) && !move.completed,
                             }"
                           >
                             <span
@@ -8335,7 +8334,7 @@ v-if="isVideoV6OrV7"
                             :class="{
                               'chapter-line-card__timeline-node--completed': move.completed,
                               'chapter-line-card__timeline-node--v6': isVideoV6OrV7,
-                              'chapter-line-card__timeline-node--next-to-learn': isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id
+                              'chapter-line-card__timeline-node--line-selected-learn': isVideoV6OrV7 && isCourseListLineSelectedLearn(section, move) && !move.completed,
                             }"
                           >
                             <span
@@ -11195,8 +11194,8 @@ body {
   flex-shrink: 0;
   color: var(--color-text-inverse, #fff);
 }
-/* Next-to-learn: hollow green circle only (no glow); vertical bar is selection state below */
-.courses-content--v6 .chapter-line-card__timeline-node--next-to-learn {
+/* Learn tab: selected incomplete line — hollow green circle (replaces default grey ring) */
+.courses-content--v6 .chapter-line-card__timeline-node--v6.chapter-line-card__timeline-node--line-selected-learn:not(.chapter-line-card__timeline-node--completed) {
   width: 8px;
   height: 8px;
   min-width: 8px;
@@ -11206,19 +11205,12 @@ body {
   background: transparent;
   border: 2px solid #81b64c;
 }
-.courses-content--v6 .chapter-line-card--next-to-learn {
-  position: relative;
-}
-.courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right.chapter-line-card--next-to-learn {
+.courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right.chapter-line-card--line-selected-learn {
   padding-top: 4px;
   padding-bottom: 4px;
   gap: 12px;
 }
-/* Next-to-learn line: same font color as completed lines (override inactive dimming) */
-.courses-content--v6 .chapter-line-card--next-to-learn .opening-course-card__title {
-  color: rgba(255, 255, 255, 0.72);
-}
-/* Selected line (Learn tab): green vertical bar — default matches next-to-learn via preselection */
+/* Selected line (Learn tab): green vertical bar */
 .courses-content--v6 .chapter-line-card--line-selected-learn {
   position: relative;
 }
@@ -11626,9 +11618,6 @@ body {
 }
 .chapter-line-card.move-item--inactive .opening-course-card__title {
   color: var(--color-text-tertiary, rgba(255, 255, 255, 0.5));
-}
-.courses-content--v6 .chapter-line-card.move-item--inactive.chapter-line-card--next-to-learn .opening-course-card__title {
-  color: rgba(255, 255, 255, 0.72);
 }
 /* Practice tab: same header/title color as Learn tab (don’t dim Ready lines) */
 /* Practice tab: 72% opacity on all line card text (title, moves count, etc.) */
