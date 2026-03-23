@@ -13632,15 +13632,15 @@ body {
 }
 .course-page-line-list-icon-cta {
   flex-shrink: 0;
-  width: 48px;
-  min-width: 48px;
-  max-width: 48px;
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
 }
 .course-page-line-list-icon-cta:is(button),
 .course-page-line-list-icon-cta :deep(button) {
-  width: 48px;
-  min-width: 48px !important;
-  max-width: 48px;
+  width: 56px;
+  min-width: 56px !important;
+  max-width: 56px;
   height: 48px;
   min-height: 48px;
   padding: 0 !important;
