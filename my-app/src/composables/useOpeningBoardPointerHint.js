@@ -63,7 +63,7 @@ export function openingSquarePointerUnderPercent(square, blackView) {
 
 /**
  * Animated finger pointer: under `from` → slide up to under `to` → fade out at top → teleport to under `from`
- * invisibly (no downward motion). White: e2→e4, d2→d4. Black: e7→e5, d7→d5.
+ * invisibly (no downward motion). Always e2→e4, d2→d4 (algebraic); `blackView` only affects on-screen placement.
  */
 export function useOpeningBoardPointerHint(shouldRun, boardViewBlack) {
   const pos = ref({ left: '50%', top: '87.5%' })
@@ -112,27 +112,17 @@ export function useOpeningBoardPointerHint(shouldRun, boardViewBlack) {
     instant.value = false
   }
 
-  function pointerHopSequence(black) {
-    return black
-      ? [
-          ['e7', 'e5'],
-          ['e7', 'e5'],
-          ['d7', 'd5'],
-          ['d7', 'd5'],
-        ]
-      : [
-          ['e2', 'e4'],
-          ['e2', 'e4'],
-          ['d2', 'd4'],
-          ['d2', 'd4'],
-        ]
-  }
+  const POINTER_HOP_SEQUENCE = [
+    ['e2', 'e4'],
+    ['e2', 'e4'],
+    ['d2', 'd4'],
+    ['d2', 'd4'],
+  ]
 
   async function runLoop(signal) {
     await sleep(LOOP_START_DELAY_MS, signal)
     while (!signal.aborted && shouldRun.value) {
-      const sequence = pointerHopSequence(boardViewBlack.value)
-      for (const [from, to] of sequence) {
+      for (const [from, to] of POINTER_HOP_SEQUENCE) {
         if (signal.aborted || !shouldRun.value) return
         try {
           await playHop(from, to, signal)
