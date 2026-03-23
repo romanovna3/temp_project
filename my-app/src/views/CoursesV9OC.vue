@@ -8541,66 +8541,74 @@ v-if="isVideoV6OrV7"
                                 </div>
                               </div>
                               <div
-                                v-if="isCourseListLineSelectedLearn(section, move) && learnLineFlatSansFor(section, move).length"
-                                class="learn-line-movelist-wrap"
-                                role="navigation"
-                                :aria-label="`Moves for ${move.text}`"
+                                v-if="
+                                  (isCourseListLineSelectedLearn(section, move) && learnLineFlatSansFor(section, move).length)
+                                  || getLineMoveCount(section, move) > 0
+                                "
+                                class="chapter-line-card__move-meta"
                               >
-                                <div class="learn-line-movelist-scroll-col">
-                                  <div
-                                    ref="learnLineMovelistScrollRef"
-                                    class="learn-line-movelist-scroll"
-                                    @scroll.passive="onLearnLineMovelistScroll"
-                                  >
-                                    <div class="learn-line-movelist" role="list">
-                                      <template
-                                        v-for="(san, i) in learnLineFlatSansFor(section, move)"
-                                        :key="`${section.id}-${move.id}-learn-ml-${i}`"
-                                      >
-                                        <button
-                                          type="button"
-                                          role="listitem"
-                                          class="learn-line-movelist__segment"
-                                          :class="{ 'learn-line-movelist__segment--current': courseListLearnHalfIndex === i + 1 }"
-                                          :aria-current="courseListLearnHalfIndex === i + 1 ? 'step' : undefined"
-                                          :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
-                                          @click="onLearnLineMovelistSegmentClick(i + 1)"
+                                <div
+                                  v-if="isCourseListLineSelectedLearn(section, move) && learnLineFlatSansFor(section, move).length"
+                                  class="learn-line-movelist-wrap"
+                                  role="navigation"
+                                  :aria-label="`Moves for ${move.text}`"
+                                >
+                                  <div class="learn-line-movelist-scroll-col">
+                                    <div
+                                      ref="learnLineMovelistScrollRef"
+                                      class="learn-line-movelist-scroll"
+                                      @scroll.passive="onLearnLineMovelistScroll"
+                                    >
+                                      <div class="learn-line-movelist" role="list">
+                                        <template
+                                          v-for="(san, i) in learnLineFlatSansFor(section, move)"
+                                          :key="`${section.id}-${move.id}-learn-ml-${i}`"
                                         >
-                                          <template v-if="courseListLearnHalfIndex === i + 1">
-                                            <span class="learn-line-movelist__pill" aria-hidden="true">
-                                              <span class="learn-line-movelist__pill-border" aria-hidden="true" />
-                                              <span class="learn-line-movelist__pill-text">
-                                                <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                                <template v-else>{{ san }}</template>
+                                          <button
+                                            type="button"
+                                            role="listitem"
+                                            class="learn-line-movelist__segment"
+                                            :class="{ 'learn-line-movelist__segment--current': courseListLearnHalfIndex === i + 1 }"
+                                            :aria-current="courseListLearnHalfIndex === i + 1 ? 'step' : undefined"
+                                            :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
+                                            @click="onLearnLineMovelistSegmentClick(i + 1)"
+                                          >
+                                            <template v-if="courseListLearnHalfIndex === i + 1">
+                                              <span class="learn-line-movelist__pill" aria-hidden="true">
+                                                <span class="learn-line-movelist__pill-border" aria-hidden="true" />
+                                                <span class="learn-line-movelist__pill-text">
+                                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                                  <template v-else>{{ san }}</template>
+                                                </span>
                                               </span>
-                                            </span>
-                                          </template>
-                                          <template v-else>
-                                            <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                            <template v-else>{{ san }}</template>
-                                          </template>
-                                        </button>
-                                      </template>
+                                            </template>
+                                            <template v-else>
+                                              <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                              <template v-else>{{ san }}</template>
+                                            </template>
+                                          </button>
+                                        </template>
+                                      </div>
                                     </div>
+                                    <div
+                                      class="learn-line-movelist-fade learn-line-movelist-fade--left"
+                                      :class="{ 'learn-line-movelist-fade--visible': learnLineMovelistFadeLeftVisible }"
+                                      aria-hidden="true"
+                                    />
+                                    <div
+                                      class="learn-line-movelist-fade learn-line-movelist-fade--right"
+                                      :class="{ 'learn-line-movelist-fade--visible': learnLineMovelistFadeRightVisible }"
+                                      aria-hidden="true"
+                                    />
                                   </div>
-                                  <div
-                                    class="learn-line-movelist-fade learn-line-movelist-fade--left"
-                                    :class="{ 'learn-line-movelist-fade--visible': learnLineMovelistFadeLeftVisible }"
-                                    aria-hidden="true"
-                                  />
-                                  <div
-                                    class="learn-line-movelist-fade learn-line-movelist-fade--right"
-                                    :class="{ 'learn-line-movelist-fade--visible': learnLineMovelistFadeRightVisible }"
-                                    aria-hidden="true"
-                                  />
                                 </div>
+                                <p
+                                  v-else
+                                  class="chapter-line-card__moves-count"
+                                >
+                                  {{ getLineMoveCount(section, move) }} moves
+                                </p>
                               </div>
-                              <p
-                                v-else-if="getLineMoveCount(section, move) > 0"
-                                class="chapter-line-card__moves-count"
-                              >
-                                {{ getLineMoveCount(section, move) }} moves
-                              </p>
                             </div>
                           </div>
                         </div>
@@ -11968,22 +11976,39 @@ body {
   display: flex;
   align-items: center;
 }
+/* Learn line row: same box for movelist (selected) and “N moves” (default) — avoids height jump */
+.chapter-line-card__move-meta {
+  margin-top: 2px;
+  width: 100%;
+  min-width: 0;
+  /* Movelist track: 22px line + 2px scroll padding-bottom + slack for current pill underline */
+  min-height: 26px;
+  padding-bottom: 2px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
 /* Under line card header: "# moves" (text/x-small), when section has moves; subtler color */
 .chapter-line-card__moves-count {
   margin: 0;
+  width: 100%;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
   font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: var(--text-xs, 12px);
-  line-height: var(--leading-4, 16px);
+  font-size: 12px;
+  line-height: 16px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.4);
 }
 /* Learn tab selected line: horizontal movelist (Opening page style, no eval chip) */
 .learn-line-movelist-wrap {
   --learn-line-movelist-fade-bg: var(--color-bg-primary, #312e2b);
+  flex: 1;
   width: 100%;
   min-width: 0;
   min-height: 22px;
-  margin-top: 2px;
+  margin-top: 0;
 }
 .learn-line-movelist-scroll-col {
   position: relative;
