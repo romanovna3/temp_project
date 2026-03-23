@@ -72,11 +72,19 @@ const coursesV24 = [
 ]
 // When on OC course route (/opening-courses-oc/:courseId or /courses/sicilian-defense, /learn/sicilian-defense), show that opening.
 const openingCourseIdFromRoute = computed(() => {
-  const path = route?.path
+  const name = route?.name
+  if (name === 'courses-sicilian-defense' || name === 'learn-sicilian-defense') return 'sicilian-defense'
+  if (name === 'courses-opening-courses-oc-course' || name === 'learn-opening-courses-oc-course') {
+    const p = route?.params?.courseId
+    return p != null && String(p).trim() !== '' ? String(p).trim() : null
+  }
+  const path = route?.path || ''
   if (path === '/courses/sicilian-defense' || path === '/learn/sicilian-defense') return 'sicilian-defense'
+  if (path.endsWith('/courses/sicilian-defense') || path.endsWith('/learn/sicilian-defense')) return 'sicilian-defense'
   const p = route?.params?.courseId
   return p != null && String(p).trim() !== '' ? String(p).trim() : null
 })
+
 const courseFromOCRoute = computed(() => {
   const key = openingCourseIdFromRoute.value
   if (!key) return null
@@ -5059,7 +5067,17 @@ const handleRetry = () => {
 
 // V9: isVideoV2, isVideoV2_2 defined at top as refs
 // OC = Opening Courses: list at /courses|learn/opening-courses-oc (no param); course view at /courses|learn/opening-courses-oc/:courseId
-const isOpeningCoursesOCList = computed(() => (route && route.path) === '/courses/opening-courses-oc' || (route && route.path) === '/learn/opening-courses-oc')
+const isOpeningCoursesOCList = computed(() => {
+  const n = route?.name
+  if (n === 'courses-opening-courses-oc' || n === 'learn-opening-courses-oc') return true
+  const p = route?.path || ''
+  return p === '/courses/opening-courses-oc' || p === '/learn/opening-courses-oc'
+})
+
+/** List icon beside main CTA: OC course shell only (not opening list), courses panel. Not tied to openingCourseIdFromRoute string match. */
+const showOpeningCourseFooterLineListIcon = computed(
+  () => !isOpeningCoursesOCList.value && panelView.value === 'courses',
+)
 /** Defer opening-courses-oc layout until after first paint to avoid Error -102 (renderer crash). */
 const openingOCReady = ref(false)
 let openingOCReadyTimer = null
@@ -9458,10 +9476,10 @@ v-if="isVideoV6OrV7"
             <div v-else-if="showCourseListLearnLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
               <div
                 class="footer-buttons-row"
-                :class="openingCourseIdFromRoute ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
+                :class="showOpeningCourseFooterLineListIcon ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
               >
                 <button
-                  v-if="openingCourseIdFromRoute"
+                  v-if="showOpeningCourseFooterLineListIcon"
                   type="button"
                   class="course-page-line-list-icon-btn"
                   aria-label="Moves list"
@@ -9501,10 +9519,10 @@ v-if="isVideoV6OrV7"
             <div v-else-if="showCourseListPracticeLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
               <div
                 class="footer-buttons-row"
-                :class="openingCourseIdFromRoute ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
+                :class="showOpeningCourseFooterLineListIcon ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
               >
                 <button
-                  v-if="openingCourseIdFromRoute"
+                  v-if="showOpeningCourseFooterLineListIcon"
                   type="button"
                   class="course-page-line-list-icon-btn"
                   aria-label="Moves list"
@@ -9541,10 +9559,10 @@ v-if="isVideoV6OrV7"
                 <!-- Color picker is not shown on Course page (only on Opening page in Courses.vue). Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Practice (disabled) on Practice tab -->
                 <div
                   class="footer-buttons-row"
-                  :class="openingCourseIdFromRoute ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
+                  :class="showOpeningCourseFooterLineListIcon ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
                 >
                   <button
-                    v-if="openingCourseIdFromRoute"
+                    v-if="showOpeningCourseFooterLineListIcon"
                     type="button"
                     class="course-page-line-list-icon-btn"
                     aria-label="Moves list"
