@@ -1723,6 +1723,17 @@ function getMovesForLine(section, move) {
   return lineMovesByKey[key] ?? defaultLineMoves
 }
 
+/** Flat SANs for a line's move pairs — movelist strip + ply scrubber (same order as getPositionAfterPly). */
+function flattenLineMovesToSans(moves) {
+  if (!moves?.length) return []
+  const flat = []
+  for (const p of moves) {
+    if (p?.white) flat.push(p.white)
+    if (p?.black && p.black !== '#') flat.push(p.black)
+  }
+  return flat
+}
+
 /** Number of (full) moves in a single line – for "# moves" on the line card. Randomized 4–9 per line (stable per section+move). */
 function getLineMoveCount(section, move) {
   const seed = `${section?.id ?? ''}-${move?.id ?? ''}`
@@ -1910,6 +1921,14 @@ function hasPreviousPlyInLine() {
 }
 
 function onFooterNextClick() {
+  if (learnListLineNavActive.value && learnListHasNext()) {
+    learnListSelectNext()
+    nextTick(() => {
+      updateLearnLineMovelistScrollFades()
+      scrollLearnLineMovelistCurrentIntoView()
+    })
+    return
+  }
   if (panelView.value !== 'line') {
     nextQuestion()
     return
@@ -3505,6 +3524,179 @@ const showCourseListPracticeLineActions = computed(() => {
   )
 })
 
+/** Learn tab selected line: half-move index 0 = start, N = after all SANs (movelist highlight uses 1…N per segment). */
+const courseListLearnHalfIndex = ref(0)
+const learnLineMovelistScrollRef = ref(null)
+const learnLineMovelistFadeLeftVisible = ref(false)
+const learnLineMovelistFadeRightVisible = ref(false)
+let learnLineMovelistResizeObserver = null
+
+const learnListSelectedFlatSans = computed(() => {
+  const ctx = selectedLearnLineContext.value
+  if (!ctx) return []
+  return flattenLineMovesToSans(getMovesForLine(ctx.section, ctx.move))
+})
+
+const learnListLineNavActive = computed(
+  () => showCourseListLearnLineActions.value && learnListSelectedFlatSans.value.length > 0,
+)
+
+function learnListHasPrevious() {
+  return courseListLearnHalfIndex.value > 0
+}
+
+function learnListHasNext() {
+  return courseListLearnHalfIndex.value < learnListSelectedFlatSans.value.length
+}
+
+function learnListSelectPrevious() {
+  if (courseListLearnHalfIndex.value > 0) {
+    courseListLearnHalfIndex.value -= 1
+    playSound('move')
+  }
+}
+
+function learnListSelectNext() {
+  if (courseListLearnHalfIndex.value < learnListSelectedFlatSans.value.length) {
+    courseListLearnHalfIndex.value += 1
+    playSound('move')
+  }
+}
+
+function updateLearnLineMovelistScrollFades() {
+  const el = learnLineMovelistScrollRef.value
+  if (!el) {
+    learnLineMovelistFadeLeftVisible.value = false
+    learnLineMovelistFadeRightVisible.value = false
+    return
+  }
+  const maxScroll = el.scrollWidth - el.clientWidth
+  if (maxScroll <= 6) {
+    learnLineMovelistFadeLeftVisible.value = false
+    learnLineMovelistFadeRightVisible.value = false
+    return
+  }
+  const edge = 6
+  const sl = el.scrollLeft
+  learnLineMovelistFadeLeftVisible.value = sl > edge
+  learnLineMovelistFadeRightVisible.value = sl < maxScroll - edge
+}
+
+function onLearnLineMovelistScroll() {
+  updateLearnLineMovelistScrollFades()
+}
+
+function scrollLearnLineMovelistCurrentIntoView() {
+  const el = learnLineMovelistScrollRef.value
+  if (!el) return
+  const current = el.querySelector('.learn-line-movelist__segment--current')
+  if (!current) {
+    el.scrollLeft = 0
+    return
+  }
+  const pad = 8
+  const cr = current.getBoundingClientRect()
+  const wr = el.getBoundingClientRect()
+  if (cr.left < wr.left + pad) {
+    el.scrollLeft -= wr.left + pad - cr.left
+  } else if (cr.right > wr.right - pad) {
+    el.scrollLeft += cr.right - (wr.right - pad)
+  }
+}
+
+function setupLearnLineMovelistScrollObserver() {
+  learnLineMovelistResizeObserver?.disconnect()
+  learnLineMovelistResizeObserver = null
+  const el = learnLineMovelistScrollRef.value
+  if (!el) return
+  updateLearnLineMovelistScrollFades()
+  learnLineMovelistResizeObserver = new ResizeObserver(() => {
+    updateLearnLineMovelistScrollFades()
+  })
+  learnLineMovelistResizeObserver.observe(el)
+}
+
+function teardownLearnLineMovelistScrollObserver() {
+  learnLineMovelistResizeObserver?.disconnect()
+  learnLineMovelistResizeObserver = null
+}
+
+function onLearnLineMovelistSegmentClick(plyHalfCount) {
+  if (!learnListLineNavActive.value) return
+  const max = learnListSelectedFlatSans.value.length
+  const n = Math.min(Math.max(1, plyHalfCount), max)
+  courseListLearnHalfIndex.value = n
+  playSound('move')
+  nextTick(() => {
+    updateLearnLineMovelistScrollFades()
+    scrollLearnLineMovelistCurrentIntoView()
+  })
+}
+
+function learnLineFlatSansFor(section, move) {
+  return flattenLineMovesToSans(getMovesForLine(section, move))
+}
+
+watch(learnListSelectedFlatSans, (flat) => {
+  const max = flat.length
+  if (courseListLearnHalfIndex.value > max) courseListLearnHalfIndex.value = max
+})
+
+watch(
+  () => {
+    const ctx = selectedLearnLineContext.value
+    return ctx ? `${ctx.section.id}:${String(ctx.move.id)}` : ''
+  },
+  (key, prevKey) => {
+    if (!key) {
+      courseListLearnHalfIndex.value = 0
+      return
+    }
+    if (key === prevKey) return
+    const ctx = selectedLearnLineContext.value
+    if (!ctx) return
+    const flat = flattenLineMovesToSans(getMovesForLine(ctx.section, ctx.move))
+    courseListLearnHalfIndex.value = flat.length
+    nextTick(() => {
+      updateLearnLineMovelistScrollFades()
+      scrollLearnLineMovelistCurrentIntoView()
+    })
+  },
+  { immediate: true },
+)
+
+watch(
+  () => {
+    const sel = courseListSelectedLineLearn.value
+    const selKey = sel ? `${sel.sectionId}:${String(sel.moveId)}` : ''
+    return [showCourseListLearnLineActions.value, learnListSelectedFlatSans.value.length, selKey]
+  },
+  ([active, len]) => {
+    if (active && len > 0) {
+      nextTick(() => {
+        setupLearnLineMovelistScrollObserver()
+        updateLearnLineMovelistScrollFades()
+      })
+    } else {
+      teardownLearnLineMovelistScrollObserver()
+    }
+  },
+  { flush: 'post' },
+)
+
+function onFooterPrevClick() {
+  if (learnListLineNavActive.value && learnListHasPrevious()) {
+    learnListSelectPrevious()
+    nextTick(() => {
+      updateLearnLineMovelistScrollFades()
+      scrollLearnLineMovelistCurrentIntoView()
+    })
+    return
+  }
+  if (panelView.value === 'line') selectPreviousPly()
+  else prevQuestion()
+}
+
 watch([openingCourseIdFromRoute, scenarioPreset], () => {
   learnListSelectionTouched.value = false
   practiceListSelectionTouched.value = false
@@ -4208,6 +4400,34 @@ watchEffect(() => {
       }
       if (!lineViewMoves.value?.length) return
       const { fen, lastMove: last } = getPositionAfterPly(lineViewMoves.value, selectedPly.value)
+      pieces.value = parseFEN(fen)
+      lastMove.value = last
+      selectedSquare.value = null
+      checkmateHighlight.value = null
+      return
+    }
+    // Learn tab: selected line movelist — board follows scrub index (overrides hover)
+    if (
+      panelView.value === 'courses' &&
+      courseTabsActive.value === 'content' &&
+      !isOpeningCoursesOCList.value &&
+      selectedLearnLineContext.value
+    ) {
+      const ctx = selectedLearnLineContext.value
+      const moves = getMovesForLine(ctx.section, ctx.move)
+      const flat = flattenLineMovesToSans(moves)
+      const max = flat.length
+      const h = Math.min(Math.max(0, courseListLearnHalfIndex.value), max)
+      if (h === 0) {
+        pieces.value = parseFEN(STARTING_FEN)
+        lastMove.value = null
+        selectedSquare.value = null
+        checkmateHighlight.value = null
+        return
+      }
+      const moveIndex = Math.floor((h - 1) / 2)
+      const side = h % 2 === 1 ? 'white' : 'black'
+      const { fen, lastMove: last } = getPositionAfterPly(moves, { moveIndex, side })
       pieces.value = parseFEN(fen)
       lastMove.value = last
       selectedSquare.value = null
@@ -6653,6 +6873,7 @@ onUpdated(() => {
 })
 
 onUnmounted(() => {
+  teardownLearnLineMovelistScrollObserver()
   if (openingOCReadyTimer) {
     clearTimeout(openingOCReadyTimer)
     openingOCReadyTimer = null
@@ -8319,7 +8540,67 @@ v-if="isVideoV6OrV7"
                                   <!-- Ready for review dot hidden on line items -->
                                 </div>
                               </div>
-                              <p v-if="getLineMoveCount(section, move) > 0" class="chapter-line-card__moves-count">{{ getLineMoveCount(section, move) }} moves</p>
+                              <div
+                                v-if="isCourseListLineSelectedLearn(section, move) && learnLineFlatSansFor(section, move).length"
+                                class="learn-line-movelist-wrap"
+                                role="navigation"
+                                :aria-label="`Moves for ${move.text}`"
+                              >
+                                <div class="learn-line-movelist-scroll-col">
+                                  <div
+                                    ref="learnLineMovelistScrollRef"
+                                    class="learn-line-movelist-scroll"
+                                    @scroll.passive="onLearnLineMovelistScroll"
+                                  >
+                                    <div class="learn-line-movelist" role="list">
+                                      <template
+                                        v-for="(san, i) in learnLineFlatSansFor(section, move)"
+                                        :key="`${section.id}-${move.id}-learn-ml-${i}`"
+                                      >
+                                        <button
+                                          type="button"
+                                          role="listitem"
+                                          class="learn-line-movelist__segment"
+                                          :class="{ 'learn-line-movelist__segment--current': courseListLearnHalfIndex === i + 1 }"
+                                          :aria-current="courseListLearnHalfIndex === i + 1 ? 'step' : undefined"
+                                          :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
+                                          @click="onLearnLineMovelistSegmentClick(i + 1)"
+                                        >
+                                          <template v-if="courseListLearnHalfIndex === i + 1">
+                                            <span class="learn-line-movelist__pill" aria-hidden="true">
+                                              <span class="learn-line-movelist__pill-border" aria-hidden="true" />
+                                              <span class="learn-line-movelist__pill-text">
+                                                <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                                <template v-else>{{ san }}</template>
+                                              </span>
+                                            </span>
+                                          </template>
+                                          <template v-else>
+                                            <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                            <template v-else>{{ san }}</template>
+                                          </template>
+                                        </button>
+                                      </template>
+                                    </div>
+                                  </div>
+                                  <div
+                                    class="learn-line-movelist-fade learn-line-movelist-fade--left"
+                                    :class="{ 'learn-line-movelist-fade--visible': learnLineMovelistFadeLeftVisible }"
+                                    aria-hidden="true"
+                                  />
+                                  <div
+                                    class="learn-line-movelist-fade learn-line-movelist-fade--right"
+                                    :class="{ 'learn-line-movelist-fade--visible': learnLineMovelistFadeRightVisible }"
+                                    aria-hidden="true"
+                                  />
+                                </div>
+                              </div>
+                              <p
+                                v-else-if="getLineMoveCount(section, move) > 0"
+                                class="chapter-line-card__moves-count"
+                              >
+                                {{ getLineMoveCount(section, move) }} moves
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -9291,16 +9572,22 @@ v-if="isVideoV6OrV7"
               <button
                 type="button"
                 class="footer-icon-btn"
-                :disabled="!(panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasPreviousPlyInLine())"
+                :disabled="!(
+                  (learnListLineNavActive && learnListHasPrevious())
+                  || (panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasPreviousPlyInLine())
+                )"
                 aria-label="Previous"
-                @click="panelView === 'line' ? selectPreviousPly() : prevQuestion()"
+                @click="onFooterPrevClick"
               >
                 <CcIcon name="arrow-chevron-left" variant="glyph" :size="20" class="footer-icon" />
               </button>
               <button
                 type="button"
                 class="footer-icon-btn"
-                :disabled="!(panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasNextPlyInLine())"
+                :disabled="!(
+                  (learnListLineNavActive && learnListHasNext())
+                  || (panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasNextPlyInLine())
+                )"
                 aria-label="Next"
                 @click="onFooterNextClick"
               >
@@ -11689,6 +11976,137 @@ body {
   line-height: var(--leading-4, 16px);
   font-weight: 400;
   color: rgba(255, 255, 255, 0.4);
+}
+/* Learn tab selected line: horizontal movelist (Opening page style, no eval chip) */
+.learn-line-movelist-wrap {
+  --learn-line-movelist-fade-bg: var(--color-bg-primary, #312e2b);
+  width: 100%;
+  min-width: 0;
+  min-height: 22px;
+  margin-top: 2px;
+}
+.learn-line-movelist-scroll-col {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.learn-line-movelist-scroll {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 2px;
+}
+.learn-line-movelist-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.learn-line-movelist {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: max-content;
+  min-height: 16px;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+}
+.learn-line-movelist-fade {
+  position: absolute;
+  top: 0;
+  bottom: 2px;
+  width: 32px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.learn-line-movelist-fade--visible {
+  opacity: 1;
+}
+.learn-line-movelist-scroll-col .learn-line-movelist-fade--left {
+  left: 0;
+  background: linear-gradient(to right, var(--learn-line-movelist-fade-bg) 0%, rgba(49, 46, 43, 0) 100%);
+}
+.learn-line-movelist-scroll-col .learn-line-movelist-fade--right {
+  right: 0;
+  background: linear-gradient(to left, var(--learn-line-movelist-fade-bg) 0%, rgba(49, 46, 43, 0) 100%);
+}
+.learn-line-movelist__segment {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 2px;
+}
+.learn-line-movelist__segment + .learn-line-movelist__segment {
+  margin-left: 0.35em;
+}
+.learn-line-movelist__segment:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+.learn-line-movelist__segment:focus-visible {
+  outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
+  outline-offset: 2px;
+}
+.learn-line-movelist__segment--current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  font-weight: inherit;
+}
+.learn-line-movelist__pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.learn-line-movelist__pill-border {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: -2px;
+  box-sizing: border-box;
+  border: none;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.learn-line-movelist__pill-text {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+.learn-line-movelist__segment--current:hover .learn-line-movelist__pill {
+  background: rgba(255, 255, 255, 0.08);
 }
 /* Restore chip design: same as opening-course-card__properties + move-item-level/info chip labels */
 .chapter-line-card__header-indicators :deep(.cc-chip-fg) {
