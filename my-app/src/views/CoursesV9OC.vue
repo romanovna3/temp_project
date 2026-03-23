@@ -448,6 +448,14 @@ const openingCourseCards = (() => {
   return cards
 })()
 
+// Returning-user started cards: same data as OpeningCoursesV2/V3 when navigating from OC list via list icon.
+const RETURNING_USER_STARTED_FOR_LIST_NAV = {
+  'French Defense': { White: { progressPercent: 100, reviewCount: 10 }, Black: null },
+  'London System': { White: { progressPercent: 45, reviewCount: 6 }, Black: { progressPercent: 40, reviewCount: 5 } },
+  'Italian Game': { White: { progressPercent: 30, reviewCount: 4 }, Black: null },
+  'Scandinavian Defense': { White: null, Black: { progressPercent: 25, reviewCount: 3 } },
+}
+
 // Lines filter options (label only the value – "Show " is separate)
 const linesFilterOptions = [
   { value: 'all', label: 'All' },
@@ -903,8 +911,65 @@ function openSelectedPracticeLineFromFooter() {
   if (ctx) openLine(ctx.section, ctx.item.move)
 }
 
-/** Opening-course footer: bulleted-list control (layout-list-bullet) — MoveTrainer / moves tray; hook up when route exists. */
-function onOpeningCourseLineListIconClick() {}
+function getOpeningListIconNavigateStartedData(card) {
+  if (!card?.openingKey || openingV1ScenarioBarPreset.value !== 'returning-user') return null
+  const byColor = RETURNING_USER_STARTED_FOR_LIST_NAV[card.openingKey]
+  if (!byColor) return null
+  return byColor[card.type] ?? null
+}
+
+/** From OC opening list: persist list state and open the selected card’s course (Learn tab). */
+function navigateOpeningCoursesOCListCardToCourse(card) {
+  if (!card) return
+  const scrollEl = openingV1ScrollWrapRef.value
+  const scrollTop = scrollEl != null && typeof scrollEl.scrollTop === 'number' ? scrollEl.scrollTop : 0
+  const playSide = card.type === 'White' ? 'white' : card.type === 'Black' ? 'black' : coursePlaySide.value
+  try {
+    sessionStorage.setItem(OPENING_COURSES_V1_RETURN_STATE_KEY, JSON.stringify({
+      scrollTop,
+      selectedOpeningCardId: selectedOpeningCardId.value ?? card.id,
+      playSide,
+    }))
+    sessionStorage.setItem(OPENING_COURSES_V1_PRESET_BAR_KEY, JSON.stringify({
+      viewportPreset: viewportPreset.value,
+      scenarioPreset: openingV1ScenarioBarPreset.value,
+    }))
+    sessionStorage.removeItem(OPENING_COURSES_V1_OPEN_IN_PRACTICE_KEY)
+    const startedData = getOpeningListIconNavigateStartedData(card)
+    if (startedData) {
+      sessionStorage.setItem(OPENING_COURSES_V1_STARTED_STATE_KEY, JSON.stringify({
+        reviewCount: startedData.reviewCount,
+        progressPercent: startedData.progressPercent,
+      }))
+    } else {
+      sessionStorage.removeItem(OPENING_COURSES_V1_STARTED_STATE_KEY)
+    }
+  } catch (_) {
+    // ignore quota / private mode
+  }
+  const isLearn = route.path.startsWith('/learn/')
+  const side = card.type === 'White' ? 'white' : card.type === 'Black' ? 'black' : undefined
+  if (openingSlug(card.title) === 'sicilian-defense') {
+    router.push(isLearn ? { path: '/learn/sicilian-defense' } : { path: '/courses/sicilian-defense' }).catch(() => {})
+  } else {
+    router.push({
+      name: isLearn ? 'learn-opening-courses-oc-course' : 'courses-opening-courses-oc-course',
+      params: { courseId: String(card.id) },
+      query: side ? { side } : {},
+    }).catch(() => {})
+  }
+}
+
+/** Opening-course footer: list icon opens the course page for the selected opening (list mode only). */
+function onOpeningCourseLineListIconClick() {
+  if (!isOpeningCoursesOCList.value || panelView.value !== 'courses') return
+  if (openingCourseIdFromRoute.value) return
+  const id = selectedOpeningCardId.value
+  if (id == null) return
+  const card = openingCourseCards.find((c) => c.id === id)
+  if (!card) return
+  navigateOpeningCoursesOCListCardToCourse(card)
+}
 
 function backToCourses() {
   const line = selectedLine.value
@@ -14680,7 +14745,11 @@ body {
 /* Icon-only footer control: DS secondary button, fixed square to align with large primary CTA */
 .course-page-line-list-icon-cta {
   flex-shrink: 0;
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
 }
+.course-page-line-list-icon-cta:is(button),
 .course-page-line-list-icon-cta :deep(button) {
   width: 48px;
   min-width: 48px !important;

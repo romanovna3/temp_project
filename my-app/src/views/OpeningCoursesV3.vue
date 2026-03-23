@@ -373,11 +373,9 @@ function getStoredOpeningFilterColor() {
 /** When false, Learn/Practice on the Opening list do not navigate (MoveTrainer will replace the course shell). */
 const OPENING_LIST_NAVIGATE_TO_COURSE_ENABLED = false
 
-/** Open opening course: pass a card when nothing is selected (e.g. Learn → latest); else uses selectedOpeningCard. options.openInPracticeTab = true to land on Practice tab. */
-function openOpeningCourse(optionalCard, options) {
-  const card = optionalCard ?? selectedOpeningCard.value
+/** Navigate from Opening list to OC course page (session + router). Used by list icon even when main Learn/Practice CTAs are no-ops. */
+function navigateOpeningListCardToCourse(card, options) {
   if (!card) return
-  if (!OPENING_LIST_NAVIGATE_TO_COURSE_ENABLED) return
   const openInPracticeTab = options?.openInPracticeTab === true
   const scrollEl = openingV3ScrollWrapRef.value
   const scrollTop = scrollEl != null && typeof scrollEl.scrollTop === 'number' ? scrollEl.scrollTop : 0
@@ -425,8 +423,20 @@ function openOpeningCourse(optionalCard, options) {
   }
 }
 
-/** Footer list icon — MoveTrainer / moves tray; wire when route exists. */
-function onOpeningListLineListIconClick() {}
+/** Open opening course: pass a card when nothing is selected (e.g. Learn → latest); else uses selectedOpeningCard. options.openInPracticeTab = true to land on Practice tab. */
+function openOpeningCourse(optionalCard, options) {
+  const card = optionalCard ?? selectedOpeningCard.value
+  if (!card) return
+  if (!OPENING_LIST_NAVIGATE_TO_COURSE_ENABLED) return
+  navigateOpeningListCardToCourse(card, options)
+}
+
+/** Footer list icon — opens the selected opening’s course page (Learn tab). */
+function onOpeningListLineListIconClick() {
+  const card = selectedOpeningCard.value
+  if (!card) return
+  navigateOpeningListCardToCourse(card, { openInPracticeTab: false })
+}
 
 function backFromOpeningCourse() {
   panelView.value = 'courses'
@@ -14059,7 +14069,11 @@ body {
 }
 .course-page-line-list-icon-cta {
   flex-shrink: 0;
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
 }
+.course-page-line-list-icon-cta:is(button),
 .course-page-line-list-icon-cta :deep(button) {
   width: 48px;
   min-width: 48px !important;
