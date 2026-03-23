@@ -8844,9 +8844,10 @@ v-if="isVideoV6OrV7"
             <!-- Opening Courses V3 (courses view): list icon + completed card → Practice (aqua); else Learn / Start Course. -->
             <div v-else-if="isOpeningCoursesV3 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-icon-cta">
-                <button
-                  type="button"
-                  class="course-page-line-list-icon-btn"
+                <CcButton
+                  variant="secondary"
+                  size="large"
+                  class="course-page-line-list-icon-cta"
                   aria-label="Moves list"
                   @click="onOpeningListLineListIconClick"
                 >
@@ -8855,9 +8856,10 @@ v-if="isVideoV6OrV7"
                     alt=""
                     width="22"
                     height="22"
-                    class="course-page-line-list-icon-btn__img"
+                    class="course-page-line-list-icon-cta__img"
+                    aria-hidden="true"
                   />
-                </button>
+                </CcButton>
                 <div class="footer-course-cta-slot">
                   <AquaCtaButton
                     v-if="selectedOpeningCardIsCompleted"
@@ -14057,36 +14059,21 @@ body {
 .footer-course-cta-slot :deep(.aqua-cta-button) {
   width: 100%;
 }
-.course-page-line-list-icon-btn {
+.course-page-line-list-icon-cta {
   flex-shrink: 0;
-  box-sizing: border-box;
+}
+.course-page-line-list-icon-cta :deep(button) {
   width: 48px;
+  min-width: 48px !important;
+  max-width: 48px;
   height: 48px;
-  margin: 0;
-  padding: 0;
+  min-height: 48px;
+  padding: 0 !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.75);
-  background-color: var(--color-bg-subtle, #3d3a36);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(0, 0, 0, 0.08) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 2px 4px rgba(0, 0, 0, 0.22);
-  transition: color 0.15s ease, filter 0.15s ease;
 }
-.course-page-line-list-icon-btn:hover {
-  color: rgba(255, 255, 255, 0.95);
-  filter: brightness(1.06);
-}
-.course-page-line-list-icon-btn:focus-visible {
-  outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
-  outline-offset: 2px;
-}
-.course-page-line-list-icon-btn__img {
+.course-page-line-list-icon-cta__img {
   display: block;
   flex-shrink: 0;
 }
