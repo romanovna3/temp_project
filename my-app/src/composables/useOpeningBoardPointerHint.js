@@ -23,6 +23,15 @@ function sleep(ms, signal) {
   })
 }
 
+/** Ensures `transition: none` is applied in the compositor before re-enabling transitions (avoids one-frame interpolated snap). */
+function waitPaintCommit() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve)
+    })
+  })
+}
+
 /** Center of chess square as % of board (matches OpeningCourses board grid). */
 export function openingSquareCenterPercent(square, blackView) {
   const fileIndex = square.charCodeAt(0) - 97
@@ -36,8 +45,9 @@ export function openingSquareCenterPercent(square, blackView) {
 }
 
 /**
- * Point on the bottom edge of the square (under the square from White’s POV), so the hand sits below
- * and points up into the square. `top` is the board Y of that bottom edge.
+ * Bottom edge of the square in board % — used as the `top` anchor for the hint box.
+ * With CSS `translate(-50%, 0)`, the hint’s top edge sits on this line so the asset (finger up)
+ * sits just under the square and points into it.
  */
 export function openingSquarePointerUnderPercent(square, blackView) {
   const fileIndex = square.charCodeAt(0) - 97
@@ -60,13 +70,16 @@ export function useOpeningBoardPointerHint(shouldRun, boardViewBlack) {
 
   let abortCtrl = null
 
+  // No overshoot: bezier with y>1 caused the pointer to pass e4 then ease back down (looked like “moving back”).
+  const SLIDE_EASE = 'cubic-bezier(0.25, 0.1, 0.25, 1)'
+
   const openingBoardPointerStyle = computed(() => ({
     left: pos.value.left,
     top: pos.value.top,
     opacity: opacity.value,
     transition: instant.value
       ? 'none'
-      : `left ${SLIDE_MS / 1000}s cubic-bezier(0.33, 1, 0.65, 1), top ${SLIDE_MS / 1000}s cubic-bezier(0.33, 1, 0.65, 1), opacity ${FADE_MS / 1000}s ease-out`,
+      : `left ${SLIDE_MS / 1000}s ${SLIDE_EASE}, top ${SLIDE_MS / 1000}s ${SLIDE_EASE}, opacity ${FADE_MS / 1000}s ease-out`,
   }))
 
   async function playHop(from, to, signal) {
@@ -75,8 +88,8 @@ export function useOpeningBoardPointerHint(shouldRun, boardViewBlack) {
     pos.value = openingSquarePointerUnderPercent(from, boardViewBlack.value)
     opacity.value = 0
     await nextTick()
+    await waitPaintCommit()
     instant.value = false
-    await nextTick()
 
     opacity.value = 1
     await sleep(HOLD_BOTTOM_MS, signal)
@@ -93,6 +106,7 @@ export function useOpeningBoardPointerHint(shouldRun, boardViewBlack) {
     pos.value = openingSquarePointerUnderPercent(from, boardViewBlack.value)
     opacity.value = 0
     await nextTick()
+    await waitPaintCommit()
     instant.value = false
   }
 
