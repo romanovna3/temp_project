@@ -8964,14 +8964,14 @@ body {
   object-fit: contain;
 }
 
-/* Opening list: animated finger hints e2→e4 / d2→d4 until user moves or selects a course */
+/* Opening list: finger under square, bottom of box on square’s bottom edge → points up into square */
 .opening-board-pointer-hint {
   position: absolute;
   z-index: 14;
   width: 50px;
   height: 50px;
-  margin-left: -25px;
-  margin-top: -40px;
+  margin: 0;
+  transform: translate(-50%, -100%);
   pointer-events: none;
   will-change: left, top, opacity;
 }
