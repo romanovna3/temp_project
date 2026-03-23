@@ -884,6 +884,17 @@ function openLine(section, move) {
   panelView.value = 'line'
   lineViewVideoFormat.value = 'large' // start large; shrink to small on first scroll when content is scrollable
 }
+
+function openSelectedLearnLineFromFooter() {
+  const ctx = selectedLearnLineContext.value
+  if (ctx) openLine(ctx.section, ctx.move)
+}
+
+function openSelectedPracticeLineFromFooter() {
+  const ctx = selectedPracticeLineContext.value
+  if (ctx) openLine(ctx.section, ctx.item.move)
+}
+
 function backToCourses() {
   const line = selectedLine.value
   v3ScrollUpInstantHide.value = false
@@ -3407,6 +3418,109 @@ const courseSectionsForPracticeDisplay = computed(() => {
   }
   return [placeholderSection]
 })
+
+/** Learn tab list: selected row (green vertical bar + footer). Defaults to next-to-learn until user picks another line. */
+const courseListSelectedLineLearn = ref(null)
+const learnListSelectionTouched = ref(false)
+/** Practice tab list: selected row (aqua vertical bar + footer). Defaults to first ready row, else first row. */
+const courseListSelectedLinePractice = ref(null)
+const practiceListSelectionTouched = ref(false)
+
+const nextToPracticeRef = computed(() => {
+  const display = courseSectionsForPracticeDisplay.value
+  if (!display?.length) return null
+  for (const section of display) {
+    const ready = section.practiceMoves?.find((pm) => pm.practiceType === 'ready')
+    if (ready) return { sectionId: section.id, moveId: ready.move.id }
+  }
+  for (const section of display) {
+    const first = section.practiceMoves?.[0]
+    if (first) return { sectionId: section.id, moveId: first.move.id }
+  }
+  return null
+})
+
+const selectedLearnLineContext = computed(() => {
+  const s = courseListSelectedLineLearn.value
+  if (!s) return null
+  const section = courseSections.value.find((sec) => sec.id === s.sectionId)
+  if (!section) return null
+  const move = getSectionMovesForDisplay(section).find((m) => String(m.id) === String(s.moveId))
+  if (!move) return null
+  return { section, move }
+})
+
+const selectedPracticeLineContext = computed(() => {
+  const s = courseListSelectedLinePractice.value
+  if (!s) return null
+  for (const section of courseSectionsForPracticeDisplay.value) {
+    if (section.id !== s.sectionId) continue
+    const item = section.practiceMoves?.find((pm) => String(pm.move.id) === String(s.moveId))
+    if (item) return { section, item }
+  }
+  return null
+})
+
+function selectCourseListLineLearn(section, move) {
+  learnListSelectionTouched.value = true
+  courseListSelectedLineLearn.value = { sectionId: section.id, moveId: move.id }
+}
+
+function selectCourseListLinePractice(section, item) {
+  practiceListSelectionTouched.value = true
+  courseListSelectedLinePractice.value = { sectionId: section.id, moveId: item.move.id }
+}
+
+function isCourseListLineSelectedLearn(section, move) {
+  const sel = courseListSelectedLineLearn.value
+  return !!(sel && sel.sectionId === section.id && String(sel.moveId) === String(move.id))
+}
+
+function isCourseListLineSelectedPractice(section, move) {
+  const sel = courseListSelectedLinePractice.value
+  return !!(sel && sel.sectionId === section.id && String(sel.moveId) === String(move.id))
+}
+
+const showCourseListLearnLineActions = computed(() => {
+  const onOpeningList =
+    route.path === '/courses/opening-courses-oc' || route.path === '/learn/opening-courses-oc'
+  return (
+    panelView.value === 'courses' &&
+    isVideoV7OrV8OrV9.value &&
+    courseTabsActive.value === 'content' &&
+    !!selectedLearnLineContext.value &&
+    !onOpeningList
+  )
+})
+
+const showCourseListPracticeLineActions = computed(() => {
+  const onOpeningList =
+    route.path === '/courses/opening-courses-oc' || route.path === '/learn/opening-courses-oc'
+  return (
+    panelView.value === 'courses' &&
+    isVideoV7OrV8OrV9.value &&
+    courseTabsActive.value === 'stats' &&
+    !!selectedPracticeLineContext.value &&
+    !onOpeningList
+  )
+})
+
+watch([openingCourseIdFromRoute, scenarioPreset], () => {
+  learnListSelectionTouched.value = false
+  practiceListSelectionTouched.value = false
+})
+
+watch([nextToLearnRef, learnListSelectionTouched], () => {
+  if (learnListSelectionTouched.value) return
+  const n = nextToLearnRef.value
+  courseListSelectedLineLearn.value = n ? { sectionId: n.sectionId, moveId: n.moveId } : null
+}, { immediate: true })
+
+watch([nextToPracticeRef, practiceListSelectionTouched], () => {
+  if (practiceListSelectionTouched.value) return
+  const n = nextToPracticeRef.value
+  courseListSelectedLinePractice.value = n ? { sectionId: n.sectionId, moveId: n.moveId } : null
+}, { immediate: true })
 
 /** Practice-in label for a move (e.g. "1 day", "3 days"). Used for nothing-to-practice tooltip and "Practice available in". */
 function getPracticeInLabelForMove(move) {
@@ -7604,10 +7718,16 @@ onUnmounted(() => {
                                 :class="[
                                   item.practiceType === 'completed' && 'chapter-line-card--v7-practice-completed',
                                   lineIndex === section.practiceMoves.length - 1 && 'chapter-line-card--last',
+                                  isCourseListLineSelectedPractice(section, item.move) && 'chapter-line-card--line-selected-practice',
                                 ]"
                                 role="listitem"
                                 data-name="Line"
                                 :data-move-id="`${section.id}-${item.move.id}`"
+                                :aria-current="isCourseListLineSelectedPractice(section, item.move) ? 'true' : undefined"
+                                tabindex="0"
+                                @click="selectCourseListLinePractice(section, item)"
+                                @keydown.enter.prevent="selectCourseListLinePractice(section, item)"
+                                @keydown.space.prevent="selectCourseListLinePractice(section, item)"
                                 @mouseenter="setHoveredChapterLine(section, item.move)"
                                 @mouseleave="clearHoveredChapterLine()"
                               >
@@ -8040,11 +8160,17 @@ onUnmounted(() => {
                           { 'move-item--inactive': !move.completed },
                           lineIndex === getSectionMovesForDisplay(section).length - 1 && 'chapter-line-card--last',
                           isVideoV6OrV7 && 'chapter-line-card--v6-timeline-right',
-                          isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id && 'chapter-line-card--next-to-learn'
+                          isVideoV6OrV7 && nextToLearnRef && nextToLearnRef.sectionId === section.id && nextToLearnRef.moveId === move.id && 'chapter-line-card--next-to-learn',
+                          isVideoV6OrV7 && isCourseListLineSelectedLearn(section, move) && 'chapter-line-card--line-selected-learn'
                         ]"
                         role="listitem"
                         data-name="Line"
                         :data-move-id="`${section.id}-${move.id}`"
+                        :aria-current="isCourseListLineSelectedLearn(section, move) ? 'true' : undefined"
+                        tabindex="0"
+                        @click="selectCourseListLineLearn(section, move)"
+                        @keydown.enter.prevent="selectCourseListLineLearn(section, move)"
+                        @keydown.space.prevent="selectCourseListLineLearn(section, move)"
                         @mouseenter="setHoveredChapterLine(section, move)"
                         @mouseleave="clearHoveredChapterLine()"
                       >
@@ -9033,6 +9159,52 @@ v-if="isVideoV6OrV7"
             <div v-else-if="panelView === 'line' && currentLineType === 'info'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-full">
                 <CcButton variant="primary" size="large" class="footer-btn-full" @click="hasNextLine ? goToNextLine() : backToCourses()">Next Line</CcButton>
+              </div>
+            </div>
+            <!-- Course page (Learn tab): line list selection — Learn vs Learn again -->
+            <div v-else-if="showCourseListLearnLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
+              <div class="footer-buttons-row footer-buttons-row-full">
+                <CcButton
+                  v-if="!selectedLearnLineContext.move.completed"
+                  variant="primary"
+                  size="large"
+                  class="footer-btn-full"
+                  @click="openSelectedLearnLineFromFooter"
+                >
+                  Learn
+                </CcButton>
+                <CcButton
+                  v-else
+                  variant="secondary"
+                  size="large"
+                  class="footer-btn-full"
+                  @click="openSelectedLearnLineFromFooter"
+                >
+                  Learn again
+                </CcButton>
+              </div>
+            </div>
+            <!-- Course page (Practice tab): line list selection — Practice vs Practice again -->
+            <div v-else-if="showCourseListPracticeLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
+              <div class="footer-buttons-row footer-buttons-row-full">
+                <CcButton
+                  v-if="selectedPracticeLineContext.item.practiceType !== 'completed'"
+                  variant="primary"
+                  size="large"
+                  class="footer-btn-full"
+                  @click="openSelectedPracticeLineFromFooter"
+                >
+                  Practice
+                </CcButton>
+                <CcButton
+                  v-else
+                  variant="secondary"
+                  size="large"
+                  class="footer-btn-full"
+                  @click="openSelectedPracticeLineFromFooter"
+                >
+                  Practice again
+                </CcButton>
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container footer-buttons-container--cta-only">
@@ -11023,16 +11195,17 @@ body {
   flex-shrink: 0;
   color: var(--color-text-inverse, #fff);
 }
-/* Next-to-learn line: 8×8 node, brand green outline (no glow) */
+/* Next-to-learn: hollow green circle only (no glow); vertical bar is selection state below */
 .courses-content--v6 .chapter-line-card__timeline-node--next-to-learn {
   width: 8px;
   height: 8px;
   min-width: 8px;
   min-height: 8px;
-  outline: 2px solid #81B64C;
-  outline-offset: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  border: 2px solid #81b64c;
 }
-/* Next-to-learn card: green vertical bar on the left (full height of card, aligned to main container left edge) */
 .courses-content--v6 .chapter-line-card--next-to-learn {
   position: relative;
 }
@@ -11045,14 +11218,35 @@ body {
 .courses-content--v6 .chapter-line-card--next-to-learn .opening-course-card__title {
   color: rgba(255, 255, 255, 0.72);
 }
-.courses-content--v6 .chapter-line-card--next-to-learn::before {
+/* Selected line (Learn tab): green vertical bar — default matches next-to-learn via preselection */
+.courses-content--v6 .chapter-line-card--line-selected-learn {
+  position: relative;
+}
+.courses-content--v6 .chapter-line-card--line-selected-learn::before {
   content: '';
   position: absolute;
   left: -12px;
   top: 0;
   bottom: 0;
   width: 3px;
-  background: #81B64C;
+  background: #81b64c;
+  pointer-events: none;
+}
+.courses-content--v6 .chapter-line-card.move-item--inactive.chapter-line-card--line-selected-learn .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.72);
+}
+/* Practice tab: selected row — aqua vertical bar */
+.sections-list--practice .chapter-line-card--line-selected-practice {
+  position: relative;
+}
+.sections-list--practice .chapter-line-card--line-selected-practice::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-aqua-300, #26c2a3);
   pointer-events: none;
 }
 
