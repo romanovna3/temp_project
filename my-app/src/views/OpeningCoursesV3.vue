@@ -424,6 +424,10 @@ function openOpeningCourse(optionalCard, options) {
     }).catch(() => {})
   }
 }
+
+/** Footer list icon — MoveTrainer / moves tray; wire when route exists. */
+function onOpeningListLineListIconClick() {}
+
 function backFromOpeningCourse() {
   panelView.value = 'courses'
 }
@@ -8837,24 +8841,40 @@ v-if="isVideoV6OrV7"
                 </button>
               </div>
             </div>
-            <!-- Opening Courses V3 (courses view): completed card → Practice (aqua) with counter; else Learn / Start Course. -->
+            <!-- Opening Courses V3 (courses view): list icon + completed card → Practice (aqua); else Learn / Start Course. -->
             <div v-else-if="isOpeningCoursesV3 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
-              <div class="footer-buttons-row footer-buttons-row-full">
-                <AquaCtaButton
-                  v-if="selectedOpeningCardIsCompleted"
-                  label="Practice"
-                  :badge="selectedOpeningCardPracticeCount"
-                  class="footer-btn-full"
-                  @click="openOpeningCourse(undefined, { openInPracticeTab: true })"
-                />
-                <CcButton
-                  v-else
-                  variant="primary"
-                  size="large"
-                  class="footer-btn-full"
-                  :disabled="!selectedOpeningCardId"
-                  @click="openOpeningCourse()"
-                >{{ openingV3FooterPrimaryLabel }}</CcButton>
+              <div class="footer-buttons-row footer-buttons-row-icon-cta">
+                <button
+                  type="button"
+                  class="course-page-line-list-icon-btn"
+                  aria-label="Moves list"
+                  @click="onOpeningListLineListIconClick"
+                >
+                  <img
+                    :src="baseUrl + 'icons/layout-list-bullet.svg'"
+                    alt=""
+                    width="22"
+                    height="22"
+                    class="course-page-line-list-icon-btn__img"
+                  />
+                </button>
+                <div class="footer-course-cta-slot">
+                  <AquaCtaButton
+                    v-if="selectedOpeningCardIsCompleted"
+                    label="Practice"
+                    :badge="selectedOpeningCardPracticeCount"
+                    class="footer-btn-full"
+                    @click="openOpeningCourse(undefined, { openInPracticeTab: true })"
+                  />
+                  <CcButton
+                    v-else
+                    variant="primary"
+                    size="large"
+                    class="footer-btn-full"
+                    :disabled="!selectedOpeningCardId"
+                    @click="openOpeningCourse()"
+                  >{{ openingV3FooterPrimaryLabel }}</CcButton>
+                </div>
               </div>
             </div>
             <!-- Read mode ON: Back (S) exits read mode + nav; Continue (P) -->
@@ -14015,6 +14035,60 @@ body {
 }
 .footer-buttons-row-full > * :deep(button) {
   width: 100%;
+}
+/* Opening list footer: square list icon + main CTA */
+.footer-buttons-row-icon-cta {
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+.footer-course-cta-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+}
+.footer-course-cta-slot > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.footer-course-cta-slot :deep(.footer-btn-full),
+.footer-course-cta-slot :deep(.aqua-cta-button) {
+  width: 100%;
+}
+.course-page-line-list-icon-btn {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.75);
+  background-color: var(--color-bg-subtle, #3d3a36);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(0, 0, 0, 0.08) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 2px 4px rgba(0, 0, 0, 0.22);
+  transition: color 0.15s ease, filter 0.15s ease;
+}
+.course-page-line-list-icon-btn:hover {
+  color: rgba(255, 255, 255, 0.95);
+  filter: brightness(1.06);
+}
+.course-page-line-list-icon-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
+  outline-offset: 2px;
+}
+.course-page-line-list-icon-btn__img {
+  display: block;
+  flex-shrink: 0;
 }
 /* Icon footer: ellipsis, video, prev/next – 4px less gap above (closer to CTAs) */
 .footer-section-toolbar {

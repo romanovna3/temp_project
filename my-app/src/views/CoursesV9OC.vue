@@ -5074,10 +5074,6 @@ const isOpeningCoursesOCList = computed(() => {
   return p === '/courses/opening-courses-oc' || p === '/learn/opening-courses-oc'
 })
 
-/** List icon beside main CTA: OC course shell only (not opening list), courses panel. Not tied to openingCourseIdFromRoute string match. */
-const showOpeningCourseFooterLineListIcon = computed(
-  () => !isOpeningCoursesOCList.value && panelView.value === 'courses',
-)
 /** Defer opening-courses-oc layout until after first paint to avoid Error -102 (renderer crash). */
 const openingOCReady = ref(false)
 let openingOCReadyTimer = null
@@ -9428,8 +9424,24 @@ v-if="isVideoV6OrV7"
           <section class="footer-section footer-section-actions" data-name="ButtonsFooter">
             <!-- Opening Courses OC (courses view): single CTA Start Course -->
             <div v-if="isOpeningCoursesOCList && panelView === 'courses'" class="footer-buttons-container">
-              <div class="footer-buttons-row footer-buttons-row-full">
-                <CcButton variant="primary" size="large" class="footer-btn-full">Start Course</CcButton>
+              <div class="footer-buttons-row footer-buttons-row-icon-cta">
+                <button
+                  type="button"
+                  class="course-page-line-list-icon-btn"
+                  aria-label="Moves list"
+                  @click="onOpeningCourseLineListIconClick"
+                >
+                  <img
+                    :src="baseUrl + 'icons/layout-list-bullet.svg'"
+                    alt=""
+                    width="22"
+                    height="22"
+                    class="course-page-line-list-icon-btn__img"
+                  />
+                </button>
+                <div class="footer-course-cta-slot">
+                  <CcButton variant="primary" size="large" class="footer-btn-full">Start Course</CcButton>
+                </div>
               </div>
             </div>
             <!-- Read mode ON: Back (S) exits read mode + nav; Continue (P) -->
@@ -9474,12 +9486,8 @@ v-if="isVideoV6OrV7"
             </div>
             <!-- Course page (Learn tab): line list selection — Learn vs Learn again -->
             <div v-else-if="showCourseListLearnLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
-              <div
-                class="footer-buttons-row"
-                :class="showOpeningCourseFooterLineListIcon ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
-              >
+              <div class="footer-buttons-row footer-buttons-row-icon-cta">
                 <button
-                  v-if="showOpeningCourseFooterLineListIcon"
                   type="button"
                   class="course-page-line-list-icon-btn"
                   aria-label="Moves list"
@@ -9517,12 +9525,8 @@ v-if="isVideoV6OrV7"
             </div>
             <!-- Course page (Practice tab): Ready → aqua Practice (no badge); Completed / other → Practice secondary disabled -->
             <div v-else-if="showCourseListPracticeLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
-              <div
-                class="footer-buttons-row"
-                :class="showOpeningCourseFooterLineListIcon ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
-              >
+              <div class="footer-buttons-row footer-buttons-row-icon-cta">
                 <button
-                  v-if="showOpeningCourseFooterLineListIcon"
                   type="button"
                   class="course-page-line-list-icon-btn"
                   aria-label="Moves list"
@@ -9557,12 +9561,8 @@ v-if="isVideoV6OrV7"
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container footer-buttons-container--cta-only">
                 <!-- Color picker is not shown on Course page (only on Opening page in Courses.vue). Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Practice (disabled) on Practice tab -->
-                <div
-                  class="footer-buttons-row"
-                  :class="showOpeningCourseFooterLineListIcon ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
-                >
+                <div class="footer-buttons-row footer-buttons-row-icon-cta">
                   <button
-                    v-if="showOpeningCourseFooterLineListIcon"
                     type="button"
                     class="course-page-line-list-icon-btn"
                     aria-label="Moves list"
