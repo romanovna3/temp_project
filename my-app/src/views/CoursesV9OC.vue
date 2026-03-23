@@ -11196,11 +11196,11 @@ body {
   flex-shrink: 0;
   color: var(--color-text-inverse, #fff);
 }
-/* Learn tab: selected incomplete line — same 12×12 as unselected; green ring + hollow center */
+/* Learn tab: selected incomplete — same solid fill as not-learned; green ring */
 .courses-content--v6 .chapter-line-card__timeline-node--v6.chapter-line-card__timeline-node--line-selected-learn:not(.chapter-line-card__timeline-node--completed) {
   outline: none;
   box-shadow: none;
-  background: transparent;
+  background: var(--color-bg-primary, #312e2b);
   border: 2px solid #81b64c;
 }
 .courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right.chapter-line-card--line-selected-learn {
@@ -11257,16 +11257,18 @@ body {
   background: transparent;
   border-color: transparent;
 }
-/* Practice: selected — aqua hollow ring (must follow default practice node rules) */
+/* Practice: selected — same solid fill as not-learned; aqua ring */
 .course-tab-panel--stats .sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--line-selected-practice:not(.chapter-line-card__timeline-node--completed) {
   outline: none;
   box-shadow: none;
-  background: transparent;
+  background: var(--color-bg-primary, #312e2b);
   border: 2px solid var(--color-aqua-300, #26c2a3);
 }
-/* Practice: selected row with timeline check (e.g. French) — aqua ring around node */
+/* Practice: selected + timeline check — solid fill + aqua ring (check unchanged) */
 .course-tab-panel--stats .sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--line-selected-practice.chapter-line-card__timeline-node--completed {
-  box-shadow: 0 0 0 2px var(--color-aqua-300, #26c2a3);
+  box-shadow: none;
+  background: var(--color-bg-primary, #312e2b);
+  border: 2px solid var(--color-aqua-300, #26c2a3);
   border-radius: 50%;
 }
 /* Practice rows: no body hover dim (was reading like a darker overlay) */
