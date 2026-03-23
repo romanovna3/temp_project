@@ -9185,26 +9185,23 @@ v-if="isVideoV6OrV7"
                 </CcButton>
               </div>
             </div>
-            <!-- Course page (Practice tab): line list selection — Practice vs Practice again -->
+            <!-- Course page (Practice tab): Ready → aqua Practice (no badge); Completed / other → Practice secondary disabled -->
             <div v-else-if="showCourseListPracticeLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-full">
-                <CcButton
-                  v-if="selectedPracticeLineContext.item.practiceType !== 'completed'"
-                  variant="primary"
-                  size="large"
+                <AquaCtaButton
+                  v-if="selectedPracticeLineContext.item.practiceType === 'ready'"
+                  label="Practice"
                   class="footer-btn-full"
                   @click="openSelectedPracticeLineFromFooter"
-                >
-                  Practice
-                </CcButton>
+                />
                 <CcButton
                   v-else
                   variant="secondary"
                   size="large"
+                  disabled
                   class="footer-btn-full"
-                  @click="openSelectedPracticeLineFromFooter"
                 >
-                  Practice again
+                  Practice
                 </CcButton>
               </div>
             </div>
