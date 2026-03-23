@@ -475,10 +475,14 @@ const OPENING_COURSES_V1_PRESET_BAR_KEY = 'openingCoursesV1PresetBar'
 
 const OPENING_COURSES_V1_STARTED_STATE_KEY = 'openingCoursesV1StartedState'
 
+/** When false, Learn/Practice on the Opening list do not navigate (MoveTrainer will replace the course shell). */
+const OPENING_LIST_NAVIGATE_TO_COURSE_ENABLED = false
+
 function openOpeningCourse() {
   if (selectedOpeningCardId.value == null) return
   const card = selectedOpeningCard.value
   if (!card) return
+  if (!OPENING_LIST_NAVIGATE_TO_COURSE_ENABLED) return
   const scrollEl = openingV1ScrollWrapRef.value
   const scrollTop = scrollEl != null && typeof scrollEl.scrollTop === 'number' ? scrollEl.scrollTop : 0
   try {

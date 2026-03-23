@@ -895,6 +895,9 @@ function openSelectedPracticeLineFromFooter() {
   if (ctx) openLine(ctx.section, ctx.item.move)
 }
 
+/** Opening-course footer: bulleted-list control (layout-list-bullet) — MoveTrainer / moves tray; hook up when route exists. */
+function onOpeningCourseLineListIconClick() {}
+
 function backToCourses() {
   const line = selectedLine.value
   v3ScrollUpInstantHide.value = false
@@ -9453,105 +9456,165 @@ v-if="isVideoV6OrV7"
             </div>
             <!-- Course page (Learn tab): line list selection — Learn vs Learn again -->
             <div v-else-if="showCourseListLearnLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
-              <div class="footer-buttons-row footer-buttons-row-full">
-                <CcButton
-                  v-if="!selectedLearnLineContext.move.completed"
-                  variant="primary"
-                  size="large"
-                  class="footer-btn-full"
-                  @click="openSelectedLearnLineFromFooter"
+              <div
+                class="footer-buttons-row"
+                :class="openingCourseIdFromRoute ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
+              >
+                <button
+                  v-if="openingCourseIdFromRoute"
+                  type="button"
+                  class="course-page-line-list-icon-btn"
+                  aria-label="Moves list"
+                  @click="onOpeningCourseLineListIconClick"
                 >
-                  Learn
-                </CcButton>
-                <CcButton
-                  v-else
-                  variant="secondary"
-                  size="large"
-                  class="footer-btn-full"
-                  @click="openSelectedLearnLineFromFooter"
-                >
-                  Learn again
-                </CcButton>
+                  <img
+                    :src="baseUrl + 'icons/layout-list-bullet.svg'"
+                    alt=""
+                    width="22"
+                    height="22"
+                    class="course-page-line-list-icon-btn__img"
+                  />
+                </button>
+                <div class="footer-course-cta-slot">
+                  <CcButton
+                    v-if="!selectedLearnLineContext.move.completed"
+                    variant="primary"
+                    size="large"
+                    class="footer-btn-full"
+                    @click="openSelectedLearnLineFromFooter"
+                  >
+                    Learn
+                  </CcButton>
+                  <CcButton
+                    v-else
+                    variant="secondary"
+                    size="large"
+                    class="footer-btn-full"
+                    @click="openSelectedLearnLineFromFooter"
+                  >
+                    Learn again
+                  </CcButton>
+                </div>
               </div>
             </div>
             <!-- Course page (Practice tab): Ready → aqua Practice (no badge); Completed / other → Practice secondary disabled -->
             <div v-else-if="showCourseListPracticeLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
-              <div class="footer-buttons-row footer-buttons-row-full">
-                <AquaCtaButton
-                  v-if="selectedPracticeLineContext.item.practiceType === 'ready'"
-                  label="Practice"
-                  class="footer-btn-full"
-                  @click="openSelectedPracticeLineFromFooter"
-                />
-                <CcButton
-                  v-else
-                  variant="secondary"
-                  size="large"
-                  disabled
-                  class="footer-btn-full"
+              <div
+                class="footer-buttons-row"
+                :class="openingCourseIdFromRoute ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
+              >
+                <button
+                  v-if="openingCourseIdFromRoute"
+                  type="button"
+                  class="course-page-line-list-icon-btn"
+                  aria-label="Moves list"
+                  @click="onOpeningCourseLineListIconClick"
                 >
-                  Practice
-                </CcButton>
+                  <img
+                    :src="baseUrl + 'icons/layout-list-bullet.svg'"
+                    alt=""
+                    width="22"
+                    height="22"
+                    class="course-page-line-list-icon-btn__img"
+                  />
+                </button>
+                <div class="footer-course-cta-slot">
+                  <AquaCtaButton
+                    v-if="selectedPracticeLineContext.item.practiceType === 'ready'"
+                    label="Practice"
+                    class="footer-btn-full"
+                    @click="openSelectedPracticeLineFromFooter"
+                  />
+                  <CcButton
+                    v-else
+                    variant="secondary"
+                    size="large"
+                    disabled
+                    class="footer-btn-full"
+                  >
+                    Practice
+                  </CcButton>
+                </div>
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container footer-buttons-container--cta-only">
                 <!-- Color picker is not shown on Course page (only on Opening page in Courses.vue). Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Practice (disabled) on Practice tab -->
-                <div class="footer-buttons-row footer-buttons-row-full">
-                  <template v-if="scenarioEffectivePracticeCount === 0">
+                <div
+                  class="footer-buttons-row"
+                  :class="openingCourseIdFromRoute ? 'footer-buttons-row-icon-cta' : 'footer-buttons-row-full'"
+                >
+                  <button
+                    v-if="openingCourseIdFromRoute"
+                    type="button"
+                    class="course-page-line-list-icon-btn"
+                    aria-label="Moves list"
+                    @click="onOpeningCourseLineListIconClick"
+                  >
+                    <img
+                      :src="baseUrl + 'icons/layout-list-bullet.svg'"
+                      alt=""
+                      width="22"
+                      height="22"
+                      class="course-page-line-list-icon-btn__img"
+                    />
+                  </button>
+                  <div class="footer-course-cta-slot">
+                    <template v-if="scenarioEffectivePracticeCount === 0">
+                      <CcButton
+                        v-if="courseTabsActive === 'content'"
+                        variant="primary"
+                        size="large"
+                        class="footer-btn-full"
+                      >
+                        Learn
+                      </CcButton>
+                      <CcButton
+                        v-else-if="courseTabsActive === 'stats'"
+                        variant="secondary"
+                        size="large"
+                        disabled
+                        class="footer-btn-full"
+                      >
+                        Practice
+                      </CcButton>
+                    </template>
+                    <AquaCtaButton
+                      v-else-if="scenarioShowOnlyPractice && (isVideoV8 || isVideoV9)"
+                      label="Practice"
+                      :badge="scenarioEffectivePracticeCount"
+                      class="footer-btn-full"
+                    />
                     <CcButton
-                      v-if="courseTabsActive === 'content'"
+                      v-else-if="scenarioShowOnlyPractice"
+                      variant="primary"
+                      size="large"
+                      class="footer-btn-full"
+                    >
+                      Practice
+                    </CcButton>
+                    <CcButton
+                      v-else-if="courseTabsActive === 'content'"
                       variant="primary"
                       size="large"
                       class="footer-btn-full"
                     >
                       Learn
                     </CcButton>
+                    <AquaCtaButton
+                      v-else-if="courseTabsActive === 'stats' && (isVideoV8 || isVideoV9)"
+                      label="Practice"
+                      :badge="scenarioEffectivePracticeCount"
+                      class="footer-btn-full"
+                    />
                     <CcButton
                       v-else-if="courseTabsActive === 'stats'"
-                      variant="secondary"
+                      variant="primary"
                       size="large"
-                      disabled
                       class="footer-btn-full"
                     >
                       Practice
                     </CcButton>
-                  </template>
-                  <AquaCtaButton
-                    v-else-if="scenarioShowOnlyPractice && (isVideoV8 || isVideoV9)"
-                    label="Practice"
-                    :badge="scenarioEffectivePracticeCount"
-                    class="footer-btn-full"
-                  />
-                  <CcButton
-                    v-else-if="scenarioShowOnlyPractice"
-                    variant="primary"
-                    size="large"
-                    class="footer-btn-full"
-                  >
-                    Practice
-                  </CcButton>
-                  <CcButton
-                    v-else-if="courseTabsActive === 'content'"
-                    variant="primary"
-                    size="large"
-                    class="footer-btn-full"
-                  >
-                    Learn
-                  </CcButton>
-                  <AquaCtaButton
-                    v-else-if="courseTabsActive === 'stats' && (isVideoV8 || isVideoV9)"
-                    label="Practice"
-                    :badge="scenarioEffectivePracticeCount"
-                    class="footer-btn-full"
-                  />
-                  <CcButton
-                    v-else-if="courseTabsActive === 'stats'"
-                    variant="primary"
-                    size="large"
-                    class="footer-btn-full"
-                  >
-                    Practice
-                  </CcButton>
+                  </div>
                 </div>
             </div>
           </section>
@@ -14574,6 +14637,60 @@ body {
 }
 .footer-buttons-row-full > * :deep(button) {
   width: 100%;
+}
+/* Opening course page: square list icon + primary CTA (same height, 8px gap) */
+.footer-buttons-row-icon-cta {
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+.footer-course-cta-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+}
+.footer-course-cta-slot > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.footer-course-cta-slot :deep(.footer-btn-full),
+.footer-course-cta-slot :deep(.aqua-cta-button) {
+  width: 100%;
+}
+.course-page-line-list-icon-btn {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.75);
+  background-color: var(--color-bg-subtle, #3d3a36);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(0, 0, 0, 0.08) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 2px 4px rgba(0, 0, 0, 0.22);
+  transition: color 0.15s ease, filter 0.15s ease;
+}
+.course-page-line-list-icon-btn:hover {
+  color: rgba(255, 255, 255, 0.95);
+  filter: brightness(1.06);
+}
+.course-page-line-list-icon-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
+  outline-offset: 2px;
+}
+.course-page-line-list-icon-btn__img {
+  display: block;
+  flex-shrink: 0;
 }
 /* Icon footer: ellipsis, video, prev/next – 4px less gap above (closer to CTAs) */
 .footer-section-toolbar {

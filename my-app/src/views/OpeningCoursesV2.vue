@@ -522,10 +522,14 @@ function getStoredOpeningFilterColor() {
   return 'both'
 }
 
+/** When false, Learn/Practice on the Opening list do not navigate (MoveTrainer will replace the course shell). */
+const OPENING_LIST_NAVIGATE_TO_COURSE_ENABLED = false
+
 /** Open opening course: pass a card when nothing is selected (e.g. Learn → latest); else uses selectedOpeningCard. options.openInPracticeTab = true to land on Practice tab. */
 function openOpeningCourse(optionalCard, options) {
   const card = optionalCard ?? selectedOpeningCard.value
   if (!card) return
+  if (!OPENING_LIST_NAVIGATE_TO_COURSE_ENABLED) return
   const openInPracticeTab = options?.openInPracticeTab === true
   const scrollEl = openingV2ScrollWrapRef.value
   const scrollTop = scrollEl != null && typeof scrollEl.scrollTop === 'number' ? scrollEl.scrollTop : 0
