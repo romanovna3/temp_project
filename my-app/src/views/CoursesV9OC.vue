@@ -7741,6 +7741,9 @@ onUnmounted(() => {
                                     class="chapter-line-card__timeline-node chapter-line-card__timeline-node--v6 chapter-line-card__timeline-node--practice"
                                     :class="{
                                       'chapter-line-card__timeline-node--completed': showFrenchDefensePracticeTimelineAquaCheck(item, section),
+                                      'chapter-line-card__timeline-node--line-selected-practice':
+                                        isCourseListLineSelectedPractice(section, item.move) &&
+                                        !showFrenchDefensePracticeTimelineAquaCheck(item, section),
                                     }"
                                   >
                                     <span
@@ -11223,7 +11226,7 @@ body {
 .courses-content--v6 .chapter-line-card.move-item--inactive.chapter-line-card--line-selected-learn .opening-course-card__title {
   color: rgba(255, 255, 255, 0.72);
 }
-/* Practice tab: selected row — aqua vertical bar */
+/* Practice tab: selected row — aqua vertical bar (matches Learn green bar) */
 .sections-list--practice .chapter-line-card--line-selected-practice {
   position: relative;
 }
@@ -11236,6 +11239,18 @@ body {
   width: 3px;
   background: var(--color-aqua-300, #26c2a3);
   pointer-events: none;
+}
+.sections-list--practice .opening-course-card.chapter-line-card--v6-timeline-right.chapter-line-card--line-selected-practice {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  gap: 12px;
+}
+/* Practice: selected row, no timeline check — same 12×12 hollow ring as Learn selection, aqua */
+.sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--line-selected-practice:not(.chapter-line-card__timeline-node--completed) {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  border: 2px solid var(--color-aqua-300, #26c2a3);
 }
 
 /* Practice tab: hollow circles — same 12px ring/fill as Learn (.chapter-line-card__timeline-node--v6:not(.completed)) */
