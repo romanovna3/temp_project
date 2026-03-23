@@ -11058,6 +11058,10 @@ body {
   min-width: 0;
   max-width: 100%;
   flex: 1 1 0;
+  height: 16px;
+}
+.chapter-line-card__header-row .opening-course-card__title {
+  line-height: 16px;
 }
 .chapter-line-card__title-wrap {
   flex: 1 1 0;

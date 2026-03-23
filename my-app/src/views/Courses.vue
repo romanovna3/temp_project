@@ -11224,6 +11224,10 @@ body {
   width: fit-content;
   max-width: 100%;
   min-width: 0;
+  height: 16px;
+}
+.chapter-line-card__header-row .opening-course-card__title {
+  line-height: 16px;
 }
 .chapter-line-card__title-wrap {
   flex: 0 1 auto;
