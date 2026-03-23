@@ -9633,7 +9633,7 @@ v-if="isVideoV6OrV7"
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container footer-buttons-container--cta-only">
-                <!-- Color picker is not shown on Course page (only on Opening page in Courses.vue). Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Start Learning (primary) on Practice tab → switches to Learn -->
+                <!-- Color picker is not shown on Course page (only on Opening page in Courses.vue). Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Start Learning (primary) on Practice tab (no navigation yet — dedicated screen TBD) -->
                 <div class="footer-buttons-row footer-buttons-row-full">
                   <div class="footer-course-cta-slot">
                     <template v-if="scenarioEffectivePracticeCount === 0">
@@ -9651,7 +9651,6 @@ v-if="isVideoV6OrV7"
                         size="large"
                         class="footer-btn-full"
                         type="button"
-                        @click="courseTabsActive = 'content'"
                       >
                         Start Learning
                       </CcButton>

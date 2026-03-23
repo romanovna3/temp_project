@@ -8817,7 +8817,7 @@ v-if="isVideoV6OrV7"
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container">
-                <!-- Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Start Learning (primary) on Practice tab → switches to Learn -->
+                <!-- Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Start Learning (primary) on Practice tab (no navigation yet — dedicated screen TBD) -->
                 <div class="footer-buttons-row footer-buttons-row-full">
                   <template v-if="scenarioEffectivePracticeCount === 0">
                     <CcButton
@@ -8834,7 +8834,6 @@ v-if="isVideoV6OrV7"
                       size="large"
                       class="footer-btn-full"
                       type="button"
-                      @click="courseTabsActive = 'content'"
                     >
                       Start Learning
                     </CcButton>
