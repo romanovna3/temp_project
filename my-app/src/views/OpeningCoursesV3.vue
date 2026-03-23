@@ -8964,14 +8964,14 @@ body {
   object-fit: contain;
 }
 
-/* Opening list: top of hint on square’s bottom edge (+45px nudge up) → hand under square, finger into square */
+/* Opening list: top of hint on square’s bottom edge (+30px nudge up) → hand under square, finger into square */
 .opening-board-pointer-hint {
   position: absolute;
   z-index: 14;
   width: 50px;
   height: 50px;
   margin: 0;
-  transform: translate(-50%, -45px);
+  transform: translate(-50%, -30px);
   pointer-events: none;
   will-change: left, top, opacity;
 }

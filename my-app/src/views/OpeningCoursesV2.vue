@@ -8982,7 +8982,7 @@ body {
   width: 50px;
   height: 50px;
   margin: 0;
-  transform: translate(-50%, -45px);
+  transform: translate(-50%, -30px);
   pointer-events: none;
   will-change: left, top, opacity;
 }
