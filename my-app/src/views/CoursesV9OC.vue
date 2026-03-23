@@ -9432,13 +9432,11 @@ v-if="isVideoV6OrV7"
                   aria-label="Moves list"
                   @click="onOpeningCourseLineListIconClick"
                 >
-                  <img
-                    :src="baseUrl + 'icons/layout-list-bullet.svg'"
-                    alt=""
-                    width="22"
-                    height="22"
-                    class="course-page-line-list-icon-cta__img"
-                    aria-hidden="true"
+                  <CcIcon
+                    name="layout-list-bullet"
+                    variant="glyph"
+                    :size="22"
+                    class="course-page-line-list-icon-cta__icon"
                   />
                 </CcButton>
                 <div class="footer-course-cta-slot">
@@ -9496,13 +9494,11 @@ v-if="isVideoV6OrV7"
                   aria-label="Moves list"
                   @click="onOpeningCourseLineListIconClick"
                 >
-                  <img
-                    :src="baseUrl + 'icons/layout-list-bullet.svg'"
-                    alt=""
-                    width="22"
-                    height="22"
-                    class="course-page-line-list-icon-cta__img"
-                    aria-hidden="true"
+                  <CcIcon
+                    name="layout-list-bullet"
+                    variant="glyph"
+                    :size="22"
+                    class="course-page-line-list-icon-cta__icon"
                   />
                 </CcButton>
                 <div class="footer-course-cta-slot">
@@ -9537,13 +9533,11 @@ v-if="isVideoV6OrV7"
                   aria-label="Moves list"
                   @click="onOpeningCourseLineListIconClick"
                 >
-                  <img
-                    :src="baseUrl + 'icons/layout-list-bullet.svg'"
-                    alt=""
-                    width="22"
-                    height="22"
-                    class="course-page-line-list-icon-cta__img"
-                    aria-hidden="true"
+                  <CcIcon
+                    name="layout-list-bullet"
+                    variant="glyph"
+                    :size="22"
+                    class="course-page-line-list-icon-cta__icon"
                   />
                 </CcButton>
                 <div class="footer-course-cta-slot">
@@ -9575,13 +9569,11 @@ v-if="isVideoV6OrV7"
                     aria-label="Moves list"
                     @click="onOpeningCourseLineListIconClick"
                   >
-                    <img
-                      :src="baseUrl + 'icons/layout-list-bullet.svg'"
-                      alt=""
-                      width="22"
-                      height="22"
-                      class="course-page-line-list-icon-cta__img"
-                      aria-hidden="true"
+                    <CcIcon
+                      name="layout-list-bullet"
+                      variant="glyph"
+                      :size="22"
+                      class="course-page-line-list-icon-cta__icon"
                     />
                   </CcButton>
                   <div class="footer-course-cta-slot">
@@ -14700,9 +14692,12 @@ body {
   align-items: center;
   justify-content: center;
 }
-.course-page-line-list-icon-cta__img {
-  display: block;
+.course-page-line-list-icon-cta__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  line-height: 0;
 }
 /* Icon footer: ellipsis, video, prev/next – 4px less gap above (closer to CTAs) */
 .footer-section-toolbar {
