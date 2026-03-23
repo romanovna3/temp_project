@@ -17,6 +17,7 @@ import OpeningCoursePage from './OpeningCoursePage.vue'
 import AquaBadge from '../components/AquaBadge.vue'
 import ColorToggle from './opening-courses/ColorToggle.vue'
 import FilterChipV2 from './opening-courses/FilterChipV2.vue'
+import { useOpeningBoardPointerHint } from '../composables/useOpeningBoardPointerHint.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -4396,6 +4397,19 @@ watch(
   },
   { immediate: true }
 )
+const openingBoardPointerShouldRun = computed(
+  () =>
+    isOpeningCoursesV2.value &&
+    panelView.value === 'courses' &&
+    currentQuestionIndex.value < 0 &&
+    selectedOpeningCardId.value == null &&
+    openingFilterMoves.value.length === 0 &&
+    !boardViewBlack.value
+)
+const { openingBoardPointerStyle, openingBoardPointerShow } = useOpeningBoardPointerHint(
+  openingBoardPointerShouldRun,
+  boardViewBlack
+)
 const openingSortBy = ref('recent') // 'recent' | 'name' | 'type' | 'popular'
 const openingSortOpen = ref(false)
 /** Your Openings tab (returning user): sort options are Most Recent, Name, First Move; default Most Recent. All/New User: Popular, Name, First Move only; default Popular. */
@@ -6285,6 +6299,21 @@ onUnmounted(() => {
                 :src="getPieceImage({ type: openingCardAnimatingMove.pieceType })"
                 :alt="''"
                 class="opening-card-moving-piece__img"
+              />
+            </div>
+            <div
+              v-if="openingBoardPointerShow"
+              class="opening-board-pointer-hint"
+              :style="openingBoardPointerStyle"
+              aria-hidden="true"
+            >
+              <img
+                class="opening-board-pointer-hint__img"
+                :src="baseUrl + 'icons/opening-board-pointer.png'"
+                alt=""
+                width="50"
+                height="50"
+                draggable="false"
               />
             </div>
           </div>
@@ -8945,6 +8974,24 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.opening-board-pointer-hint {
+  position: absolute;
+  z-index: 14;
+  width: 50px;
+  height: 50px;
+  margin-left: -25px;
+  margin-top: -40px;
+  pointer-events: none;
+  will-change: left, top, opacity;
+}
+.opening-board-pointer-hint__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
 }
 
 /* Board is display-only on all pages */

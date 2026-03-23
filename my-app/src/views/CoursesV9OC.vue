@@ -21,6 +21,7 @@ provide('design-system-key', {
   trans: (key) => key,
 })
 import { playSound } from '../lib/playSound.js'
+import { useOpeningBoardPointerHint } from '../composables/useOpeningBoardPointerHint.js'
 import practiceEmptyStateImage from '../assets/practice-empty-state.png'
 
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
@@ -5193,6 +5194,20 @@ watch(
 const openingSearchQuery = ref('')
 // Opening V1: move sequence from board – filters courses; each item { san, display } e.g. { san: 'e4', display: '1.e4' }
 const openingFilterMoves = ref([])
+const openingBoardPointerShouldRun = computed(
+  () =>
+    isOpeningCoursesOCList.value &&
+    openingOCReady.value &&
+    panelView.value === 'courses' &&
+    currentQuestionIndex.value < 0 &&
+    selectedOpeningCardId.value == null &&
+    openingFilterMoves.value.length === 0 &&
+    !boardViewBlack.value
+)
+const { openingBoardPointerStyle, openingBoardPointerShow } = useOpeningBoardPointerHint(
+  openingBoardPointerShouldRun,
+  boardViewBlack
+)
 // Keyword tags from search (Enter): filter by title/description containing each
 const openingKeywordTags = ref([])
 const openingSortBy = ref('popular') // 'name' | 'lines' | 'type' | 'popular'
@@ -7098,6 +7113,21 @@ onUnmounted(() => {
                 :src="getPieceImage({ type: openingCardAnimatingMove.pieceType })"
                 :alt="''"
                 class="opening-card-moving-piece__img"
+              />
+            </div>
+            <div
+              v-if="openingBoardPointerShow"
+              class="opening-board-pointer-hint"
+              :style="openingBoardPointerStyle"
+              aria-hidden="true"
+            >
+              <img
+                class="opening-board-pointer-hint__img"
+                :src="baseUrl + 'icons/opening-board-pointer.png'"
+                alt=""
+                width="50"
+                height="50"
+                draggable="false"
               />
             </div>
           </div>
@@ -9902,6 +9932,24 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.opening-board-pointer-hint {
+  position: absolute;
+  z-index: 14;
+  width: 50px;
+  height: 50px;
+  margin-left: -25px;
+  margin-top: -40px;
+  pointer-events: none;
+  will-change: left, top, opacity;
+}
+.opening-board-pointer-hint__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
 }
 
 /* Board is display-only on all pages */

@@ -18,6 +18,7 @@ import AquaBadge from '../components/AquaBadge.vue'
 import ColorToggle from './opening-courses/ColorToggle.vue'
 import FilterChipV2 from './opening-courses/FilterChipV2.vue'
 import { OPENING_FIRST_10_MOVES } from '../data/openingFirst10Moves.js'
+import { useOpeningBoardPointerHint } from '../composables/useOpeningBoardPointerHint.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -4234,6 +4235,17 @@ const openingFreePlayRedoStack = ref([])
 const openingListFreePlay = computed(
   () => isOpeningCoursesV3.value && panelView.value === 'courses' && currentQuestionIndex.value < 0
 )
+const openingBoardPointerShouldRun = computed(
+  () =>
+    openingListFreePlay.value &&
+    selectedOpeningCardId.value == null &&
+    openingFilterMoves.value.length === 0 &&
+    !boardViewBlack.value
+)
+const { openingBoardPointerStyle, openingBoardPointerShow } = useOpeningBoardPointerHint(
+  openingBoardPointerShouldRun,
+  boardViewBlack
+)
 const openingCardPreviewCanUndo = computed(
   () =>
     isOpeningCoursesV3.value &&
@@ -6257,6 +6269,21 @@ onUnmounted(() => {
                 :src="getPieceImage({ type: openingCardAnimatingMove.pieceType })"
                 :alt="''"
                 class="opening-card-moving-piece__img"
+              />
+            </div>
+            <div
+              v-if="openingBoardPointerShow"
+              class="opening-board-pointer-hint"
+              :style="openingBoardPointerStyle"
+              aria-hidden="true"
+            >
+              <img
+                class="opening-board-pointer-hint__img"
+                :src="baseUrl + 'icons/opening-board-pointer.png'"
+                alt=""
+                width="50"
+                height="50"
+                draggable="false"
               />
             </div>
           </div>
@@ -8935,6 +8962,25 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* Opening list: animated finger hints e2→e4 / d2→d4 until user moves or selects a course */
+.opening-board-pointer-hint {
+  position: absolute;
+  z-index: 14;
+  width: 50px;
+  height: 50px;
+  margin-left: -25px;
+  margin-top: -40px;
+  pointer-events: none;
+  will-change: left, top, opacity;
+}
+.opening-board-pointer-hint__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
 }
 
 /* Board is display-only on all pages */
