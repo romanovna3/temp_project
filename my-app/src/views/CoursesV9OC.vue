@@ -7742,8 +7742,7 @@ onUnmounted(() => {
                                     :class="{
                                       'chapter-line-card__timeline-node--completed': showFrenchDefensePracticeTimelineAquaCheck(item, section),
                                       'chapter-line-card__timeline-node--line-selected-practice':
-                                        isCourseListLineSelectedPractice(section, item.move) &&
-                                        !showFrenchDefensePracticeTimelineAquaCheck(item, section),
+                                        isCourseListLineSelectedPractice(section, item.move),
                                     }"
                                   >
                                     <span
@@ -11166,8 +11165,8 @@ body {
   min-width: 12px;
   min-height: 12px;
 }
-/* Uncompleted: same visible circle as others (ring + fill) */
-.courses-content--v6 .chapter-line-card__timeline-node--v6:not(.chapter-line-card__timeline-node--completed) {
+/* Uncompleted (Learn tab only): Practice list uses .sections-list--practice rules below */
+.courses-content--v6 .chapter-line-card__timeline-node--v6:not(.chapter-line-card__timeline-node--completed):not(.chapter-line-card__timeline-node--practice) {
   border: 2px solid var(--color-border-subtlest, rgba(255, 255, 255, 0.25));
   background: var(--color-bg-primary, #312e2b);
 }
@@ -11245,15 +11244,7 @@ body {
   padding-bottom: 4px;
   gap: 12px;
 }
-/* Practice: selected row, no timeline check — same 12×12 hollow ring as Learn selection, aqua */
-.sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--line-selected-practice:not(.chapter-line-card__timeline-node--completed) {
-  outline: none;
-  box-shadow: none;
-  background: transparent;
-  border: 2px solid var(--color-aqua-300, #26c2a3);
-}
-
-/* Practice tab: hollow circles — same 12px ring/fill as Learn (.chapter-line-card__timeline-node--v6:not(.completed)) */
+/* Practice tab: hollow circles — same 12px ring/fill as Learn incomplete */
 .sections-list--practice .chapter-line-card__timeline-node--practice:not(.chapter-line-card__timeline-node--completed) {
   width: 12px;
   height: 12px;
@@ -11265,6 +11256,18 @@ body {
 .sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--completed {
   background: transparent;
   border-color: transparent;
+}
+/* Practice: selected — aqua hollow ring (must follow default practice node rules) */
+.course-tab-panel--stats .sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--line-selected-practice:not(.chapter-line-card__timeline-node--completed) {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  border: 2px solid var(--color-aqua-300, #26c2a3);
+}
+/* Practice: selected row with timeline check (e.g. French) — aqua ring around node */
+.course-tab-panel--stats .sections-list--practice .chapter-line-card__timeline-node--practice.chapter-line-card__timeline-node--line-selected-practice.chapter-line-card__timeline-node--completed {
+  box-shadow: 0 0 0 2px var(--color-aqua-300, #26c2a3);
+  border-radius: 50%;
 }
 /* Practice rows: no body hover dim (was reading like a darker overlay) */
 .course-tab-panel--stats .sections-list--practice .chapter-line-card__body:hover {
