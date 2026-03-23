@@ -9494,7 +9494,8 @@ v-if="isVideoV6OrV7"
                   variant="secondary"
                   size="large"
                   class="course-page-line-list-icon-cta"
-                  aria-label="Moves list"
+                  :disabled="selectedOpeningCardId == null"
+                  :aria-label="selectedOpeningCardId != null ? 'Open selected opening course' : 'Select an opening to open its course'"
                   @click="onOpeningCourseLineListIconClick"
                 >
                   <CcIcon

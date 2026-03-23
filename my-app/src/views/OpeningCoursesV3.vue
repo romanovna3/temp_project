@@ -8858,7 +8858,8 @@ v-if="isVideoV6OrV7"
                   variant="secondary"
                   size="large"
                   class="course-page-line-list-icon-cta"
-                  aria-label="Moves list"
+                  :disabled="!selectedOpeningCard"
+                  :aria-label="selectedOpeningCard ? 'Open selected opening course' : 'Select an opening to open its course'"
                   @click="onOpeningListLineListIconClick"
                 >
                   <CcIcon
