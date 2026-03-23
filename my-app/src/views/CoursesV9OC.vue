@@ -4103,9 +4103,10 @@ function squareToPercent(square) {
   const fileIndex = square.charCodeAt(0) - 97 // a=0 .. h=7
   const rank = parseInt(square[1], 10)
   if (fileIndex < 0 || fileIndex > 7 || rank < 1 || rank > 8) return { left: '0%', top: '0%' }
+  const col = boardViewBlack.value ? 7 - fileIndex : fileIndex
   const topPct = boardViewBlack.value ? ((rank - 1) / 8) * 100 : ((8 - rank) / 8) * 100
   return {
-    left: `${(fileIndex / 8) * 100}%`,
+    left: `${(col / 8) * 100}%`,
     top: `${topPct}%`,
   }
 }
@@ -4302,10 +4303,12 @@ const getCoinFallPosition = (square) => {
   if (!square) return { x: '800%', y: '100%' }
   
   const fileIndex = files.indexOf(square[0])
-  const rankIndex = 8 - parseInt(square[1], 10) // 0 = top row (rank 8)
-  
+  const rank = parseInt(square[1], 10)
+  const col = boardViewBlack.value ? 7 - fileIndex : fileIndex
+  const rankIndex = boardViewBlack.value ? rank - 1 : 8 - rank
+
   // Square's position on the board
-  const squareLeft = fileIndex * SQUARE_SIZE
+  const squareLeft = col * SQUARE_SIZE
   const squareTop = rankIndex * SQUARE_SIZE
   
   // Target position: start of progress bar in sidebar
@@ -4353,12 +4356,13 @@ const checkmateIconColor = computed(() => {
   return checkmateKingColor.value === 'black' ? '#262421' : '#ffffff'
 })
 
-// Generate all squares (rank 1 at top when boardViewBlack so Black sits at bottom)
+// White: rank 8 at top, a–h left→right. Black: rank 1 at top, h–a left→right (h8 bottom-left dark).
 const squares = computed(() => {
   const result = []
   const rankOrder = boardViewBlack.value ? [1, 2, 3, 4, 5, 6, 7, 8] : ranks
+  const fileOrder = boardViewBlack.value ? [...files].reverse() : files
   for (let rank of rankOrder) {
-    for (let file of files) {
+    for (let file of fileOrder) {
       result.push(`${file}${rank}`)
     }
   }
@@ -5082,7 +5086,12 @@ const getSquareFromPosition = (x, y) => {
   const row = Math.floor((y - rect.top) / squareSize)
   
   if (col < 0 || col > 7 || row < 0 || row > 7) return null
-  
+
+  if (boardViewBlack.value) {
+    const file = files[7 - col]
+    const rank = row + 1
+    return `${file}${rank}`
+  }
   const file = files[col]
   const rank = 8 - row
   return `${file}${rank}`
@@ -5202,8 +5211,7 @@ const openingBoardPointerEligible = computed(
     panelView.value === 'courses' &&
     currentQuestionIndex.value < 0 &&
     selectedOpeningCardId.value == null &&
-    openingFilterMoves.value.length === 0 &&
-    !boardViewBlack.value
+    openingFilterMoves.value.length === 0
 )
 const openingBoardPointerDismissedByDrag = ref(false)
 watch(openingBoardPointerEligible, (eligible) => {
@@ -7107,8 +7115,8 @@ onUnmounted(() => {
               />
               <!-- File label (bottom row: rank 1 for White view, rank 8 for Black view) -->
               <span v-if="square[1] === (boardViewBlack ? '8' : '1')" class="coord file-coord">{{ square[0] }}</span>
-              <!-- Rank label (left column) -->
-              <span v-if="square[0] === 'a'" class="coord rank-coord">{{ square[1] }}</span>
+              <!-- Rank label (left column: a-file white, h-file black) -->
+              <span v-if="square[0] === (boardViewBlack ? 'h' : 'a')" class="coord rank-coord">{{ square[1] }}</span>
             </div>
             <!-- Opening Courses V1: sliding piece for auto-played 3rd move (White) -->
             <div

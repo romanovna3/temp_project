@@ -37,7 +37,8 @@ export function openingSquareCenterPercent(square, blackView) {
   const fileIndex = square.charCodeAt(0) - 97
   const rank = parseInt(square[1], 10)
   if (fileIndex < 0 || fileIndex > 7 || rank < 1 || rank > 8) return { left: '50%', top: '50%' }
-  const leftPct = ((fileIndex + 0.5) / 8) * 100
+  const col = blackView ? 7 - fileIndex : fileIndex
+  const leftPct = ((col + 0.5) / 8) * 100
   const topPct = blackView
     ? ((rank - 0.5) / 8) * 100
     : ((8 - rank + 0.5) / 8) * 100
@@ -53,7 +54,8 @@ export function openingSquarePointerUnderPercent(square, blackView) {
   const fileIndex = square.charCodeAt(0) - 97
   const rank = parseInt(square[1], 10)
   if (fileIndex < 0 || fileIndex > 7 || rank < 1 || rank > 8) return { left: '50%', top: '50%' }
-  const leftPct = ((fileIndex + 0.5) / 8) * 100
+  const col = blackView ? 7 - fileIndex : fileIndex
+  const leftPct = ((col + 0.5) / 8) * 100
   const topFrac = blackView ? rank / 8 : (8 - rank + 1) / 8
   const topPct = topFrac * 100
   return { left: `${leftPct}%`, top: `${topPct}%` }
@@ -61,7 +63,7 @@ export function openingSquarePointerUnderPercent(square, blackView) {
 
 /**
  * Animated finger pointer: under `from` → slide up to under `to` → fade out at top → teleport to under `from`
- * invisibly (no downward motion). Repeats e2→e4 (×2), d2→d4 (×2), loop until `shouldRun` is false.
+ * invisibly (no downward motion). White: e2→e4, d2→d4. Black: e7→e5, d7→d5.
  */
 export function useOpeningBoardPointerHint(shouldRun, boardViewBlack) {
   const pos = ref({ left: '50%', top: '87.5%' })
@@ -110,15 +112,26 @@ export function useOpeningBoardPointerHint(shouldRun, boardViewBlack) {
     instant.value = false
   }
 
+  function pointerHopSequence(black) {
+    return black
+      ? [
+          ['e7', 'e5'],
+          ['e7', 'e5'],
+          ['d7', 'd5'],
+          ['d7', 'd5'],
+        ]
+      : [
+          ['e2', 'e4'],
+          ['e2', 'e4'],
+          ['d2', 'd4'],
+          ['d2', 'd4'],
+        ]
+  }
+
   async function runLoop(signal) {
     await sleep(LOOP_START_DELAY_MS, signal)
-    const sequence = [
-      ['e2', 'e4'],
-      ['e2', 'e4'],
-      ['d2', 'd4'],
-      ['d2', 'd4'],
-    ]
     while (!signal.aborted && shouldRun.value) {
+      const sequence = pointerHopSequence(boardViewBlack.value)
       for (const [from, to] of sequence) {
         if (signal.aborted || !shouldRun.value) return
         try {
@@ -158,6 +171,10 @@ export function useOpeningBoardPointerHint(shouldRun, boardViewBlack) {
     },
     { flush: 'post', immediate: true }
   )
+
+  watch(boardViewBlack, () => {
+    if (shouldRun.value) startLoop()
+  })
 
   onUnmounted(() => stopLoop())
 
