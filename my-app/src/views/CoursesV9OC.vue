@@ -901,16 +901,6 @@ function openLine(section, move) {
   lineViewVideoFormat.value = 'large' // start large; shrink to small on first scroll when content is scrollable
 }
 
-function openSelectedLearnLineFromFooter() {
-  const ctx = selectedLearnLineContext.value
-  if (ctx) openLine(ctx.section, ctx.move)
-}
-
-function openSelectedPracticeLineFromFooter() {
-  const ctx = selectedPracticeLineContext.value
-  if (ctx) openLine(ctx.section, ctx.item.move)
-}
-
 function getOpeningListIconNavigateStartedData(card) {
   if (!card?.openingKey || openingV1ScenarioBarPreset.value !== 'returning-user') return null
   const byColor = RETURNING_USER_STARTED_FOR_LIST_NAV[card.openingKey]
@@ -9550,7 +9540,7 @@ v-if="isVideoV6OrV7"
                 <CcButton variant="primary" size="large" class="footer-btn-full" @click="hasNextLine ? goToNextLine() : backToCourses()">Next Line</CcButton>
               </div>
             </div>
-            <!-- Course page (Learn tab): line list selection — Learn vs Learn again (no list icon; icon lives on opening list only) -->
+            <!-- Course page (Learn tab): line list selection — main CTA is display-only (does not open Line view). -->
             <div v-else-if="showCourseListLearnLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-full">
                 <div class="footer-course-cta-slot">
@@ -9559,7 +9549,8 @@ v-if="isVideoV6OrV7"
                     variant="primary"
                     size="large"
                     class="footer-btn-full"
-                    @click="openSelectedLearnLineFromFooter"
+                    disabled
+                    aria-label="Learn (line view disabled)"
                   >
                     Learn
                   </CcButton>
@@ -9568,14 +9559,15 @@ v-if="isVideoV6OrV7"
                     variant="secondary"
                     size="large"
                     class="footer-btn-full"
-                    @click="openSelectedLearnLineFromFooter"
+                    disabled
+                    aria-label="Learn again (line view disabled)"
                   >
                     Learn again
                   </CcButton>
                 </div>
               </div>
             </div>
-            <!-- Course page (Practice tab): Ready → aqua Practice (no badge); Completed / other → Practice secondary disabled -->
+            <!-- Course page (Practice tab): main CTA is display-only (does not open Line view). -->
             <div v-else-if="showCourseListPracticeLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-full">
                 <div class="footer-course-cta-slot">
@@ -9583,7 +9575,7 @@ v-if="isVideoV6OrV7"
                     v-if="selectedPracticeLineContext.item.practiceType === 'ready'"
                     label="Practice"
                     class="footer-btn-full"
-                    @click="openSelectedPracticeLineFromFooter"
+                    disabled
                   />
                   <CcButton
                     v-else
