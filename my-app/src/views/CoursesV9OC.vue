@@ -9540,7 +9540,7 @@ v-if="isVideoV6OrV7"
                 <CcButton variant="primary" size="large" class="footer-btn-full" @click="hasNextLine ? goToNextLine() : backToCourses()">Next Line</CcButton>
               </div>
             </div>
-            <!-- Course page (Learn tab): line list selection — main CTA is display-only (does not open Line view). -->
+            <!-- Course page (Learn tab): line list — CTA stays enabled but does not open Line view (no @click). -->
             <div v-else-if="showCourseListLearnLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-full">
                 <div class="footer-course-cta-slot">
@@ -9549,8 +9549,7 @@ v-if="isVideoV6OrV7"
                     variant="primary"
                     size="large"
                     class="footer-btn-full"
-                    disabled
-                    aria-label="Learn (line view disabled)"
+                    type="button"
                   >
                     Learn
                   </CcButton>
@@ -9559,15 +9558,14 @@ v-if="isVideoV6OrV7"
                     variant="secondary"
                     size="large"
                     class="footer-btn-full"
-                    disabled
-                    aria-label="Learn again (line view disabled)"
+                    type="button"
                   >
                     Learn again
                   </CcButton>
                 </div>
               </div>
             </div>
-            <!-- Course page (Practice tab): main CTA is display-only (does not open Line view). -->
+            <!-- Course page (Practice tab): ready Practice looks enabled; no handler → does not open Line view. -->
             <div v-else-if="showCourseListPracticeLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-full">
                 <div class="footer-course-cta-slot">
@@ -9575,7 +9573,6 @@ v-if="isVideoV6OrV7"
                     v-if="selectedPracticeLineContext.item.practiceType === 'ready'"
                     label="Practice"
                     class="footer-btn-full"
-                    disabled
                   />
                   <CcButton
                     v-else
