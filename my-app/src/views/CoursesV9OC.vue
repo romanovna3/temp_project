@@ -9549,23 +9549,9 @@ v-if="isVideoV6OrV7"
                 <CcButton variant="primary" size="large" class="footer-btn-full" @click="hasNextLine ? goToNextLine() : backToCourses()">Next Line</CcButton>
               </div>
             </div>
-            <!-- Course page (Learn tab): line list selection — Learn vs Learn again -->
+            <!-- Course page (Learn tab): line list selection — Learn vs Learn again (no list icon; icon lives on opening list only) -->
             <div v-else-if="showCourseListLearnLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
-              <div class="footer-buttons-row footer-buttons-row-icon-cta">
-                <CcButton
-                  variant="secondary"
-                  size="large"
-                  class="course-page-line-list-icon-cta"
-                  aria-label="Moves list"
-                  @click="onOpeningCourseLineListIconClick"
-                >
-                  <CcIcon
-                    name="layout-list-bullet"
-                    variant="glyph"
-                    :size="22"
-                    class="course-page-line-list-icon-cta__icon"
-                  />
-                </CcButton>
+              <div class="footer-buttons-row footer-buttons-row-full">
                 <div class="footer-course-cta-slot">
                   <CcButton
                     v-if="!selectedLearnLineContext.move.completed"
@@ -9590,21 +9576,7 @@ v-if="isVideoV6OrV7"
             </div>
             <!-- Course page (Practice tab): Ready → aqua Practice (no badge); Completed / other → Practice secondary disabled -->
             <div v-else-if="showCourseListPracticeLineActions" class="footer-buttons-container footer-buttons-container--cta-only">
-              <div class="footer-buttons-row footer-buttons-row-icon-cta">
-                <CcButton
-                  variant="secondary"
-                  size="large"
-                  class="course-page-line-list-icon-cta"
-                  aria-label="Moves list"
-                  @click="onOpeningCourseLineListIconClick"
-                >
-                  <CcIcon
-                    name="layout-list-bullet"
-                    variant="glyph"
-                    :size="22"
-                    class="course-page-line-list-icon-cta__icon"
-                  />
-                </CcButton>
+              <div class="footer-buttons-row footer-buttons-row-full">
                 <div class="footer-course-cta-slot">
                   <AquaCtaButton
                     v-if="selectedPracticeLineContext.item.practiceType === 'ready'"
@@ -9626,21 +9598,7 @@ v-if="isVideoV6OrV7"
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container footer-buttons-container--cta-only">
                 <!-- Color picker is not shown on Course page (only on Opening page in Courses.vue). Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Practice (disabled) on Practice tab -->
-                <div class="footer-buttons-row footer-buttons-row-icon-cta">
-                  <CcButton
-                    variant="secondary"
-                    size="large"
-                    class="course-page-line-list-icon-cta"
-                    aria-label="Moves list"
-                    @click="onOpeningCourseLineListIconClick"
-                  >
-                    <CcIcon
-                      name="layout-list-bullet"
-                      variant="glyph"
-                      :size="22"
-                      class="course-page-line-list-icon-cta__icon"
-                    />
-                  </CcButton>
+                <div class="footer-buttons-row footer-buttons-row-full">
                   <div class="footer-course-cta-slot">
                     <template v-if="scenarioEffectivePracticeCount === 0">
                       <CcButton
