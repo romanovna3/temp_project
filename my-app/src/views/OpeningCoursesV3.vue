@@ -4358,38 +4358,13 @@ function measureOpeningSearchH() {
       openingSearchY.value = clamp(openingSearchY.value, -openingSearchH.value, 0)
       if (wrap) {
         wrap.style.setProperty('--opening-search-h', openingSearchH.value + 'px')
-        // Resync after layout/movelist height changes so the next scroll delta is not huge (avoids search bar jumping into view).
+        // Resync after sticky filter height changes so the next scroll delta is not huge (avoids search bar jumping into view).
         if (typeof wrap.scrollTop === 'number') lastOpeningScrollTop = wrap.scrollTop
       }
     }
   })
 }
 
-/** When strip was already tucked (user scrolled): show only movelist row; search inputs stay off-screen. */
-function positionOpeningStickyMovelistOnly() {
-  nextTick(() => {
-    requestAnimationFrame(() => {
-      const filter = openingSearchRef.value
-      const wrap = openingV3ScrollWrapRef.value
-      if (!filter) return
-      const panel = filter.querySelector('.opening-search-panel')
-      const row = filter.querySelector('.opening-search-panel__row--inputs')
-      let hidePx = 52
-      if (panel && row) {
-        const gapStr = getComputedStyle(panel).gap
-        const gap = parseFloat(gapStr) || 6
-        hidePx = row.offsetTop + row.offsetHeight + gap
-      }
-      const h = filter.offsetHeight || 92
-      openingSearchH.value = h
-      openingSearchY.value = clamp(-hidePx, -h, 0)
-      if (wrap) {
-        wrap.style.setProperty('--opening-search-h', `${h}px`)
-        if (typeof wrap.scrollTop === 'number') lastOpeningScrollTop = wrap.scrollTop
-      }
-    })
-  })
-}
 const openingSortLabel = computed(() => {
   const sort = effectiveOpeningSortBy.value
   if (sort === 'recent') return 'Most Recent'
@@ -4898,7 +4873,7 @@ function getOpeningMovesForCard(card) {
   return null
 }
 
-/** Flat SANs for full main line (all { white, black } pairs) — board + under-search movelist use the same list. */
+/** Flat SANs for full main line (all { white, black } pairs) — drives Opening list board preview. */
 function buildOpeningCardPreviewSansList(card) {
   const moves = getOpeningMovesForCard(card)
   if (!moves?.length) return []
@@ -4919,135 +4894,6 @@ function getOpeningCardKeyPlyCount(flatLength) {
   if (flatLength < 5) return flatLength
   return Math.min(flatLength, 5)
 }
-
-/** Demo-only: deterministic “engine” eval from card + ply (e.g. +0.17 … +0.48). */
-function hashOpeningMovelistEvalSeed(cardId, ply) {
-  const s = `${cardId ?? 0}:${ply ?? 0}`
-  let h = 2166136261
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return h >>> 0
-}
-const openingMovelistEngineEvalDisplay = computed(() => {
-  if (selectedOpeningCardId.value == null) return '+0.28'
-  const h = hashOpeningMovelistEvalSeed(selectedOpeningCardId.value, openingCardPreviewPlyIndex.value)
-  const t = (h % 10000) / 10000
-  const v = 0.09 + t * 0.38
-  return `+${v.toFixed(2)}`
-})
-
-/** Jump board to position after half-move `plyCount` (1 = after first SAN of the line). */
-function onOpeningMovelistSegmentClick(plyCount) {
-  if (selectedOpeningCardId.value == null || !openingCardPreviewSans.value.length) return
-  const max = openingCardPreviewSans.value.length
-  const n = Math.min(Math.max(1, plyCount), max)
-  clearOpeningCardPreviewTimeout()
-  openingCardPreviewPlyIndex.value = n
-  applyOpeningCardPreviewBoard()
-  playSound('move')
-  nextTick(() => updateOpeningMovelistScrollFades())
-}
-
-/** Horizontal movelist strip: scroll container ref + edge fades (dissolve) when content overflows. */
-const openingCardMovelistScrollRef = ref(null)
-const openingMovelistFadeLeftVisible = ref(false)
-const openingMovelistFadeRightVisible = ref(false)
-let openingMovelistResizeObserver = null
-
-function updateOpeningMovelistScrollFades() {
-  const el = openingCardMovelistScrollRef.value
-  if (!el) {
-    openingMovelistFadeLeftVisible.value = false
-    openingMovelistFadeRightVisible.value = false
-    return
-  }
-  const maxScroll = el.scrollWidth - el.clientWidth
-  if (maxScroll <= 6) {
-    openingMovelistFadeLeftVisible.value = false
-    openingMovelistFadeRightVisible.value = false
-    return
-  }
-  const edge = 6
-  const sl = el.scrollLeft
-  openingMovelistFadeLeftVisible.value = sl > edge
-  openingMovelistFadeRightVisible.value = sl < maxScroll - edge
-}
-
-function onOpeningCardMovelistScroll() {
-  updateOpeningMovelistScrollFades()
-}
-
-function teardownOpeningMovelistScrollObserver() {
-  openingMovelistResizeObserver?.disconnect()
-  openingMovelistResizeObserver = null
-}
-
-function setupOpeningMovelistScrollObserver() {
-  teardownOpeningMovelistScrollObserver()
-  const el = openingCardMovelistScrollRef.value
-  if (!el) return
-  updateOpeningMovelistScrollFades()
-  openingMovelistResizeObserver = new ResizeObserver(() => {
-    updateOpeningMovelistScrollFades()
-  })
-  openingMovelistResizeObserver.observe(el)
-}
-
-/**
- * Scroll only the horizontal movelist strip. `Element.scrollIntoView` can scroll vertical ancestors
- * (opening-v1-scroll-wrap), which desyncs lastOpeningScrollTop and drives openingSearchY toward 0 — search row “sticks out” again.
- */
-function scrollOpeningMovelistCurrentIntoViewHoriz() {
-  const el = openingCardMovelistScrollRef.value
-  if (!el) return
-  const current = el.querySelector('.opening-card-movelist__segment--current')
-  if (!current) {
-    el.scrollLeft = 0
-    return
-  }
-  const pad = 8
-  const cr = current.getBoundingClientRect()
-  const wr = el.getBoundingClientRect()
-  if (cr.left < wr.left + pad) {
-    el.scrollLeft -= wr.left + pad - cr.left
-  } else if (cr.right > wr.right - pad) {
-    el.scrollLeft += cr.right - (wr.right - pad)
-  }
-}
-
-watch(
-  () =>
-    isOpeningCoursesV3.value &&
-    selectedOpeningCardId.value != null &&
-    openingCardPreviewSans.value.length > 0
-      ? `${selectedOpeningCardId.value}:${openingCardPreviewSans.value.length}`
-      : '',
-  async (key) => {
-    teardownOpeningMovelistScrollObserver()
-    if (!key) {
-      openingMovelistFadeLeftVisible.value = false
-      openingMovelistFadeRightVisible.value = false
-      return
-    }
-    await nextTick()
-    setupOpeningMovelistScrollObserver()
-    const el = openingCardMovelistScrollRef.value
-    if (el) {
-      scrollOpeningMovelistCurrentIntoViewHoriz()
-      updateOpeningMovelistScrollFades()
-    }
-  },
-  { flush: 'post' }
-)
-
-watch(openingCardPreviewPlyIndex, () => {
-  nextTick(() => {
-    scrollOpeningMovelistCurrentIntoViewHoriz()
-    updateOpeningMovelistScrollFades()
-  })
-})
 
 /** Apply filter moves + first N card preview SANs to the main board (Opening list). Uses same pairing as getPositionFromFilterMoves (avoids silent chess.move failures). */
 function applyOpeningCardPreviewBoard() {
@@ -5132,12 +4978,7 @@ watch(
       openingCardPreviewSans.value = sans
       openingCardPreviewPlyIndex.value = getOpeningCardKeyPlyCount(sans.length)
       applyOpeningCardPreviewBoard()
-      // Movelist-only (hide search): only if user had scrolled the strip up (Y < 0). If full panel still visible, keep search row.
-      if (openingSearchY.value < 0) {
-        positionOpeningStickyMovelistOnly()
-      } else {
-        nextTick(() => measureOpeningSearchH())
-      }
+      nextTick(() => measureOpeningSearchH())
     } catch (_) {
       clearOpeningAutoMove()
       openingCardPreviewSans.value = []
@@ -6278,7 +6119,6 @@ onUnmounted(() => {
   v3ScrollCleanup?.()
   courseTabsScrollCleanup?.()
   teardownVideoSectionResizeObserver()
-  teardownOpeningMovelistScrollObserver()
   teardownOpeningSearchBarResizeObserver()
   document.removeEventListener('mousemove', handleDragMove)
   document.removeEventListener('mouseup', handleDragEnd)
@@ -6587,65 +6427,9 @@ onUnmounted(() => {
                     class="opening-meta-slot"
                     :class="{
                       'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length,
-                      'opening-meta-slot--movelist-active': selectedOpeningCardId != null && openingCardPreviewSans.length,
                     }"
                   >
-                    <div
-                      v-if="selectedOpeningCardId != null && openingCardPreviewSans.length"
-                      class="opening-card-movelist-wrap"
-                      role="navigation"
-                      aria-label="Opening main line"
-                    >
-                      <div class="opening-card-movelist-eval" aria-hidden="true" title="Illustrative evaluation (demo)">
-                        {{ openingMovelistEngineEvalDisplay }}
-                      </div>
-                      <div class="opening-card-movelist-scroll-col">
-                        <div
-                          ref="openingCardMovelistScrollRef"
-                          class="opening-card-movelist-scroll"
-                          @scroll.passive="onOpeningCardMovelistScroll"
-                        >
-                          <div class="opening-card-movelist" role="list">
-                            <template v-for="(san, i) in openingCardPreviewSans" :key="`${selectedOpeningCardId}-movelist-${i}`">
-                              <button
-                                type="button"
-                                role="listitem"
-                                class="opening-card-movelist__segment"
-                                :class="{ 'opening-card-movelist__segment--current': openingCardPreviewPlyIndex === i + 1 }"
-                                :aria-current="openingCardPreviewPlyIndex === i + 1 ? 'step' : undefined"
-                                :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
-                                @click="onOpeningMovelistSegmentClick(i + 1)"
-                              >
-                                <template v-if="openingCardPreviewPlyIndex === i + 1">
-                                  <span class="opening-card-movelist__pill" data-name="Container">
-                                    <span class="opening-card-movelist__pill-border" aria-hidden="true" />
-                                    <span class="opening-card-movelist__pill-text">
-                                      <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                      <template v-else>{{ san }}</template>
-                                    </span>
-                                  </span>
-                                </template>
-                                <template v-else>
-                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                  <template v-else>{{ san }}</template>
-                                </template>
-                              </button>
-                            </template>
-                          </div>
-                        </div>
-                        <div
-                          class="opening-card-movelist-fade opening-card-movelist-fade--left"
-                          :class="{ 'opening-card-movelist-fade--visible': openingMovelistFadeLeftVisible }"
-                          aria-hidden="true"
-                        />
-                        <div
-                          class="opening-card-movelist-fade opening-card-movelist-fade--right"
-                          :class="{ 'opening-card-movelist-fade--visible': openingMovelistFadeRightVisible }"
-                          aria-hidden="true"
-                        />
-                      </div>
-                    </div>
-                    <div v-else-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Sort">
+                    <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Sort">
                       <div class="opening-courses-meta-panel__sort">
                         <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
                           <span class="text-small-bold">{{ openingSortLabel }}</span>
@@ -10195,14 +9979,6 @@ body {
   flex-direction: column;
   align-items: stretch;
 }
-/* Taller row when movelist is shown (12/16 type + glass pill bottom border). */
-.opening-meta-slot--movelist-active {
-  height: auto;
-  min-height: 22px;
-}
-.opening-meta-slot--movelist-active.opening-meta-slot--with-chips {
-  min-height: 32px;
-}
 /* Chips row: scrollable left + fixed right (chevron + Clear all); height fits content */
 .opening-chips-row {
   display: flex;
@@ -10427,172 +10203,6 @@ body {
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
-}
-
-/* Selected opening: fixed eval chip + horizontal-scroll PGN (no scrollbar) + edge dissolves. */
-.opening-card-movelist-wrap {
-  --opening-movelist-fade-bg: rgba(39, 37, 34, 1);
-  width: 100%;
-  max-width: 436px;
-  min-width: 0;
-  min-height: 22px;
-  height: auto;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-/* Eval chip: text-small (12/16 semibold); stays outside scroll. */
-.opening-card-movelist-eval {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  min-width: 40px;
-  min-height: 18px;
-  padding: 2px 6px;
-  border-radius: 2px;
-  background: #ffffff;
-  color: rgba(55, 53, 50, 0.92);
-  font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-.opening-card-movelist-scroll-col {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-}
-.opening-card-movelist-scroll {
-  flex: 1;
-  min-width: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding-bottom: 2px; /* room for selected pill bottom border (inset -2px) */
-}
-.opening-card-movelist-scroll::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-/* DS text-small: 12px / 16px, weight 400 */
-.opening-card-movelist {
-  display: inline-flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  width: max-content;
-  min-height: 16px;
-  font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.55);
-}
-.opening-card-movelist-fade {
-  position: absolute;
-  top: 0;
-  bottom: 2px;
-  width: 32px;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.opening-card-movelist-fade--visible {
-  opacity: 1;
-}
-.opening-card-movelist-scroll-col .opening-card-movelist-fade--left {
-  left: 0;
-  background: linear-gradient(to right, var(--opening-movelist-fade-bg) 0%, rgba(39, 37, 34, 0) 100%);
-}
-.opening-card-movelist-scroll-col .opening-card-movelist-fade--right {
-  right: 0;
-  background: linear-gradient(to left, var(--opening-movelist-fade-bg) 0%, rgba(39, 37, 34, 0) 100%);
-}
-.opening-card-movelist__segment {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  border: none;
-  background: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  vertical-align: middle;
-  border-radius: 2px;
-}
-/* Explicit gap between move buttons (avoids collapsed space between inline controls). */
-.opening-card-movelist__segment + .opening-card-movelist__segment {
-  margin-left: 0.35em;
-}
-.opening-card-movelist__segment:hover {
-  color: rgba(255, 255, 255, 0.9);
-}
-.opening-card-movelist__segment:focus-visible {
-  outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
-  outline-offset: 2px;
-}
-/* Current move: glass container + bottom accent (notation display spec). */
-.opening-card-movelist__segment--current {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  color: inherit;
-  font-weight: inherit;
-}
-.opening-card-movelist__pill {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  padding: 2px 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.05);
-}
-.opening-card-movelist__pill-border {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  bottom: -2px;
-  box-sizing: border-box;
-  border: none;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 2px;
-  pointer-events: none;
-}
-/* DS text-small-bold: 12px / 16px, weight 600 */
-.opening-card-movelist__pill-text {
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
-  font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 600;
-  font-style: normal;
-  color: #ffffff;
-  white-space: nowrap;
-}
-.opening-card-movelist__segment--current:hover .opening-card-movelist__pill {
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .opening-courses-meta-panel__sort {
