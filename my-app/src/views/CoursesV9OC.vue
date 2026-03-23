@@ -11194,12 +11194,8 @@ body {
   flex-shrink: 0;
   color: var(--color-text-inverse, #fff);
 }
-/* Learn tab: selected incomplete line — hollow green circle (replaces default grey ring) */
+/* Learn tab: selected incomplete line — same 12×12 as unselected; green ring + hollow center */
 .courses-content--v6 .chapter-line-card__timeline-node--v6.chapter-line-card__timeline-node--line-selected-learn:not(.chapter-line-card__timeline-node--completed) {
-  width: 8px;
-  height: 8px;
-  min-width: 8px;
-  min-height: 8px;
   outline: none;
   box-shadow: none;
   background: transparent;
