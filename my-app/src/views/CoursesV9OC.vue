@@ -5034,7 +5034,8 @@ const handleDragStart = (event, square) => {
   draggedPiece.value = piece
   draggedFrom.value = square
   selectedSquare.value = square
-  
+  if (openingBoardPointerEligible.value) openingBoardPointerDismissedByDrag.value = true
+
   // Get initial position
   const clientX = event.touches ? event.touches[0].clientX : event.clientX
   const clientY = event.touches ? event.touches[0].clientY : event.clientY
@@ -5043,9 +5044,9 @@ const handleDragStart = (event, square) => {
 
 const handleDragMove = (event) => {
   if (!isDragging.value) return
-  
+
   event.preventDefault()
-  
+
   const clientX = event.touches ? event.touches[0].clientX : event.clientX
   const clientY = event.touches ? event.touches[0].clientY : event.clientY
   dragPosition.value = { x: clientX, y: clientY }
@@ -5053,7 +5054,7 @@ const handleDragMove = (event) => {
 
 const handleDragEnd = (event) => {
   if (!isDragging.value) return
-  
+
   const clientX = event.changedTouches ? event.changedTouches[0].clientX : event.clientX
   const clientY = event.changedTouches ? event.changedTouches[0].clientY : event.clientY
   
@@ -5194,7 +5195,7 @@ watch(
 const openingSearchQuery = ref('')
 // Opening V1: move sequence from board – filters courses; each item { san, display } e.g. { san: 'e4', display: '1.e4' }
 const openingFilterMoves = ref([])
-const openingBoardPointerShouldRun = computed(
+const openingBoardPointerEligible = computed(
   () =>
     isOpeningCoursesOCList.value &&
     openingOCReady.value &&
@@ -5203,6 +5204,13 @@ const openingBoardPointerShouldRun = computed(
     selectedOpeningCardId.value == null &&
     openingFilterMoves.value.length === 0 &&
     !boardViewBlack.value
+)
+const openingBoardPointerDismissedByDrag = ref(false)
+watch(openingBoardPointerEligible, (eligible) => {
+  if (!eligible) openingBoardPointerDismissedByDrag.value = false
+})
+const openingBoardPointerShouldRun = computed(
+  () => openingBoardPointerEligible.value && !openingBoardPointerDismissedByDrag.value
 )
 const { openingBoardPointerStyle, openingBoardPointerShow } = useOpeningBoardPointerHint(
   openingBoardPointerShouldRun,
