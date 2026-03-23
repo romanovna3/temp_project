@@ -6886,8 +6886,8 @@ onUnmounted(() => {
           <template v-if="isVideoV7OrV8OrV9 && scenarioPreset === 'new-course' && courseTabsActive === 'stats'">
             <div class="practice-empty-state" data-name="Practice Empty State">
               <img :src="practiceEmptyStateImage" alt="" class="practice-empty-state__image" />
-              <h3 class="practice-empty-state__heading">Nothing to review!</h3>
-              <p class="practice-empty-state__description">You don't have any moves to review. Come later to practice what you've learned.</p>
+              <h3 class="practice-empty-state__heading">Nothing to practice yet!</h3>
+              <p class="practice-empty-state__description">You need to first learn lines before you can practice.</p>
             </div>
           </template>
           <!-- V7 only: Practice tab – Ready + Completed lines, color-coded; vertical line masked at last card -->
@@ -8262,7 +8262,7 @@ v-if="isVideoV6OrV7"
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container">
-                <!-- Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Practice (disabled) on Practice tab -->
+                <!-- Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Start Learning (primary) on Practice tab → switches to Learn -->
                 <div class="footer-buttons-row footer-buttons-row-full">
                   <template v-if="scenarioEffectivePracticeCount === 0">
                     <CcButton
@@ -8275,12 +8275,13 @@ v-if="isVideoV6OrV7"
                     </CcButton>
                     <CcButton
                       v-else-if="courseTabsActive === 'stats'"
-                      variant="secondary"
+                      variant="primary"
                       size="large"
-                      disabled
                       class="footer-btn-full"
+                      type="button"
+                      @click="courseTabsActive = 'content'"
                     >
-                      Practice
+                      Start Learning
                     </CcButton>
                   </template>
                   <AquaCtaButton
