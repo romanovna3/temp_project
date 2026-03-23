@@ -31,13 +31,23 @@ const tooltipText = computed(() => {
 
 const isSwitch = computed(() => props.variant === 'switch')
 
-/** When only two tiles shown but value is 'both', show white as selected for ring (filter still both) */
+/** Outline on the active color tile only; 'both' = no filter → no ring on any tile. */
 const effectiveSelectedForOutline = computed(() =>
-  props.allowBoth ? props.selectedColor : (props.selectedColor === 'both' ? 'white' : props.selectedColor)
+  props.selectedColor === 'both' ? null : props.selectedColor
 )
 
 function select(color) {
-  if (props.selectedColor === color) return
+  if (color === 'both') {
+    if (props.selectedColor === 'both') return
+    emit('update:selectedColor', 'both')
+    emit('toggle', 'both')
+    return
+  }
+  if (props.selectedColor === color) {
+    emit('update:selectedColor', 'both')
+    emit('toggle', 'both')
+    return
+  }
   emit('update:selectedColor', color)
   emit('toggle', color)
 }
@@ -57,7 +67,12 @@ function onToggleClick(event) {
     event.clientY <= thumbRect.bottom
 
   if (clickedThumb) {
-    const next = props.selectedColor === 'white' ? 'black' : 'white'
+    const next =
+      props.selectedColor === 'white'
+        ? 'black'
+        : props.selectedColor === 'black'
+          ? 'white'
+          : 'black'
     emit('update:selectedColor', next)
     emit('toggle', next)
     return
@@ -67,12 +82,18 @@ function onToggleClick(event) {
   const x = event.clientX - rect.left
   const isLeftHalf = x < rect.width / 2
   if (isLeftHalf) {
-    if (props.selectedColor !== 'white') {
+    if (props.selectedColor === 'white') {
+      emit('update:selectedColor', 'both')
+      emit('toggle', 'both')
+    } else {
       emit('update:selectedColor', 'white')
       emit('toggle', 'white')
     }
   } else {
-    if (props.selectedColor !== 'black') {
+    if (props.selectedColor === 'black') {
+      emit('update:selectedColor', 'both')
+      emit('toggle', 'both')
+    } else {
       emit('update:selectedColor', 'black')
       emit('toggle', 'black')
     }
@@ -85,6 +106,9 @@ function onToggleKeydown(event) {
     if (props.selectedColor === 'white') {
       emit('update:selectedColor', 'black')
       emit('toggle', 'black')
+    } else if (props.selectedColor === 'black') {
+      emit('update:selectedColor', 'white')
+      emit('toggle', 'white')
     } else {
       emit('update:selectedColor', 'white')
       emit('toggle', 'white')
@@ -161,7 +185,6 @@ function onToggleKeydown(event) {
         v-if="allowBoth"
         type="button"
         class="color-switch__option"
-        :class="{ 'color-switch__option--selected': effectiveSelectedForOutline === 'both' }"
         aria-label="Openings for White and Black"
         :aria-pressed="selectedColor === 'both'"
         @click="select('both')"

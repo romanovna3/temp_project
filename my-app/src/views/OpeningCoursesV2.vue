@@ -4571,11 +4571,24 @@ function applyOpeningCoursesHeaderFilters(list, sortByOverride) {
   return out
 }
 
+/** When color filter is “both”, keep sort/search order within each side; list all White then all Black. */
+function openingCoursesOrderWhiteThenBlack(list) {
+  const white = []
+  const black = []
+  for (const c of list) {
+    if (c.type === 'White') white.push(c)
+    else black.push(c)
+  }
+  return [...white, ...black]
+}
+
 const openingCoursesFiltered = computed(() => {
   const colorFilter = openingFilterColor.value
   const typeMatch = colorFilter === 'both' ? null : (colorFilter === 'white' ? 'White' : 'Black')
   const base = typeMatch == null ? openingCourseCards : openingCourseCards.filter((c) => c.type === typeMatch)
-  return applyOpeningCoursesHeaderFilters(base)
+  let out = applyOpeningCoursesHeaderFilters(base)
+  if (colorFilter === 'both') out = openingCoursesOrderWhiteThenBlack(out)
+  return out
 })
 
 /** Returning user: started courses on Your Openings — all White + Black started; sort uses effective (popular → recent). */

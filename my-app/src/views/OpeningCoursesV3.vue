@@ -4488,20 +4488,35 @@ function applyOpeningCoursesHeaderFilters(list, sortByOverride) {
   return out
 }
 
+/** When color filter is “both”, keep sort/search order within each side; list all White then all Black. */
+function openingCoursesOrderWhiteThenBlack(list) {
+  const white = []
+  const black = []
+  for (const c of list) {
+    if (c.type === 'White') white.push(c)
+    else black.push(c)
+  }
+  return [...white, ...black]
+}
+
 const openingCoursesFiltered = computed(() => {
   const colorFilter = openingFilterColor.value
   const typeMatch = colorFilter === 'both' ? null : (colorFilter === 'white' ? 'White' : 'Black')
   const base = typeMatch == null ? openingCourseCards : openingCourseCards.filter((c) => c.type === typeMatch)
-  return applyOpeningCoursesHeaderFilters(base)
+  let out = applyOpeningCoursesHeaderFilters(base)
+  if (colorFilter === 'both') out = openingCoursesOrderWhiteThenBlack(out)
+  return out
 })
 
 /** Returning user: started courses on Your Openings — respects piece-color toggle like All / New User; sort uses effective (popular → recent). */
 const openingCoursesStartedList = computed(() => {
   if (!isReturningUserScenario(openingV3ScenarioPreset.value)) return []
-  const started = applyOpeningCoursesHeaderFilters(openingCourseCards, effectiveOpeningSortBy.value).filter((c) => isOpeningCardStarted(c))
+  let started = applyOpeningCoursesHeaderFilters(openingCourseCards, effectiveOpeningSortBy.value).filter((c) => isOpeningCardStarted(c))
   const colorFilter = openingFilterColor.value
   const typeMatch = colorFilter === 'both' ? null : (colorFilter === 'white' ? 'White' : 'Black')
-  return typeMatch == null ? started : started.filter((c) => c.type === typeMatch)
+  started = typeMatch == null ? started : started.filter((c) => c.type === typeMatch)
+  if (colorFilter === 'both') started = openingCoursesOrderWhiteThenBlack(started)
+  return started
 })
 /** Returning user: non-started courses only (for "All Openings" section). Each card is per color; once started it is in My Openings only. Both colors can be started for openings with two courses; only the other color remains in All Openings until started. */
 const openingCoursesRestList = computed(() => {
