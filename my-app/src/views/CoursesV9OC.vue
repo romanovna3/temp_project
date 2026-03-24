@@ -3704,7 +3704,19 @@ function learnLineFlatSansFor(section, move) {
   return flattenLineMovesToSans(getMovesForLine(section, move))
 }
 
-/** ~40% of half-moves get a long display label (scroll QA). Chess logic still uses raw SAN from learnLineFlatSansFor. */
+/** Invented continuations (notation only) for ~40% of half-moves — scroll QA. Chess logic still uses raw SAN from learnLineFlatSansFor. */
+const LEARN_LINE_MOVELIST_EXTRA_SANS = [
+  'Nf3 g6 Bg2 Bg7 O-O',
+  'd4 d5 c4 e6 Nf3 Nc6',
+  'e4 e5 Nf3 Nc6 Bb5 a6 Ba4',
+  'c4 e5 Nc3 Nf6 g3 Bb4',
+  'd4 Nf6 c4 g6 Nc3 d5',
+  'e4 c5 Nf3 d6 d4 cxd4 Nxd4',
+  'Nf3 d5 g3 c5 Bg2 Nc6 O-O',
+  'd4 Nf6 c4 e6 Nc3 Bb4 Qc2',
+]
+
+/** ~40% of half-moves get extra SANs appended (scroll QA). Chess logic still uses raw SAN from learnLineFlatSansFor. */
 function learnLineMovelistDisplaySan(section, move, index, san) {
   if (!san) return ''
   const key = `${section?.id ?? ''}-${String(move?.id ?? '')}-${index}`
@@ -3712,7 +3724,8 @@ function learnLineMovelistDisplaySan(section, move, index, san) {
   for (let c = 0; c < key.length; c++) h = ((h << 5) - h) + key.charCodeAt(c) | 0
   const long = (Math.abs(h) % 10) < 4
   if (!long) return san
-  return `${san}\u00a0· sideline / transposition note (long label for horizontal scroll)`
+  const extra = LEARN_LINE_MOVELIST_EXTRA_SANS[Math.abs(h) % LEARN_LINE_MOVELIST_EXTRA_SANS.length]
+  return `${san}\u00a0${extra}`
 }
 
 watch(learnListSelectedFlatSans, (flat) => {
