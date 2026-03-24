@@ -9608,6 +9608,7 @@ v-if="isVideoV6OrV7"
             <div v-if="isOpeningCoursesOCList && panelView === 'courses'" class="footer-buttons-container">
               <div class="footer-buttons-row footer-buttons-row-icon-cta">
                 <CcButton
+                  v-if="openingV1ScenarioBarPreset !== 'new-user'"
                   variant="secondary"
                   size="large"
                   class="course-page-line-list-icon-cta"

@@ -4185,10 +4185,13 @@ const openingV3RubCourseList = computed(() =>
   openingV3RubActiveTab.value === 'my-openings' ? openingCoursesStartedList.value : openingCoursesRestList.value
 )
 
-/** Returning + Your Openings: always "Learn" (including disabled when nothing selected). Else Learn only if selected course is started. */
+/** Returning + Your Openings: always "Learn" (including disabled when nothing selected). New User: always "Start Course". Else Learn only if selected course is started. */
 const openingV3FooterPrimaryLabel = computed(() => {
   if (isReturningUserScenario(openingV3ScenarioPreset.value) && openingV3RubActiveTab.value === 'my-openings') {
     return 'Learn'
+  }
+  if (openingV3ScenarioPreset.value === 'new-user') {
+    return 'Start Course'
   }
   const card = selectedOpeningCard.value
   return card && isOpeningCardStarted(card) ? 'Learn' : 'Start Course'
@@ -8661,6 +8664,7 @@ v-if="isVideoV6OrV7"
             <div v-else-if="isOpeningCoursesV3 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-icon-cta">
                 <CcButton
+                  v-if="openingV3ScenarioPreset !== 'new-user'"
                   variant="secondary"
                   size="large"
                   class="course-page-line-list-icon-cta"
