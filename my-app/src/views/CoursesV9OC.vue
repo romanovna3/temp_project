@@ -3676,13 +3676,13 @@ function updateLearnLineMovelistScrollFades() {
     learnLineMovelistFadeRightVisible.value = false
     return
   }
-  const maxScroll = el.scrollWidth - el.clientWidth
-  if (maxScroll <= 1) {
+  const maxScroll = Math.max(0, Math.ceil(el.scrollWidth) - Math.floor(el.clientWidth))
+  if (maxScroll < 1) {
     learnLineMovelistFadeLeftVisible.value = false
     learnLineMovelistFadeRightVisible.value = false
     return
   }
-  const edge = 2
+  const edge = 1
   const sl = el.scrollLeft
   learnLineMovelistFadeLeftVisible.value = sl > edge
   learnLineMovelistFadeRightVisible.value = sl < maxScroll - edge
@@ -3715,11 +3715,18 @@ function setupLearnLineMovelistScrollObserver() {
   learnLineMovelistResizeObserver = null
   const el = learnLineMovelistScrollRef.value
   if (!el) return
-  updateLearnLineMovelistScrollFades()
-  learnLineMovelistResizeObserver = new ResizeObserver(() => {
+  const ro = new ResizeObserver(() => {
     updateLearnLineMovelistScrollFades()
   })
-  learnLineMovelistResizeObserver.observe(el)
+  learnLineMovelistResizeObserver = ro
+  ro.observe(el)
+  const inner = el.querySelector('.learn-line-movelist')
+  if (inner) ro.observe(inner)
+  updateLearnLineMovelistScrollFades()
+  requestAnimationFrame(() => {
+    updateLearnLineMovelistScrollFades()
+    requestAnimationFrame(() => updateLearnLineMovelistScrollFades())
+  })
 }
 
 function teardownLearnLineMovelistScrollObserver() {
@@ -3746,6 +3753,10 @@ function learnLineFlatSansFor(section, move) {
 watch(learnListSelectedFlatSans, (flat) => {
   const max = flat.length
   if (courseListLearnHalfIndex.value > max) courseListLearnHalfIndex.value = max
+  nextTick(() => {
+    updateLearnLineMovelistScrollFades()
+    requestAnimationFrame(() => updateLearnLineMovelistScrollFades())
+  })
 })
 
 watch(
@@ -12237,9 +12248,10 @@ body {
   font-weight: 400;
   color: rgba(255, 255, 255, 0.4);
 }
-/* Learn tab selected line: horizontal movelist (Opening page style, no eval chip) */
+/* Learn tab selected line: horizontal movelist (dissolve matches .opening-chips-fade — solid panel edge) */
 .learn-line-movelist-wrap {
-  --learn-line-movelist-fade-bg: var(--color-bg-primary, #312e2b);
+  /* Same rgba as opening-chips-fade / chips actions so dissolve reads on V6 line cards (body bg unset) */
+  --learn-line-movelist-fade-solid: rgba(39, 37, 34, 1);
   flex: 1;
   width: 100%;
   min-width: 0;
@@ -12277,6 +12289,7 @@ body {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
+  gap: 0 1px;
   width: max-content;
   min-height: 16px;
   font-family: var(--font-family-system, system-ui, sans-serif);
@@ -12285,36 +12298,27 @@ body {
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
 }
+/* Same dissolve as opening-chip row: opaque at viewport edge, transparent into the scroll area */
 .learn-line-movelist-fade {
   position: absolute;
   top: 0;
   bottom: 2px;
-  width: 48px;
+  width: 36px;
   pointer-events: none;
-  z-index: 2;
+  z-index: 3;
   opacity: 0;
-  transition: opacity 0.22s ease;
+  transition: opacity 0.2s ease;
 }
 .learn-line-movelist-fade--visible {
   opacity: 1;
 }
 .learn-line-movelist-scroll-col .learn-line-movelist-fade--left {
   left: 0;
-  background: linear-gradient(
-    to right,
-    var(--learn-line-movelist-fade-bg) 0%,
-    color-mix(in srgb, var(--learn-line-movelist-fade-bg) 35%, transparent) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(to right, var(--learn-line-movelist-fade-solid) 0%, transparent 100%);
 }
 .learn-line-movelist-scroll-col .learn-line-movelist-fade--right {
   right: 0;
-  background: linear-gradient(
-    to left,
-    var(--learn-line-movelist-fade-bg) 0%,
-    color-mix(in srgb, var(--learn-line-movelist-fade-bg) 40%, transparent) 45%,
-    transparent 100%
-  );
+  background: linear-gradient(to right, transparent 0%, var(--learn-line-movelist-fade-solid) 100%);
 }
 .learn-line-movelist__segment {
   flex: 0 0 auto;
@@ -12330,9 +12334,6 @@ body {
   text-align: left;
   border-radius: 0;
 }
-.learn-line-movelist__segment + .learn-line-movelist__segment {
-  margin-left: 2px;
-}
 .learn-line-movelist__segment:hover:not(.learn-line-movelist__segment--current) .learn-line-movelist__segment-inner {
   color: rgba(255, 255, 255, 0.9);
 }
@@ -12346,7 +12347,7 @@ body {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  padding: 2px 3px;
+  padding: 2px 2px;
   min-height: 20px;
   border-radius: 2px;
   border-bottom: 2px solid transparent;
