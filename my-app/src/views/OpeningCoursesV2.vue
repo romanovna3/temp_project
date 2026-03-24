@@ -4300,10 +4300,13 @@ const openingV2RubCourseList = computed(() =>
   openingV2RubActiveTab.value === 'my-openings' ? openingCoursesStartedList.value : openingCoursesRestList.value
 )
 
-/** Returning + Your Openings: always "Learn" (including disabled when nothing selected). Else Learn only if selected course is started. */
+/** Returning + Your Openings: always "Learn" (including disabled when nothing selected). New User: always "Start Course" (direct into learning; ignore started stub state). Else Learn only if selected course is started. */
 const openingV2FooterPrimaryLabel = computed(() => {
   if (isReturningUserScenario(openingV2ScenarioPreset.value) && openingV2RubActiveTab.value === 'my-openings') {
     return 'Learn'
+  }
+  if (openingV2ScenarioPreset.value === 'new-user') {
+    return 'Start Course'
   }
   const card = selectedOpeningCard.value
   return card && isOpeningCardStarted(card) ? 'Learn' : 'Start Course'
@@ -8666,6 +8669,7 @@ v-if="isVideoV6OrV7"
             <div v-else-if="isOpeningCoursesV2 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
               <div class="footer-buttons-row footer-buttons-row-icon-cta">
                 <CcButton
+                  v-if="openingV2ScenarioPreset !== 'new-user'"
                   variant="secondary"
                   size="large"
                   class="course-page-line-list-icon-cta"
