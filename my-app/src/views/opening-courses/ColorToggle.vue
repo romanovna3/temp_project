@@ -5,7 +5,7 @@
   Tooltip: GNS/DS CcTooltip.
 -->
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { CcTooltip } from '@chesscom/design-system'
 
 const props = defineProps({
@@ -23,11 +23,19 @@ const emit = defineEmits(['update:selectedColor', 'toggle'])
 
 const kingIconSrc = computed(() => `${props.baseUrl || ''}icons/king-outline.svg`)
 
-const tooltipText = computed(() => {
-  if (props.selectedColor === 'white') return 'Openings for White'
-  if (props.selectedColor === 'black') return 'Openings for Black'
-  return 'Openings for White and Black'
-})
+/** Sliding toggle: tooltip follows pointer (left half = White, right half = Black). */
+const toggleHoverSide = ref('white')
+
+const toggleTooltipText = computed(() =>
+  toggleHoverSide.value === 'black' ? 'Openings for Black' : 'Openings for White'
+)
+
+function onTogglePointerMove(event) {
+  const el = event.currentTarget
+  if (!(el instanceof HTMLElement)) return
+  const { left, width } = el.getBoundingClientRect()
+  toggleHoverSide.value = event.clientX - left < width / 2 ? 'white' : 'black'
+}
 
 const isSwitch = computed(() => props.variant === 'switch')
 
@@ -154,6 +162,15 @@ function onToggleKeydown(event) {
           </span>
         </span>
       </button>
+      <CcTooltip
+        for-previous-element
+        class="practice-in-tooltip-no-fade color-toggle-tooltip"
+        :delay="0"
+        position="top"
+        anchor="center"
+      >
+        <span class="color-toggle-tooltip__text">Openings for White</span>
+      </CcTooltip>
       <button
         type="button"
         class="color-switch__option"
@@ -181,6 +198,15 @@ function onToggleKeydown(event) {
           </span>
         </span>
       </button>
+      <CcTooltip
+        for-previous-element
+        class="practice-in-tooltip-no-fade color-toggle-tooltip"
+        :delay="0"
+        position="top"
+        anchor="center"
+      >
+        <span class="color-toggle-tooltip__text">Openings for Black</span>
+      </CcTooltip>
       <button
         v-if="allowBoth"
         type="button"
@@ -221,6 +247,8 @@ function onToggleKeydown(event) {
         data-name="Color Toggle"
         @click="onToggleClick"
         @keydown="onToggleKeydown"
+        @pointerenter="onTogglePointerMove"
+        @pointermove="onTogglePointerMove"
       >
         <span class="color-toggle__track" aria-hidden="true" />
         <span
@@ -236,16 +264,16 @@ function onToggleKeydown(event) {
           />
         </span>
       </button>
+      <CcTooltip
+        for-previous-element
+        class="practice-in-tooltip-no-fade color-toggle-tooltip"
+        :delay="0"
+        position="top"
+        anchor="center"
+      >
+        <span class="color-toggle-tooltip__text">{{ toggleTooltipText }}</span>
+      </CcTooltip>
     </template>
-    <CcTooltip
-      for-previous-element
-      class="practice-in-tooltip-no-fade color-toggle-tooltip"
-      :delay="0"
-      position="top"
-      anchor="center"
-    >
-      <span class="color-toggle-tooltip__text">{{ tooltipText }}</span>
-    </CcTooltip>
   </span>
 </template>
 
