@@ -12319,12 +12319,9 @@ body {
   cursor: pointer;
   text-align: left;
   border-radius: 0;
-  /* Avoid inherited line metrics on the button shifting the inner flex child when selection changes */
-  line-height: 0;
-  vertical-align: bottom;
 }
 .learn-line-movelist__segment + .learn-line-movelist__segment {
-  margin-left: 0.35em;
+  margin-left: 2px;
 }
 .learn-line-movelist__segment:hover:not(.learn-line-movelist__segment--current) .learn-line-movelist__segment-inner {
   color: rgba(255, 255, 255, 0.9);
@@ -12333,43 +12330,29 @@ body {
   outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
   outline-offset: 2px;
 }
-/* Fixed box: same background always (no layer pop); underline is ::after only (no border color swap). */
+/* Same padding + underline slot for default and selected — avoids vertical jump when switching */
 .learn-line-movelist__segment-inner {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  height: 22px;
-  padding: 0 4px;
+  padding: 2px 3px;
+  min-height: 20px;
   border-radius: 2px;
+  border-bottom: 2px solid transparent;
   white-space: nowrap;
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
-  font-family: var(--font-family-system, system-ui, sans-serif);
   color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.04);
-}
-.learn-line-movelist__segment-inner::after {
-  content: '';
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  bottom: 2px;
-  height: 2px;
-  border-radius: 1px;
-  background: transparent;
-  pointer-events: none;
 }
 .learn-line-movelist__segment--current .learn-line-movelist__segment-inner {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom-color: rgba(255, 255, 255, 0.5);
   color: #fff;
 }
-.learn-line-movelist__segment--current .learn-line-movelist__segment-inner::after {
-  background: rgba(255, 255, 255, 0.5);
-}
 .learn-line-movelist__segment--current:hover .learn-line-movelist__segment-inner {
-  filter: brightness(1.12);
+  background: rgba(255, 255, 255, 0.08);
 }
 /* Restore chip design: same as opening-course-card__properties + move-item-level/info chip labels */
 .chapter-line-card__header-indicators :deep(.cc-chip-fg) {
