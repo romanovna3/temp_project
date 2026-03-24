@@ -368,7 +368,7 @@ function getStoredOpeningFilterColor() {
     const raw = sessionStorage.getItem(OPENING_COURSES_V3_FILTER_COLOR_KEY)
     if (raw === 'white' || raw === 'black' || raw === 'both') return raw
   } catch (_) {}
-  return 'both'
+  return 'white'
 }
 
 /** When false, Learn/Practice on the Opening list do not navigate (MoveTrainer will replace the course shell). */
