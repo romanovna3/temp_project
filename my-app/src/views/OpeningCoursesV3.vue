@@ -4088,6 +4088,7 @@ watch(isOpeningCoursesV3, (isV1) => {
     openingV3Ready.value = false
     return
   }
+  openingV3ScenarioPreset.value = 'new-user'
   openingV3Ready.value = false
   openingV3ReadyTimer = setTimeout(() => {
     openingV3ReadyTimer = null
@@ -4141,10 +4142,10 @@ function getInitialOpeningV1PresetBar() {
     if (!raw) return { viewportPreset: 'default', scenarioPreset: 'new-user' }
     const preset = JSON.parse(raw)
     const v = preset?.viewportPreset
-    const s = preset?.scenarioPreset
     return {
       viewportPreset: v && ['default', 'narrow', 'mobile'].includes(v) ? v : 'default',
-      scenarioPreset: s && ['new-user', 'returning-user', 'returning-user-b'].includes(s) ? (s === 'returning-user-b' ? 'returning-user' : s) : 'new-user',
+      // V3 always opens in New user; dev bar can switch to Returning (persisted for viewport only via restore watch).
+      scenarioPreset: 'new-user',
     }
   } catch (_) {
     return { viewportPreset: 'default', scenarioPreset: 'new-user' }
@@ -4841,16 +4842,13 @@ watch([isOpeningCoursesV3, openingV3ScenarioPreset], ([isV1, preset]) => {
 // Also restore global preset bar (viewport + scenario) so it stays in sync with Course page.
 watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
   if (!isV1 || !ready) return
-  // Restore global preset bar from Course page (or previous session)
+  // Restore viewport from Course page (or previous session). Scenario always New user on V3 load.
   try {
     const presetRaw = sessionStorage.getItem(OPENING_COURSES_V3_PRESET_BAR_KEY)
     if (presetRaw) {
       const preset = JSON.parse(presetRaw)
       if (preset && typeof preset.viewportPreset === 'string' && ['default', 'narrow', 'mobile'].includes(preset.viewportPreset)) {
         viewportPreset.value = preset.viewportPreset
-      }
-      if (preset && typeof preset.scenarioPreset === 'string' && (['new-user', 'returning-user'].includes(preset.scenarioPreset) || preset.scenarioPreset === 'returning-user-b')) {
-        openingV3ScenarioPreset.value = preset.scenarioPreset === 'returning-user-b' ? 'returning-user' : preset.scenarioPreset
       }
     }
   } catch (_) {
