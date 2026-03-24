@@ -3632,6 +3632,13 @@ const showCourseListPracticeLineActions = computed(() => {
 
 /** Learn tab selected line: half-move index 0 = start, N = after all SANs (movelist highlight uses 1…N per segment). */
 const courseListLearnHalfIndex = ref(0)
+/** Movelist uses 1…N (matches segment `i + 1`). Default on new line: random among 2–5 when possible. */
+function defaultLearnLineHalfIndexAfterSelect(flatLen) {
+  if (flatLen <= 0) return 0
+  if (flatLen === 1) return 1
+  const candidates = [2, 3, 4, 5].filter((n) => n <= flatLen)
+  return candidates[Math.floor(Math.random() * candidates.length)]
+}
 const learnLineMovelistScrollRef = ref(null)
 const learnLineMovelistFadeLeftVisible = ref(false)
 const learnLineMovelistFadeRightVisible = ref(false)
@@ -3779,7 +3786,7 @@ watch(
     const ctx = selectedLearnLineContext.value
     if (!ctx) return
     const flat = learnLineFlatSansExtendedFor(ctx.section, ctx.move)
-    courseListLearnHalfIndex.value = flat.length
+    courseListLearnHalfIndex.value = defaultLearnLineHalfIndexAfterSelect(flat.length)
     nextTick(() => {
       updateLearnLineMovelistScrollFades()
       scrollLearnLineMovelistCurrentIntoView()
