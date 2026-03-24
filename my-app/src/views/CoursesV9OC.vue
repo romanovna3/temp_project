@@ -3677,12 +3677,12 @@ function updateLearnLineMovelistScrollFades() {
     return
   }
   const maxScroll = el.scrollWidth - el.clientWidth
-  if (maxScroll <= 6) {
+  if (maxScroll <= 1) {
     learnLineMovelistFadeLeftVisible.value = false
     learnLineMovelistFadeRightVisible.value = false
     return
   }
-  const edge = 6
+  const edge = 2
   const sl = el.scrollLeft
   learnLineMovelistFadeLeftVisible.value = sl > edge
   learnLineMovelistFadeRightVisible.value = sl < maxScroll - edge
@@ -12289,22 +12289,32 @@ body {
   position: absolute;
   top: 0;
   bottom: 2px;
-  width: 32px;
+  width: 48px;
   pointer-events: none;
   z-index: 2;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.22s ease;
 }
 .learn-line-movelist-fade--visible {
   opacity: 1;
 }
 .learn-line-movelist-scroll-col .learn-line-movelist-fade--left {
   left: 0;
-  background: linear-gradient(to right, var(--learn-line-movelist-fade-bg) 0%, rgba(49, 46, 43, 0) 100%);
+  background: linear-gradient(
+    to right,
+    var(--learn-line-movelist-fade-bg) 0%,
+    color-mix(in srgb, var(--learn-line-movelist-fade-bg) 35%, transparent) 50%,
+    transparent 100%
+  );
 }
 .learn-line-movelist-scroll-col .learn-line-movelist-fade--right {
   right: 0;
-  background: linear-gradient(to left, var(--learn-line-movelist-fade-bg) 0%, rgba(49, 46, 43, 0) 100%);
+  background: linear-gradient(
+    to left,
+    var(--learn-line-movelist-fade-bg) 0%,
+    color-mix(in srgb, var(--learn-line-movelist-fade-bg) 40%, transparent) 45%,
+    transparent 100%
+  );
 }
 .learn-line-movelist__segment {
   flex: 0 0 auto;
@@ -12343,10 +12353,11 @@ body {
   white-space: nowrap;
   font-size: 12px;
   line-height: 16px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
 }
 .learn-line-movelist__segment--current .learn-line-movelist__segment-inner {
+  font-weight: 600;
   background: rgba(255, 255, 255, 0.05);
   border-bottom-color: rgba(255, 255, 255, 0.5);
   color: #fff;
