@@ -3788,20 +3788,27 @@ watch(
   { immediate: true },
 )
 
+/* Movelist + fades: must not depend on showCourseListLearnLineActions (false on opening-courses-oc routes). */
 watch(
   () => {
     const sel = courseListSelectedLineLearn.value
     const selKey = sel ? `${sel.sectionId}:${String(sel.moveId)}` : ''
-    return [showCourseListLearnLineActions.value, learnListSelectedFlatSans.value.length, selKey]
+    return [learnListSelectedFlatSans.value.length, selKey]
   },
-  ([active, len]) => {
-    if (active && len > 0) {
+  ([len]) => {
+    if (len > 0) {
       nextTick(() => {
         setupLearnLineMovelistScrollObserver()
         updateLearnLineMovelistScrollFades()
+        nextTick(() => {
+          setupLearnLineMovelistScrollObserver()
+          updateLearnLineMovelistScrollFades()
+        })
       })
     } else {
       teardownLearnLineMovelistScrollObserver()
+      learnLineMovelistFadeLeftVisible.value = false
+      learnLineMovelistFadeRightVisible.value = false
     }
   },
   { flush: 'post' },
@@ -8753,10 +8760,6 @@ v-if="isVideoV6OrV7"
                                     <div
                                       ref="learnLineMovelistScrollRef"
                                       class="learn-line-movelist-scroll"
-                                      :class="{
-                                        'learn-line-movelist-scroll--fade-left': learnLineMovelistFadeLeftVisible,
-                                        'learn-line-movelist-scroll--fade-right': learnLineMovelistFadeRightVisible,
-                                      }"
                                       @scroll.passive="onLearnLineMovelistScroll"
                                     >
                                       <div class="learn-line-movelist" role="list">
@@ -8781,6 +8784,16 @@ v-if="isVideoV6OrV7"
                                         </template>
                                       </div>
                                     </div>
+                                    <div
+                                      v-if="learnLineMovelistFadeLeftVisible"
+                                      class="learn-line-movelist-fade learn-line-movelist-fade--left"
+                                      aria-hidden="true"
+                                    />
+                                    <div
+                                      v-if="learnLineMovelistFadeRightVisible"
+                                      class="learn-line-movelist-fade learn-line-movelist-fade--right"
+                                      aria-hidden="true"
+                                    />
                                   </div>
                                 </div>
                                 <p
@@ -12278,20 +12291,23 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding-bottom: 2px;
-  /* Dissolve is inset on the scrollport so it always composites over the move text */
-  --learn-line-movelist-dissolve: var(--learn-line-movelist-fade-solid, rgba(39, 37, 34, 1));
-  transition: box-shadow 0.2s ease;
 }
-.learn-line-movelist-scroll--fade-right {
-  box-shadow: inset -40px 0 32px -12px var(--learn-line-movelist-dissolve);
+/* Same technique as .opening-chips-fade (inset box-shadow on overflow:auto was easy to miss in some themes). */
+.learn-line-movelist-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  pointer-events: none;
+  z-index: 1;
 }
-.learn-line-movelist-scroll--fade-left {
-  box-shadow: inset 40px 0 32px -12px var(--learn-line-movelist-dissolve);
+.learn-line-movelist-fade--right {
+  right: 0;
+  background: linear-gradient(to right, transparent, var(--learn-line-movelist-fade-solid, rgba(39, 37, 34, 1)));
 }
-.learn-line-movelist-scroll--fade-left.learn-line-movelist-scroll--fade-right {
-  box-shadow:
-    inset 40px 0 32px -12px var(--learn-line-movelist-dissolve),
-    inset -40px 0 32px -12px var(--learn-line-movelist-dissolve);
+.learn-line-movelist-fade--left {
+  left: 0;
+  background: linear-gradient(to left, transparent, var(--learn-line-movelist-fade-solid, rgba(39, 37, 34, 1)));
 }
 .learn-line-movelist-scroll::-webkit-scrollbar {
   display: none;
