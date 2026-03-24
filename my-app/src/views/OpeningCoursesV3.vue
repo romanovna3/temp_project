@@ -6556,7 +6556,7 @@ onUnmounted(() => {
                     class="opening-course-card__cover-wrap"
                     :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
                   >
-                    <div class="course-cover-board" :class="{ 'course-cover-board--black-view': card.type === 'Black' }" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                    <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
                     <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                       <g id="course-cover-board-grid">
                         <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -6698,7 +6698,7 @@ onUnmounted(() => {
                               class="opening-course-card__cover-wrap"
                               :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
                             >
-                              <div class="course-cover-board" :class="{ 'course-cover-board--black-view': card.type === 'Black' }" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                              <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
                                 <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                                   <g id="course-cover-board-grid">
                                     <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -6841,7 +6841,7 @@ onUnmounted(() => {
                           class="opening-course-card__cover-wrap"
                           :class="{ 'opening-course-card__cover-wrap--selected': OPENING_COURSE_CARD_VARIANT === 'square-outline' && isOpeningCardSelected(card.id) }"
                         >
-                          <div class="course-cover-board" :class="{ 'course-cover-board--black-view': card.type === 'Black' }" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
+                          <div class="course-cover-board" aria-hidden="true" data-name="CourseCoverBoard" :title="card.firstMove">
                             <svg class="course-cover-board__svg" fill="none" preserveAspectRatio="none" viewBox="0 0 96 96" aria-hidden="true">
                               <g id="course-cover-board-grid">
                                 <path d="M48 24H24V48H48V24Z" fill="var(--color-chess-light, #EBECD0)" />
@@ -10573,14 +10573,6 @@ body {
   height: 100%;
   object-fit: contain;
   flex-shrink: 0;
-}
-/* Black courses: flip cover board so Black is at bottom; counter-rotate piece art */
-.course-cover-board--black-view {
-  transform: rotate(180deg);
-  transition: none;
-}
-.course-cover-board--black-view .course-cover-board__piece-img {
-  transform: rotate(180deg);
 }
 /* Content section: padding 12px, gap 4px, fit-content height, centered */
 .opening-course-card__content {
