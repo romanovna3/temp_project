@@ -3704,30 +3704,6 @@ function learnLineFlatSansFor(section, move) {
   return flattenLineMovesToSans(getMovesForLine(section, move))
 }
 
-/** Invented continuations (notation only) for ~40% of half-moves — scroll QA. Chess logic still uses raw SAN from learnLineFlatSansFor. */
-const LEARN_LINE_MOVELIST_EXTRA_SANS = [
-  'Nf3 g6 Bg2 Bg7 O-O',
-  'd4 d5 c4 e6 Nf3 Nc6',
-  'e4 e5 Nf3 Nc6 Bb5 a6 Ba4',
-  'c4 e5 Nc3 Nf6 g3 Bb4',
-  'd4 Nf6 c4 g6 Nc3 d5',
-  'e4 c5 Nf3 d6 d4 cxd4 Nxd4',
-  'Nf3 d5 g3 c5 Bg2 Nc6 O-O',
-  'd4 Nf6 c4 e6 Nc3 Bb4 Qc2',
-]
-
-/** ~40% of half-moves get extra SANs appended (scroll QA). Chess logic still uses raw SAN from learnLineFlatSansFor. */
-function learnLineMovelistDisplaySan(section, move, index, san) {
-  if (!san) return ''
-  const key = `${section?.id ?? ''}-${String(move?.id ?? '')}-${index}`
-  let h = 0
-  for (let c = 0; c < key.length; c++) h = ((h << 5) - h) + key.charCodeAt(c) | 0
-  const long = (Math.abs(h) % 10) < 4
-  if (!long) return san
-  const extra = LEARN_LINE_MOVELIST_EXTRA_SANS[Math.abs(h) % LEARN_LINE_MOVELIST_EXTRA_SANS.length]
-  return `${san}\u00a0${extra}`
-}
-
 watch(learnListSelectedFlatSans, (flat) => {
   const max = flat.length
   if (courseListLearnHalfIndex.value > max) courseListLearnHalfIndex.value = max
@@ -8719,14 +8695,14 @@ v-if="isVideoV6OrV7"
                                               <span class="learn-line-movelist__pill" aria-hidden="true">
                                                 <span class="learn-line-movelist__pill-border" aria-hidden="true" />
                                                 <span class="learn-line-movelist__pill-text">
-                                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ learnLineMovelistDisplaySan(section, move, i, san) }}</template>
-                                                  <template v-else>{{ learnLineMovelistDisplaySan(section, move, i, san) }}</template>
+                                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                                  <template v-else>{{ san }}</template>
                                                 </span>
                                               </span>
                                             </template>
                                             <template v-else>
-                                              <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ learnLineMovelistDisplaySan(section, move, i, san) }}</template>
-                                              <template v-else>{{ learnLineMovelistDisplaySan(section, move, i, san) }}</template>
+                                              <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
+                                              <template v-else>{{ san }}</template>
                                             </template>
                                           </button>
                                         </template>
