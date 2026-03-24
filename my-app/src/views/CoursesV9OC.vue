@@ -3704,6 +3704,17 @@ function learnLineFlatSansFor(section, move) {
   return flattenLineMovesToSans(getMovesForLine(section, move))
 }
 
+/** ~40% of half-moves get a long display label (scroll QA). Chess logic still uses raw SAN from learnLineFlatSansFor. */
+function learnLineMovelistDisplaySan(section, move, index, san) {
+  if (!san) return ''
+  const key = `${section?.id ?? ''}-${String(move?.id ?? '')}-${index}`
+  let h = 0
+  for (let c = 0; c < key.length; c++) h = ((h << 5) - h) + key.charCodeAt(c) | 0
+  const long = (Math.abs(h) % 10) < 4
+  if (!long) return san
+  return `${san}\u00a0· sideline / transposition note (long label for horizontal scroll)`
+}
+
 watch(learnListSelectedFlatSans, (flat) => {
   const max = flat.length
   if (courseListLearnHalfIndex.value > max) courseListLearnHalfIndex.value = max
@@ -8695,14 +8706,14 @@ v-if="isVideoV6OrV7"
                                               <span class="learn-line-movelist__pill" aria-hidden="true">
                                                 <span class="learn-line-movelist__pill-border" aria-hidden="true" />
                                                 <span class="learn-line-movelist__pill-text">
-                                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                                  <template v-else>{{ san }}</template>
+                                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ learnLineMovelistDisplaySan(section, move, i, san) }}</template>
+                                                  <template v-else>{{ learnLineMovelistDisplaySan(section, move, i, san) }}</template>
                                                 </span>
                                               </span>
                                             </template>
                                             <template v-else>
-                                              <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                              <template v-else>{{ san }}</template>
+                                              <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ learnLineMovelistDisplaySan(section, move, i, san) }}</template>
+                                              <template v-else>{{ learnLineMovelistDisplaySan(section, move, i, san) }}</template>
                                             </template>
                                           </button>
                                         </template>
@@ -11811,6 +11822,8 @@ body {
   padding-bottom: 8px;
   padding-left: 0;
   padding-right: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 .chapter-line-card--last {
   padding-bottom: 8px;
@@ -12161,6 +12174,8 @@ body {
   margin-top: 2px;
   width: 100%;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   /* Movelist track: 22px line + 2px scroll padding-bottom + slack for current pill underline */
   min-height: 26px;
   padding-bottom: 2px;
@@ -12187,6 +12202,8 @@ body {
   flex: 1;
   width: 100%;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   min-height: 22px;
   margin-top: 0;
 }
@@ -12195,6 +12212,8 @@ body {
   display: flex;
   align-items: center;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 .learn-line-movelist-scroll {
   flex: 1;
