@@ -1801,6 +1801,43 @@ function flattenLineMovesToSans(moves) {
   return flat
 }
 
+/** Tried in order after the line’s moves; only legal continuations are appended (one SAN = one movelist step). */
+const MOVELIST_EXTENSION_SAN_CANDIDATES = [
+  'Nf3', 'g6', 'Bg2', 'Bg7', 'O-O', 'd6', 'Nc3', 'd5', 'c5', 'e6',
+  'exd5', 'exd4', 'Nxd4', 'Nc6', 'Bb5', 'a6', 'Ba4', 'Nf6', 'Re1', 'Be7',
+  'h6', 'Bh4', 'Rad1', 'Rfe8', 'c4', 'b6', 'Bb2', 'Nd7', 'Qe2', 'Kh8',
+]
+
+function learnLineMovelistShouldExtend(section, move) {
+  const key = `${section?.id ?? ''}-${String(move?.id ?? '')}`
+  let h = 0
+  for (let i = 0; i < key.length; i++) h = ((h << 5) - h) + key.charCodeAt(i) | 0
+  return (Math.abs(h) % 10) < 4
+}
+
+/** Base line SANs plus extra legal half-moves from the end position (~40% of lines, for scroll QA). */
+function learnLineFlatSansExtendedFor(section, move) {
+  const base = flattenLineMovesToSans(getMovesForLine(section, move))
+  if (!learnLineMovelistShouldExtend(section, move)) return base
+  try {
+    const chess = new Chess()
+    for (const san of base) {
+      const r = chess.move(san)
+      if (!r) return base
+    }
+    const extra = []
+    const targetExtra = 10
+    for (const san of MOVELIST_EXTENSION_SAN_CANDIDATES) {
+      if (extra.length >= targetExtra) break
+      const r = chess.move(san)
+      if (r) extra.push(san)
+    }
+    return base.concat(extra)
+  } catch {
+    return base
+  }
+}
+
 /** Number of (full) moves in a single line – for "# moves" on the line card. Randomized 4–9 per line (stable per section+move). */
 function getLineMoveCount(section, move) {
   const seed = `${section?.id ?? ''}-${move?.id ?? ''}`
@@ -3601,7 +3638,7 @@ let learnLineMovelistResizeObserver = null
 const learnListSelectedFlatSans = computed(() => {
   const ctx = selectedLearnLineContext.value
   if (!ctx) return []
-  return flattenLineMovesToSans(getMovesForLine(ctx.section, ctx.move))
+  return learnLineFlatSansExtendedFor(ctx.section, ctx.move)
 })
 
 const learnListLineNavActive = computed(
@@ -3701,7 +3738,7 @@ function onLearnLineMovelistSegmentClick(plyHalfCount) {
 }
 
 function learnLineFlatSansFor(section, move) {
-  return flattenLineMovesToSans(getMovesForLine(section, move))
+  return learnLineFlatSansExtendedFor(section, move)
 }
 
 watch(learnListSelectedFlatSans, (flat) => {
@@ -3722,7 +3759,7 @@ watch(
     if (key === prevKey) return
     const ctx = selectedLearnLineContext.value
     if (!ctx) return
-    const flat = flattenLineMovesToSans(getMovesForLine(ctx.section, ctx.move))
+    const flat = learnLineFlatSansExtendedFor(ctx.section, ctx.move)
     courseListLearnHalfIndex.value = flat.length
     nextTick(() => {
       updateLearnLineMovelistScrollFades()
@@ -4486,7 +4523,7 @@ watchEffect(() => {
     ) {
       const ctx = selectedLearnLineContext.value
       const moves = getMovesForLine(ctx.section, ctx.move)
-      const flat = flattenLineMovesToSans(moves)
+      const flat = learnLineFlatSansExtendedFor(ctx.section, ctx.move)
       const max = flat.length
       const h = Math.min(Math.max(0, courseListLearnHalfIndex.value), max)
       if (h === 0) {
@@ -4496,10 +4533,32 @@ watchEffect(() => {
         checkmateHighlight.value = null
         return
       }
-      const moveIndex = Math.floor((h - 1) / 2)
-      const side = h % 2 === 1 ? 'white' : 'black'
-      const { fen, lastMove: last } = getPositionAfterPly(moves, { moveIndex, side })
-      pieces.value = parseFEN(fen)
+      const chess = new Chess()
+      let last = null
+      for (let i = 0; i < h; i++) {
+        const r = chess.move(flat[i])
+        if (!r) {
+          const baseLen = flattenLineMovesToSans(moves).length
+          const hBase = Math.min(h, baseLen)
+          if (hBase === 0) {
+            pieces.value = parseFEN(STARTING_FEN)
+            lastMove.value = null
+            selectedSquare.value = null
+            checkmateHighlight.value = null
+            return
+          }
+          const moveIndex = Math.floor((hBase - 1) / 2)
+          const side = hBase % 2 === 1 ? 'white' : 'black'
+          const pos = getPositionAfterPly(moves, { moveIndex, side })
+          pieces.value = parseFEN(pos.fen)
+          lastMove.value = pos.lastMove
+          selectedSquare.value = null
+          checkmateHighlight.value = null
+          return
+        }
+        last = { from: r.from, to: r.to }
+      }
+      pieces.value = parseFEN(chess.fen())
       lastMove.value = last
       selectedSquare.value = null
       checkmateHighlight.value = null
