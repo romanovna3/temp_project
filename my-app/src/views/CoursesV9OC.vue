@@ -8752,19 +8752,10 @@ v-if="isVideoV6OrV7"
                                             :aria-label="(i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san) + ', show position after this move'"
                                             @click="onLearnLineMovelistSegmentClick(i + 1)"
                                           >
-                                            <template v-if="courseListLearnHalfIndex === i + 1">
-                                              <span class="learn-line-movelist__pill" aria-hidden="true">
-                                                <span class="learn-line-movelist__pill-border" aria-hidden="true" />
-                                                <span class="learn-line-movelist__pill-text">
-                                                  <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
-                                                  <template v-else>{{ san }}</template>
-                                                </span>
-                                              </span>
-                                            </template>
-                                            <template v-else>
+                                            <span class="learn-line-movelist__segment-inner">
                                               <template v-if="i % 2 === 0">{{ Math.floor(i / 2) + 1 }}.&nbsp;{{ san }}</template>
                                               <template v-else>{{ san }}</template>
-                                            </template>
+                                            </span>
                                           </button>
                                         </template>
                                       </div>
@@ -12327,59 +12318,40 @@ body {
   color: inherit;
   cursor: pointer;
   text-align: left;
-  border-radius: 2px;
+  border-radius: 0;
 }
 .learn-line-movelist__segment + .learn-line-movelist__segment {
   margin-left: 0.35em;
 }
-.learn-line-movelist__segment:hover {
+.learn-line-movelist__segment:hover:not(.learn-line-movelist__segment--current) .learn-line-movelist__segment-inner {
   color: rgba(255, 255, 255, 0.9);
 }
 .learn-line-movelist__segment:focus-visible {
   outline: 2px solid var(--color-focus-ring, rgba(94, 158, 255, 0.9));
   outline-offset: 2px;
 }
-.learn-line-movelist__segment--current {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: inherit;
-  font-weight: inherit;
-}
-.learn-line-movelist__pill {
-  position: relative;
+/* Same padding + underline slot for default and selected — avoids vertical jump when switching */
+.learn-line-movelist__segment-inner {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   padding: 2px 4px;
+  min-height: 20px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.05);
-}
-.learn-line-movelist__pill-border {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  bottom: -2px;
-  box-sizing: border-box;
-  border: none;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 2px;
-  pointer-events: none;
-}
-.learn-line-movelist__pill-text {
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
-  font-family: var(--font-family-system, system-ui, sans-serif);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
-  color: #fff;
-  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.55);
 }
-.learn-line-movelist__segment--current:hover .learn-line-movelist__pill {
+.learn-line-movelist__segment--current .learn-line-movelist__segment-inner {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
+.learn-line-movelist__segment--current:hover .learn-line-movelist__segment-inner {
   background: rgba(255, 255, 255, 0.08);
 }
 /* Restore chip design: same as opening-course-card__properties + move-item-level/info chip labels */
