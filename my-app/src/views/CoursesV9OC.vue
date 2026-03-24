@@ -1801,21 +1801,29 @@ function flattenLineMovesToSans(moves) {
   return flat
 }
 
-/** Tried in order after the line’s moves; only legal continuations are appended (one SAN = one movelist step). */
-const MOVELIST_EXTENSION_SAN_CANDIDATES = [
-  'Nf3', 'g6', 'Bg2', 'Bg7', 'O-O', 'd6', 'Nc3', 'd5', 'c5', 'e6',
-  'exd5', 'exd4', 'Nxd4', 'Nc6', 'Bb5', 'a6', 'Ba4', 'Nf6', 'Re1', 'Be7',
-  'h6', 'Bh4', 'Rad1', 'Rfe8', 'c4', 'b6', 'Bb2', 'Nd7', 'Qe2', 'Kh8',
-]
-
 function learnLineMovelistShouldExtend(section, move) {
+  if (openingCourseIdFromRoute.value) return true
   const key = `${section?.id ?? ''}-${String(move?.id ?? '')}`
   let h = 0
   for (let i = 0; i < key.length; i++) h = ((h << 5) - h) + key.charCodeAt(i) | 0
   return (Math.abs(h) % 10) < 4
 }
 
-/** Base line SANs plus extra legal half-moves from the end position (~40% of lines, for scroll QA). */
+/** Append legal half-moves from the current position (deterministic pick) until target count or no moves. */
+function appendLegalMovelistExtension(chess, targetExtra) {
+  const extra = []
+  while (extra.length < targetExtra) {
+    const legal = chess.moves({ verbose: true })
+    if (!legal.length) break
+    const choice = legal[extra.length % legal.length]
+    const r = chess.move(choice.san)
+    if (!r) break
+    extra.push(choice.san)
+  }
+  return extra
+}
+
+/** Base line SANs plus extra legal half-moves from the end position (opening course pages: always; else ~40%). */
 function learnLineFlatSansExtendedFor(section, move) {
   const base = flattenLineMovesToSans(getMovesForLine(section, move))
   if (!learnLineMovelistShouldExtend(section, move)) return base
@@ -1825,13 +1833,7 @@ function learnLineFlatSansExtendedFor(section, move) {
       const r = chess.move(san)
       if (!r) return base
     }
-    const extra = []
-    const targetExtra = 10
-    for (const san of MOVELIST_EXTENSION_SAN_CANDIDATES) {
-      if (extra.length >= targetExtra) break
-      const r = chess.move(san)
-      if (r) extra.push(san)
-    }
+    const extra = appendLegalMovelistExtension(chess, 12)
     return base.concat(extra)
   } catch {
     return base
