@@ -584,11 +584,11 @@ function openOpeningCourse(optionalCard, options) {
   navigateOpeningListCardToCourse(card, options)
 }
 
-/** Footer list icon — opens the selected opening’s course page (Learn tab). */
+/** Footer list icon — opens the selected opening’s course page (Learn tab, or Practice tab when the course is completed). */
 function onOpeningListLineListIconClick() {
   const card = selectedOpeningCard.value
   if (!card) return
-  navigateOpeningListCardToCourse(card, { openInPracticeTab: false })
+  navigateOpeningListCardToCourse(card, { openInPracticeTab: isOpeningCardCompleted(card) })
 }
 
 function backFromOpeningCourse() {

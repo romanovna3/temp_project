@@ -9633,12 +9633,21 @@ v-if="isVideoV6OrV7"
               </div>
             </div>
             <div v-else-if="showLessonActions" class="footer-buttons-container footer-buttons-container--cta-only">
-                <!-- Color picker is not shown on Course page (only on Opening page in Courses.vue). Single CTA: Learn on Learn tab, Practice on Practice tab; Nothing to learn: aqua Practice with counter; New Course / Nothing to practice: Learn (green) on Learn tab, Start Learning (primary) on Practice tab (no navigation yet — dedicated screen TBD) -->
+                <!-- Color picker is not shown on Course page (only on Opening page in Courses.vue). Learn tab + completed (or nothing-to-learn): Learn Again secondary; Practice tab: Practice; etc. -->
                 <div class="footer-buttons-row footer-buttons-row-full">
                   <div class="footer-course-cta-slot">
                     <template v-if="scenarioEffectivePracticeCount === 0">
                       <CcButton
-                        v-if="courseTabsActive === 'content'"
+                        v-if="courseTabsActive === 'content' && (isOpeningCourseCompleted || scenarioShowOnlyPractice)"
+                        variant="secondary"
+                        size="large"
+                        class="footer-btn-full"
+                        type="button"
+                      >
+                        Learn Again
+                      </CcButton>
+                      <CcButton
+                        v-else-if="courseTabsActive === 'content'"
                         variant="primary"
                         size="large"
                         class="footer-btn-full"
@@ -9655,14 +9664,23 @@ v-if="isVideoV6OrV7"
                         Start Learning
                       </CcButton>
                     </template>
+                    <CcButton
+                      v-else-if="courseTabsActive === 'content' && (isOpeningCourseCompleted || scenarioShowOnlyPractice)"
+                      variant="secondary"
+                      size="large"
+                      class="footer-btn-full"
+                      type="button"
+                    >
+                      Learn Again
+                    </CcButton>
                     <AquaCtaButton
-                      v-else-if="scenarioShowOnlyPractice && (isVideoV8 || isVideoV9)"
+                      v-else-if="scenarioShowOnlyPractice && (isVideoV8 || isVideoV9) && courseTabsActive === 'stats'"
                       label="Practice"
                       :badge="scenarioEffectivePracticeCount"
                       class="footer-btn-full"
                     />
                     <CcButton
-                      v-else-if="scenarioShowOnlyPractice"
+                      v-else-if="scenarioShowOnlyPractice && courseTabsActive === 'stats'"
                       variant="primary"
                       size="large"
                       class="footer-btn-full"
