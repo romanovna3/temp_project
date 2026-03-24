@@ -4300,8 +4300,15 @@ const openingFooterCanRedo = computed(
 )
 // Keyword tags from search (Enter): filter by title/description containing each
 const openingKeywordTags = ref([])
-/** Filter courses by piece color: 'white' | 'black' (Color Toggle in header). V4: init from sessionStorage. */
+/** Filter courses by piece color: 'white' | 'black' | 'both' (Color Toggle in header). Default White whenever V3 is active; return-from-course may override. */
 const openingFilterColor = ref(getStoredOpeningFilterColor())
+watch(
+  isOpeningCoursesV3,
+  (isV1) => {
+    if (isV1) openingFilterColor.value = 'white'
+  },
+  { immediate: true },
+)
 watch(openingFilterColor, (val) => {
   try {
     sessionStorage.setItem(OPENING_COURSES_V3_FILTER_COLOR_KEY, val)
