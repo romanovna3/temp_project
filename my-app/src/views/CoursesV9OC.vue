@@ -3669,8 +3669,14 @@ function learnListSelectNext() {
   }
 }
 
+function getLearnLineMovelistScrollEl() {
+  const r = learnLineMovelistScrollRef.value
+  if (r == null) return null
+  return Array.isArray(r) ? (r.find((n) => n != null) ?? null) : r
+}
+
 function updateLearnLineMovelistScrollFades() {
-  const el = learnLineMovelistScrollRef.value
+  const el = getLearnLineMovelistScrollEl()
   if (!el) {
     learnLineMovelistFadeLeftVisible.value = false
     learnLineMovelistFadeRightVisible.value = false
@@ -3693,7 +3699,7 @@ function onLearnLineMovelistScroll() {
 }
 
 function scrollLearnLineMovelistCurrentIntoView() {
-  const el = learnLineMovelistScrollRef.value
+  const el = getLearnLineMovelistScrollEl()
   if (!el) return
   const current = el.querySelector('.learn-line-movelist__segment--current')
   if (!current) {
@@ -3713,7 +3719,7 @@ function scrollLearnLineMovelistCurrentIntoView() {
 function setupLearnLineMovelistScrollObserver() {
   learnLineMovelistResizeObserver?.disconnect()
   learnLineMovelistResizeObserver = null
-  const el = learnLineMovelistScrollRef.value
+  const el = getLearnLineMovelistScrollEl()
   if (!el) return
   const ro = new ResizeObserver(() => {
     updateLearnLineMovelistScrollFades()
@@ -8747,6 +8753,10 @@ v-if="isVideoV6OrV7"
                                     <div
                                       ref="learnLineMovelistScrollRef"
                                       class="learn-line-movelist-scroll"
+                                      :class="{
+                                        'learn-line-movelist-scroll--fade-left': learnLineMovelistFadeLeftVisible,
+                                        'learn-line-movelist-scroll--fade-right': learnLineMovelistFadeRightVisible,
+                                      }"
                                       @scroll.passive="onLearnLineMovelistScroll"
                                     >
                                       <div class="learn-line-movelist" role="list">
@@ -8771,16 +8781,6 @@ v-if="isVideoV6OrV7"
                                         </template>
                                       </div>
                                     </div>
-                                    <div
-                                      class="learn-line-movelist-fade learn-line-movelist-fade--left"
-                                      :class="{ 'learn-line-movelist-fade--visible': learnLineMovelistFadeLeftVisible }"
-                                      aria-hidden="true"
-                                    />
-                                    <div
-                                      class="learn-line-movelist-fade learn-line-movelist-fade--right"
-                                      :class="{ 'learn-line-movelist-fade--visible': learnLineMovelistFadeRightVisible }"
-                                      aria-hidden="true"
-                                    />
                                   </div>
                                 </div>
                                 <p
@@ -12278,6 +12278,20 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding-bottom: 2px;
+  /* Dissolve is inset on the scrollport so it always composites over the move text */
+  --learn-line-movelist-dissolve: var(--learn-line-movelist-fade-solid, rgba(39, 37, 34, 1));
+  transition: box-shadow 0.2s ease;
+}
+.learn-line-movelist-scroll--fade-right {
+  box-shadow: inset -40px 0 32px -12px var(--learn-line-movelist-dissolve);
+}
+.learn-line-movelist-scroll--fade-left {
+  box-shadow: inset 40px 0 32px -12px var(--learn-line-movelist-dissolve);
+}
+.learn-line-movelist-scroll--fade-left.learn-line-movelist-scroll--fade-right {
+  box-shadow:
+    inset 40px 0 32px -12px var(--learn-line-movelist-dissolve),
+    inset -40px 0 32px -12px var(--learn-line-movelist-dissolve);
 }
 .learn-line-movelist-scroll::-webkit-scrollbar {
   display: none;
@@ -12297,28 +12311,6 @@ body {
   line-height: 16px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
-}
-/* Same dissolve as opening-chip row: opaque at viewport edge, transparent into the scroll area */
-.learn-line-movelist-fade {
-  position: absolute;
-  top: 0;
-  bottom: 2px;
-  width: 36px;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.learn-line-movelist-fade--visible {
-  opacity: 1;
-}
-.learn-line-movelist-scroll-col .learn-line-movelist-fade--left {
-  left: 0;
-  background: linear-gradient(to right, var(--learn-line-movelist-fade-solid) 0%, transparent 100%);
-}
-.learn-line-movelist-scroll-col .learn-line-movelist-fade--right {
-  right: 0;
-  background: linear-gradient(to right, transparent 0%, var(--learn-line-movelist-fade-solid) 100%);
 }
 .learn-line-movelist__segment {
   flex: 0 0 auto;
