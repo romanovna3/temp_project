@@ -4088,7 +4088,6 @@ watch(isOpeningCoursesV3, (isV1) => {
     openingV3Ready.value = false
     return
   }
-  openingV3ScenarioPreset.value = 'new-user'
   openingV3Ready.value = false
   openingV3ReadyTimer = setTimeout(() => {
     openingV3ReadyTimer = null
@@ -4171,6 +4170,14 @@ const viewportPreset = ref(_initialOpeningV1Preset.viewportPreset)
 /** When viewport preset is hidden, layout always uses L (default). */
 const effectiveViewportPreset = computed(() => (SHOW_VIEWPORT_PRESET_IN_BAR ? viewportPreset.value : 'default'))
 const openingV3ScenarioPreset = ref(_initialOpeningV1Preset.scenarioPreset)
+/** New user on every V3 entry (must run after ref exists — not in openingV3Ready watch above). */
+watch(
+  isOpeningCoursesV3,
+  (isV1) => {
+    if (isV1) openingV3ScenarioPreset.value = 'new-user'
+  },
+  { immediate: true },
+)
 /** RUB only: active tab 'my-openings' | 'all' */
 const openingV3RubActiveTab = ref('my-openings')
 /** RUB only: list for active tab (started or rest) */
