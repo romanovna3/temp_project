@@ -2,7 +2,8 @@
   "mcpServers": {
     "chesscom-design-system": {
       "command": "npx",
-      "args": ["-y", "-p", "@chesscom/design-system-mcp@latest", "chesscom-ds-mcp"]
+      "args": ["-y", "-p", "@chesscom/design-system-mcp@latest", "chesscom-ds-mcp"],
+      "cwd": "my-app"
     },
     "Figma Desktop": {
       "url": "http://127.0.0.1:3845/mcp"
