@@ -10,6 +10,37 @@ const figmaFlatButtonRef = JSON.stringify({
   libraryKey:
     'lk-e6721e1671c9f93415c76eeece57ab42c55e79b0a24c2b13c910ea4942d15972079ef494ac87de60e802fc7d8414f8df43b5b39db3827b59358e2a29c75542e5',
 })
+
+/** Figma Semantic Tokens (Color) — maps to CSS in EmptyPage styles (design-system search). */
+const SEMANTIC_TOKENS_LIB =
+  'lk-97146e8858d2a51a4d74f641acef46735d5f57db84f24d350adfc7a4703c1f4edf334889caed811e3e2284e9806a2770dad1ec13b2908f9ecbebf76ddc3dc01a'
+const COLOR_COLLECTION_SET_KEY = '274fa041bb5109bc404e6c4b07bb145cbb41e6d8'
+
+const figmaBackgroundSpecsRef = JSON.stringify({
+  spec: 'empty-page-backgrounds',
+  libraryName: 'Semantic Tokens',
+  libraryKey: SEMANTIC_TOKENS_LIB,
+  variableCollectionName: 'Color',
+  variableSetKey: COLOR_COLLECTION_SET_KEY,
+  pageBackdrop: {
+    cssVar: '--color-bg-opaque',
+    figmaVariableName: 'color/bg/opaque',
+    publishedVariableKey: '1a67409f129156f2fcf86526ecdd57e2c3cf7045',
+    scopes: ['FRAME_FILL', 'SHAPE_FILL'],
+  },
+  panelFill: {
+    cssVar: '--color-bg-primary',
+    figmaVariableName: 'color/bg/primary',
+    publishedVariableKey: '4933a99eb62145d0943318969d66c0e360539677',
+    scopes: ['FRAME_FILL', 'SHAPE_FILL'],
+  },
+  panelBorder: {
+    cssVar: '--color-border-default',
+    figmaVariableName: 'color/border/default',
+    publishedVariableKey: 'fd5e7148ca1a582bbe37119af09b210434831c33',
+    scopes: ['STROKE'],
+  },
+})
 </script>
 
 <template>
@@ -18,6 +49,7 @@ const figmaFlatButtonRef = JSON.stringify({
       <div
         class="empty-page__panel"
         aria-label="Demo container"
+        :data-figma="figmaBackgroundSpecsRef"
       >
         <button
           type="button"
