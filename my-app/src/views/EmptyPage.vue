@@ -15,22 +15,28 @@ const figmaFlatButtonRef = JSON.stringify({
 <template>
   <div class="empty-page app dark-mode">
     <div class="empty-page__center">
-      <button
-        type="button"
-        class="empty-page__flat-button"
-        data-name="flatButton"
-        :data-figma="figmaFlatButtonRef"
+      <div
+        class="empty-page__panel"
+        aria-label="Demo container"
       >
-        Button
-      </button>
+        <button
+          type="button"
+          class="empty-page__flat-button"
+          data-name="flatButton"
+          :data-figma="figmaFlatButtonRef"
+        >
+          Button
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Page: deeper gray so panel (--color-bg-primary) reads as a distinct grey surface */
 .empty-page {
   min-height: 100vh;
-  background: var(--color-bg-primary, #312e2b);
+  background: var(--color-bg-opaque, #262421);
 }
 
 .empty-page__center {
@@ -39,6 +45,17 @@ const figmaFlatButtonRef = JSON.stringify({
   align-items: center;
   justify-content: center;
   padding: var(--space-24, 24px);
+}
+
+/* DS: --color-bg-primary maps to gray-800 (semantic primary gray background) */
+.empty-page__panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-32, 32px);
+  background: var(--color-bg-primary, #312e2b);
+  border: 1px solid var(--color-border-default, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-lg, 12px);
 }
 
 /* Placeholder for Figma flatButton — flat fill, DS green */
