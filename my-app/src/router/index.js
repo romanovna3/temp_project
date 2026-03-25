@@ -6,6 +6,7 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'index', component: () => import('../views/Index.vue') },
+    { path: '/empty', name: 'empty', component: () => import('../views/EmptyPage.vue') },
     { path: '/courses', name: 'courses', component: () => import('../views/Courses.vue') },
     { path: '/courses/v2', name: 'courses-v2', component: () => import('../views/CoursesV2.vue') },
     { path: '/courses/v2.2', name: 'courses-v2-2', component: () => import('../views/CoursesV22.vue') },

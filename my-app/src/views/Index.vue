@@ -52,6 +52,7 @@ const versionLastEdited = {
   openingV1: buildTime,
   openingV2: buildTime,
   openingV3: buildTime,
+  empty: buildTime,
 }
 
 function getEditedAgo(isoString) {
@@ -391,6 +392,50 @@ function editedAgoFor(version) {
                   <div class="project-card__footer-labels">
                     <span class="project-card__footer-title">Opening Courses V3</span>
                     <span class="project-card__footer-time">{{ editedAgoFor('openingV3') }}</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="index-section">
+          <h2 class="index-section__title">New page</h2>
+          <div class="project-cards">
+            <article
+              class="project-card"
+              role="button"
+              tabindex="0"
+              @click="router.push('/empty')"
+              @keydown.enter="router.push('/empty')"
+              @keydown.space.prevent="router.push('/empty')"
+            >
+              <div class="project-card__upper">
+                <div class="project-card__pattern" aria-hidden="true" />
+                <div class="project-card__meta">
+                  <div class="project-card__head">
+                    <img
+                      src="/icons/book-mark-aqua.png"
+                      alt=""
+                      class="project-card__icon"
+                      width="32"
+                      height="32"
+                    />
+                    <h2 class="project-card__title">Empty page</h2>
+                  </div>
+                </div>
+              </div>
+              <div class="project-card__lower">
+                <div class="project-card__footer-left">
+                  <span class="project-card__footer-icon" aria-hidden="true" title="Open">
+                    <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="M12 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                  <div class="project-card__footer-labels">
+                    <span class="project-card__footer-title">Empty page</span>
+                    <span class="project-card__footer-time">{{ editedAgoFor('empty') }}</span>
                   </div>
                 </div>
               </div>
