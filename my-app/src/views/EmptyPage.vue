@@ -1,27 +1,33 @@
 <script setup>
 /**
- * Figma: CK Components Web — flatButton (published component key + library key from design-system search).
- * data-figma is JSON for tooling / traceability; swap node URL when you have fileKey + node-id.
+ * Opening Courses Figma frame (placed composition) + DS traceability via data-figma.
+ * @see https://www.figma.com/design/pOwdmuSSWAn4jGAJooYnCO/Opening-Courses?node-id=5492-2817
  */
-const figmaFlatButtonRef = JSON.stringify({
+const OPENING_COURSES_FIGMA = {
+  fileKey: 'pOwdmuSSWAn4jGAJooYnCO',
+  fileName: 'Opening-Courses',
+  nodeId: '5492:2817',
+  figmaUrl:
+    'https://www.figma.com/design/pOwdmuSSWAn4jGAJooYnCO/Opening-Courses?node-id=5492-2817',
+}
+
+const flatButtonDs = {
   componentName: 'flatButton',
   libraryName: '🟩 CK Components Web',
   publishedComponentKey: '067a367fabc095edae8730c970a7949d692a1f21',
   libraryKey:
     'lk-e6721e1671c9f93415c76eeece57ab42c55e79b0a24c2b13c910ea4942d15972079ef494ac87de60e802fc7d8414f8df43b5b39db3827b59358e2a29c75542e5',
-})
+}
 
-/** Figma Semantic Tokens (Color) — maps to CSS in EmptyPage styles (design-system search). */
 const SEMANTIC_TOKENS_LIB =
   'lk-97146e8858d2a51a4d74f641acef46735d5f57db84f24d350adfc7a4703c1f4edf334889caed811e3e2284e9806a2770dad1ec13b2908f9ecbebf76ddc3dc01a'
-const COLOR_COLLECTION_SET_KEY = '274fa041bb5109bc404e6c4b07bb145cbb41e6d8'
 
-const figmaBackgroundSpecsRef = JSON.stringify({
+const backgroundSpecsDs = {
   spec: 'empty-page-backgrounds',
   libraryName: 'Semantic Tokens',
   libraryKey: SEMANTIC_TOKENS_LIB,
   variableCollectionName: 'Color',
-  variableSetKey: COLOR_COLLECTION_SET_KEY,
+  variableSetKey: '274fa041bb5109bc404e6c4b07bb145cbb41e6d8',
   pageBackdrop: {
     cssVar: '--color-bg-opaque',
     figmaVariableName: 'color/bg/opaque',
@@ -40,6 +46,32 @@ const figmaBackgroundSpecsRef = JSON.stringify({
     publishedVariableKey: 'fd5e7148ca1a582bbe37119af09b210434831c33',
     scopes: ['STROKE'],
   },
+}
+
+/** Root: Figma file placement + how children map to DS */
+const figmaOpeningCoursesFrameRef = JSON.stringify({
+  figmaComponent: OPENING_COURSES_FIGMA,
+  compositionRole: 'opening-courses-frame-5492-2817',
+  childBindings: [
+    {
+      selector: '.empty-page__panel',
+      usesDesignSystem: 'Semantic Tokens — panel fill + border + page backdrop (see child data-figma)',
+    },
+    {
+      selector: '.empty-page__flat-button',
+      usesDesignSystem: 'CK Components Web — flatButton (see child data-figma)',
+    },
+  ],
+})
+
+const figmaBackgroundSpecsRef = JSON.stringify({
+  figmaComponent: OPENING_COURSES_FIGMA,
+  designSystem: backgroundSpecsDs,
+})
+
+const figmaFlatButtonRef = JSON.stringify({
+  figmaComponent: OPENING_COURSES_FIGMA,
+  designSystem: flatButtonDs,
 })
 </script>
 
@@ -47,18 +79,24 @@ const figmaBackgroundSpecsRef = JSON.stringify({
   <div class="empty-page app dark-mode">
     <div class="empty-page__center">
       <div
-        class="empty-page__panel"
-        aria-label="Demo container"
-        :data-figma="figmaBackgroundSpecsRef"
+        class="empty-page__oc-frame"
+        :data-figma="figmaOpeningCoursesFrameRef"
+        data-name="Opening Courses frame"
       >
-        <button
-          type="button"
-          class="empty-page__flat-button"
-          data-name="flatButton"
-          :data-figma="figmaFlatButtonRef"
+        <div
+          class="empty-page__panel"
+          aria-label="Demo container"
+          :data-figma="figmaBackgroundSpecsRef"
         >
-          Button
-        </button>
+          <button
+            type="button"
+            class="empty-page__flat-button"
+            data-name="flatButton"
+            :data-figma="figmaFlatButtonRef"
+          >
+            Button
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -77,6 +115,14 @@ const figmaBackgroundSpecsRef = JSON.stringify({
   align-items: center;
   justify-content: center;
   padding: var(--space-24, 24px);
+}
+
+/* Figma Opening Courses node 5492:2817 — composition wrapper (layout only) */
+.empty-page__oc-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* DS: --color-bg-primary maps to gray-800 (semantic primary gray background) */
