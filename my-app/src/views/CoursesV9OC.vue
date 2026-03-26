@@ -11750,18 +11750,49 @@ body {
   padding-bottom: 4px;
   gap: 12px;
 }
-/* Selected line (Learn tab): green vertical bar on the left (inset avoids clip from overflow-x on .chapter-line-card / .courses-content) */
-.courses-content--v6 .chapter-line-card--line-selected-learn {
+/*
+ * Selected line (Learn tab): green bar flush with main column left (same as .sections-list / timeline column).
+ * List uses padding-left: 12px under .courses-content--v6; pull row left by that amount and widen so the bar sits at x=0 of the wrapper.
+ */
+.courses-content--v6 .chapter-line-card.chapter-line-card--line-selected-learn {
   position: relative;
-  box-shadow: inset 3px 0 0 0 #81b64c;
+  margin-left: -12px;
+  width: calc(100% + 12px);
+  max-width: none;
+  overflow-x: visible;
+}
+.courses-content--v6 .chapter-line-card--line-selected-learn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #81b64c;
+  pointer-events: none;
+  z-index: 1;
 }
 .courses-content--v6 .chapter-line-card.move-item--inactive.chapter-line-card--line-selected-learn .opening-course-card__title {
   color: rgba(255, 255, 255, 0.72);
 }
-/* Practice tab: selected row — aqua vertical bar (matches Learn; inset avoids overflow clip) */
-.sections-list--practice .chapter-line-card--line-selected-practice {
+/* Practice tab: same 12px list inset as Learn (.course-tab-panel--stats .sections-list--practice … padding-left: 12px) */
+.sections-list--practice .chapter-line-card.chapter-line-card--line-selected-practice {
   position: relative;
-  box-shadow: inset 3px 0 0 0 var(--color-aqua-300, #26c2a3);
+  margin-left: -12px;
+  width: calc(100% + 12px);
+  max-width: none;
+  overflow-x: visible;
+}
+.sections-list--practice .chapter-line-card--line-selected-practice::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-aqua-300, #26c2a3);
+  pointer-events: none;
+  z-index: 1;
 }
 .sections-list--practice .opening-course-card.chapter-line-card--v6-timeline-right.chapter-line-card--line-selected-practice {
   padding-top: 4px;
