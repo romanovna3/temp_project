@@ -11750,36 +11750,18 @@ body {
   padding-bottom: 4px;
   gap: 12px;
 }
-/* Selected line (Learn tab): green vertical bar */
+/* Selected line (Learn tab): green vertical bar on the left (inset avoids clip from overflow-x on .chapter-line-card / .courses-content) */
 .courses-content--v6 .chapter-line-card--line-selected-learn {
   position: relative;
-}
-.courses-content--v6 .chapter-line-card--line-selected-learn::before {
-  content: '';
-  position: absolute;
-  left: -12px;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: #81b64c;
-  pointer-events: none;
+  box-shadow: inset 3px 0 0 0 #81b64c;
 }
 .courses-content--v6 .chapter-line-card.move-item--inactive.chapter-line-card--line-selected-learn .opening-course-card__title {
   color: rgba(255, 255, 255, 0.72);
 }
-/* Practice tab: selected row — aqua vertical bar (matches Learn green bar) */
+/* Practice tab: selected row — aqua vertical bar (matches Learn; inset avoids overflow clip) */
 .sections-list--practice .chapter-line-card--line-selected-practice {
   position: relative;
-}
-.sections-list--practice .chapter-line-card--line-selected-practice::before {
-  content: '';
-  position: absolute;
-  left: -12px;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--color-aqua-300, #26c2a3);
-  pointer-events: none;
+  box-shadow: inset 3px 0 0 0 var(--color-aqua-300, #26c2a3);
 }
 .sections-list--practice .opening-course-card.chapter-line-card--v6-timeline-right.chapter-line-card--line-selected-practice {
   padding-top: 4px;
