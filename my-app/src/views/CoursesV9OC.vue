@@ -11694,7 +11694,7 @@ body {
 .courses-content--v6 .opening-course-card.chapter-line-card--v6-timeline-right {
   padding-top: 4px;
   padding-bottom: 4px;
-  padding-left: 4px;
+  padding-left: 16px;
   padding-right: 0;
   margin-left: 0;
   gap: 12px;
@@ -11750,15 +11750,10 @@ body {
   padding-bottom: 4px;
   gap: 12px;
 }
-/*
- * Selected line (Learn tab): green bar flush with main column left (same as .sections-list / timeline column).
- * List uses padding-left: 12px under .courses-content--v6; pull row left by that amount and widen so the bar sits at x=0 of the wrapper.
- */
+/* Selected line (Learn tab): green vertical bar on the left; row stays aligned with list (margin-left: 0). */
 .courses-content--v6 .chapter-line-card.chapter-line-card--line-selected-learn {
   position: relative;
-  margin-left: -12px;
-  width: calc(100% + 12px);
-  max-width: none;
+  margin-left: 0;
   overflow-x: visible;
 }
 .courses-content--v6 .chapter-line-card--line-selected-learn::before {
@@ -11775,12 +11770,10 @@ body {
 .courses-content--v6 .chapter-line-card.move-item--inactive.chapter-line-card--line-selected-learn .opening-course-card__title {
   color: rgba(255, 255, 255, 0.72);
 }
-/* Practice tab: same 12px list inset as Learn (.course-tab-panel--stats .sections-list--practice … padding-left: 12px) */
+/* Practice tab: aqua bar; row aligned with list (margin-left: 0). */
 .sections-list--practice .chapter-line-card.chapter-line-card--line-selected-practice {
   position: relative;
-  margin-left: -12px;
-  width: calc(100% + 12px);
-  max-width: none;
+  margin-left: 0;
   overflow-x: visible;
 }
 .sections-list--practice .chapter-line-card--line-selected-practice::before {
