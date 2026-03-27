@@ -12077,8 +12077,11 @@ body {
   height: fit-content;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
-  padding: 0;
+  overflow: visible;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 0;
+  padding-right: 0;
   gap: 0;
   justify-content: center;
   max-width: 100%;
