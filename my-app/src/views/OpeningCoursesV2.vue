@@ -9862,7 +9862,7 @@ body {
   flex-direction: column;
   justify-content: center;
   padding: 12px 16px;
-  gap: 8px;
+  gap: 4px;
   min-height: inherit;
   width: 100%;
 }
