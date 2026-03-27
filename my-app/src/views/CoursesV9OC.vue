@@ -13710,6 +13710,11 @@ body {
   color: var(--color-aqua-300, #26C2A3);
 }
 
+/* Practice line rows: match Learn line card content height (48px); title + moves was ~42px with 2px vertical padding */
+.course-tab-panel--stats .sections-list--practice .chapter-line-card .opening-course-card__content {
+  min-height: 48px;
+}
+
 /* V7 Practice: grey watch chip – icon only (same time-clock as footer Practice in chip) */
 .chapter-line-card__level-chip-wrap {
   display: inline-flex;
