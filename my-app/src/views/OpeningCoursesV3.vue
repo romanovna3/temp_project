@@ -10678,7 +10678,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 4px;
   width: 100%;
   position: relative;
   flex-shrink: 0;
