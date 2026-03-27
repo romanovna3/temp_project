@@ -4151,8 +4151,8 @@ function getInitialOpeningV1PresetBar() {
   }
 }
 const _initialOpeningV1Preset = getInitialOpeningV1PresetBar()
-/** When false, viewport dropdown is hidden and L (default) is used. See docs/opening-courses-viewport-preset.md to re-enable. */
-const SHOW_VIEWPORT_PRESET_IN_BAR = false
+/** When false, viewport dropdown is hidden and L (default) is used. See docs/opening-courses-viewport-preset.md. */
+const SHOW_VIEWPORT_PRESET_IN_BAR = true
 const viewportPresetOptions = [
   { value: 'default', label: 'Desktop L' },
   { value: 'narrow', label: 'Desktop S' },
