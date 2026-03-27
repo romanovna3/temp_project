@@ -4097,42 +4097,6 @@ watch(isOpeningCoursesV3, (isV1) => {
   }, 350)
 }, { immediate: true })
 
-// Opening Courses V1: coach bubble typewriter on first load (full text in DOM for layout; reveal by character)
-const OPENING_V3_COACH_BUBBLE_TEXT = 'Start by making a move on the board, or pick an opening to study.'
-const coachBubbleChars = computed(() => OPENING_V3_COACH_BUBBLE_TEXT.split(''))
-const coachBubbleTypedText = ref('')
-const coachBubbleTypedLength = computed(() => coachBubbleTypedText.value.length)
-const hasPlayedCoachTypewriter = ref(false)
-let coachTypewriterTimer = null
-watch([openingV3Ready, isOpeningCoursesV3], ([ready, isV1]) => {
-  if (!isV1 || !ready) {
-    if (coachTypewriterTimer) {
-      clearInterval(coachTypewriterTimer)
-      coachTypewriterTimer = null
-    }
-    coachBubbleTypedText.value = ''
-    return
-  }
-  if (hasPlayedCoachTypewriter.value) {
-    coachBubbleTypedText.value = OPENING_V3_COACH_BUBBLE_TEXT
-    return
-  }
-  nextTick(() => {
-    let index = 0
-    coachBubbleTypedText.value = ''
-    const CHAR_DELAY_MS = 24
-    coachTypewriterTimer = setInterval(() => {
-      index += 1
-      coachBubbleTypedText.value = OPENING_V3_COACH_BUBBLE_TEXT.slice(0, index)
-      if (index >= OPENING_V3_COACH_BUBBLE_TEXT.length) {
-        if (coachTypewriterTimer) clearInterval(coachTypewriterTimer)
-        coachTypewriterTimer = null
-        hasPlayedCoachTypewriter.value = true
-      }
-    }, CHAR_DELAY_MS)
-  })
-})
-
 // Opening Courses V1: viewport and scenario preset bar (same UX as V9). Initialize from storage so Back from Course page doesn't flash L layout.
 function getInitialOpeningV1PresetBar() {
   try {
@@ -4225,6 +4189,76 @@ watch(selectedOpeningCard, (card) => {
 watch(selectedOpeningCardId, (id) => {
   if (id != null && isOpeningCoursesV3.value) openingHintDismissed.value = true
 })
+
+// Opening Courses V3: coach bubble — default typewriter on list; selected card → header + body
+const OPENING_V3_COACH_BUBBLE_TEXT = 'Start by making a move on the board, or pick an opening to study.'
+const OPENING_V3_COACH_SELECTED_BODY = "Nice choice! Let's start learning!"
+
+/** List view with a course card selected: show opening-specific header + encouragement body */
+const openingV3ListCoachUseSelectedCopy = computed(
+  () =>
+    isOpeningCoursesV3.value &&
+    panelView.value === 'courses' &&
+    selectedOpeningCardId.value != null
+)
+const openingV3CoachSelectedHeader = computed(() => {
+  const card = selectedOpeningCard.value
+  if (!card) return ''
+  return `${card.title} for ${card.type}`
+})
+
+const coachBubbleChars = computed(() => OPENING_V3_COACH_BUBBLE_TEXT.split(''))
+const coachBubbleTypedText = ref('')
+const coachBubbleTypedLength = computed(() => coachBubbleTypedText.value.length)
+const hasPlayedCoachTypewriter = ref(false)
+let coachTypewriterTimer = null
+
+function clearOpeningV3CoachTypewriter() {
+  if (coachTypewriterTimer) {
+    clearInterval(coachTypewriterTimer)
+    coachTypewriterTimer = null
+  }
+}
+
+function startOpeningV3CoachTypewriter() {
+  clearOpeningV3CoachTypewriter()
+  if (hasPlayedCoachTypewriter.value) {
+    coachBubbleTypedText.value = OPENING_V3_COACH_BUBBLE_TEXT
+    return
+  }
+  nextTick(() => {
+    let index = 0
+    coachBubbleTypedText.value = ''
+    const CHAR_DELAY_MS = 24
+    coachTypewriterTimer = setInterval(() => {
+      index += 1
+      coachBubbleTypedText.value = OPENING_V3_COACH_BUBBLE_TEXT.slice(0, index)
+      if (index >= OPENING_V3_COACH_BUBBLE_TEXT.length) {
+        clearOpeningV3CoachTypewriter()
+        hasPlayedCoachTypewriter.value = true
+      }
+    }, CHAR_DELAY_MS)
+  })
+}
+
+watch(
+  [openingV3Ready, isOpeningCoursesV3, openingV3ListCoachUseSelectedCopy, selectedOpeningCardId, panelView],
+  ([ready, isV1, useSelected]) => {
+    if (!isV1 || !ready) {
+      clearOpeningV3CoachTypewriter()
+      coachBubbleTypedText.value = ''
+      return
+    }
+    if (useSelected) {
+      clearOpeningV3CoachTypewriter()
+      coachBubbleTypedText.value = ''
+      return
+    }
+    startOpeningV3CoachTypewriter()
+  },
+  { immediate: true }
+)
+
 // Ignore pointerleave for a short time after selection (browsers often fire leave on click/focus)
 const OPENING_CARD_IGNORE_UNHOVER_MS = 400
 let openingCardSelectionTime = 0
@@ -6454,7 +6488,11 @@ onUnmounted(() => {
                     <div class="coach-new-opening__bubble">
                       <div class="coach-new-opening__message">
                         <div class="coach-new-opening__message-inner">
-                          <p class="coach-new-opening__text"><span v-for="(char, i) in coachBubbleChars" :key="i" class="coach-new-opening__char" :class="{ 'coach-new-opening__char--visible': i < coachBubbleTypedLength }">{{ char }}</span></p>
+                          <template v-if="openingV3ListCoachUseSelectedCopy">
+                            <p class="coach-new-opening__heading">{{ openingV3CoachSelectedHeader }}</p>
+                            <p class="coach-new-opening__text coach-new-opening__text--sub">{{ OPENING_V3_COACH_SELECTED_BODY }}</p>
+                          </template>
+                          <p v-else class="coach-new-opening__text"><span v-for="(char, i) in coachBubbleChars" :key="i" class="coach-new-opening__char" :class="{ 'coach-new-opening__char--visible': i < coachBubbleTypedLength }">{{ char }}</span></p>
                         </div>
                       </div>
                     </div>
@@ -9862,6 +9900,17 @@ body {
   min-height: inherit;
   width: 100%;
 }
+.coach-new-opening__heading {
+  font-family: var(--font-family-system, system-ui, sans-serif);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+  font-style: normal;
+  color: #312e2b;
+  margin: 0;
+  width: 100%;
+  flex-shrink: 0;
+}
 .coach-new-opening__text {
   font-family: var(--font-family-system, system-ui, sans-serif);
   font-size: 15px;
@@ -9875,6 +9924,10 @@ body {
   position: relative;
   flex-shrink: 0;
   margin: 0;
+}
+.coach-new-opening__text--sub {
+  font-weight: 500;
+  white-space: normal;
 }
 /* Typewriter: full text in DOM for layout; untyped chars transparent so they take space */
 .coach-new-opening__char {
