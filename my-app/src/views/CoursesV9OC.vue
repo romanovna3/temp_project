@@ -11836,6 +11836,10 @@ body {
   padding-top: 0;
   padding-bottom: 8px;
 }
+/* No-chapter line lists (OC / London): list padding-left 0 — aligns with timeline column (overrides v6 12px on this list) */
+.v23-section-timeline-wrap--no-chapter .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  padding-left: 0;
+}
 .courses-content--v6 .chapter-v2--v4-timeline.chapter-v2--v6-timeline-right {
   padding-left: 16px;
   padding-right: 12px;
@@ -13566,6 +13570,10 @@ body {
 }
 .course-tab-panel--stats .sections-list--practice .section-item:first-child .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
   padding-top: 0;
+}
+/* OC Practice lines: same no-chapter list — no left pad (beats rule above via equal specificity + order) */
+.course-tab-panel--stats .sections-list--practice .v23-section-timeline-wrap--no-chapter .chapter-line-cards-list-wrapper .opening-course-cards-list.chapter-line-cards-list {
+  padding-left: 0;
 }
 
 /* New Course: Practice tab empty state (visible when Scenarios = "New Course" and tab = Practice) */
