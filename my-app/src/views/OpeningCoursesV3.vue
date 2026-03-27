@@ -4192,7 +4192,15 @@ watch(selectedOpeningCardId, (id) => {
 
 // Opening Courses V3: coach bubble — default typewriter on list; selected card → header + body
 const OPENING_V3_COACH_BUBBLE_TEXT = 'Start by making a move on the board, or pick an opening to study.'
-const OPENING_V3_COACH_SELECTED_BODY = "Nice choice! Let's start learning!"
+
+/** Warm / encouraging lines — one per card via stable index from `card.id` */
+const OPENING_V3_COACH_WARM_BODIES = [
+  "Great pick — this one's a solid foundation.",
+  "Love it — you're in for a fun ride with this opening.",
+  "Strong choice — let's build your confidence move by move.",
+  "That's a sharp pick — perfect for leveling up your prep.",
+  "Excellent taste — this line rewards good habits.",
+]
 
 /** List view with a course card selected: show opening-specific header + encouragement body */
 const openingV3ListCoachUseSelectedCopy = computed(
@@ -4205,6 +4213,12 @@ const openingV3CoachSelectedHeader = computed(() => {
   const card = selectedOpeningCard.value
   if (!card) return ''
   return `${card.title} for ${card.type}`
+})
+const openingV3CoachSelectedBody = computed(() => {
+  const card = selectedOpeningCard.value
+  if (!card?.id) return OPENING_V3_COACH_WARM_BODIES[0]
+  const i = (Number(card.id) - 1) % OPENING_V3_COACH_WARM_BODIES.length
+  return OPENING_V3_COACH_WARM_BODIES[i < 0 ? 0 : i]
 })
 
 const coachBubbleChars = computed(() => OPENING_V3_COACH_BUBBLE_TEXT.split(''))
@@ -6490,7 +6504,7 @@ onUnmounted(() => {
                         <div class="coach-new-opening__message-inner">
                           <template v-if="openingV3ListCoachUseSelectedCopy">
                             <p class="coach-new-opening__heading">{{ openingV3CoachSelectedHeader }}</p>
-                            <p class="coach-new-opening__text coach-new-opening__text--sub">{{ OPENING_V3_COACH_SELECTED_BODY }}</p>
+                            <p class="coach-new-opening__text coach-new-opening__text--sub">{{ openingV3CoachSelectedBody }}</p>
                           </template>
                           <p v-else class="coach-new-opening__text"><span v-for="(char, i) in coachBubbleChars" :key="i" class="coach-new-opening__char" :class="{ 'coach-new-opening__char--visible': i < coachBubbleTypedLength }">{{ char }}</span></p>
                         </div>
