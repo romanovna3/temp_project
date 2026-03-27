@@ -9237,30 +9237,32 @@ body {
   border-radius: 24px;
 }
 
-/* Opening Courses V1: Desktop S and Mobile – smaller course card cover (90×90 wrap, 84×84 board) */
+/* Desktop L: 96×96 board via base .opening-course-card__thumbnail / .course-cover-board (no fixed cover-wrap size). */
+/* Desktop S + Mobile: 90×90 selection frame, 86×86 board, 2px inset (90 − 2×2 pad = 86). */
 .app.app--viewport-narrow .opening-course-card__cover-wrap,
 .app.app--viewport-mobile .opening-course-card__cover-wrap {
   width: 90px;
   height: 90px;
   min-width: 90px;
   min-height: 90px;
-  padding: 3px;
+  padding: 2px;
+  box-sizing: border-box;
 }
 .app.app--viewport-narrow .opening-course-card__cover-wrap .course-cover-board,
 .app.app--viewport-mobile .opening-course-card__cover-wrap .course-cover-board {
-  --size-chess-board-cover: 84px;
-  --size-chess-square: 21px;
-  width: 84px;
-  height: 84px;
-  min-width: 84px;
-  min-height: 84px;
+  --size-chess-board-cover: 86px;
+  --size-chess-square: 10.75px;
+  width: 86px;
+  height: 86px;
+  min-width: 86px;
+  min-height: 86px;
 }
 .app.app--viewport-narrow .opening-course-card__cover-wrap .opening-course-card__thumbnail,
 .app.app--viewport-mobile .opening-course-card__cover-wrap .opening-course-card__thumbnail {
-  width: 84px;
-  height: 84px;
-  min-width: 84px;
-  min-height: 84px;
+  width: 86px;
+  height: 86px;
+  min-width: 86px;
+  min-height: 86px;
 }
 
 /* White/Black chip lives in .opening-course-card__properties (under description); keep visible on V3. */
@@ -10801,11 +10803,11 @@ body {
   min-height: 64px;
   justify-content: flex-start;
 }
-/* Desktop S and Mobile: taller content for started card */
+/* Desktop S and Mobile: match started row to 90px cover frame */
 .app.app--viewport-narrow .opening-course-card__content--started,
 .app.app--viewport-mobile .opening-course-card__content--started {
-  height: 84px;
-  min-height: 84px;
+  height: 90px;
+  min-height: 90px;
 }
 /* Group: title row (optional completed check + title) + White/Black chip; gap 4px */
 .opening-course-card__started-top {
