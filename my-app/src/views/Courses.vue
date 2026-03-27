@@ -9838,6 +9838,11 @@ body {
   gap: 8px;
   height: 100%;
 }
+.app.app--viewport-narrow .opening-v1-layout .opening-course-card__content,
+.app.app--viewport-mobile .opening-v1-layout .opening-course-card__content {
+  gap: 4px;
+  padding-top: 0;
+}
 .opening-v1-layout .opening-course-card__content.opening-course-card__content--started {
   height: 100px;
   min-height: 100px;
