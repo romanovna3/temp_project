@@ -12137,6 +12137,8 @@ body {
 .courses-content--v6 .chapter-line-card .opening-course-card__content {
   background: unset;
   background-color: unset;
+  /* Align Learn + Practice line rows (header 16px + meta/moves 26px + 2px× vertical padding ≈ 48px) */
+  min-height: 48px;
 }
 
 /* ========== V6 only: 40×40 cover, glyph 20×20 (book/puzzle), incomplete vs completed ========== */
@@ -12252,7 +12254,7 @@ body {
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
-  /* Movelist track: 22px line + 2px scroll padding-bottom + slack for current pill underline */
+  /* Movelist / “N moves” row: 26px (matches .chapter-line-card__moves-count min-height) + padding-bottom */
   min-height: 26px;
   padding-bottom: 2px;
   box-sizing: border-box;
@@ -12263,7 +12265,7 @@ body {
 .chapter-line-card__moves-count {
   margin: 0;
   width: 100%;
-  min-height: 22px;
+  min-height: 26px;
   display: flex;
   align-items: center;
   font-family: var(--font-family-system, system-ui, sans-serif);
@@ -13708,11 +13710,6 @@ body {
 }
 .course-tab-panel--stats .chapter-line-card__intro-cover--v7-practice-completed .chapter-line-card__intro-cover-icon--v6 {
   color: var(--color-aqua-300, #26C2A3);
-}
-
-/* Practice line rows: match Learn line card content height (48px); title + moves was ~42px with 2px vertical padding */
-.course-tab-panel--stats .sections-list--practice .chapter-line-card .opening-course-card__content {
-  min-height: 48px;
 }
 
 /* V7 Practice: grey watch chip – icon only (same time-clock as footer Practice in chip) */
