@@ -10706,6 +10706,19 @@ body {
 .opening-course-card__title-row--with-chips .opening-course-card__recommended-chip {
   flex-shrink: 0;
 }
+/* Desktop S / Mobile: narrow content column — place “Recommended” under the heading (full-width title, chip below). */
+.app.app--viewport-narrow .opening-course-card__title-row--with-chips,
+.app.app--viewport-mobile .opening-course-card__title-row--with-chips {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.app.app--viewport-narrow .opening-course-card__title-row--with-chips .opening-course-card__title,
+.app.app--viewport-mobile .opening-course-card__title-row--with-chips .opening-course-card__title {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+}
 .opening-course-card__title-row--with-chips :deep(.cc-chip-fg),
 .opening-course-card__title-row--with-chips :deep(.opening-course-card__chip-label),
 .opening-course-card__recommended-chip :deep(.cc-chip-fg),
