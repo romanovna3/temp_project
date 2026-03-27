@@ -9237,30 +9237,30 @@ body {
   border-radius: 24px;
 }
 
-/* Opening Courses V1: Desktop S and Mobile – smaller course card cover (86×86 wrap, 80×80 board) */
+/* Opening Courses V1: Desktop S and Mobile – smaller course card cover (90×90 wrap, 84×84 board) */
 .app.app--viewport-narrow .opening-course-card__cover-wrap,
 .app.app--viewport-mobile .opening-course-card__cover-wrap {
-  width: 86px;
-  height: 86px;
-  min-width: 86px;
-  min-height: 86px;
+  width: 90px;
+  height: 90px;
+  min-width: 90px;
+  min-height: 90px;
   padding: 3px;
 }
 .app.app--viewport-narrow .opening-course-card__cover-wrap .course-cover-board,
 .app.app--viewport-mobile .opening-course-card__cover-wrap .course-cover-board {
-  --size-chess-board-cover: 80px;
-  --size-chess-square: 20px;
-  width: 80px;
-  height: 80px;
-  min-width: 80px;
-  min-height: 80px;
+  --size-chess-board-cover: 84px;
+  --size-chess-square: 21px;
+  width: 84px;
+  height: 84px;
+  min-width: 84px;
+  min-height: 84px;
 }
 .app.app--viewport-narrow .opening-course-card__cover-wrap .opening-course-card__thumbnail,
 .app.app--viewport-mobile .opening-course-card__cover-wrap .opening-course-card__thumbnail {
-  width: 80px;
-  height: 80px;
-  min-width: 80px;
-  min-height: 80px;
+  width: 84px;
+  height: 84px;
+  min-width: 84px;
+  min-height: 84px;
 }
 
 /* White/Black chip lives in .opening-course-card__properties (under description); keep visible on V3. */
@@ -9985,6 +9985,10 @@ body {
   padding-top: 2px;
   gap: 8px;
   height: 100%;
+}
+.app.app--viewport-narrow .opening-v1-layout .opening-course-card__content,
+.app.app--viewport-mobile .opening-v1-layout .opening-course-card__content {
+  gap: 4px;
 }
 .opening-v1-layout .opening-course-card__content.opening-course-card__content--started {
   height: 100px;
