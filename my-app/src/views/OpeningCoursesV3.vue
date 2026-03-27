@@ -9277,6 +9277,12 @@ body {
   -webkit-line-clamp: 2;
   line-clamp: 2;
 }
+/* Recommended chip stacks under title on Desktop S / Mobile — extra vertical space; clamp body to 1 line (same as 2-line headline on narrow). */
+.app.app--viewport-narrow .opening-course-card__title-author:has(.opening-course-card__recommended-chip) .opening-course-card__description,
+.app.app--viewport-mobile .opening-course-card__title-author:has(.opening-course-card__recommended-chip) .opening-course-card__description {
+  -webkit-line-clamp: 1 !important;
+  line-clamp: 1 !important;
+}
 
 /* Wrapper for header + content so footer stays pinned at bottom */
 .panel-main {
