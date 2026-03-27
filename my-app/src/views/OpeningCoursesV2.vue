@@ -10488,6 +10488,10 @@ body {
   cursor: pointer;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
+.app.app--viewport-narrow .opening-course-card,
+.app.app--viewport-mobile .opening-course-card {
+  padding-right: 0;
+}
 /* Hover V1: card background only (selected card: no bg change on hover) */
 .opening-course-card--hover-v1:hover {
   background: var(--color-bg-subtlest);
