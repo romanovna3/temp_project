@@ -9251,7 +9251,8 @@ body {
 .app.app--viewport-narrow .opening-course-card__cover-wrap .course-cover-board,
 .app.app--viewport-mobile .opening-course-card__cover-wrap .course-cover-board {
   --size-chess-board-cover: 86px;
-  --size-chess-square: 10.75px;
+  /* Cover coords are 4×4 (c3–f6); same as Desktop L 96÷4=24, not 8×8. */
+  --size-chess-square: 21.5px;
   width: 86px;
   height: 86px;
   min-width: 86px;

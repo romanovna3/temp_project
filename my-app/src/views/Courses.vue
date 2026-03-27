@@ -9120,7 +9120,7 @@ body {
 .app.app--viewport-narrow .opening-course-card__cover-wrap .course-cover-board,
 .app.app--viewport-mobile .opening-course-card__cover-wrap .course-cover-board {
   --size-chess-board-cover: 86px;
-  --size-chess-square: 10.75px;
+  --size-chess-square: 21.5px;
   width: 86px;
   height: 86px;
   min-width: 86px;
