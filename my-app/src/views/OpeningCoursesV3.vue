@@ -8963,9 +8963,10 @@ body {
 .opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top cc-tab-group {
   background-color: rgba(39, 37, 34, 1) !important;
 }
-/* Coach: same gradient as base .coach-new-opening (not darker --fixed-only bottom stop). */
+/* Coach: same gradient as base .coach-new-opening (not darker --fixed-only bottom stop); no bottom pad (tabs/search sit flush). */
 .opening-v1-layout > .opening-v1-coach-wrap .coach-new-opening.coach-new-opening--fixed {
   background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(34, 32, 30, 1) 100%) !important;
+  padding-bottom: 0 !important;
 }
 </style>
 

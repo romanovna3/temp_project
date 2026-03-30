@@ -8857,6 +8857,7 @@ body {
 }
 .opening-v1-layout > .opening-v1-coach-wrap .coach-new-opening.coach-new-opening--fixed {
   background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(34, 32, 30, 1) 100%) !important;
+  padding-bottom: 0 !important;
 }
 </style>
 
