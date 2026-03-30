@@ -9679,12 +9679,12 @@ body {
 }
 .app.app--viewport-mobile-a .layout, .app.app--viewport-mobile-b .layout{
   min-width: 306px;
-  height: 560px;
+  height: 540px;
 }
 .app.app--viewport-mobile-a .review-panel, .app.app--viewport-mobile-b .review-panel{
   flex: 0 0 300px;
   width: 300px;
-  height: 560px;
+  height: 540px;
   border-radius: 24px;
 }
 

@@ -10201,7 +10201,7 @@ body {
   width: 300px;
 }
 
-/* Viewport preset: mobile – no board, panel 300px, height 560px */
+/* Viewport preset: mobile – no board, panel 300px, height 540px */
 .app.app--viewport-mobile .app-body {
   min-width: 0;
 }
@@ -10214,12 +10214,12 @@ body {
 }
 .app.app--viewport-mobile .layout {
   min-width: 306px; /* 300px panel + 6px gap */
-  height: 560px;
+  height: 540px;
 }
 .app.app--viewport-mobile .review-panel {
   flex: 0 0 300px;
   width: 300px;
-  height: 560px;
+  height: 540px;
   border-radius: 24px;
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;

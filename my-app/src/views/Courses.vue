@@ -9113,12 +9113,12 @@ body {
 }
 .app.app--viewport-mobile .layout {
   min-width: 306px;
-  height: 560px;
+  height: 540px;
 }
 .app.app--viewport-mobile .review-panel {
   flex: 0 0 300px;
   width: 300px;
-  height: 560px;
+  height: 540px;
   border-radius: 24px;
 }
 
