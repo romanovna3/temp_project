@@ -10646,7 +10646,8 @@ body {
   --scrollbar-overlay-px: 12px;
   scrollbar-gutter: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.6) transparent;
+  /* thumb | track — track fully transparent so only the thumb sits over content */
+  scrollbar-color: rgba(255, 255, 255, 0.6) rgba(0, 0, 0, 0);
 }
 .app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar,
 .app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar,
@@ -10655,6 +10656,7 @@ body {
 .app.app--viewport-mobile-a .courses-content::-webkit-scrollbar,
 .app.app--viewport-mobile-b .courses-content::-webkit-scrollbar {
   width: 1px;
+  background: transparent;
 }
 .app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar-track,
 .app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar-track,
@@ -10662,6 +10664,25 @@ body {
 .app.app--viewport-mobile-b .line-view-scroll-body::-webkit-scrollbar-track,
 .app.app--viewport-mobile-a .courses-content::-webkit-scrollbar-track,
 .app.app--viewport-mobile-b .courses-content::-webkit-scrollbar-track {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar-track-piece,
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar-track-piece,
+.app.app--viewport-mobile-a .line-view-scroll-body::-webkit-scrollbar-track-piece,
+.app.app--viewport-mobile-b .line-view-scroll-body::-webkit-scrollbar-track-piece,
+.app.app--viewport-mobile-a .courses-content::-webkit-scrollbar-track-piece,
+.app.app--viewport-mobile-b .courses-content::-webkit-scrollbar-track-piece {
+  background: transparent;
+  border: none;
+}
+.app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar-corner,
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar-corner,
+.app.app--viewport-mobile-a .line-view-scroll-body::-webkit-scrollbar-corner,
+.app.app--viewport-mobile-b .line-view-scroll-body::-webkit-scrollbar-corner,
+.app.app--viewport-mobile-a .courses-content::-webkit-scrollbar-corner,
+.app.app--viewport-mobile-b .courses-content::-webkit-scrollbar-corner {
   background: transparent;
 }
 .app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar-thumb,
@@ -10671,6 +10692,8 @@ body {
 .app.app--viewport-mobile-a .courses-content::-webkit-scrollbar-thumb,
 .app.app--viewport-mobile-b .courses-content::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.6);
+  border: none;
+  box-shadow: none;
   border-radius: 1px;
 }
 .app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar-thumb:hover,
