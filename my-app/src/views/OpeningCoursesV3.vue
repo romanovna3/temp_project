@@ -4429,6 +4429,12 @@ function getOpeningSearchYClampMin() {
   return -openingSearchH.value
 }
 
+/** Transform does not remove flow space; negative margin collapses the tab row so the grey strip does not linger. Capped at tab height so we do not over-pull when search is taller. */
+const openingV1LayoutChromeStyle = computed(() => ({
+  '--opening-search-y': `${openingSearchY.value}px`,
+  '--opening-tabs-collapse-y': `${Math.max(openingSearchY.value, -openingTabsH.value)}px`,
+}))
+
 /** When headline wraps to 2 lines, description line-clamp is reduced (1 line on Desktop S, 2 on mobile). */
 function measureOpeningCardTitleLines() {
   const wrap = openingV3ScrollWrapRef.value
@@ -6485,7 +6491,7 @@ onUnmounted(() => {
           <div
             v-if="openingV3Ready"
             class="opening-v1-layout"
-            :style="{ '--opening-search-y': `${openingSearchY}px` }"
+            :style="openingV1LayoutChromeStyle"
           >
             <!-- Coach only; overlay is sibling below so it's not clipped by this wrap -->
             <div class="opening-v1-coach-wrap">
@@ -10442,10 +10448,11 @@ body {
 /* Returning user tab strip: paint layer + z; fill color set in unscoped block (matches search row + DS host). */
 .opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
   backface-visibility: hidden;
-  contain: paint;
   z-index: 8;
   will-change: transform;
   transform: translateY(var(--opening-search-y, 0));
+  /* Collapse flex slot in sync with translate (transform leaves layout box; capped via --opening-tabs-collapse-y). */
+  margin-bottom: var(--opening-tabs-collapse-y, 0px);
   transition: none;
 }
 .opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top.is-offscreen {

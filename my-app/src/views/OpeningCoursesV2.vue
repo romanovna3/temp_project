@@ -4461,6 +4461,12 @@ function getOpeningSearchYClampMin() {
   return -openingSearchH.value
 }
 
+/** Transform does not remove flow space; negative margin collapses the tab row (capped at tab height). */
+const openingV1LayoutChromeStyle = computed(() => ({
+  '--opening-search-y': `${openingSearchY.value}px`,
+  '--opening-tabs-collapse-y': `${Math.max(openingSearchY.value, -openingTabsH.value)}px`,
+}))
+
 /** When headline wraps to 2 lines, description line-clamp is reduced (1 line on Desktop S, 2 on mobile). */
 function measureOpeningCardTitleLines() {
   const wrap = openingV2ScrollWrapRef.value
@@ -6457,7 +6463,7 @@ onUnmounted(() => {
           <div
             v-if="openingV2Ready"
             class="opening-v1-layout"
-            :style="{ '--opening-search-y': `${openingSearchY}px` }"
+            :style="openingV1LayoutChromeStyle"
           >
             <!-- Coach only; overlay is sibling below so it's not clipped by this wrap -->
             <div class="opening-v1-coach-wrap">
@@ -10386,10 +10392,10 @@ body {
 }
 .opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
   backface-visibility: hidden;
-  contain: paint;
   z-index: 8;
   will-change: transform;
   transform: translateY(var(--opening-search-y, 0));
+  margin-bottom: var(--opening-tabs-collapse-y, 0px);
   transition: none;
 }
 .opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top.is-offscreen {
