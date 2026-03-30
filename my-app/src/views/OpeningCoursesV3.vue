@@ -4421,6 +4421,14 @@ const openingTabsH = ref(48)
 let lastOpeningTabsScrollTop = 0
 let openingTabsStickyStartScrollTop = 0
 
+/** Returning user: tabs + search share one translateY; hide range must cover the taller strip. */
+function getOpeningSearchYClampMin() {
+  if (openingV3ScenarioPreset.value === 'returning-user') {
+    return -Math.max(openingSearchH.value, openingTabsH.value)
+  }
+  return -openingSearchH.value
+}
+
 /** When headline wraps to 2 lines, description line-clamp is reduced (1 line on Desktop S, 2 on mobile). */
 function measureOpeningCardTitleLines() {
   const wrap = openingV3ScrollWrapRef.value
@@ -4442,7 +4450,7 @@ function measureOpeningSearchH() {
     const wrap = openingV3ScrollWrapRef.value
     if (el) {
       openingSearchH.value = el.offsetHeight || 92
-      openingSearchY.value = clamp(openingSearchY.value, -openingSearchH.value, 0)
+      openingSearchY.value = clamp(openingSearchY.value, getOpeningSearchYClampMin(), 0)
       if (wrap) {
         wrap.style.setProperty('--opening-search-h', openingSearchH.value + 'px')
         // Resync after sticky filter height changes so the next scroll delta is not huge (avoids search bar jumping into view).
@@ -4682,6 +4690,8 @@ watch([openingV3ScenarioPreset, openingV3RubActiveTab], () => {
 watch(openingV3RubActiveTab, () => {
   const el = openingV3ScrollWrapRef.value
   if (el && typeof el.scrollTop === 'number') el.scrollTop = 0
+  openingSearchY.value = 0
+  lastOpeningScrollTop = 0
 })
 
 // Remove move at index and all after; sync board to new position. Single-move pop → push to redo stack; multi → clear redo.
@@ -4815,7 +4825,7 @@ function clearBoardPosition() {
 }
 
 function computeOpeningTabsStickyStart() {
-  /* Returning User: tabs sit under coach (outside scroll); no scroll-linked behavior */
+  /* Returning user: tabs use --opening-search-y on layout (same as search); no separate sticky math */
   if (openingV3ScenarioPreset.value === 'returning-user') return
   const scrollEl = openingV3ScrollWrapRef.value
   const tabsEl = openingV3RubTabsWrapRef.value
@@ -4829,10 +4839,12 @@ function measureOpeningTabsH() {
   requestAnimationFrame(() => {
     const wrap = openingV3RubTabsWrapRef.value
     if (!wrap) return
-    /* Returning User: tabs under coach (layout), no transform */
-    if (openingV3ScenarioPreset.value === 'returning-user') return
     const h = wrap.offsetHeight || 48
     openingTabsH.value = h
+    if (openingV3ScenarioPreset.value === 'returning-user') {
+      openingSearchY.value = clamp(openingSearchY.value, getOpeningSearchYClampMin(), 0)
+      return
+    }
     openingTabsY.value = clamp(openingTabsY.value, -h, 0)
     const el = openingV3ScrollWrapRef.value
     if (el) {
@@ -4847,7 +4859,7 @@ function onOpeningContentScroll() {
     if (!el || !isOpeningCoursesV3.value) return
     const st = typeof el.scrollTop === 'number' ? el.scrollTop : 0
     const delta = st - lastOpeningScrollTop
-    openingSearchY.value = clamp(openingSearchY.value - delta, -openingSearchH.value, 0)
+    openingSearchY.value = clamp(openingSearchY.value - delta, getOpeningSearchYClampMin(), 0)
     lastOpeningScrollTop = st
     /* Returning User: tabs outside scroll area */
     lastOpeningTabsScrollTop = st
@@ -6470,7 +6482,11 @@ onUnmounted(() => {
           <template v-else-if="panelView === 'courses'">
         <!-- Opening Courses V1: coach fixed at top; filter + cards scroll. Deferred so layout only renders after first paint (avoids -102). -->
         <template v-if="isOpeningCoursesV3">
-          <div v-if="openingV3Ready" class="opening-v1-layout">
+          <div
+            v-if="openingV3Ready"
+            class="opening-v1-layout"
+            :style="{ '--opening-search-y': `${openingSearchY}px` }"
+          >
             <!-- Coach only; overlay is sibling below so it's not clipped by this wrap -->
             <div class="opening-v1-coach-wrap">
               <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
@@ -6504,6 +6520,7 @@ onUnmounted(() => {
               v-if="openingV3ScenarioPreset === 'returning-user'"
               ref="openingV3RubTabsWrapRef"
               class="course-tabs-wrap course-tabs-wrap--top opening-v1-rub-tabs-wrap"
+              :class="{ 'is-offscreen': openingSearchY < 0 }"
             >
               <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
                 <cc-tab-item id="my-openings" label="Your Openings" :isActive="openingV3RubActiveTab === 'my-openings'" @click="openingV3RubActiveTab = 'my-openings'" />
@@ -6520,7 +6537,6 @@ onUnmounted(() => {
                 ref="openingSearchRef"
                 class="opening-filter opening-filter--sticky-under-coach"
                 :class="{ 'is-offscreen': openingSearchY < 0 }"
-                :style="{ '--opening-search-y': `${openingSearchY}px` }"
                 role="search"
                 aria-label="Search and filter courses"
               >
@@ -10428,6 +10444,12 @@ body {
   backface-visibility: hidden;
   contain: paint;
   z-index: 8;
+  will-change: transform;
+  transform: translateY(var(--opening-search-y, 0));
+  transition: none;
+}
+.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top.is-offscreen {
+  pointer-events: none;
 }
 .opening-v1-section-header {
   display: flex;
