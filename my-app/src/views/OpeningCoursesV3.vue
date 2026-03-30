@@ -6529,6 +6529,7 @@ onUnmounted(() => {
               :class="{ 'opening-v1-scroll-wrap--mobile-b': isOpeningMobileBLayout }"
               @scroll.passive="onOpeningContentScroll"
             >
+              <div class="opening-v1-scroll-wrap__sheet">
               <template v-if="isOpeningMobileBLayout">
                 <div
                   v-if="openingV3ScenarioPreset === 'returning-user'"
@@ -7462,6 +7463,7 @@ onUnmounted(() => {
                   </section>
                   <footer class="panel-footer" />
                 </div>
+              </div>
               </div>
             </div>
           </div>
@@ -10625,6 +10627,15 @@ body {
 .opening-v1-scroll-wrap::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.45);
 }
+/* Column of chrome + cards + in-scroll footer; height = content so .opening-v1-scroll-wrap stays the scroller */
+.opening-v1-scroll-wrap__sheet {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
 /* Mobile A/B: minimal gutter (thin bar), track transparent, thumb #fff 60% — reads as overlay on content edge */
 .app.app--viewport-mobile-a .opening-v1-scroll-wrap,
 .app.app--viewport-mobile-b .opening-v1-scroll-wrap,
@@ -10632,6 +10643,7 @@ body {
 .app.app--viewport-mobile-b .line-view-scroll-body,
 .app.app--viewport-mobile-a .courses-content,
 .app.app--viewport-mobile-b .courses-content {
+  --scrollbar-overlay-px: 12px;
   scrollbar-gutter: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.6) transparent;
@@ -10668,6 +10680,22 @@ body {
 .app.app--viewport-mobile-a .courses-content::-webkit-scrollbar-thumb:hover,
 .app.app--viewport-mobile-b .courses-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.6);
+}
+/* Widen content into the scrollbar gutter so layout stays full panel width; thumb draws on top */
+.app.app--viewport-mobile-a .opening-v1-scroll-wrap__sheet,
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap__sheet {
+  width: calc(100% + var(--scrollbar-overlay-px));
+  max-width: none;
+  margin-right: calc(-1 * var(--scrollbar-overlay-px));
+}
+.app.app--viewport-mobile-a .line-view-scroll-body > *,
+.app.app--viewport-mobile-b .line-view-scroll-body > *,
+.app.app--viewport-mobile-a .courses-content > *,
+.app.app--viewport-mobile-b .courses-content > * {
+  box-sizing: border-box;
+  width: calc(100% + var(--scrollbar-overlay-px));
+  max-width: none;
+  margin-right: calc(-1 * var(--scrollbar-overlay-px));
 }
 /* Footer inside scroll wrap: same chrome as .panel-footer-frame but no high z-index (not overlaying list). */
 .opening-v3-footer-in-scroll.panel-footer-frame {
