@@ -10648,6 +10648,10 @@ body {
   scrollbar-width: thin;
   /* thumb | track — track fully transparent so only the thumb sits over content */
   scrollbar-color: rgba(255, 255, 255, 0.6) rgba(0, 0, 0, 0);
+  /* No opaque strip: hidden was clipping the widened sheet; clip + margin lets content paint in the gutter */
+  background: transparent;
+  overflow-x: clip;
+  overflow-clip-margin-right: var(--scrollbar-overlay-px);
 }
 .app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar,
 .app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar,
@@ -10710,6 +10714,7 @@ body {
   width: calc(100% + var(--scrollbar-overlay-px));
   max-width: none;
   margin-right: calc(-1 * var(--scrollbar-overlay-px));
+  background: transparent;
 }
 .app.app--viewport-mobile-a .line-view-scroll-body > *,
 .app.app--viewport-mobile-b .line-view-scroll-body > *,
