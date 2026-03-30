@@ -6503,11 +6503,11 @@ onUnmounted(() => {
                 </div>
               </section>
             </div>
-            <!-- Returning User: tabs under coach, above scroll (search + list) -->
+            <!-- Returning User: tabs under coach — same shell as course Learn/Practice (course-tabs-wrap--top) -->
             <div
               v-if="openingV3ScenarioPreset === 'returning-user'"
               ref="openingV3RubTabsWrapRef"
-              class="opening-v1-rub-tabs-wrap opening-v1-rub-tabs-wrap--fixed"
+              class="course-tabs-wrap course-tabs-wrap--top opening-v1-rub-tabs-wrap"
             >
               <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
                 <cc-tab-item id="my-openings" label="Your Openings" :isActive="openingV3RubActiveTab === 'my-openings'" @click="openingV3RubActiveTab = 'my-openings'" />
@@ -10002,7 +10002,6 @@ body {
   flex-shrink: 0;
   position: relative;
   z-index: 10;
-  padding-bottom: 12px;
   background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(26, 25, 24, 1) 100%);
   background-clip: unset;
   -webkit-background-clip: unset;
@@ -10414,25 +10413,12 @@ body {
   gap: 0;
   width: 100%;
 }
-/* RUB: tabs under coach (My Openings | All) – same DS as course Learn/Practice tabs. Returning User: fixed under coach, over filter. */
-.opening-v1-rub-tabs-wrap {
-  width: 100%;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-/* Returning User: tabs under coach; same bg as course page tabs (Learn/Practice) */
-.opening-v1-rub-tabs-wrap.opening-v1-rub-tabs-wrap--fixed {
+/* Returning user: same tab strip as course page .course-tabs-wrap--scroll-linked (bg + paint containment; 48px row from .course-tabs-ds). */
+.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
   background-color: rgba(33, 31, 28, 1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  backface-visibility: hidden;
+  contain: paint;
   z-index: 8;
-}
-.opening-v1-rub-tabs-wrap .course-tabs-ds {
-  border-bottom: none;
-}
-.opening-v1-rub-tabs-wrap--fixed .course-tabs-ds {
-  background-color: rgba(33, 31, 28, 1);
-  padding-bottom: 16px;
-  box-shadow: none;
 }
 .opening-v1-section-header {
   display: flex;

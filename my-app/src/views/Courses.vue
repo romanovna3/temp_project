@@ -6151,17 +6151,6 @@ onUnmounted(() => {
         <!-- Opening Courses V1: coach fixed at top; filter + cards scroll. Deferred so layout only renders after first paint (avoids -102). -->
         <template v-if="isOpeningCoursesV1">
           <div v-if="openingV1Ready" class="opening-v1-layout">
-            <!-- User B: tabs fixed above coach -->
-            <div
-              v-if="openingV1ScenarioPreset === 'returning-user-b'"
-              ref="openingV1RubTabsWrapRef"
-              class="opening-v1-rub-tabs-wrap opening-v1-rub-tabs-wrap--fixed"
-            >
-              <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
-                <cc-tab-item id="my-openings" label="My Openings" :isActive="openingV1RubActiveTab === 'my-openings'" @click="openingV1RubActiveTab = 'my-openings'" />
-                <cc-tab-item id="all" label="All" :isActive="openingV1RubActiveTab === 'all'" @click="openingV1RubActiveTab = 'all'" />
-              </cc-tab-group>
-            </div>
             <!-- Coach only; overlay is sibling below so it's not clipped by this wrap -->
             <div class="opening-v1-coach-wrap">
               <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
@@ -6185,6 +6174,17 @@ onUnmounted(() => {
                   </div>
                 </div>
               </section>
+            </div>
+            <!-- User B: tabs under coach — same shell as course Learn/Practice -->
+            <div
+              v-if="openingV1ScenarioPreset === 'returning-user-b'"
+              ref="openingV1RubTabsWrapRef"
+              class="course-tabs-wrap course-tabs-wrap--top opening-v1-rub-tabs-wrap"
+            >
+              <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
+                <cc-tab-item id="my-openings" label="My Openings" :isActive="openingV1RubActiveTab === 'my-openings'" @click="openingV1RubActiveTab = 'my-openings'" />
+                <cc-tab-item id="all" label="All" :isActive="openingV1RubActiveTab === 'all'" @click="openingV1RubActiveTab = 'all'" />
+              </cc-tab-group>
             </div>
             <!-- Opening V1: one scroll container (overflow-y:auto), one search bar. Headroom: visible at top; scroll up show, scroll down hide. -->
             <div
@@ -10243,25 +10243,12 @@ body {
   gap: 0;
   width: 100%;
 }
-/* RUB: tabs under coach (My Openings | All) – same DS as course Learn/Practice tabs. User B: fixed under coach, over filter. */
-.opening-v1-rub-tabs-wrap {
-  width: 100%;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-/* User B: tabs fixed above coach; same bg as course page tabs (Learn/Practice) */
-.opening-v1-rub-tabs-wrap.opening-v1-rub-tabs-wrap--fixed {
+/* User B / returning openings: same tab strip as .course-tabs-wrap--scroll-linked on course page */
+.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
   background-color: rgba(33, 31, 28, 1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 5;
-}
-.opening-v1-rub-tabs-wrap .course-tabs-ds {
-  border-bottom: none;
-}
-.opening-v1-rub-tabs-wrap--fixed .course-tabs-ds {
-  background-color: rgba(33, 31, 28, 1);
-  padding-bottom: 16px;
-  box-shadow: none;
+  backface-visibility: hidden;
+  contain: paint;
+  z-index: 8;
 }
 .opening-v1-section-header {
   display: flex;
