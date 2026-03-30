@@ -8905,6 +8905,16 @@ body {
   line-height: 16px;
   white-space: nowrap;
 }
+
+.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
+  background-color: rgba(39, 37, 34, 1) !important;
+}
+.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top cc-tab-group {
+  background-color: rgba(39, 37, 34, 1) !important;
+}
+.opening-v1-layout > .opening-v1-coach-wrap .coach-new-opening.coach-new-opening--fixed {
+  background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(34, 32, 30, 1) 100%) !important;
+}
 </style>
 
 <style scoped>
@@ -10357,9 +10367,7 @@ body {
   gap: 0;
   width: 100%;
 }
-/* Returning user: same tab strip as course page .course-tabs-wrap--scroll-linked */
 .opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
-  background-color: rgba(33, 31, 28, 1);
   backface-visibility: hidden;
   contain: paint;
   z-index: 8;

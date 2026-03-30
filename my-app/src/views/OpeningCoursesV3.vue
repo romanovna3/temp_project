@@ -8959,6 +8959,18 @@ body {
   line-height: 16px;
   white-space: nowrap;
 }
+
+/* Opening home returning-user: unscoped so wrapper + cc-tab-group host pick up fill (scoped attr skips custom elements). Match .opening-filter. */
+.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
+  background-color: rgba(39, 37, 34, 1) !important;
+}
+.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top cc-tab-group {
+  background-color: rgba(39, 37, 34, 1) !important;
+}
+/* Coach: same gradient as base .coach-new-opening (not darker --fixed-only bottom stop). */
+.opening-v1-layout > .opening-v1-coach-wrap .coach-new-opening.coach-new-opening--fixed {
+  background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(34, 32, 30, 1) 100%) !important;
+}
 </style>
 
 <style scoped>
@@ -10002,6 +10014,7 @@ body {
   flex-shrink: 0;
   position: relative;
   z-index: 10;
+  /* Gradient for non–opening-v1-layout coaches; opening list uses unscoped override */
   background: linear-gradient(0deg, rgba(39, 37, 34, 1) 0%, rgba(26, 25, 24, 1) 100%);
   background-clip: unset;
   -webkit-background-clip: unset;
@@ -10413,9 +10426,8 @@ body {
   gap: 0;
   width: 100%;
 }
-/* Returning user: same tab strip as course page .course-tabs-wrap--scroll-linked (bg + paint containment; 48px row from .course-tabs-ds). */
+/* Returning user tab strip: paint layer + z; fill color set in unscoped block (matches search row + DS host). */
 .opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
-  background-color: rgba(33, 31, 28, 1);
   backface-visibility: hidden;
   contain: paint;
   z-index: 8;
