@@ -4461,11 +4461,18 @@ function getOpeningSearchYClampMin() {
   return -openingSearchH.value
 }
 
-/** Transform does not remove flow space; negative margin collapses the tab row (capped at tab height). */
-const openingV1LayoutChromeStyle = computed(() => ({
-  '--opening-search-y': `${openingSearchY.value}px`,
-  '--opening-tabs-collapse-y': `${Math.max(openingSearchY.value, -openingTabsH.value)}px`,
-}))
+/** Tabs translate by Y; margin collapses tab row — compensate filter transform so search does not double-move. */
+const openingV1LayoutChromeStyle = computed(() => {
+  const y = openingSearchY.value
+  const th = openingTabsH.value
+  const rub = openingV2ScenarioPreset.value === 'returning-user'
+  const layoutShiftUp = rub ? Math.min(-y, th) : 0
+  return {
+    '--opening-search-y': `${y}px`,
+    '--opening-filter-y': `${y - layoutShiftUp}px`,
+    '--opening-tabs-collapse-y': rub ? `${Math.max(y, -th)}px` : '0px',
+  }
+})
 
 /** When headline wraps to 2 lines, description line-clamp is reduced (1 line on Desktop S, 2 on mobile). */
 function measureOpeningCardTitleLines() {
@@ -9994,7 +10001,7 @@ body {
   top: 0;
   z-index: 5;
   will-change: transform;
-  transform: translateY(var(--opening-search-y, 0));
+  transform: translateY(var(--opening-filter-y, var(--opening-search-y, 0)));
   transition: none;
 }
 .opening-filter--sticky-under-coach.is-offscreen {

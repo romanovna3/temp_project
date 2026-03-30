@@ -4429,11 +4429,21 @@ function getOpeningSearchYClampMin() {
   return -openingSearchH.value
 }
 
-/** Transform does not remove flow space; negative margin collapses the tab row so the grey strip does not linger. Capped at tab height so we do not over-pull when search is taller. */
-const openingV1LayoutChromeStyle = computed(() => ({
-  '--opening-search-y': `${openingSearchY.value}px`,
-  '--opening-tabs-collapse-y': `${Math.max(openingSearchY.value, -openingTabsH.value)}px`,
-}))
+/**
+ * Tabs use translateY(Y). Negative margin on the tab row pulls the scroll viewport up by min(-Y, tabH);
+ * without compensation the sticky search would move twice (layout shift + same Y). Filter uses translateY(Y - shift).
+ */
+const openingV1LayoutChromeStyle = computed(() => {
+  const y = openingSearchY.value
+  const th = openingTabsH.value
+  const rub = openingV3ScenarioPreset.value === 'returning-user'
+  const layoutShiftUp = rub ? Math.min(-y, th) : 0
+  return {
+    '--opening-search-y': `${y}px`,
+    '--opening-filter-y': `${y - layoutShiftUp}px`,
+    '--opening-tabs-collapse-y': rub ? `${Math.max(y, -th)}px` : '0px',
+  }
+})
 
 /** When headline wraps to 2 lines, description line-clamp is reduced (1 line on Desktop S, 2 on mobile). */
 function measureOpeningCardTitleLines() {
@@ -10048,7 +10058,7 @@ body {
   background-color: unset;
   color: transparent;
 }
-/* Opening V1: scroll-linked – sticky, transform from --opening-search-y (px), no transition. No min-width so filter fits when scrollbar reserves space. */
+/* Opening V1: scroll-linked sticky filter — translateY from --opening-filter-y (RUB: compensates tab-row margin); fallback --opening-search-y. */
 .opening-filter {
   width: 100%;
   min-width: 0;
@@ -10064,7 +10074,7 @@ body {
   top: 0;
   z-index: 5;
   will-change: transform;
-  transform: translateY(var(--opening-search-y, 0));
+  transform: translateY(var(--opening-filter-y, var(--opening-search-y, 0)));
   transition: none;
 }
 .opening-filter--sticky-under-coach.is-offscreen {
