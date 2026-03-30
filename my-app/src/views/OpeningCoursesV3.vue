@@ -9802,7 +9802,7 @@ body {
   width: 100%;
   display: flex;
   justify-content: center;
-  padding: 8px 0 12px;
+  padding: 8px 0 0;
   box-sizing: border-box;
   background-color: rgba(39, 37, 34, 1);
 }
