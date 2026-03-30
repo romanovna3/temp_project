@@ -395,7 +395,7 @@ function navigateOpeningListCardToCourse(card, options) {
       scenarioPreset: openingV3ScenarioPreset.value,
     }))
     sessionStorage.setItem(OPENING_COURSES_V1_PRESET_BAR_KEY, JSON.stringify({
-      viewportPreset: viewportPreset.value,
+      viewportPreset: mapViewportPresetForV1Bar(viewportPreset.value),
       scenarioPreset: openingV3ScenarioPreset.value,
     }))
     if (openInPracticeTab) {
@@ -4101,6 +4101,12 @@ watch(isOpeningCoursesV3, (isV1) => {
   }, 350)
 }, { immediate: true })
 
+/** Course page (V1 bar) only understands default | narrow | mobile — map A/B to mobile. */
+function mapViewportPresetForV1Bar(v) {
+  if (v === 'mobile-a' || v === 'mobile-b') return 'mobile'
+  return v
+}
+
 // Opening Courses V3: viewport + scenario preset bar. Defaults to Returning user; session restores last choice.
 function getInitialOpeningV1PresetBar() {
   const defaultScenario = 'returning-user'
@@ -4111,8 +4117,11 @@ function getInitialOpeningV1PresetBar() {
     const preset = JSON.parse(raw)
     const v = preset?.viewportPreset
     const s = preset?.scenarioPreset
+    const allowedV = ['default', 'narrow', 'mobile', 'mobile-a', 'mobile-b']
+    let viewport = v && allowedV.includes(v) ? v : 'default'
+    if (viewport === 'mobile') viewport = 'mobile-a'
     return {
-      viewportPreset: v && ['default', 'narrow', 'mobile'].includes(v) ? v : 'default',
+      viewportPreset: viewport,
       scenarioPreset: s === 'new-user' || s === 'returning-user' ? s : defaultScenario,
     }
   } catch (_) {
@@ -4125,7 +4134,8 @@ const SHOW_VIEWPORT_PRESET_IN_BAR = true
 const viewportPresetOptions = [
   { value: 'default', label: 'Desktop L' },
   { value: 'narrow', label: 'Desktop S' },
-  { value: 'mobile', label: 'Mobile' },
+  { value: 'mobile-a', label: 'Mobile A' },
+  { value: 'mobile-b', label: 'Mobile B' },
 ]
 const openingV3ScenarioPresetOptions = [
   { value: 'new-user', label: 'New User' },
@@ -4138,6 +4148,13 @@ function isReturningUserScenario(val) {
 const viewportPreset = ref(_initialOpeningV1Preset.viewportPreset)
 /** When viewport preset is hidden, layout always uses L (default). */
 const effectiveViewportPreset = computed(() => (SHOW_VIEWPORT_PRESET_IN_BAR ? viewportPreset.value : 'default'))
+const isMobileViewport = computed(
+  () => effectiveViewportPreset.value === 'mobile-a' || effectiveViewportPreset.value === 'mobile-b',
+)
+const isOpeningMobileBLayout = computed(
+  () => isOpeningCoursesV3.value && panelView.value === 'courses' && effectiveViewportPreset.value === 'mobile-b',
+)
+const isOpeningMobileBoardInPanel = computed(() => isOpeningMobileBLayout.value)
 const openingV3ScenarioPreset = ref(_initialOpeningV1Preset.scenarioPreset)
 /** RUB only: active tab 'my-openings' | 'all' */
 const openingV3RubActiveTab = ref('my-openings')
@@ -4439,6 +4456,10 @@ const openingV1LayoutChromeStyle = computed(() => {
     '--opening-filter-y': rub ? '0px' : `${y}px`,
   }
 })
+const openingV1LayoutBindingStyle = computed(() => {
+  if (isOpeningMobileBLayout.value) return {}
+  return openingV1LayoutChromeStyle.value
+})
 
 /** When headline wraps to 2 lines, description line-clamp is reduced (1 line on Desktop S, 2 on mobile). */
 function measureOpeningCardTitleLines() {
@@ -4460,7 +4481,10 @@ function measureOpeningSearchH() {
     const wrap = openingV3ScrollWrapRef.value
     const chrome = openingV3ListChromeRef.value
     const el = openingSearchRef.value
-    if (openingV3ScenarioPreset.value === 'returning-user' && chrome) {
+    const mobileB = effectiveViewportPreset.value === 'mobile-b'
+    if (mobileB && openingV3ScenarioPreset.value === 'returning-user' && el) {
+      openingSearchH.value = el.offsetHeight || 92
+    } else if (openingV3ScenarioPreset.value === 'returning-user' && chrome) {
       openingSearchH.value = chrome.offsetHeight || 140
     } else if (el) {
       openingSearchH.value = el.offsetHeight || 92
@@ -4663,6 +4687,8 @@ watch(openingCoursesFiltered, () => {
 }, { flush: 'post' })
 
 watch(viewportPreset, () => {
+  openingSearchY.value = 0
+  lastOpeningScrollTop = 0
   nextTick(() => {
     requestAnimationFrame(() => {
       requestAnimationFrame(measureOpeningCardTitleLines)
@@ -4844,6 +4870,10 @@ function onOpeningContentScroll() {
     const el = openingV3ScrollWrapRef.value
     if (!el || !isOpeningCoursesV3.value) return
     const st = typeof el.scrollTop === 'number' ? el.scrollTop : 0
+    if (effectiveViewportPreset.value === 'mobile-b') {
+      lastOpeningScrollTop = st
+      return
+    }
     const delta = st - lastOpeningScrollTop
     openingSearchY.value = clamp(openingSearchY.value - delta, getOpeningSearchYClampMin(), 0)
     lastOpeningScrollTop = st
@@ -4865,7 +4895,8 @@ function setupOpeningSearchBarResizeObserver() {
   teardownOpeningSearchBarResizeObserver()
   if (!isOpeningCoursesV3.value || !openingV3Ready.value) return
   const returning = openingV3ScenarioPreset.value === 'returning-user'
-  const target = returning ? openingV3ListChromeRef.value : openingSearchRef.value
+  const mobileB = effectiveViewportPreset.value === 'mobile-b'
+  const target = returning && !mobileB ? openingV3ListChromeRef.value : openingSearchRef.value
   if (!target) return
   openingSearchBarResizeObserver = new ResizeObserver(() => {
     measureOpeningSearchH()
@@ -4873,7 +4904,7 @@ function setupOpeningSearchBarResizeObserver() {
   openingSearchBarResizeObserver.observe(target)
 }
 
-watch([isOpeningCoursesV3, openingV3Ready, openingV3ScenarioPreset], ([isV1, ready]) => {
+watch([isOpeningCoursesV3, openingV3Ready, openingV3ScenarioPreset, effectiveViewportPreset], ([isV1, ready]) => {
   if (!isV1 || !ready) {
     teardownOpeningSearchBarResizeObserver()
     return
@@ -4893,8 +4924,8 @@ watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
     const presetRaw = sessionStorage.getItem(OPENING_COURSES_V3_PRESET_BAR_KEY)
     if (presetRaw) {
       const preset = JSON.parse(presetRaw)
-      if (preset && typeof preset.viewportPreset === 'string' && ['default', 'narrow', 'mobile'].includes(preset.viewportPreset)) {
-        viewportPreset.value = preset.viewportPreset
+      if (preset && typeof preset.viewportPreset === 'string' && ['default', 'narrow', 'mobile', 'mobile-a', 'mobile-b'].includes(preset.viewportPreset)) {
+        viewportPreset.value = preset.viewportPreset === 'mobile' ? 'mobile-a' : preset.viewportPreset
       }
       if (preset && (preset.scenarioPreset === 'new-user' || preset.scenarioPreset === 'returning-user')) {
         openingV3ScenarioPreset.value = preset.scenarioPreset
@@ -6239,8 +6270,8 @@ onUnmounted(() => {
     </div>
     <div :class="{ 'app-body': isOpeningCoursesV3 }">
     <div class="layout">
-      <!-- Left: Chessboard -->
-      <div class="board-section">
+      <!-- Left: Chessboard (Mobile B opening list: board is in-panel scroll) -->
+      <div v-if="!isOpeningMobileBoardInPanel" class="board-section">
         <div class="board-wrapper">
           <div class="chessboard" ref="boardRef">
             <div 
@@ -6377,21 +6408,21 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-        
-        <!-- Dragged piece (follows cursor) -->
-        <img 
-          v-if="isDragging && draggedPiece"
-          class="dragged-piece"
-          :src="getPieceImage(draggedPiece)"
-          :style="{
-            left: dragPosition.x + 'px',
-            top: dragPosition.y + 'px'
-          }"
-        />
       </div>
 
+      <!-- Dragged piece (follows cursor; outside board-section so Mobile B in-panel board still works) -->
+      <img
+        v-if="isDragging && draggedPiece"
+        class="dragged-piece"
+        :src="getPieceImage(draggedPiece)"
+        :style="{
+          left: dragPosition.x + 'px',
+          top: dragPosition.y + 'px'
+        }"
+      />
+
       <!-- Settings between board and panel (6px gap) -->
-      <div class="board-settings">
+      <div v-if="!isOpeningMobileBoardInPanel" class="board-settings">
         <CcIcon :name="icons.settings" :size="20" />
       </div>
 
@@ -6461,10 +6492,11 @@ onUnmounted(() => {
           <div
             v-if="openingV3Ready"
             class="opening-v1-layout"
-            :style="openingV1LayoutChromeStyle"
+            :class="{ 'opening-v1-layout--mobile-b': isOpeningMobileBLayout }"
+            :style="openingV1LayoutBindingStyle"
           >
             <!-- Coach only; overlay is sibling below so it's not clipped by this wrap -->
-            <div class="opening-v1-coach-wrap">
+            <div class="opening-v1-coach-wrap" :class="{ 'opening-v1-coach-wrap--mobile-b': isOpeningMobileBLayout }">
               <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
                 <div class="coach-new-opening__inner coach-feedback">
                   <div class="coach-new-opening__coach">
@@ -6494,8 +6526,281 @@ onUnmounted(() => {
             <div
               ref="openingV3ScrollWrapRef"
               class="opening-v1-scroll-wrap"
+              :class="{ 'opening-v1-scroll-wrap--mobile-b': isOpeningMobileBLayout }"
               @scroll.passive="onOpeningContentScroll"
             >
+              <template v-if="isOpeningMobileBLayout">
+                <div
+                  v-if="openingV3ScenarioPreset === 'returning-user'"
+                  class="opening-mobile-b-tabs-scroller"
+                >
+                  <div
+                    ref="openingV3RubTabsWrapRef"
+                    class="course-tabs-wrap course-tabs-wrap--top opening-v1-rub-tabs-wrap"
+                  >
+                    <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
+                      <cc-tab-item id="my-openings" label="Your Openings" :isActive="openingV3RubActiveTab === 'my-openings'" @click="openingV3RubActiveTab = 'my-openings'" />
+                      <cc-tab-item id="all" label="All" :isActive="openingV3RubActiveTab === 'all'" @click="openingV3RubActiveTab = 'all'" />
+                    </cc-tab-group>
+                  </div>
+                </div>
+                <div class="opening-mobile-b-board-outer">
+                  <div class="board-wrapper opening-mobile-b-board-wrapper">
+                    <div class="chessboard opening-mobile-b-chessboard" ref="boardRef">
+<div 
+              v-for="square in squares" 
+              :key="square"
+              class="square"
+              :class="[
+                isLightSquare(square) ? 'light' : 'dark',
+                { 'selected': isSelected(square), 'last-move': isLastMove(square), 'wrong-move': isWrongMove(square) }
+              ]"
+              :data-square="square"
+              @click="handleSquareClick(square)"
+            >
+              <!-- Skill Highlight Overlay -->
+              <div 
+                v-if="hasSkillHighlight(square)" 
+                class="skill-highlight-overlay"
+              ></div>
+              
+              <!-- Skill +1 Icon (same animation as original star) -->
+              <div 
+                v-if="hasSkillHighlight(square)" 
+                class="skill-plus-icon" 
+                :style="getSkillHighlightStyle"
+              >+1</div>
+              
+              <!-- Skill Label Bubble (transforms from white pill to gold circle) -->
+              <div 
+                v-if="hasSkillHighlight(square) && skillHighlightLabel" 
+                class="skill-label-bubble"
+                :style="getSkillHighlightStyle"
+              >
+                <span class="skill-label-text">{{ skillHighlightLabel }}</span>
+              </div>
+
+              <!-- Brilliant Highlight Overlay (teal color) -->
+              <div 
+                v-if="hasBrilliantHighlight(square)" 
+                class="brilliant-highlight-overlay"
+              ></div>
+              
+              <!-- Brilliant Icon (exclamation double) - scaled 1.8x from 16 to 29 -->
+              <div 
+                v-if="hasBrilliantHighlight(square)" 
+                class="brilliant-icon-wrapper"
+              >
+                <CcIcon name="move-exclamation-double" :customSize="51" class="brilliant-icon" />
+              </div>
+              
+              <!-- Brilliant Label Bubble (teal, stays on board) -->
+              <div 
+                v-if="hasBrilliantHighlight(square)" 
+                class="brilliant-label-bubble"
+              >
+                <span class="brilliant-label-text">Brilliant!</span>
+              </div>
+
+              <!-- Checkmate Highlight Overlay (red at 80% opacity) -->
+              <div 
+                v-if="hasCheckmateHighlight(square)" 
+                class="checkmate-highlight-overlay"
+              ></div>
+              
+              <!-- Checkmate Icon (Rotated King - defeated) -->
+              <div 
+                v-if="hasCheckmateHighlight(square)" 
+                class="checkmate-icon-wrapper"
+              >
+                <CcIcon :name="checkmateKingIcon" :customSize="51" class="checkmate-king-icon" :style="{ color: checkmateIconColor, fill: checkmateIconColor }" />
+              </div>
+              
+              <!-- Checkmate Label Bubble (red, stays on board) -->
+              <div 
+                v-if="hasCheckmateHighlight(square)" 
+                class="checkmate-label-bubble"
+              >
+                <span class="checkmate-label-text">Checkmate</span>
+              </div>
+
+              <!-- Piece (hide on from-square while Opening Courses auto-move is sliding) -->
+              <img 
+                v-if="getPieceOnSquare(square) && !isPieceDragged(square) && !(openingCardAnimatingMove && openingCardAnimatingMove.from === square)" 
+                class="piece"
+                :class="{ 'draggable': getPieceOnSquare(square)?.type.startsWith('w') }"
+                :src="getPieceImage(getPieceOnSquare(square))"
+                :alt="getPieceOnSquare(square).type"
+                draggable="false"
+                @mousedown="handleDragStart($event, square)"
+                @touchstart="handleDragStart($event, square)"
+              />
+              <!-- File label (bottom row: rank 1 for White view, rank 8 for Black view) -->
+              <span v-if="square[1] === (boardViewBlack ? '8' : '1')" class="coord file-coord">{{ square[0] }}</span>
+              <!-- Rank label (left column: a-file white, h-file black) -->
+              <span v-if="square[0] === (boardViewBlack ? 'h' : 'a')" class="coord rank-coord">{{ square[1] }}</span>
+            </div>
+            <!-- Opening Courses V1: sliding piece for auto-played 3rd move (White) -->
+            <div
+              v-if="openingCardAnimatingMove && openingCardAnimatingMove.from && openingCardAnimatingMove.to && openingCardAnimatingMove.pieceType"
+              class="opening-card-moving-piece"
+              :style="openingCardMovingPieceStyle"
+              aria-hidden="true"
+            >
+              <img
+                :src="getPieceImage({ type: openingCardAnimatingMove.pieceType })"
+                :alt="''"
+                class="opening-card-moving-piece__img"
+              />
+            </div>
+            <div
+              v-if="openingBoardPointerShow"
+              class="opening-board-pointer-hint"
+              :style="openingBoardPointerStyle"
+              aria-hidden="true"
+            >
+              <img
+                class="opening-board-pointer-hint__img"
+                :src="baseUrl + 'icons/opening-board-pointer.png'"
+                alt=""
+                width="50"
+                height="50"
+                draggable="false"
+              />
+            </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  v-if="openingV3ScenarioPreset === 'returning-user'"
+                  ref="openingSearchRef"
+                  class="opening-filter opening-filter--mobile-b-flow"
+                  role="search"
+                  aria-label="Search and filter courses"
+                >
+                  <div class="opening-search-panel">
+                    <div class="opening-search-panel__row opening-search-panel__row--inputs">
+                      <div class="opening-search-panel__search-shell">
+                        <div class="opening-search-panel__search">
+                          <SearchInput
+                            v-model="openingSearchQuery"
+                            placeholder="Search openings"
+                            aria-label="Search openings"
+                            @enter="onOpeningSearchEnter"
+                          />
+                        </div>
+                      </div>
+                      <ColorToggle
+                        v-model:selected-color="openingFilterColor"
+                        :base-url="baseUrl"
+                        variant="switch"
+                        class="opening-search-panel__color-toggle"
+                      />
+                    </div>
+                    <div
+                      v-if="openingV3ScenarioPreset === 'new-user' || openingV3ScenarioPreset === 'returning-user'"
+                      class="opening-meta-slot"
+                      :class="{
+                        'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length,
+                      }"
+                    >
+                      <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Sort">
+                        <div class="opening-courses-meta-panel__sort">
+                          <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
+                            <span class="text-small-bold">{{ openingSortLabel }}</span>
+                            <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
+                          </button>
+                          <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
+                            <template v-if="isYourOpeningsSortContext">
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                            </template>
+                            <template v-else>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                            </template>
+                          </div>
+                        </div>
+                      </div>
+                      <FilterChipV2
+                        v-if="openingFilterMoves.length || openingKeywordTags.length"
+                        :filter-moves="openingFilterMoves"
+                        :keyword-tags="openingKeywordTags"
+                        @clear-board-position="clearBoardPosition"
+                        @remove-keyword-tag="removeOpeningKeywordTag"
+                        @clear-all="clearAllOpeningFilters"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div
+                  v-if="openingV3ScenarioPreset !== 'returning-user'"
+                  ref="openingSearchRef"
+                  class="opening-filter opening-filter--mobile-b-flow"
+                  role="search"
+                  aria-label="Search and filter courses"
+                >
+                  <div class="opening-search-panel">
+                    <div class="opening-search-panel__row opening-search-panel__row--inputs">
+                      <div class="opening-search-panel__search-shell">
+                        <div class="opening-search-panel__search">
+                          <SearchInput
+                            v-model="openingSearchQuery"
+                            placeholder="Search openings"
+                            aria-label="Search openings"
+                            @enter="onOpeningSearchEnter"
+                          />
+                        </div>
+                      </div>
+                      <ColorToggle
+                        v-model:selected-color="openingFilterColor"
+                        :base-url="baseUrl"
+                        variant="switch"
+                        class="opening-search-panel__color-toggle"
+                      />
+                    </div>
+                    <div
+                      v-if="openingV3ScenarioPreset === 'new-user'"
+                      class="opening-meta-slot"
+                      :class="{
+                        'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length,
+                      }"
+                    >
+                      <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Sort">
+                        <div class="opening-courses-meta-panel__sort">
+                          <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
+                            <span class="text-small-bold">{{ openingSortLabel }}</span>
+                            <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
+                          </button>
+                          <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
+                            <template v-if="isYourOpeningsSortContext">
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                            </template>
+                            <template v-else>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                            </template>
+                          </div>
+                        </div>
+                      </div>
+                      <FilterChipV2
+                        v-if="openingFilterMoves.length || openingKeywordTags.length"
+                        :filter-moves="openingFilterMoves"
+                        :keyword-tags="openingKeywordTags"
+                        @clear-board-position="clearBoardPosition"
+                        @remove-keyword-tag="removeOpeningKeywordTag"
+                        @clear-all="clearAllOpeningFilters"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
               <!-- Returning user: tabs+search sticky in scroll so translateY tracks scrollTop 1:1 (no margin-collapse double motion). -->
               <div
                 v-if="openingV3ScenarioPreset === 'returning-user'"
@@ -6641,6 +6946,7 @@ onUnmounted(() => {
                   </div>
                 </div>
               </div>
+              </template>
               <div class="opening-v1-scroll">
                 <template v-if="isReturningUserScenario(openingV3ScenarioPreset)">
                   <template v-if="openingV3ScenarioPreset === 'returning-user'">
@@ -6727,9 +7033,9 @@ onUnmounted(() => {
                       </div>
                       <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
                         <template v-if="isOpeningCardCompleted(card)">
-                          <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Mastery:</span>
+                          <span v-if="effectiveViewportPreset !== 'narrow' && !isMobileViewport" class="course-card-completion__complete-label">Mastery:</span>
                           <div class="opening-course-card__progress-row opening-course-card__mastery-row">
-                            <template v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'">
+                            <template v-if="effectiveViewportPreset === 'narrow' || isMobileViewport">
                               <span class="course-card-completion__complete-label opening-course-card__progress-label-inline">Mastery:</span>
                               <div class="extra-data-level-chip opening-course-card__level-chip" data-name="LevelChip">
                                 <CcChip label="L4" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
@@ -6748,9 +7054,9 @@ onUnmounted(() => {
                           </div>
                         </template>
                         <template v-else>
-                          <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Progress:</span>
+                          <span v-if="effectiveViewportPreset !== 'narrow' && !isMobileViewport" class="course-card-completion__complete-label">Progress:</span>
                           <div class="opening-course-card__progress-row">
-                            <span v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
+                            <span v-if="effectiveViewportPreset === 'narrow' || isMobileViewport" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
                             <div
                               class="course-card-completion course-card-completion--in-mastery-row opening-course-card__completion opening-course-card__completion-bar"
                               role="progressbar"
@@ -6869,9 +7175,9 @@ onUnmounted(() => {
                                 </div>
                                 <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
                                   <template v-if="isOpeningCardCompleted(card)">
-                                    <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Mastery:</span>
+                                    <span v-if="effectiveViewportPreset !== 'narrow' && !isMobileViewport" class="course-card-completion__complete-label">Mastery:</span>
                                     <div class="opening-course-card__progress-row opening-course-card__mastery-row">
-                                      <template v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'">
+                                      <template v-if="effectiveViewportPreset === 'narrow' || isMobileViewport">
                                         <span class="course-card-completion__complete-label opening-course-card__progress-label-inline">Mastery:</span>
                                         <div class="extra-data-level-chip opening-course-card__level-chip" data-name="LevelChip">
                                           <CcChip label="L4" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
@@ -6890,9 +7196,9 @@ onUnmounted(() => {
                                     </div>
                                   </template>
                                   <template v-else>
-                                    <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Progress:</span>
+                                    <span v-if="effectiveViewportPreset !== 'narrow' && !isMobileViewport" class="course-card-completion__complete-label">Progress:</span>
                                     <div class="opening-course-card__progress-row">
-                                      <span v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
+                                      <span v-if="effectiveViewportPreset === 'narrow' || isMobileViewport" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
                                       <div
                                         class="course-card-completion course-card-completion--in-mastery-row opening-course-card__completion opening-course-card__completion-bar"
                                         role="progressbar"
@@ -7012,9 +7318,9 @@ onUnmounted(() => {
                             </div>
                             <div class="opening-course-card__started-footer" :data-name="isOpeningCardCompleted(card) ? 'Mastery' : 'Progress'">
                               <template v-if="isOpeningCardCompleted(card)">
-                                <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Mastery:</span>
+                                <span v-if="effectiveViewportPreset !== 'narrow' && !isMobileViewport" class="course-card-completion__complete-label">Mastery:</span>
                                 <div class="opening-course-card__progress-row opening-course-card__mastery-row">
-                                  <template v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'">
+                                  <template v-if="effectiveViewportPreset === 'narrow' || isMobileViewport">
                                     <span class="course-card-completion__complete-label opening-course-card__progress-label-inline">Mastery:</span>
                                     <div class="extra-data-level-chip opening-course-card__level-chip" data-name="LevelChip">
                                       <CcChip label="L4" color="aqua" variant="translucent" :is-uppercase="false" label-class="extra-data-level-chip-label" />
@@ -7033,9 +7339,9 @@ onUnmounted(() => {
                                 </div>
                               </template>
                               <template v-else>
-                                <span v-if="effectiveViewportPreset !== 'narrow' && effectiveViewportPreset !== 'mobile'" class="course-card-completion__complete-label">Progress:</span>
+                                <span v-if="effectiveViewportPreset !== 'narrow' && !isMobileViewport" class="course-card-completion__complete-label">Progress:</span>
                                 <div class="opening-course-card__progress-row">
-                                  <span v-if="effectiveViewportPreset === 'narrow' || effectiveViewportPreset === 'mobile'" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
+                                  <span v-if="effectiveViewportPreset === 'narrow' || isMobileViewport" class="course-card-completion__complete-label opening-course-card__progress-label-inline">Progress:</span>
                                   <div
                                     class="course-card-completion course-card-completion--in-mastery-row opening-course-card__completion opening-course-card__completion-bar"
                                     role="progressbar"
@@ -9285,21 +9591,21 @@ body {
 }
 
 /* Opening Courses V1: viewport preset – mobile: no board, panel only */
-.app.app--viewport-mobile .app-body {
+.app.app--viewport-mobile-a .app-body, .app.app--viewport-mobile-b .app-body{
   min-width: 0;
 }
-.app.app--viewport-mobile .board-section,
-.app.app--viewport-mobile .board-settings {
+.app.app--viewport-mobile-a .board-section, .app.app--viewport-mobile-b .board-section,
+.app.app--viewport-mobile-a .board-settings, .app.app--viewport-mobile-b .board-settings{
   display: none;
 }
-.app.app--viewport-mobile {
+.app.app--viewport-mobile-a, .app.app--viewport-mobile-b {
   min-width: 300px;
 }
-.app.app--viewport-mobile .layout {
+.app.app--viewport-mobile-a .layout, .app.app--viewport-mobile-b .layout{
   min-width: 306px;
   height: 560px;
 }
-.app.app--viewport-mobile .review-panel {
+.app.app--viewport-mobile-a .review-panel, .app.app--viewport-mobile-b .review-panel{
   flex: 0 0 300px;
   width: 300px;
   height: 560px;
@@ -9309,7 +9615,7 @@ body {
 /* Desktop L: 96×96 board via base .opening-course-card__thumbnail / .course-cover-board (no fixed cover-wrap size). */
 /* Desktop S + Mobile: 90×90 selection frame, 86×86 board, 2px inset (90 − 2×2 pad = 86). */
 .app.app--viewport-narrow .opening-course-card__cover-wrap,
-.app.app--viewport-mobile .opening-course-card__cover-wrap {
+.app.app--viewport-mobile-a .opening-course-card__cover-wrap, .app.app--viewport-mobile-b .opening-course-card__cover-wrap{
   width: 90px;
   height: 90px;
   min-width: 90px;
@@ -9318,7 +9624,7 @@ body {
   box-sizing: border-box;
 }
 .app.app--viewport-narrow .opening-course-card__cover-wrap .course-cover-board,
-.app.app--viewport-mobile .opening-course-card__cover-wrap .course-cover-board {
+.app.app--viewport-mobile-a .opening-course-card__cover-wrap .course-cover-board, .app.app--viewport-mobile-b .opening-course-card__cover-wrap .course-cover-board{
   --size-chess-board-cover: 86px;
   /* Cover coords are 4×4 (c3–f6); same as Desktop L 96÷4=24, not 8×8. */
   --size-chess-square: 21.5px;
@@ -9328,7 +9634,7 @@ body {
   min-height: 86px;
 }
 .app.app--viewport-narrow .opening-course-card__cover-wrap .opening-course-card__thumbnail,
-.app.app--viewport-mobile .opening-course-card__cover-wrap .opening-course-card__thumbnail {
+.app.app--viewport-mobile-a .opening-course-card__cover-wrap .opening-course-card__thumbnail, .app.app--viewport-mobile-b .opening-course-card__cover-wrap .opening-course-card__thumbnail{
   width: 86px;
   height: 86px;
   min-width: 86px;
@@ -9336,7 +9642,7 @@ body {
 }
 
 /* White/Black chip lives in .opening-course-card__properties (under description); keep visible on V3. */
-.app.app--viewport-mobile .opening-course-card__description {
+.app.app--viewport-mobile-a .opening-course-card__description, .app.app--viewport-mobile-b .opening-course-card__description{
   -webkit-line-clamp: 3;
   line-clamp: 3;
 }
@@ -9345,15 +9651,110 @@ body {
   -webkit-line-clamp: 1 !important;
   line-clamp: 1 !important;
 }
-.app.app--viewport-mobile .opening-course-card.opening-course-card--title-two-lines .opening-course-card__description {
+.app.app--viewport-mobile-a .opening-course-card.opening-course-card--title-two-lines .opening-course-card__description, .app.app--viewport-mobile-b .opening-course-card.opening-course-card--title-two-lines .opening-course-card__description{
   -webkit-line-clamp: 2;
   line-clamp: 2;
 }
 /* Recommended chip stacks under title on Desktop S / Mobile — extra vertical space; clamp body to 1 line (same as 2-line headline on narrow). */
 .app.app--viewport-narrow .opening-course-card__title-author:has(.opening-course-card__recommended-chip) .opening-course-card__description,
-.app.app--viewport-mobile .opening-course-card__title-author:has(.opening-course-card__recommended-chip) .opening-course-card__description {
+.app.app--viewport-mobile-a .opening-course-card__title-author:has(.opening-course-card__recommended-chip) .opening-course-card__description, .app.app--viewport-mobile-b .opening-course-card__title-author:has(.opening-course-card__recommended-chip) .opening-course-card__description{
   -webkit-line-clamp: 1 !important;
   line-clamp: 1 !important;
+}
+
+/* Mobile B only: 128px sticky coach (13px bubble); horizontal tab scroller; in-panel board */
+.app.app--viewport-mobile-b .opening-v1-layout--mobile-b {
+  overflow: hidden;
+}
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  flex-shrink: 0;
+  height: 128px;
+  min-height: 128px;
+  max-height: 128px;
+  padding-bottom: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background-image: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: unset;
+}
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening {
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 8px 12px;
+}
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__inner.coach-feedback {
+  align-items: center;
+  min-height: 0;
+  height: 100%;
+}
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__avatar-wrap {
+  width: 72px;
+  height: 72px;
+}
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__caret {
+  top: 36px;
+}
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__message-inner {
+  padding: 10px 12px;
+}
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__text,
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__char,
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__heading,
+.app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__text--sub {
+  font-size: 13px;
+  line-height: 18px;
+}
+.app.app--viewport-mobile-b .opening-mobile-b-tabs-scroller {
+  flex-shrink: 0;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.app.app--viewport-mobile-b .opening-mobile-b-tabs-scroller::-webkit-scrollbar {
+  display: none;
+}
+.app.app--viewport-mobile-b .opening-mobile-b-board-outer {
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 12px;
+  box-sizing: border-box;
+  background-color: rgba(39, 37, 34, 1);
+}
+.app.app--viewport-mobile-b .opening-mobile-b-board-wrapper {
+  width: 100%;
+  max-width: 276px;
+}
+.app.app--viewport-mobile-b .opening-mobile-b-chessboard {
+  width: 100% !important;
+  max-width: 276px;
+  height: auto !important;
+  aspect-ratio: 1;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 auto;
+}
+.app.app--viewport-mobile-b .opening-mobile-b-chessboard .coord {
+  font-size: 0.65rem;
+}
+.app.app--viewport-mobile-b .opening-filter--mobile-b-flow {
+  position: relative;
+  transform: none !important;
+  top: auto;
+  margin-bottom: 8px;
+}
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap--mobile-b {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Wrapper for header + content so footer stays pinned at bottom */
@@ -10059,7 +10460,7 @@ body {
   height: 100%;
 }
 .app.app--viewport-narrow .opening-v1-layout .opening-course-card__content,
-.app.app--viewport-mobile .opening-v1-layout .opening-course-card__content {
+.app.app--viewport-mobile-a .opening-v1-layout .opening-course-card__content, .app.app--viewport-mobile-b .opening-v1-layout .opening-course-card__content{
   gap: 4px;
   padding-top: 0;
 }
@@ -10586,7 +10987,7 @@ body {
   color: var(--color-text-subtle, var(--text-tertiary, rgba(255, 255, 255, 0.5)));
 }
 .app.app--viewport-narrow .opening-courses-empty-state__description,
-.app.app--viewport-mobile .opening-courses-empty-state__description {
+.app.app--viewport-mobile-a .opening-courses-empty-state__description, .app.app--viewport-mobile-b .opening-courses-empty-state__description{
   margin-left: 0;
   margin-right: 0;
 }
@@ -10626,7 +11027,7 @@ body {
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 .app.app--viewport-narrow .opening-course-card,
-.app.app--viewport-mobile .opening-course-card {
+.app.app--viewport-mobile-a .opening-course-card, .app.app--viewport-mobile-b .opening-course-card{
   padding-right: 0;
 }
 /* Hover V1: card background only (selected card: no bg change on hover) */
@@ -10801,13 +11202,13 @@ body {
 }
 /* Desktop S / Mobile: narrow content column — place “Recommended” under the heading (full-width title, chip below). */
 .app.app--viewport-narrow .opening-course-card__title-row--with-chips,
-.app.app--viewport-mobile .opening-course-card__title-row--with-chips {
+.app.app--viewport-mobile-a .opening-course-card__title-row--with-chips, .app.app--viewport-mobile-b .opening-course-card__title-row--with-chips{
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
 }
 .app.app--viewport-narrow .opening-course-card__title-row--with-chips .opening-course-card__title,
-.app.app--viewport-mobile .opening-course-card__title-row--with-chips .opening-course-card__title {
+.app.app--viewport-mobile-a .opening-course-card__title-row--with-chips .opening-course-card__title, .app.app--viewport-mobile-b .opening-course-card__title-row--with-chips .opening-course-card__title{
   flex: none;
   width: 100%;
   max-width: 100%;
@@ -10881,7 +11282,7 @@ body {
 }
 /* Desktop S and Mobile: match started row to 90px cover frame */
 .app.app--viewport-narrow .opening-course-card__content--started,
-.app.app--viewport-mobile .opening-course-card__content--started {
+.app.app--viewport-mobile-a .opening-course-card__content--started, .app.app--viewport-mobile-b .opening-course-card__content--started{
   height: 90px;
   min-height: 90px;
 }
@@ -11034,21 +11435,21 @@ body {
 
 /* Desktop S and Mobile: hide progress bar, show only % label (Progress: label already hidden via v-if) */
 .app.app--viewport-narrow .opening-course-card__completion-bar,
-.app.app--viewport-mobile .opening-course-card__completion-bar {
+.app.app--viewport-mobile-a .opening-course-card__completion-bar, .app.app--viewport-mobile-b .opening-course-card__completion-bar{
   display: none;
 }
 
 /* Desktop S and Mobile: keep started card content (and Practice badge) inside panel – no fixed width overflow */
 .app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__started-top,
-.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__started-top,
+.app.app--viewport-mobile-a .opening-course-card__content--started .opening-course-card__started-top, .app.app--viewport-mobile-b .opening-course-card__content--started .opening-course-card__started-top,
 .app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__started-footer,
-.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__started-footer {
+.app.app--viewport-mobile-a .opening-course-card__content--started .opening-course-card__started-footer, .app.app--viewport-mobile-b .opening-course-card__content--started .opening-course-card__started-footer{
   width: 100%;
   max-width: 100%;
   min-width: 0;
 }
 .app.app--viewport-narrow .opening-course-card__content--started .opening-course-card__progress-row,
-.app.app--viewport-mobile .opening-course-card__content--started .opening-course-card__progress-row {
+.app.app--viewport-mobile-a .opening-course-card__content--started .opening-course-card__progress-row, .app.app--viewport-mobile-b .opening-course-card__content--started .opening-course-card__progress-row{
   width: 100%;
   max-width: 100%;
   min-width: 0;
