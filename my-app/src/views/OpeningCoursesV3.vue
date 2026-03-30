@@ -7387,6 +7387,82 @@ onUnmounted(() => {
                     </template>
                 </template>
               </div>
+              <!-- Opening Courses list: CTAs + icon row scroll with the list (not fixed to panel bottom). -->
+              <div
+                v-if="isOpeningCoursesV3 && panelView === 'courses'"
+                class="panel-footer-frame opening-v3-footer-in-scroll"
+                data-name="OpeningListFooterInScroll"
+              >
+                <div class="panel-footer-container">
+                  <section class="footer-section footer-section-actions" data-name="ButtonsFooter">
+                    <div class="footer-buttons-container footer-buttons-container--cta-only">
+                      <div class="footer-buttons-row footer-buttons-row-icon-cta">
+                        <CcButton
+                          v-if="openingV3ScenarioPreset !== 'new-user'"
+                          variant="secondary"
+                          size="large"
+                          class="course-page-line-list-icon-cta"
+                          :disabled="!selectedOpeningCard"
+                          :aria-label="selectedOpeningCard ? 'Open selected opening course' : 'Select an opening to open its course'"
+                          @click="onOpeningListLineListIconClick"
+                        >
+                          <CcIcon
+                            name="layout-list-bullet"
+                            variant="glyph"
+                            :size="22"
+                            class="course-page-line-list-icon-cta__icon"
+                          />
+                        </CcButton>
+                        <div class="footer-course-cta-slot">
+                          <AquaCtaButton
+                            v-if="selectedOpeningCardIsCompleted"
+                            label="Practice"
+                            :badge="selectedOpeningCardPracticeCount"
+                            class="footer-btn-full"
+                            @click="openOpeningCourse(undefined, { openInPracticeTab: true })"
+                          />
+                          <CcButton
+                            v-else
+                            variant="primary"
+                            size="large"
+                            class="footer-btn-full"
+                            :disabled="!selectedOpeningCardId"
+                            @click="openOpeningCourse()"
+                          >{{ openingV3FooterPrimaryLabel }}</CcButton>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  <section class="footer-section footer-section-toolbar" data-name="IconFooter">
+                    <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
+                      <button type="button" class="footer-icon-btn" aria-label="More options">
+                        <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
+                      </button>
+                    </div>
+                    <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
+                      <button
+                        type="button"
+                        class="footer-icon-btn"
+                        :disabled="!((panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasPreviousPlyInLine()) || openingFooterCanUndo)"
+                        aria-label="Previous"
+                        @click="onFooterPreviousClick"
+                      >
+                        <CcIcon name="arrow-chevron-left" variant="glyph" :size="20" class="footer-icon" />
+                      </button>
+                      <button
+                        type="button"
+                        class="footer-icon-btn"
+                        :disabled="!((panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasNextPlyInLine()) || openingFooterCanRedo)"
+                        aria-label="Next"
+                        @click="onFooterNextClick"
+                      >
+                        <CcIcon name="arrow-chevron-right" variant="glyph" :size="20" class="footer-icon" />
+                      </button>
+                    </div>
+                  </section>
+                  <footer class="panel-footer" />
+                </div>
+              </div>
             </div>
           </div>
           <div v-else class="opening-v1-placeholder" aria-hidden="true" />
@@ -9002,8 +9078,8 @@ v-if="isVideoV6OrV7"
         </template>
 
         </div>
-        <!-- Footer frame: bg/secondary; inner container has primary + overlay -->
-        <div class="panel-footer-frame">
+        <!-- Footer frame: bg/secondary; inner container has primary + overlay (Opening Courses list footer lives inside .opening-v1-scroll-wrap) -->
+        <div v-if="!(isOpeningCoursesV3 && panelView === 'courses')" class="panel-footer-frame">
         <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV3 && panelView === 'line') }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
@@ -10548,6 +10624,10 @@ body {
 }
 .opening-v1-scroll-wrap::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.45);
+}
+/* Footer inside scroll wrap: same chrome as .panel-footer-frame but no high z-index (not overlaying list). */
+.opening-v3-footer-in-scroll.panel-footer-frame {
+  z-index: 0;
 }
 .opening-v1-scroll {
   flex: 0 0 auto;
