@@ -4444,33 +4444,25 @@ function clamp(v, min, max) { return Math.max(min, Math.min(max, v)) }
 const openingSearchY = ref(0)
 const openingSearchH = ref(92)
 const openingSearchRef = ref(null)
+const openingV2ListChromeRef = ref(null)
 const openingV2ScrollWrapRef = ref(null)
 let lastOpeningScrollTop = 0
-// RUB: scroll-linked tabs (same pattern as course Learn/Practice tabs)
+// RUB tab strip ref (inside list chrome when returning user)
 const openingV2RubTabsWrapRef = ref(null)
-const openingTabsY = ref(0)
-const openingTabsH = ref(48)
-let lastOpeningTabsScrollTop = 0
-let openingTabsStickyStartScrollTop = 0
 
-/** Returning user: tabs + search share one translateY; hide range must cover the taller strip. */
 function getOpeningSearchYClampMin() {
-  if (openingV2ScenarioPreset.value === 'returning-user') {
-    return -Math.max(openingSearchH.value, openingTabsH.value)
-  }
   return -openingSearchH.value
 }
 
-/** Tabs translate by Y; margin collapses tab row — compensate filter transform so search does not double-move. */
+/** Returning user: unified list chrome uses --opening-chrome-collapse-y; new user: sticky search --opening-filter-y. */
 const openingV1LayoutChromeStyle = computed(() => {
   const y = openingSearchY.value
-  const th = openingTabsH.value
+  const h = openingSearchH.value
   const rub = openingV2ScenarioPreset.value === 'returning-user'
-  const layoutShiftUp = rub ? Math.min(-y, th) : 0
   return {
     '--opening-search-y': `${y}px`,
-    '--opening-filter-y': `${y - layoutShiftUp}px`,
-    '--opening-tabs-collapse-y': rub ? `${Math.max(y, -th)}px` : '0px',
+    '--opening-filter-y': rub ? '0px' : `${y}px`,
+    '--opening-chrome-collapse-y': rub ? `${Math.max(y, -h)}px` : '0px',
   }
 })
 
@@ -4491,12 +4483,20 @@ function measureOpeningCardTitleLines() {
 
 function measureOpeningSearchH() {
   requestAnimationFrame(() => {
-    const el = openingSearchRef.value
     const wrap = openingV2ScrollWrapRef.value
-    if (el) {
+    const chrome = openingV2ListChromeRef.value
+    const el = openingSearchRef.value
+    if (openingV2ScenarioPreset.value === 'returning-user' && chrome) {
+      openingSearchH.value = chrome.offsetHeight || 140
+    } else if (el) {
       openingSearchH.value = el.offsetHeight || 92
+    }
+    if (chrome || el) {
       openingSearchY.value = clamp(openingSearchY.value, getOpeningSearchYClampMin(), 0)
-      if (wrap) wrap.style.setProperty('--opening-search-h', openingSearchH.value + 'px')
+      if (wrap) {
+        wrap.style.setProperty('--opening-search-h', openingSearchH.value + 'px')
+        if (typeof wrap.scrollTop === 'number') lastOpeningScrollTop = wrap.scrollTop
+      }
     }
   })
 }
@@ -4810,35 +4810,6 @@ function clearBoardPosition() {
   checkmateHighlight.value = null
 }
 
-function computeOpeningTabsStickyStart() {
-  /* Returning user: tabs use --opening-search-y on layout (same as search) */
-  if (openingV2ScenarioPreset.value === 'returning-user') return
-  const scrollEl = openingV2ScrollWrapRef.value
-  const tabsEl = openingV2RubTabsWrapRef.value
-  if (!scrollEl || !tabsEl) return
-  const scrollTop = scrollEl.scrollTop
-  const tabsRect = tabsEl.getBoundingClientRect()
-  const scrollRect = scrollEl.getBoundingClientRect()
-  openingTabsStickyStartScrollTop = scrollTop + (tabsRect.top - scrollRect.top) - openingSearchH.value
-}
-function measureOpeningTabsH() {
-  requestAnimationFrame(() => {
-    const wrap = openingV2RubTabsWrapRef.value
-    if (!wrap) return
-    const h = wrap.offsetHeight || 48
-    openingTabsH.value = h
-    if (openingV2ScenarioPreset.value === 'returning-user') {
-      openingSearchY.value = clamp(openingSearchY.value, getOpeningSearchYClampMin(), 0)
-      return
-    }
-    openingTabsY.value = clamp(openingTabsY.value, -h, 0)
-    const el = openingV2ScrollWrapRef.value
-    if (el) {
-      el.style.setProperty('--opening-tabs-y', openingTabsY.value + 'px')
-      computeOpeningTabsStickyStart()
-    }
-  })
-}
 function onOpeningContentScroll() {
   try {
     const el = openingV2ScrollWrapRef.value
@@ -4847,11 +4818,8 @@ function onOpeningContentScroll() {
     const delta = st - lastOpeningScrollTop
     openingSearchY.value = clamp(openingSearchY.value - delta, getOpeningSearchYClampMin(), 0)
     lastOpeningScrollTop = st
-    /* Returning User: tabs are fixed under coach, no scroll-linked transform */
-    lastOpeningTabsScrollTop = st
   } catch (_) {
     lastOpeningScrollTop = 0
-    lastOpeningTabsScrollTop = 0
   }
 }
 
@@ -4859,16 +4827,32 @@ function onOpeningContentScroll() {
 watch(isOpeningCoursesV2, (isV1) => {
   if (isV1) clearHoveredChapterLine()
 }, { immediate: true })
-watch([isOpeningCoursesV2, openingV2Ready], ([isV1, ready]) => {
-  if (isV1 && ready) nextTick(measureOpeningSearchH)
-}, { immediate: true })
-watch([isOpeningCoursesV2, openingV2ScenarioPreset], ([isV1, preset]) => {
-  if (isV1 && preset === 'returning-user') {
-    nextTick(() => {
-      measureOpeningTabsH()
-      computeOpeningTabsStickyStart()
-    })
+let openingSearchBarResizeObserver = null
+function teardownOpeningSearchBarResizeObserver() {
+  openingSearchBarResizeObserver?.disconnect()
+  openingSearchBarResizeObserver = null
+}
+function setupOpeningSearchBarResizeObserver() {
+  teardownOpeningSearchBarResizeObserver()
+  if (!isOpeningCoursesV2.value || !openingV2Ready.value) return
+  const returning = openingV2ScenarioPreset.value === 'returning-user'
+  const target = returning ? openingV2ListChromeRef.value : openingSearchRef.value
+  if (!target) return
+  openingSearchBarResizeObserver = new ResizeObserver(() => {
+    measureOpeningSearchH()
+  })
+  openingSearchBarResizeObserver.observe(target)
+}
+
+watch([isOpeningCoursesV2, openingV2Ready, openingV2ScenarioPreset], ([isV1, ready]) => {
+  if (!isV1 || !ready) {
+    teardownOpeningSearchBarResizeObserver()
+    return
   }
+  nextTick(() => {
+    measureOpeningSearchH()
+    setupOpeningSearchBarResizeObserver()
+  })
 }, { immediate: true })
 
 // Restore scroll position and selected card when returning from an OC course page (Back from chapter).
@@ -6219,6 +6203,7 @@ onUnmounted(() => {
   v3ScrollCleanup?.()
   courseTabsScrollCleanup?.()
   teardownVideoSectionResizeObserver()
+  teardownOpeningSearchBarResizeObserver()
   document.removeEventListener('mousemove', handleDragMove)
   document.removeEventListener('mouseup', handleDragEnd)
   document.removeEventListener('touchmove', handleDragMove)
@@ -6496,28 +6481,25 @@ onUnmounted(() => {
                 </div>
               </section>
             </div>
-            <!-- Returning User: tabs under coach — same shell as course Learn/Practice (course-tabs-wrap--top) -->
+            <!-- Returning user: tabs + search as one chrome block (single transform). -->
             <div
               v-if="openingV2ScenarioPreset === 'returning-user'"
-              ref="openingV2RubTabsWrapRef"
-              class="course-tabs-wrap course-tabs-wrap--top opening-v1-rub-tabs-wrap"
+              ref="openingV2ListChromeRef"
+              class="opening-v1-list-chrome"
               :class="{ 'is-offscreen': openingSearchY < 0 }"
             >
-              <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
-                <cc-tab-item id="my-openings" label="Your Openings" :isActive="openingV2RubActiveTab === 'my-openings'" @click="openingV2RubActiveTab = 'my-openings'" />
-                <cc-tab-item id="all" label="All" :isActive="openingV2RubActiveTab === 'all'" @click="openingV2RubActiveTab = 'all'" />
-              </cc-tab-group>
-            </div>
-            <!-- Opening V1: one scroll container (overflow-y:auto), one search bar. Headroom: visible at top; scroll up show, scroll down hide. -->
-            <div
-              ref="openingV2ScrollWrapRef"
-              class="opening-v1-scroll-wrap"
-              @scroll.passive="onOpeningContentScroll"
-            >
+              <div
+                ref="openingV2RubTabsWrapRef"
+                class="course-tabs-wrap course-tabs-wrap--top opening-v1-rub-tabs-wrap"
+              >
+                <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
+                  <cc-tab-item id="my-openings" label="Your Openings" :isActive="openingV2RubActiveTab === 'my-openings'" @click="openingV2RubActiveTab = 'my-openings'" />
+                  <cc-tab-item id="all" label="All" :isActive="openingV2RubActiveTab === 'all'" @click="openingV2RubActiveTab = 'all'" />
+                </cc-tab-group>
+              </div>
               <div
                 ref="openingSearchRef"
-                class="opening-filter opening-filter--sticky-under-coach"
-                :class="{ 'is-offscreen': openingSearchY < 0 }"
+                class="opening-filter opening-filter--in-list-chrome"
                 role="search"
                 aria-label="Search and filter courses"
               >
@@ -6545,6 +6527,72 @@ onUnmounted(() => {
                     />
                   </div>
                   <div v-if="openingV2ScenarioPreset === 'new-user' || openingV2ScenarioPreset === 'returning-user'" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
+                    <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
+                      <div class="opening-courses-meta-panel__sort">
+                        <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
+                          <span class="text-small-bold">{{ openingSortLabel }}</span>
+                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
+                        </button>
+                        <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
+                          <template v-if="isYourOpeningsSortContext">
+                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
+                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                          </template>
+                          <template v-else>
+                            <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
+                            <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                            <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                          </template>
+                        </div>
+                      </div>
+                      <span v-if="!showRecommendedAndAllSections" class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} {{ openingV2ScenarioMetaCount === 1 ? 'course' : 'Courses' }}</span>
+                    </div>
+                    <FilterChipV2
+                      v-else
+                      :filter-moves="openingFilterMoves"
+                      :keyword-tags="openingKeywordTags"
+                      @clear-board-position="clearBoardPosition"
+                      @remove-keyword-tag="removeOpeningKeywordTag"
+                      @clear-all="clearAllOpeningFilters"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              ref="openingV2ScrollWrapRef"
+              class="opening-v1-scroll-wrap"
+              @scroll.passive="onOpeningContentScroll"
+            >
+              <div
+                v-if="openingV2ScenarioPreset !== 'returning-user'"
+                ref="openingSearchRef"
+                class="opening-filter opening-filter--sticky-under-coach"
+                :class="{ 'is-offscreen': openingSearchY < 0 }"
+                role="search"
+                aria-label="Search and filter courses"
+              >
+                <div class="opening-search-panel">
+                  <div class="opening-search-panel__row opening-search-panel__row--inputs">
+                    <div class="opening-search-panel__search-shell">
+                      <div class="opening-search-panel__search">
+                        <SearchInput
+                          v-model="openingSearchQuery"
+                          placeholder="Search openings"
+                          aria-label="Search openings"
+                          @enter="onOpeningSearchEnter"
+                        />
+                      </div>
+                    </div>
+                    <ColorToggle
+                      v-model:selected-color="openingFilterColor"
+                      :base-url="baseUrl"
+                      variant="switch"
+                      class="opening-search-panel__color-toggle"
+                    />
+                  </div>
+                  <div v-if="openingV2ScenarioPreset === 'new-user'" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
                     <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
                       <div class="opening-courses-meta-panel__sort">
                         <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
@@ -10007,6 +10055,11 @@ body {
 .opening-filter--sticky-under-coach.is-offscreen {
   pointer-events: none;
 }
+.opening-filter--in-list-chrome {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
 /* Returning user: no Sort by row */
 .opening-filter--no-meta {
   margin-bottom: 12px;
@@ -10397,16 +10450,21 @@ body {
   gap: 0;
   width: 100%;
 }
-.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
-  backface-visibility: hidden;
+.opening-v1-layout .opening-v1-list-chrome {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
   z-index: 8;
   will-change: transform;
   transform: translateY(var(--opening-search-y, 0));
-  margin-bottom: var(--opening-tabs-collapse-y, 0px);
+  margin-bottom: var(--opening-chrome-collapse-y, 0px);
   transition: none;
 }
-.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top.is-offscreen {
+.opening-v1-layout .opening-v1-list-chrome.is-offscreen {
   pointer-events: none;
+}
+.opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
+  backface-visibility: hidden;
 }
 .opening-v1-section-header {
   display: flex;
