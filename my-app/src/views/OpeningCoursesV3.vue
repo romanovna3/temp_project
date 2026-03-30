@@ -4097,21 +4097,22 @@ watch(isOpeningCoursesV3, (isV1) => {
   }, 350)
 }, { immediate: true })
 
-// Opening Courses V1: viewport and scenario preset bar (same UX as V9). Initialize from storage so Back from Course page doesn't flash L layout.
+// Opening Courses V3: viewport + scenario preset bar. Defaults to Returning user; session restores last choice.
 function getInitialOpeningV1PresetBar() {
+  const defaultScenario = 'returning-user'
   try {
-    if (typeof sessionStorage === 'undefined') return { viewportPreset: 'default', scenarioPreset: 'new-user' }
+    if (typeof sessionStorage === 'undefined') return { viewportPreset: 'default', scenarioPreset: defaultScenario }
     const raw = sessionStorage.getItem(OPENING_COURSES_V3_PRESET_BAR_KEY)
-    if (!raw) return { viewportPreset: 'default', scenarioPreset: 'new-user' }
+    if (!raw) return { viewportPreset: 'default', scenarioPreset: defaultScenario }
     const preset = JSON.parse(raw)
     const v = preset?.viewportPreset
+    const s = preset?.scenarioPreset
     return {
       viewportPreset: v && ['default', 'narrow', 'mobile'].includes(v) ? v : 'default',
-      // V3 always opens in New user; dev bar can switch to Returning (persisted for viewport only via restore watch).
-      scenarioPreset: 'new-user',
+      scenarioPreset: s === 'new-user' || s === 'returning-user' ? s : defaultScenario,
     }
   } catch (_) {
-    return { viewportPreset: 'default', scenarioPreset: 'new-user' }
+    return { viewportPreset: 'default', scenarioPreset: defaultScenario }
   }
 }
 const _initialOpeningV1Preset = getInitialOpeningV1PresetBar()
@@ -4134,14 +4135,6 @@ const viewportPreset = ref(_initialOpeningV1Preset.viewportPreset)
 /** When viewport preset is hidden, layout always uses L (default). */
 const effectiveViewportPreset = computed(() => (SHOW_VIEWPORT_PRESET_IN_BAR ? viewportPreset.value : 'default'))
 const openingV3ScenarioPreset = ref(_initialOpeningV1Preset.scenarioPreset)
-/** New user on every V3 entry (must run after ref exists — not in openingV3Ready watch above). */
-watch(
-  isOpeningCoursesV3,
-  (isV1) => {
-    if (isV1) openingV3ScenarioPreset.value = 'new-user'
-  },
-  { immediate: true },
-)
 /** RUB only: active tab 'my-openings' | 'all' */
 const openingV3RubActiveTab = ref('my-openings')
 /** RUB only: list for active tab (started or rest) */
@@ -4907,13 +4900,16 @@ watch([isOpeningCoursesV3, openingV3ScenarioPreset], ([isV1, preset]) => {
 // Also restore global preset bar (viewport + scenario) so it stays in sync with Course page.
 watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
   if (!isV1 || !ready) return
-  // Restore viewport from Course page (or previous session). Scenario always New user on V3 load.
+  // Restore viewport + scenario from session (e.g. after Back from course page).
   try {
     const presetRaw = sessionStorage.getItem(OPENING_COURSES_V3_PRESET_BAR_KEY)
     if (presetRaw) {
       const preset = JSON.parse(presetRaw)
       if (preset && typeof preset.viewportPreset === 'string' && ['default', 'narrow', 'mobile'].includes(preset.viewportPreset)) {
         viewportPreset.value = preset.viewportPreset
+      }
+      if (preset && (preset.scenarioPreset === 'new-user' || preset.scenarioPreset === 'returning-user')) {
+        openingV3ScenarioPreset.value = preset.scenarioPreset
       }
     }
   } catch (_) {
