@@ -1,0 +1,15 @@
+---
+description: All Opening Courses changes in scope are for V2 only (OpeningCoursesV2.vue).
+globs: ["**/OpeningCoursesV2.vue", "**/OpeningCoursesV2WithErrorBoundary.vue"]
+alwaysApply: false
+---
+
+# Opening Courses – V2 only
+
+When working on Opening Courses in this context:
+
+- **Apply changes only to V2:** Edit `my-app/src/views/OpeningCoursesV2.vue` (and its error-boundary wrapper if needed). Do not change `Courses.vue` or other course views for Opening Courses behavior.
+- **Exception — mobile A/B:** Viewport presets **Mobile A** / **Mobile B** (in-panel board, sticky coach, etc.) live in **`OpeningCoursesV3.vue` only**, not V2.
+- **V1 is frozen:** Opening Courses V1 lives in `Courses.vue`; leave it unchanged unless the user explicitly asks for V1 changes.
+
+This keeps the design files separate (same pattern as chapter page versions).
