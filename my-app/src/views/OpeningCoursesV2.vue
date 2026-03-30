@@ -10034,7 +10034,7 @@ body {
   min-width: 0;
   min-height: 82px;
   height: fit-content;
-  padding: 6px 4px 0 16px;
+  padding: 16px 4px 0 16px;
   margin-top: 0;
   margin-bottom: 4px;
   flex-shrink: 0;
