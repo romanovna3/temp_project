@@ -10759,6 +10759,10 @@ body {
   box-shadow: none;
   background-color: rgba(39, 37, 34, 1);
 }
+.app.app--viewport-mobile-a .opening-search-panel,
+.app.app--viewport-mobile-b .opening-search-panel {
+  padding: 16px 12px 0 16px;
+}
 .opening-search-panel__row {
   display: flex;
   flex-direction: row;
