@@ -404,13 +404,15 @@ const RETURNING_USER_STARTED = {
   'London System': { White: { progressPercent: 45, reviewCount: 6 }, Black: { progressPercent: 40, reviewCount: 5 } },
   'Italian Game': { White: { progressPercent: 30, reviewCount: 4 }, Black: null },
   'Caro-Kann Defense': { White: { progressPercent: 52, reviewCount: 5 }, Black: null },
+  Alapin: { White: { progressPercent: 38, reviewCount: 3 }, Black: null },
   'Scandinavian Defense': { White: null, Black: { progressPercent: 25, reviewCount: 3 } },
 }
-/** Display order for started courses: French White, Italian, Caro-Kann (White vs Caro-Kann), London ×2, Scandinavian Black. */
+/** Display order for started courses: French White, Italian, Caro-Kann, Alapin (White), London ×2, Scandinavian Black. */
 const STARTED_COURSES_ORDER = [
   ['French Defense', 'White'],
   ['Italian Game', 'White'],
   ['Caro-Kann Defense', 'White'],
+  ['Alapin', 'White'],
   ['London System', 'White'],
   ['London System', 'Black'],
   ['Scandinavian Defense', 'Black'],
