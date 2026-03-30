@@ -10028,6 +10028,7 @@ body {
 .opening-v1-coach-wrap {
   flex-shrink: 0;
   z-index: 10;
+  padding-bottom: 12px;
   background-image: linear-gradient(0deg, rgba(255, 255, 255, 1) 0%, rgba(0, 0, 0, 1) 100%);
   background-clip: text;
   -webkit-background-clip: text;
