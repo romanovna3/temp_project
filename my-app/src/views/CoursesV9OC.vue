@@ -12811,6 +12811,9 @@ body {
   z-index: 10;
   flex-shrink: 0;
 }
+.courses-content--v9-coach-wrap .coach-new-opening.coach-new-opening--fixed {
+  padding-bottom: 12px;
+}
 /* V9: course card lives in scroll area (--scrolls), only coach is fixed */
 .courses-content--v9-course-card-wrap.courses-content--v9-course-card-wrap--scrolls {
   background: unset;
