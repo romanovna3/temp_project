@@ -4458,15 +4458,13 @@ function getOpeningSearchYClampMin() {
   return -openingSearchH.value
 }
 
-/** Returning user: unified list chrome uses --opening-chrome-collapse-y; new user: sticky search --opening-filter-y. */
+/** Returning user: list chrome sticky in scroll (translateY only). New user: sticky search --opening-filter-y. */
 const openingV1LayoutChromeStyle = computed(() => {
   const y = openingSearchY.value
-  const h = openingSearchH.value
   const rub = openingV2ScenarioPreset.value === 'returning-user'
   return {
     '--opening-search-y': `${y}px`,
     '--opening-filter-y': rub ? '0px' : `${y}px`,
-    '--opening-chrome-collapse-y': rub ? `${Math.max(y, -h)}px` : '0px',
   }
 })
 
@@ -6485,90 +6483,89 @@ onUnmounted(() => {
                 </div>
               </section>
             </div>
-            <!-- Returning user: tabs + search as one chrome block (single transform). -->
-            <div
-              v-if="openingV2ScenarioPreset === 'returning-user'"
-              ref="openingV2ListChromeRef"
-              class="opening-v1-list-chrome"
-              :class="{ 'is-offscreen': openingSearchY < 0 }"
-            >
-              <div
-                ref="openingV2RubTabsWrapRef"
-                class="course-tabs-wrap course-tabs-wrap--top opening-v1-rub-tabs-wrap"
-              >
-                <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
-                  <cc-tab-item id="my-openings" label="Your Openings" :isActive="openingV2RubActiveTab === 'my-openings'" @click="openingV2RubActiveTab = 'my-openings'" />
-                  <cc-tab-item id="all" label="All" :isActive="openingV2RubActiveTab === 'all'" @click="openingV2RubActiveTab = 'all'" />
-                </cc-tab-group>
-              </div>
-              <div
-                ref="openingSearchRef"
-                class="opening-filter opening-filter--in-list-chrome"
-                role="search"
-                aria-label="Search and filter courses"
-              >
-                <div class="opening-search-panel">
-                  <div class="opening-search-panel__row opening-search-panel__row--inputs">
-                    <div
-                      class="opening-search-panel__search-shell"
-                      :class="{ 'opening-search-panel__search-shell--your-openings': openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'my-openings' }"
-                    >
-                      <div class="opening-search-panel__search">
-                        <SearchInput
-                          v-model="openingSearchQuery"
-                          placeholder="Search openings"
-                          aria-label="Search openings"
-                          @enter="onOpeningSearchEnter"
-                        />
-                      </div>
-                    </div>
-                    <ColorToggle
-                      v-if="openingV2ScenarioPreset !== 'returning-user' || openingV2RubActiveTab !== 'my-openings'"
-                      v-model:selected-color="openingFilterColor"
-                      :base-url="baseUrl"
-                      variant="switch"
-                      class="opening-search-panel__color-toggle"
-                    />
-                  </div>
-                  <div v-if="openingV2ScenarioPreset === 'new-user' || openingV2ScenarioPreset === 'returning-user'" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
-                    <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
-                      <div class="opening-courses-meta-panel__sort">
-                        <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
-                          <span class="text-small-bold">{{ openingSortLabel }}</span>
-                          <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
-                        </button>
-                        <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
-                          <template v-if="isYourOpeningsSortContext">
-                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
-                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
-                            <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
-                          </template>
-                          <template v-else>
-                            <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
-                            <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
-                            <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
-                          </template>
-                        </div>
-                      </div>
-                      <span v-if="!showRecommendedAndAllSections" class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} {{ openingV2ScenarioMetaCount === 1 ? 'course' : 'Courses' }}</span>
-                    </div>
-                    <FilterChipV2
-                      v-else
-                      :filter-moves="openingFilterMoves"
-                      :keyword-tags="openingKeywordTags"
-                      @clear-board-position="clearBoardPosition"
-                      @remove-keyword-tag="removeOpeningKeywordTag"
-                      @clear-all="clearAllOpeningFilters"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
             <div
               ref="openingV2ScrollWrapRef"
               class="opening-v1-scroll-wrap"
               @scroll.passive="onOpeningContentScroll"
             >
+              <div
+                v-if="openingV2ScenarioPreset === 'returning-user'"
+                ref="openingV2ListChromeRef"
+                class="opening-v1-list-chrome opening-v1-list-chrome--sticky"
+                :class="{ 'is-offscreen': openingSearchY < 0 }"
+              >
+                <div
+                  ref="openingV2RubTabsWrapRef"
+                  class="course-tabs-wrap course-tabs-wrap--top opening-v1-rub-tabs-wrap"
+                >
+                  <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Openings">
+                    <cc-tab-item id="my-openings" label="Your Openings" :isActive="openingV2RubActiveTab === 'my-openings'" @click="openingV2RubActiveTab = 'my-openings'" />
+                    <cc-tab-item id="all" label="All" :isActive="openingV2RubActiveTab === 'all'" @click="openingV2RubActiveTab = 'all'" />
+                  </cc-tab-group>
+                </div>
+                <div
+                  ref="openingSearchRef"
+                  class="opening-filter opening-filter--in-list-chrome"
+                  role="search"
+                  aria-label="Search and filter courses"
+                >
+                  <div class="opening-search-panel">
+                    <div class="opening-search-panel__row opening-search-panel__row--inputs">
+                      <div
+                        class="opening-search-panel__search-shell"
+                        :class="{ 'opening-search-panel__search-shell--your-openings': openingV2ScenarioPreset === 'returning-user' && openingV2RubActiveTab === 'my-openings' }"
+                      >
+                        <div class="opening-search-panel__search">
+                          <SearchInput
+                            v-model="openingSearchQuery"
+                            placeholder="Search openings"
+                            aria-label="Search openings"
+                            @enter="onOpeningSearchEnter"
+                          />
+                        </div>
+                      </div>
+                      <ColorToggle
+                        v-if="openingV2ScenarioPreset !== 'returning-user' || openingV2RubActiveTab !== 'my-openings'"
+                        v-model:selected-color="openingFilterColor"
+                        :base-url="baseUrl"
+                        variant="switch"
+                        class="opening-search-panel__color-toggle"
+                      />
+                    </div>
+                    <div v-if="openingV2ScenarioPreset === 'new-user' || openingV2ScenarioPreset === 'returning-user'" class="opening-meta-slot" :class="{ 'opening-meta-slot--with-chips': openingFilterMoves.length || openingKeywordTags.length }">
+                      <div v-if="!openingFilterMoves.length && !openingKeywordTags.length" class="opening-courses-meta-panel" data-name="Course counter and filter">
+                        <div class="opening-courses-meta-panel__sort">
+                          <button type="button" class="opening-courses-meta-panel__sort-btn" aria-haspopup="listbox" :aria-expanded="openingSortOpen" aria-label="Sort by" @click="openingSortOpen = !openingSortOpen">
+                            <span class="text-small-bold">{{ openingSortLabel }}</span>
+                            <CcIcon name="arrow-chevron-bottom" variant="glyph" :size="16" class="opening-courses-meta-panel__sort-chevron" aria-hidden="true" />
+                          </button>
+                          <div v-if="openingSortOpen" class="opening-search-panel__sort-dropdown" role="listbox" aria-label="Sort options">
+                            <template v-if="isYourOpeningsSortContext">
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'recent'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'recent'; openingSortOpen = false">Most Recent</button>
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                              <button type="button" role="option" :aria-selected="effectiveOpeningSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                            </template>
+                            <template v-else>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'popular'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'popular'; openingSortOpen = false">Popular</button>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'name'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'name'; openingSortOpen = false">Name</button>
+                              <button type="button" role="option" :aria-selected="openingSortBy === 'type'" class="opening-search-panel__sort-option text-small-bold" @click="openingSortBy = 'type'; openingSortOpen = false">First Move</button>
+                            </template>
+                          </div>
+                        </div>
+                        <span v-if="!showRecommendedAndAllSections" class="opening-courses-meta-panel__count text-small-bold">{{ openingV2ScenarioMetaCount }} {{ openingV2ScenarioMetaCount === 1 ? 'course' : 'Courses' }}</span>
+                      </div>
+                      <FilterChipV2
+                        v-else
+                        :filter-moves="openingFilterMoves"
+                        :keyword-tags="openingKeywordTags"
+                        @clear-board-position="clearBoardPosition"
+                        @remove-keyword-tag="removeOpeningKeywordTag"
+                        @clear-all="clearAllOpeningFilters"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div
                 v-if="openingV2ScenarioPreset !== 'returning-user'"
                 ref="openingSearchRef"
@@ -10454,17 +10451,19 @@ body {
   gap: 0;
   width: 100%;
 }
-.opening-v1-layout .opening-v1-list-chrome {
+.opening-v1-layout .opening-v1-list-chrome--sticky {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
   z-index: 8;
   will-change: transform;
   transform: translateY(var(--opening-search-y, 0));
-  margin-bottom: var(--opening-chrome-collapse-y, 0px);
   transition: none;
+  align-self: stretch;
 }
-.opening-v1-layout .opening-v1-list-chrome.is-offscreen {
+.opening-v1-layout .opening-v1-list-chrome--sticky.is-offscreen {
   pointer-events: none;
 }
 .opening-v1-layout .opening-v1-rub-tabs-wrap.course-tabs-wrap--top {
