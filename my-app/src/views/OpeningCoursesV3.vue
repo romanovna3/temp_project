@@ -10625,6 +10625,50 @@ body {
 .opening-v1-scroll-wrap::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.45);
 }
+/* Mobile A/B: minimal gutter (thin bar), track transparent, thumb #fff 60% — reads as overlay on content edge */
+.app.app--viewport-mobile-a .opening-v1-scroll-wrap,
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap,
+.app.app--viewport-mobile-a .line-view-scroll-body,
+.app.app--viewport-mobile-b .line-view-scroll-body,
+.app.app--viewport-mobile-a .courses-content,
+.app.app--viewport-mobile-b .courses-content {
+  scrollbar-gutter: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.6) transparent;
+}
+.app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar,
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar,
+.app.app--viewport-mobile-a .line-view-scroll-body::-webkit-scrollbar,
+.app.app--viewport-mobile-b .line-view-scroll-body::-webkit-scrollbar,
+.app.app--viewport-mobile-a .courses-content::-webkit-scrollbar,
+.app.app--viewport-mobile-b .courses-content::-webkit-scrollbar {
+  width: 1px;
+}
+.app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar-track,
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar-track,
+.app.app--viewport-mobile-a .line-view-scroll-body::-webkit-scrollbar-track,
+.app.app--viewport-mobile-b .line-view-scroll-body::-webkit-scrollbar-track,
+.app.app--viewport-mobile-a .courses-content::-webkit-scrollbar-track,
+.app.app--viewport-mobile-b .courses-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar-thumb,
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar-thumb,
+.app.app--viewport-mobile-a .line-view-scroll-body::-webkit-scrollbar-thumb,
+.app.app--viewport-mobile-b .line-view-scroll-body::-webkit-scrollbar-thumb,
+.app.app--viewport-mobile-a .courses-content::-webkit-scrollbar-thumb,
+.app.app--viewport-mobile-b .courses-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 1px;
+}
+.app.app--viewport-mobile-a .opening-v1-scroll-wrap::-webkit-scrollbar-thumb:hover,
+.app.app--viewport-mobile-b .opening-v1-scroll-wrap::-webkit-scrollbar-thumb:hover,
+.app.app--viewport-mobile-a .line-view-scroll-body::-webkit-scrollbar-thumb:hover,
+.app.app--viewport-mobile-b .line-view-scroll-body::-webkit-scrollbar-thumb:hover,
+.app.app--viewport-mobile-a .courses-content::-webkit-scrollbar-thumb:hover,
+.app.app--viewport-mobile-b .courses-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
 /* Footer inside scroll wrap: same chrome as .panel-footer-frame but no high z-index (not overlaying list). */
 .opening-v3-footer-in-scroll.panel-footer-frame {
   z-index: 0;
