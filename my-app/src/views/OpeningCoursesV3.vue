@@ -6496,7 +6496,7 @@ onUnmounted(() => {
             :style="openingV1LayoutBindingStyle"
           >
             <!-- Coach only; overlay is sibling below so it's not clipped by this wrap -->
-            <div class="opening-v1-coach-wrap" :class="{ 'opening-v1-coach-wrap--mobile-b': isOpeningMobileBLayout }">
+            <div class="opening-v1-coach-wrap" :class="{ 'opening-v1-coach-wrap--mobile-b': isMobileViewport }">
               <section class="coach-new-opening coach-new-opening--fixed" data-name="CoachNew">
                 <div class="coach-new-opening__inner coach-feedback">
                   <div class="coach-new-opening__coach">
@@ -9740,10 +9740,11 @@ body {
   line-clamp: 1 !important;
 }
 
-/* Mobile B only: 128px sticky coach (13px bubble); horizontal tab scroller; in-panel board */
+/* Mobile B: list layout shell (board in panel). Mobile A+B: same 128px coach scale as Mobile B. */
 .app.app--viewport-mobile-b .opening-v1-layout--mobile-b {
   overflow: hidden;
 }
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b {
   position: sticky;
   top: 0;
@@ -9760,27 +9761,36 @@ body {
   background-clip: unset;
   color: unset;
 }
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening {
   height: 100%;
   min-height: 0;
   box-sizing: border-box;
   padding: 8px 12px;
 }
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening__inner.coach-feedback,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__inner.coach-feedback {
   align-items: center;
   min-height: 0;
   height: 100%;
 }
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening__avatar-wrap,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__avatar-wrap {
   width: 72px;
   height: 72px;
 }
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening__caret,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__caret {
   top: 36px;
 }
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening__message-inner,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__message-inner {
   padding: 10px 12px;
 }
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening__text,
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening__char,
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening__heading,
+.app.app--viewport-mobile-a .opening-v1-coach-wrap--mobile-b .coach-new-opening__text--sub,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__text,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__char,
 .app.app--viewport-mobile-b .opening-v1-coach-wrap--mobile-b .coach-new-opening__heading,
