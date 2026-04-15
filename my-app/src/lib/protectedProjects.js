@@ -1,24 +1,19 @@
 /**
- * Password-gated index entries and route protection (sessionStorage).
+ * Password-gated folder unlock (sessionStorage).
  *
- * Not real security: passwords ship in the client bundle. Use for casual
- * demos or obscuring routes from casual visitors only.
+ * Not real security: passwords ship in the client bundle.
  */
+
+/** Unlocks the "Previous versions" folder and routes listed under that folder guard. */
+export const FOLDER_PREVIOUS_VERSIONS_ID = 'folder-previous-versions'
+
 export const PASSWORD_PROJECTS = [
   {
-    id: 'chapter-v10',
-    title: 'Chapter Page V10',
-    path: '/courses/v10',
-    versionKey: 'v10',
-    /** Change to your own passphrase */
-    password: 'demo',
-  },
-  {
-    id: 'empty-page',
-    title: 'Empty page',
-    path: '/empty',
-    versionKey: 'empty',
-    password: 'demo',
+    id: FOLDER_PREVIOUS_VERSIONS_ID,
+    title: 'Previous versions',
+    password: 'Unlock',
+    /** After success, Index opens this folder instead of navigating to a route */
+    isFolderUnlock: true,
   },
 ]
 
