@@ -13,7 +13,6 @@ const router = createRouter({
       meta: { protectedProjectId: 'folder-previous-versions' },
       component: () => import('../views/EmptyPage.vue'),
     },
-    { path: '/chessable', name: 'chessable', component: () => import('../views/EmptyPage.vue') },
     {
       path: '/courses',
       name: 'courses',

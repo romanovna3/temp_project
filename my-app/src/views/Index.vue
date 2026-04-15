@@ -41,10 +41,6 @@ const previousFolderItems = [
   { path: '/empty', title: 'Empty page', versionKey: 'empty' },
 ]
 
-const chessableFolderItems = [
-  { path: '/chessable', title: 'Chessable', versionKey: 'chessable' },
-]
-
 const currentFolderItems = computed(() => {
   switch (activeFolder.value) {
     case 'chapter':
@@ -53,8 +49,6 @@ const currentFolderItems = computed(() => {
       return openingFolderItems
     case 'previous':
       return previousFolderItems
-    case 'chessable':
-      return chessableFolderItems
     default:
       return []
   }
@@ -64,8 +58,7 @@ const currentFolderTitle = computed(() => {
   const titles = {
     chapter: 'Chapter page',
     opening: 'Opening Courses',
-    previous: 'Previous versions',
-    chessable: 'Chessable',
+    previous: 'Older Versions',
   }
   return titles[activeFolder.value] ?? ''
 })
@@ -76,10 +69,6 @@ function openFolderChapter() {
 
 function openFolderOpening() {
   activeFolder.value = 'opening'
-}
-
-function openFolderChessable() {
-  activeFolder.value = 'chessable'
 }
 
 function openPreviousVersionsFolder() {
@@ -160,7 +149,6 @@ const versionLastEdited = {
   openingV2: buildTime,
   openingV3: buildTime,
   empty: buildTime,
-  chessable: buildTime,
 }
 
 function getEditedAgo(isoString) {
@@ -189,7 +177,7 @@ function editedAgoFor(version) {
   <div class="index-page app dark-mode">
     <div class="index-layout">
       <main class="index-main">
-        <!-- Root: four top-level folders -->
+        <!-- Root: top-level folders -->
         <template v-if="!activeFolder">
           <section class="index-section">
             <h2 class="index-section__title">Projects</h2>
@@ -248,8 +236,8 @@ function editedAgoFor(version) {
                 tabindex="0"
                 :aria-label="
                   isUnlocked(FOLDER_PREVIOUS_VERSIONS_ID)
-                    ? `Previous versions folder, ${previousFolderItems.length} pages`
-                    : 'Previous versions folder, password required'
+                    ? 'Older Versions folder'
+                    : 'Older Versions folder, password required'
                 "
                 @click="openPreviousVersionsFolder"
                 @keydown.enter.prevent="openPreviousVersionsFolder"
@@ -266,45 +254,13 @@ function editedAgoFor(version) {
                     />
                   </svg>
                 </span>
-                <span class="folder-card__label folder-card__label--with-lock">
-                  Previous versions
-                  <span
-                    v-if="!isUnlocked(FOLDER_PREVIOUS_VERSIONS_ID)"
-                    class="folder-card__lock"
-                    aria-hidden="true"
-                    title="Password required"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                  </span>
-                </span>
-                <span class="folder-card__count">{{ previousFolderItems.length }}</span>
-              </article>
-
-              <article
-                class="folder-card"
-                role="button"
-                tabindex="0"
-                aria-label="Chessable folder, 1 page"
-                @click="openFolderChessable"
-                @keydown.enter.prevent="openFolderChessable"
-                @keydown.space.prevent="openFolderChessable"
-              >
-                <span class="folder-card__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M3 6a2 2 0 0 1 2-2h3.5a1 1 0 0 1 .7.3l1.6 1.6a1 1 0 0 0 .7.3H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"
-                      fill="#E8A84A"
-                      stroke="#D4953A"
-                      stroke-width="1.2"
-                      stroke-linejoin="round"
-                    />
+                <span class="folder-card__label">Older Versions</span>
+                <span class="folder-card__count folder-card__count--lock" aria-hidden="true" title="Locked folder">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 </span>
-                <span class="folder-card__label">Chessable</span>
-                <span class="folder-card__count">{{ chessableFolderItems.length }}</span>
               </article>
             </div>
           </section>
@@ -453,29 +409,24 @@ function editedAgoFor(version) {
   font-size: 14px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.95);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.folder-card__label--with-lock {
-  flex-wrap: wrap;
-}
-.folder-card__lock {
-  flex-shrink: 0;
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  color: rgba(255, 255, 255, 0.88);
-}
-.folder-card__lock svg {
-  width: 100%;
-  height: 100%;
 }
 .folder-card__count {
   flex-shrink: 0;
   font-size: 13px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
+}
+.folder-card__count--lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: rgba(255, 255, 255, 0.75);
+}
+.folder-card__count--lock svg {
+  width: 100%;
+  height: 100%;
 }
 
 .folder-view-header {

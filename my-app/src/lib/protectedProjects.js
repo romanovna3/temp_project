@@ -4,13 +4,13 @@
  * Not real security: passwords ship in the client bundle.
  */
 
-/** Unlocks the "Previous versions" folder and routes listed under that folder guard. */
+/** Unlocks the "Older Versions" folder and routes listed under that folder guard. */
 export const FOLDER_PREVIOUS_VERSIONS_ID = 'folder-previous-versions'
 
 export const PASSWORD_PROJECTS = [
   {
     id: FOLDER_PREVIOUS_VERSIONS_ID,
-    title: 'Previous versions',
+    title: 'Older Versions',
     password: 'Unlock',
     /** After success, Index opens this folder instead of navigating to a route */
     isFolderUnlock: true,
