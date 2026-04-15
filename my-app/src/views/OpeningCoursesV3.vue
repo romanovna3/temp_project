@@ -7388,9 +7388,9 @@ onUnmounted(() => {
                     </template>
                 </template>
               </div>
-              <!-- Opening Courses list: CTAs + icon row scroll with the list (not fixed to panel bottom). -->
+              <!-- Opening Courses list: CTAs + icon row scroll with the list on mobile presets only; desktop uses fixed panel footer. -->
               <div
-                v-if="isOpeningCoursesV3 && panelView === 'courses'"
+                v-if="isOpeningCoursesV3 && panelView === 'courses' && isMobileViewport"
                 class="panel-footer-frame opening-v3-footer-in-scroll"
                 data-name="OpeningListFooterInScroll"
               >
@@ -9080,8 +9080,8 @@ v-if="isVideoV6OrV7"
         </template>
 
         </div>
-        <!-- Footer frame: bg/secondary; inner container has primary + overlay (Opening Courses list footer lives inside .opening-v1-scroll-wrap) -->
-        <div v-if="!(isOpeningCoursesV3 && panelView === 'courses')" class="panel-footer-frame">
+        <!-- Footer frame: fixed to panel bottom; hidden on OC V3 list only when mobile (scroll footer is inside list then). -->
+        <div v-if="!(isOpeningCoursesV3 && panelView === 'courses' && isMobileViewport)" class="panel-footer-frame">
         <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV3 && panelView === 'line') }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
