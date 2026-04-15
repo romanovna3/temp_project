@@ -1,8 +1,66 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import ProjectPasswordModal from '../components/ProjectPasswordModal.vue'
+import {
+  PASSWORD_PROJECTS,
+  isUnlocked,
+  tryUnlockWithPassword,
+  getPasswordProjectById,
+} from '../lib/protectedProjects.js'
 
 const router = useRouter()
+const route = useRoute()
+
+const passwordModalOpen = ref(false)
+const passwordTarget = ref(null)
+const passwordError = ref('')
+
+function requestPasswordProject(entry) {
+  passwordError.value = ''
+  if (isUnlocked(entry.id)) {
+    router.push(entry.path)
+    return
+  }
+  passwordTarget.value = entry
+  passwordModalOpen.value = true
+}
+
+function closePasswordModal() {
+  passwordModalOpen.value = false
+  passwordTarget.value = null
+  passwordError.value = ''
+  if (route.query.unlock) {
+    router.replace({ path: '/', query: {} })
+  }
+}
+
+function onPasswordSubmit(value) {
+  const entry = passwordTarget.value
+  if (!entry) return
+  if (tryUnlockWithPassword(entry.id, value)) {
+    passwordModalOpen.value = false
+    passwordTarget.value = null
+    passwordError.value = ''
+    router.replace({ path: '/', query: {} })
+    router.push(entry.path)
+    return
+  }
+  passwordError.value = 'Wrong password.'
+}
+
+function openPasswordModalFromQuery() {
+  const id = route.query.unlock
+  if (!id || typeof id !== 'string') return
+  const p = getPasswordProjectById(id)
+  if (!p) return
+  passwordTarget.value = p
+  passwordModalOpen.value = true
+  passwordError.value = ''
+}
+
+onMounted(openPasswordModalFromQuery)
+watch(() => route.query.unlock, openPasswordModalFromQuery)
 
 // Set to true to show the "Previous versions" folder card on the index (e.g. for dev/review)
 const showPreviousVersionsFolder = false
@@ -236,46 +294,71 @@ function editedAgoFor(version) {
                   </div>
                 </div>
               </article>
-              <article
-                class="project-card"
-                role="button"
-                tabindex="0"
-                @click="router.push('/courses/v10')"
-                @keydown.enter="router.push('/courses/v10')"
-                @keydown.space.prevent="router.push('/courses/v10')"
-              >
-                <div class="project-card__upper">
-                  <div class="project-card__pattern" aria-hidden="true" />
-                  <div class="project-card__meta">
-                    <div class="project-card__head">
-                      <img
-                        src="/icons/book-mark-aqua.png"
-                        alt=""
-                        class="project-card__icon"
-                        width="32"
-                        height="32"
-                      />
-                      <h2 class="project-card__title">Chapter Page V10</h2>
-                    </div>
-                  </div>
-                </div>
-                <div class="project-card__lower">
-                  <div class="project-card__footer-left">
-                    <span class="project-card__footer-icon" aria-hidden="true" title="Open">
-                      <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h14" />
-                        <path d="M12 5l7 7-7 7" />
-                      </svg>
-                    </span>
-                    <div class="project-card__footer-labels">
-                      <span class="project-card__footer-title">Chapter Page V10</span>
-                      <span class="project-card__footer-time">{{ editedAgoFor('v10') }}</span>
-                    </div>
-                  </div>
-                </div>
-              </article>
             </div>
           </template>
+        </section>
+
+        <!-- Password-protected projects (see src/lib/protectedProjects.js) -->
+        <section class="index-section">
+          <h2 class="index-section__title">Password protected</h2>
+          <div class="project-cards">
+            <article
+              v-for="entry in PASSWORD_PROJECTS"
+              :key="entry.id"
+              class="project-card"
+              role="button"
+              tabindex="0"
+              :aria-label="
+                isUnlocked(entry.id)
+                  ? entry.title
+                  : `${entry.title}, password required`
+              "
+              @click="requestPasswordProject(entry)"
+              @keydown.enter="requestPasswordProject(entry)"
+              @keydown.space.prevent="requestPasswordProject(entry)"
+            >
+              <div class="project-card__upper">
+                <div class="project-card__pattern" aria-hidden="true" />
+                <div class="project-card__meta">
+                  <div class="project-card__head">
+                    <img
+                      src="/icons/book-mark-aqua.png"
+                      alt=""
+                      class="project-card__icon"
+                      width="32"
+                      height="32"
+                    />
+                    <h2 class="project-card__title">{{ entry.title }}</h2>
+                    <span
+                      v-if="!isUnlocked(entry.id)"
+                      class="project-card__lock"
+                      aria-hidden="true"
+                      title="Password required"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="project-card__lower">
+                <div class="project-card__footer-left">
+                  <span class="project-card__footer-icon" aria-hidden="true" title="Open">
+                    <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="M12 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                  <div class="project-card__footer-labels">
+                    <span class="project-card__footer-title">{{ entry.title }}</span>
+                    <span class="project-card__footer-time">{{ editedAgoFor(entry.versionKey) }}</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
         </section>
 
         <!-- Opening Courses section -->
@@ -399,49 +482,13 @@ function editedAgoFor(version) {
           </div>
         </section>
 
-        <section class="index-section">
-          <h2 class="index-section__title">New page</h2>
-          <div class="project-cards">
-            <article
-              class="project-card"
-              role="button"
-              tabindex="0"
-              @click="router.push('/empty')"
-              @keydown.enter="router.push('/empty')"
-              @keydown.space.prevent="router.push('/empty')"
-            >
-              <div class="project-card__upper">
-                <div class="project-card__pattern" aria-hidden="true" />
-                <div class="project-card__meta">
-                  <div class="project-card__head">
-                    <img
-                      src="/icons/book-mark-aqua.png"
-                      alt=""
-                      class="project-card__icon"
-                      width="32"
-                      height="32"
-                    />
-                    <h2 class="project-card__title">Empty page</h2>
-                  </div>
-                </div>
-              </div>
-              <div class="project-card__lower">
-                <div class="project-card__footer-left">
-                  <span class="project-card__footer-icon" aria-hidden="true" title="Open">
-                    <svg class="project-card__footer-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M5 12h14" />
-                      <path d="M12 5l7 7-7 7" />
-                    </svg>
-                  </span>
-                  <div class="project-card__footer-labels">
-                    <span class="project-card__footer-title">Empty page</span>
-                    <span class="project-card__footer-time">{{ editedAgoFor('empty') }}</span>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
+        <ProjectPasswordModal
+          :open="passwordModalOpen"
+          :project-title="passwordTarget?.title ?? ''"
+          :error="passwordError"
+          @close="closePasswordModal"
+          @submit="onPasswordSubmit"
+        />
 
       </main>
     </div>
@@ -618,6 +665,23 @@ function editedAgoFor(version) {
   display: flex;
   align-items: center;
   gap: var(--space-12, 12px);
+  min-width: 0;
+}
+.project-card__head .project-card__title {
+  flex: 1;
+  min-width: 0;
+}
+.project-card__lock {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  color: rgba(255, 255, 255, 0.88);
+}
+.project-card__lock svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .project-card__icon {
   flex-shrink: 0;

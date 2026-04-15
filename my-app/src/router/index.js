@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isUnlocked } from '../lib/protectedProjects.js'
 
 // History mode so path-based URLs work on GitHub Pages (404.html serves the app for all paths).
 // Locally: base '/'. Production: base '/temp_project/' so URLs are e.g. .../temp_project/courses/v8
@@ -6,7 +7,12 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'index', component: () => import('../views/Index.vue') },
-    { path: '/empty', name: 'empty', component: () => import('../views/EmptyPage.vue') },
+    {
+      path: '/empty',
+      name: 'empty',
+      meta: { protectedProjectId: 'empty-page' },
+      component: () => import('../views/EmptyPage.vue'),
+    },
     { path: '/courses', name: 'courses', component: () => import('../views/Courses.vue') },
     { path: '/courses/v2', name: 'courses-v2', component: () => import('../views/CoursesV2.vue') },
     { path: '/courses/v2.2', name: 'courses-v2-2', component: () => import('../views/CoursesV22.vue') },
@@ -35,12 +41,23 @@ const router = createRouter({
     { path: '/learn/opening-courses-oc/:courseId', name: 'learn-opening-courses-oc-course', component: () => import('../views/CoursesV9OC.vue') },
     { path: '/learn/sicilian-defense', name: 'learn-sicilian-defense', component: () => import('../views/CoursesV9OC.vue') },
     { path: '/courses/v3', name: 'courses-v3', component: () => import('../views/CoursesV3.vue') },
-    { path: '/courses/v10', name: 'courses-v10', component: () => import('../views/CoursesV10.vue') },
+    {
+      path: '/courses/v10',
+      name: 'courses-v10',
+      meta: { protectedProjectId: 'chapter-v10' },
+      component: () => import('../views/CoursesV10.vue'),
+    },
   ],
 })
 
-// Fix malformed URLs: encoded slashes (#/%2Flearn%2F...) or double slash (#//learn/...) → redirect to correct path
-router.beforeEach((to, _from, next) => {
+// Password-gated routes: redirect to home with ?unlock= so Index can show the modal
+router.beforeEach((to, from, next) => {
+  const pid = to.meta?.protectedProjectId
+  if (pid && !isUnlocked(pid)) {
+    next({ path: '/', query: { ...to.query, unlock: pid } })
+    return
+  }
+  // Fix malformed URLs: encoded slashes (#/%2Flearn%2F...) or double slash (#//learn/...) → redirect to correct path
   let path = to.fullPath
   // Decode encoded slashes
   if (path.includes('%2F') || path.includes('%2f')) {
