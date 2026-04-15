@@ -6658,7 +6658,6 @@ onUnmounted(() => {
                   <div
                     ref="courseTabsWrapRef"
                     class="course-tabs-wrap course-tabs-wrap--scroll-linked course-tabs-wrap--v9-stack course-tabs-wrap--v10-in-flow"
-                    :class="{ 'course-tabs-wrap--v10': true }"
                   >
                     <cc-tab-group variant="secondary" class="course-tabs-ds" role="tablist" aria-label="Course">
                       <cc-tab-item
@@ -6674,7 +6673,6 @@ onUnmounted(() => {
                         @click="courseTabsActive = 'stats'"
                       />
                     </cc-tab-group>
-                    <span v-show="courseTabsActive === 'content'" class="v10-version-badge" data-version="v10" aria-hidden="true">V10</span>
                   </div>
                 </div>
                 <div ref="courseCardV9Ref" class="courses-content--v9-course-card-wrap courses-content--v9-course-card-wrap--v10-in-flow">
@@ -14401,24 +14399,6 @@ body {
   top: 0 !important;
   margin-top: 0 !important;
   transform: none !important;
-}
-/* Visible "V10" badge so you can confirm you're on the V10 route (URL must be /courses/v10) */
-.course-tabs-wrap--v10 {
-  position: relative;
-}
-.v10-version-badge {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(139, 195, 74, 0.25);
-  color: #8bc34a;
-  border: 1px solid rgba(139, 195, 74, 0.5);
-  pointer-events: none;
 }
 .courses-content--v10 .chapter-v2 {
   background: var(--color-bg-primary, #312e2b) !important;
