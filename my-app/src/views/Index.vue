@@ -420,8 +420,8 @@ function editedAgoFor(version) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 17.6px;
+  height: 17.6px;
   color: rgba(255, 255, 255, 0.75);
 }
 .folder-card__count--lock svg {

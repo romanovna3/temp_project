@@ -6670,7 +6670,6 @@ onUnmounted(() => {
                       <cc-tab-item
                         id="stats"
                         :label="courseTabStatsLabel"
-                        :badge="scenarioPreset !== 'nothing-to-practice' && scenarioPreset !== 'new-course' ? String(scenarioEffectivePracticeCount) : undefined"
                         :isActive="courseTabsActive === 'stats'"
                         @click="courseTabsActive = 'stats'"
                       />
