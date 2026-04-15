@@ -14410,13 +14410,13 @@ body {
   background: #272522 !important;
 }
 .courses-content--v10 .v10-chapters-collapsed .chapter-v2:not(.chapter-v2--v10-selected):hover {
-  background: inherit !important;
+  background: #312e2b !important; /* Brighter than #272522 on hover — match V9 */
 }
 .courses-content--v10 .v10-chapters-collapsed .v23-section-timeline-wrap__line {
   display: none !important;
 }
 .courses-content--v10:not(.v10-chapters-collapsed) .chapter-v2:not(.chapter-v2--v10-selected):hover {
-  background: inherit !important;
+  background: linear-gradient(var(--color-bg-subtle, rgba(255, 255, 255, 0.04)), var(--color-bg-subtle, rgba(255, 255, 255, 0.04))), var(--color-bg-primary, #312e2b) !important;
 }
 .courses-content--v10 .chapter-v2:hover .chapter-title,
 .courses-content--v10 .chapter-v2:hover .chapter-count {
@@ -14467,68 +14467,6 @@ body {
 }
 .courses-content--v10 .chapter-chevron-v10--expanded {
   transform: rotate(180deg);
-}
-.courses-content--v10 .chapter-progress-name {
-  gap: 4px !important;
-}
-.courses-content--v10 .chapter-content {
-  gap: 6px !important;
-}
-
-/* V10: specific styles */
-.courses-content--v10 .chapter-v2 {
-  background: var(--color-bg-primary, #312e2b) !important;
-}
-.courses-content--v10 .chapter-v2--no-accordion {
-  cursor: pointer;
-}
-.courses-content--v10 .v10-chapters-collapsed .chapter-v2 {
-  background: #272522 !important;
-}
-.courses-content--v10 .v10-chapters-collapsed .chapter-v2:not(.chapter-v2--v10-selected):hover {
-  background: inherit !important;
-}
-.courses-content--v10 .v10-chapters-collapsed .v23-section-timeline-wrap__line {
-  display: none !important;
-}
-.courses-content--v10:not(.v10-chapters-collapsed) .chapter-v2:not(.chapter-v2--v10-selected):hover {
-  background: inherit !important;
-}
-.courses-content--v10 .chapter-v2:hover .chapter-title,
-.courses-content--v10 .chapter-v2:hover .chapter-count {
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-.courses-content--v10 .chapter-v2--v10-selected {
-  background: linear-gradient(var(--color-bg-subtlest, rgba(255, 255, 255, 0.02)), var(--color-bg-subtlest, rgba(255, 255, 255, 0.02))), var(--color-bg-primary, #312e2b) !important;
-  color: var(--color-text-primary, rgba(255, 255, 255, 0.85)) !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 10;
-  contain: none !important;
-  will-change: auto !important;
-}
-.courses-content--v10 .chapter-v2--v10-selected .chapter-title,
-.courses-content--v10 .chapter-v2--v10-selected .chapter-count {
-  color: var(--color-text-primary, rgba(255, 255, 255, 0.85)) !important;
-}
-.courses-content--v10 .chapter-v2--v10-selected .chapter-chevron-v10 {
-  color: rgba(255, 255, 255, 0.3) !important;
-}
-.courses-content--v10 .chapter-v2--v10-selected:hover {
-  background: linear-gradient(var(--color-bg-subtlest, rgba(255, 255, 255, 0.02)), var(--color-bg-subtlest, rgba(255, 255, 255, 0.02))), var(--color-bg-primary, #312e2b) !important;
-}
-.courses-content--v10 .chapter-v2--v10-selected:hover .chapter-title,
-.courses-content--v10 .chapter-v2--v10-selected:hover .chapter-count {
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-
-.courses-content--v10 .chapter-v10-left-chevron {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
 }
 .courses-content--v10 .chapter-chevron-v9 {
   color: rgba(255, 255, 255, 0.3) !important;
@@ -14537,18 +14475,15 @@ body {
   font-size: 16px !important;
   transition: transform 0.2s ease;
 }
-/* Chevron direction bound to allChaptersExpanded in template: closed = down, open = up */
-.courses-content--v10 .chapter-chevron-v10 {
-  transform: none;
-}
-.courses-content--v10 .chapter-chevron-v10--expanded {
-  transform: rotate(180deg);
-}
 .courses-content--v10 .chapter-progress-name {
   gap: 4px !important;
 }
 .courses-content--v10 .chapter-content {
   gap: 6px !important;
+}
+/* V10: match V9 — line card title on hover (Learn + Practice line lists) */
+.courses-content--v10 .chapter-line-card:hover .opening-course-card__title {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 </style>
