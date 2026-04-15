@@ -7,6 +7,7 @@ import {
   isUnlocked,
   tryUnlockWithPassword,
   getPasswordProjectById,
+  clearProjectUnlock,
 } from '../lib/protectedProjects.js'
 
 const router = useRouter()
@@ -82,6 +83,9 @@ function openPreviousVersionsFolder() {
 }
 
 function closeFolderView() {
+  if (activeFolder.value === 'previous') {
+    clearProjectUnlock(FOLDER_PREVIOUS_VERSIONS_ID)
+  }
   activeFolder.value = null
 }
 
@@ -122,7 +126,13 @@ function openPasswordModalFromQuery() {
   passwordError.value = ''
 }
 
-onMounted(openPasswordModalFromQuery)
+function onIndexMounted() {
+  // Fresh lock each visit to home: opening Older Versions always asks for the password again.
+  clearProjectUnlock(FOLDER_PREVIOUS_VERSIONS_ID)
+  openPasswordModalFromQuery()
+}
+
+onMounted(onIndexMounted)
 watch(() => route.query.unlock, openPasswordModalFromQuery)
 
 // Build time injected by Vite at build time (replaced at build)

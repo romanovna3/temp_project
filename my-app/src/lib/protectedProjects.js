@@ -30,6 +30,11 @@ export function unlockProject(projectId) {
   sessionStorage.setItem(storageKey(projectId), '1')
 }
 
+export function clearProjectUnlock(projectId) {
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.removeItem(storageKey(projectId))
+}
+
 export function tryUnlockWithPassword(projectId, password) {
   const entry = PASSWORD_PROJECTS.find((p) => p.id === projectId)
   if (!entry) return false
