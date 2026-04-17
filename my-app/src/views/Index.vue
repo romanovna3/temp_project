@@ -31,6 +31,10 @@ const openingFolderItems = [
   { path: '/courses/opening-courses-v3', title: 'Opening Courses V3', versionKey: 'openingV3' },
 ]
 
+const moveTrainerFolderItems = [
+  { path: '/move-trainer/game-review', title: 'Game review layout', versionKey: 'moveTrainerGr' },
+]
+
 /** Same archive list as before, plus Empty page (password-gated folder) */
 const previousFolderItems = [
   { path: '/courses', title: 'Chapter Page V1', versionKey: 'v1' },
@@ -48,6 +52,8 @@ const currentFolderItems = computed(() => {
       return chapterFolderItems
     case 'opening':
       return openingFolderItems
+    case 'moveTrainer':
+      return moveTrainerFolderItems
     case 'previous':
       return previousFolderItems
     default:
@@ -59,6 +65,7 @@ const currentFolderTitle = computed(() => {
   const titles = {
     chapter: 'Chapter page',
     opening: 'Opening Courses',
+    moveTrainer: 'MoveTrainer',
     previous: 'Older Versions',
   }
   return titles[activeFolder.value] ?? ''
@@ -70,6 +77,10 @@ function openFolderChapter() {
 
 function openFolderOpening() {
   activeFolder.value = 'opening'
+}
+
+function openFolderMoveTrainer() {
+  activeFolder.value = 'moveTrainer'
 }
 
 function openPreviousVersionsFolder() {
@@ -159,6 +170,7 @@ const versionLastEdited = {
   openingV2: buildTime,
   openingV3: buildTime,
   empty: buildTime,
+  moveTrainerGr: buildTime,
 }
 
 function getEditedAgo(isoString) {
@@ -238,6 +250,30 @@ function editedAgoFor(version) {
                 </span>
                 <span class="folder-card__label">Opening Courses</span>
                 <span class="folder-card__count">{{ openingFolderItems.length }}</span>
+              </article>
+
+              <article
+                class="folder-card"
+                role="button"
+                tabindex="0"
+                aria-label="MoveTrainer folder, 1 page"
+                @click="openFolderMoveTrainer"
+                @keydown.enter.prevent="openFolderMoveTrainer"
+                @keydown.space.prevent="openFolderMoveTrainer"
+              >
+                <span class="folder-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M3 6a2 2 0 0 1 2-2h3.5a1 1 0 0 1 .7.3l1.6 1.6a1 1 0 0 0 .7.3H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"
+                      fill="#E8A84A"
+                      stroke="#D4953A"
+                      stroke-width="1.2"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span class="folder-card__label">MoveTrainer</span>
+                <span class="folder-card__count">{{ moveTrainerFolderItems.length }}</span>
               </article>
 
               <article

@@ -8,6 +8,11 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'index', component: () => import('../views/Index.vue') },
     {
+      path: '/move-trainer/game-review',
+      name: 'move-trainer-game-review',
+      component: () => import('../views/move-trainer/GameReviewLayoutPage.vue'),
+    },
+    {
       path: '/empty',
       name: 'empty',
       meta: { protectedProjectId: 'folder-previous-versions' },
