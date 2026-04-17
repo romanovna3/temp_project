@@ -1,24 +1,66 @@
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { CcButton, CcIcon, CcSidebarHeader } from '@chesscom/design-system'
 import CoachBubble from './components/CoachBubble.vue'
 import MoveList from './components/MoveList.vue'
+import EvalGraph from './components/EvalGraph.vue'
+import OverviewPanel from './components/OverviewPanel.vue'
 import { MOVE_CLASSIFICATIONS } from './data/classifications.js'
 import { SAMPLE_GAME } from './data/gameData.js'
 
-// #region agent log
-fetch('http://127.0.0.1:7249/ingest/fd793dea-b233-4457-aa9c-fda6b0d9d190',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee0b0a'},body:JSON.stringify({sessionId:'ee0b0a',location:'App.vue:setup',message:'App.vue setup reached',data:{hasCcSidebarHeader:typeof CcSidebarHeader,hasCcButton:typeof CcButton,hasMoveList:typeof MoveList,hasCoachBubble:typeof CoachBubble,hasSampleGame:!!SAMPLE_GAME,sampleGameMoves:SAMPLE_GAME?.moves?.length,hasMoveClassifications:!!MOVE_CLASSIFICATIONS},timestamp:Date.now(),hypothesisId:'H-A,H-B'})}).catch(()=>{});
-// #endregion
+// ============================================
+// FEATURE FLAGS
+// ============================================
+function readFlagsFromURL() {
+  const params = new URLSearchParams(window.location.search)
+  return {
+    tooltipAppears: params.get('ff_tooltip') === '1',
+    highlightBestAndWorst: params.get('ff_highlight') === '1',
+  }
+}
+
+const featureFlags = ref(readFlagsFromURL())
+const flagDrawerOpen = ref(false)
+
+watch(featureFlags, (flags) => {
+  const params = new URLSearchParams(window.location.search)
+  for (const [key, param] of [['tooltipAppears', 'ff_tooltip'], ['highlightBestAndWorst', 'ff_highlight']]) {
+    if (flags[key]) params.set(param, '1')
+    else params.delete(param)
+  }
+  const qs = params.toString()
+  const url = window.location.pathname + (qs ? `?${qs}` : '')
+  window.history.replaceState(null, '', url)
+}, { deep: true })
+
+// ============================================
+// SCREEN STATE
+// ============================================
+const currentScreen = ref('overview')
+const isOverview = computed(() => currentScreen.value === 'overview')
+const isReview = computed(() => currentScreen.value === 'review')
+
+function startReview() {
+  currentScreen.value = 'review'
+  currentPly.value = 1
+}
+
+function goToReviewPly(ply) {
+  currentScreen.value = 'review'
+  currentPly.value = ply
+}
+
+function goBackToOverview() {
+  currentScreen.value = 'overview'
+  currentPly.value = 0
+}
+
 
 // ============================================
 // BOARD
 // ============================================
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 const ranks = [8, 7, 6, 5, 4, 3, 2, 1]
-
-const INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-
-const pieces = ref([])
 
 const parseFEN = (fen) => {
   const pieceMap = {
@@ -46,8 +88,6 @@ const parseFEN = (fen) => {
   return result
 }
 
-pieces.value = parseFEN(INITIAL_FEN)
-
 const squares = computed(() => {
   const result = []
   for (let rank of ranks) {
@@ -64,12 +104,59 @@ const isLightSquare = (square) => {
   return (fileIndex + rankIndex) % 2 === 1
 }
 
-const getPieceOnSquare = (square) => {
-  return pieces.value.find(p => p.square === square)
-}
-
 const getPieceImage = (piece) => {
   return `https://www.chess.com/chess-themes/pieces/neo/300/${piece.type}.png`
+}
+
+// ============================================
+// GAME DATA & NAVIGATION
+// ============================================
+const gameMoves = ref(SAMPLE_GAME.moves)
+const gameResult = ref(SAMPLE_GAME.result)
+
+const allPlies = computed(() => {
+  const plies = []
+  for (const move of gameMoves.value) {
+    if (move.white) plies.push({ ...move.white, moveNum: move.num, color: 'white' })
+    if (move.black) plies.push({ ...move.black, moveNum: move.num, color: 'black' })
+  }
+  return plies
+})
+
+const totalPlies = computed(() => allPlies.value.length)
+const currentPly = ref(0)
+
+const classificationCounts = computed(() => {
+  const white = {}
+  const black = {}
+  for (const move of gameMoves.value) {
+    if (move.white?.classification) white[move.white.classification] = (white[move.white.classification] || 0) + 1
+    if (move.black?.classification) black[move.black.classification] = (black[move.black.classification] || 0) + 1
+  }
+  return { white, black }
+})
+
+function goToStart() { currentPly.value = 0 }
+function goBack() { currentPly.value = Math.max(0, currentPly.value - 1) }
+function goForward() { currentPly.value = Math.min(totalPlies.value, currentPly.value + 1) }
+function goToEnd() { currentPly.value = totalPlies.value }
+function goToPly(index) { currentPly.value = Math.max(0, Math.min(totalPlies.value, index)) }
+
+const atStart = computed(() => currentPly.value === 0)
+const atEnd = computed(() => currentPly.value === totalPlies.value)
+
+// ============================================
+// BOARD ← driven by current ply
+// ============================================
+const currentFen = computed(() => {
+  if (currentPly.value === 0) return SAMPLE_GAME.initialFen
+  return allPlies.value[currentPly.value - 1].fen
+})
+
+const pieces = computed(() => parseFEN(currentFen.value))
+
+const getPieceOnSquare = (square) => {
+  return pieces.value.find(p => p.square === square)
 }
 
 // ============================================
@@ -92,6 +179,14 @@ const panelStyle = computed(() => ({
   width: `${panelWidth.value}px`,
   '--coach-avatar-size': panelBreakpoint.value === 'sm' ? '64px'
     : panelBreakpoint.value === 'md' ? '80px' : '96px',
+  '--coach-container-height': panelBreakpoint.value === 'sm' ? '156px'
+    : panelBreakpoint.value === 'md' ? '136px' : '116px',
+  '--coach-tip-top': panelBreakpoint.value === 'sm' ? '30px'
+    : panelBreakpoint.value === 'md' ? '36px' : '50px',
+  '--coach-tip-bottom': panelBreakpoint.value === 'sm' ? '12px'
+    : panelBreakpoint.value === 'md' ? '22px' : '24px',
+  '--bubble-max-height': panelBreakpoint.value === 'sm' ? '156px'
+    : panelBreakpoint.value === 'md' ? '136px' : '116px',
 }))
 
 let isResizing = false
@@ -129,24 +224,53 @@ onUnmounted(() => {
 })
 
 // ============================================
-// COACH STATE (Skills-style API)
+// COACH STATE ← driven by current ply
 // ============================================
-const coachHeaderIcon = ref(MOVE_CLASSIFICATIONS.great.icon)
-const coachHeaderText = ref('xf7# is a great move')
-const coachEvalText = ref('1-0')
-const coachWhiteAdvantage = ref(true)
-const coachMessage = ref('Checkmate is always the best move! Lorem ipsum dolor Lorem ipsum dolor')
+const currentPlyData = computed(() =>
+  currentPly.value === 0 ? null : allPlies.value[currentPly.value - 1]
+)
 
-const showCoachBubble = ref(true)
-function onCoachBubbleLeave() {
-  showCoachBubble.value = true
+const coachHeaderIcon = computed(() => {
+  const ply = currentPlyData.value
+  if (!ply) return ''
+  return MOVE_CLASSIFICATIONS[ply.classification]?.icon || ''
+})
+
+const coachHeaderText = computed(() => {
+  const ply = currentPlyData.value
+  if (!ply) return ''
+  const cls = MOVE_CLASSIFICATIONS[ply.classification]
+  const moveName = `${ply.piece || ''}${ply.san}`
+  if (!cls) return moveName
+  if (panelBreakpoint.value === 'lg') {
+    return `${moveName} is a ${cls.label.toLowerCase()} move`
+  }
+  return cls.label
+})
+
+const coachEvalText = computed(() => {
+  const ply = currentPlyData.value
+  return ply?.eval || ''
+})
+
+const coachWhiteAdvantage = computed(() => {
+  const ev = coachEvalText.value
+  if (!ev) return true
+  return !ev.startsWith('-')
+})
+
+const coachMessage = computed(() => {
+  if (isOverview.value) return 'Welcome to Game Review!'
+  const ply = currentPlyData.value
+  return ply?.coachText || 'Review any move to see coach analysis.'
+})
+
+const bubbleStartPosition = computed(() => !coachHeaderText.value)
+
+const moveListScrolled = ref(false)
+function onMoveListScroll(e) {
+  moveListScrolled.value = e.target.scrollTop > 0
 }
-
-// ============================================
-// GAME DATA
-// ============================================
-const gameMoves = ref(SAMPLE_GAME.moves)
-const gameResult = ref(SAMPLE_GAME.result)
 </script>
 
 <template>
@@ -189,15 +313,16 @@ const gameResult = ref(SAMPLE_GAME.result)
       >
         <!-- 1. Sidebar Header -->
         <CcSidebarHeader
+          variant="secondary"
           title="Game Review"
           feature-icon="magnifier-star"
           :has-back-button="true"
-          :end-icon="{ name: 'media-audio-speaker-noise' }"
-          :end-icon-secondary="{ name: 'tool-magnifier-checker-1' }"
+          :end-icon="{ icon: { name: 'media-audio-speaker-noise' } }"
+          :end-icon-secondary="{ icon: { name: 'tool-magnifier-checker-1' } }"
+          @click-start="goBackToOverview"
         />
 
-        <!-- 2. Coach section -->
-        <div class="coach-section">
+        <div class="coach-section" :class="{ 'overview-coach': isOverview }">
           <CoachBubble
             :header-icon="coachHeaderIcon"
             :header-text="coachHeaderText"
@@ -205,44 +330,101 @@ const gameResult = ref(SAMPLE_GAME.result)
             :white-advantage="coachWhiteAdvantage"
             :message="coachMessage"
             :show-tip="true"
-            :visible="showCoachBubble"
-            @after-leave="onCoachBubbleLeave"
+            :start-position="bubbleStartPosition"
+            :typewriter="isOverview"
           />
         </div>
 
-        <!-- 3. Share / Next buttons -->
-        <div class="button-pair top-buttons">
-          <CcButton variant="secondary" :icon="{ name: 'graph-nodes-share' }">Share</CcButton>
-          <CcButton variant="primary" :icon="{ name: 'arrow-line-right' }">Next</CcButton>
-        </div>
-
-        <!-- 4. Scrollable move list area -->
-        <div class="move-list-scroll">
-          <MoveList :moves="gameMoves" :result="gameResult" />
-
-          <!-- Highlights / Time buttons at bottom of scroll -->
-          <div class="button-pair bottom-buttons">
-            <CcButton variant="secondary" :icon="{ name: 'arrow-line-left' }">Highlights</CcButton>
-            <CcButton variant="secondary" :icon="{ name: 'game-time-rapid' }">10 min</CcButton>
+        <div class="screen-content">
+          <div v-if="isReview" class="button-pair top-buttons" :class="{ 'has-scroll-shadow': moveListScrolled }">
+            <CcButton variant="secondary" :icon="{ name: 'graph-nodes-share' }">Share</CcButton>
+            <CcButton variant="primary" :icon="{ name: 'arrow-line-right' }">Next</CcButton>
           </div>
-        </div>
+          <!-- OVERVIEW SCREEN -->
+          <OverviewPanel
+            v-if="isOverview"
+            :players="SAMPLE_GAME.players"
+            :time-control="SAMPLE_GAME.timeControl"
+            :advanced-stats="SAMPLE_GAME.advancedStats"
+            :classification-counts="classificationCounts"
+            :plies="allPlies"
+            :highlight-best-worst="featureFlags.highlightBestAndWorst"
+            @start-review="startReview"
+            @go-to-ply="goToReviewPly"
+          />
 
-        <!-- 5. Evaluation graph placeholder -->
-        <div class="eval-graph-section">
-          <div class="eval-graph-placeholder"></div>
-        </div>
+          <!-- REVIEW SCREEN -->
+          <template v-if="isReview">
+            <!-- Scrollable move list area -->
+            <div class="move-list-scroll" @scroll="onMoveListScroll">
+              <MoveList
+                :moves="gameMoves"
+                :result="gameResult"
+                :active-ply="currentPly"
+                :auto-tooltip="featureFlags.tooltipAppears"
+                @select-ply="goToPly"
+              />
 
-        <!-- 6. Move navigation controls -->
-        <div class="controls-bar">
-          <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-start' }" />
-          <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-left' }" />
-          <CcButton variant="secondary" size="large" :icon="{ name: 'media-control-play' }" />
-          <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-right' }" :disabled="true" />
-          <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-end' }" :disabled="true" />
+              <!-- Highlights / Time buttons at bottom of scroll -->
+              <div class="button-pair bottom-buttons">
+                <CcButton variant="secondary" :icon="{ name: 'arrow-line-left' }">Highlights</CcButton>
+                <CcButton variant="secondary" :icon="{ name: 'game-time-rapid' }">10 min</CcButton>
+              </div>
+            </div>
+
+            <!-- Evaluation graph -->
+            <div class="eval-graph-section">
+              <EvalGraph
+                :plies="allPlies"
+                :active-ply="currentPly"
+                :highlight-best-worst="featureFlags.highlightBestAndWorst"
+                :limit-one-per-type="true"
+                @select-ply="goToPly"
+              />
+            </div>
+
+            <!-- Move navigation controls -->
+            <div class="controls-bar">
+              <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-start' }" :disabled="atStart" @click="goToStart" />
+              <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-left' }" :disabled="atStart" @click="goBack" />
+              <CcButton variant="secondary" size="large" :icon="{ name: 'media-control-play' }" />
+              <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-right' }" :disabled="atEnd" @click="goForward" />
+              <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-end' }" :disabled="atEnd" @click="goToEnd" />
+            </div>
+          </template>
         </div>
 
         <!-- Resize handle (right edge) -->
         <div class="resize-handle" @mousedown="onResizeStart"></div>
+      </div>
+    </div>
+
+    <!-- Feature flag configurator (prototype-awards style) -->
+    <div class="feature-flags" :class="{ 'is-open': flagDrawerOpen }">
+      <div class="feature-flags-panel">
+        <div class="feature-flag-group">
+          <div class="feature-flag-row is-toggle-row" @click="featureFlags.tooltipAppears = !featureFlags.tooltipAppears">
+            <div class="feature-flag-label">Tooltip Appears</div>
+            <label class="feature-switch" @click.stop>
+              <input type="checkbox" v-model="featureFlags.tooltipAppears">
+              <span class="feature-switch-ui"></span>
+            </label>
+          </div>
+          <div class="feature-flag-row is-toggle-row" @click="featureFlags.highlightBestAndWorst = !featureFlags.highlightBestAndWorst">
+            <div class="feature-flag-label">Highlight Best &amp; Worst</div>
+            <label class="feature-switch" @click.stop>
+              <input type="checkbox" v-model="featureFlags.highlightBestAndWorst">
+              <span class="feature-switch-ui"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="feature-flags-footer">
+        <button class="feature-flags-toggle" type="button" @click="flagDrawerOpen = !flagDrawerOpen">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-flags-cog">
+            <path d="M14 17H5" /><path d="M19 7h-9" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" />
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -401,12 +583,30 @@ body {
 
 /* Coach section */
 .coach-section {
-  padding: var(--space-16, 16px) var(--space-24, 24px) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8, 8px);
+  padding: var(--space-24, 24px) var(--space-24, 24px) 0;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  transition: box-shadow 150ms ease;
 }
 
-.panel-lg .coach-section {
+.coach-section.overview-coach {
+  padding-bottom: var(--space-8, 8px);
+}
+
+.coach-section.overview-coach :deep(.coach-container) {
+  height: auto;
+}
+
+.panel-sm .coach-section {
   padding: var(--space-16, 16px) var(--space-16, 16px) 0;
+}
+
+.panel-sm .coach-section.overview-coach {
+  padding-bottom: var(--space-8, 8px);
 }
 
 /* Button pairs */
@@ -417,7 +617,7 @@ body {
   flex-shrink: 0;
 }
 
-.panel-lg .button-pair {
+.panel-sm .button-pair {
   padding: 0 var(--space-16, 16px);
 }
 
@@ -427,13 +627,36 @@ body {
 }
 
 .top-buttons {
-  padding-top: var(--space-8, 8px);
-  padding-bottom: 0;
+  padding: var(--space-8, 8px) var(--space-24, 24px) 0 !important;
+  position: relative;
+}
+
+.panel-sm .top-buttons {
+  padding: var(--space-8, 8px) var(--space-16, 16px) 0 !important;
+}
+
+.top-buttons::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.top-buttons.has-scroll-shadow::after {
+  opacity: 1;
 }
 
 .bottom-buttons {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0 !important;
   flex-shrink: 0;
 }
 
@@ -444,50 +667,224 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: var(--space-24, 24px) 0;
+  padding: var(--space-8, 8px) var(--space-24, 24px) var(--space-24, 24px);
+}
+
+.panel-sm .move-list-scroll {
+  padding: var(--space-8, 8px) var(--space-16, 16px) var(--space-24, 24px);
 }
 
 /* Eval graph */
 .eval-graph-section {
   background: #272522;
-  padding: var(--space-8, 8px) var(--space-24, 24px) var(--space-4, 4px);
+  padding: var(--space-8, 8px) var(--space-24, 24px) var(--space-8, 8px);
   flex-shrink: 0;
 }
 
-.panel-lg .eval-graph-section {
-  padding: var(--space-8, 8px) var(--space-16, 16px) var(--space-4, 4px);
+.panel-sm .eval-graph-section {
+  padding: var(--space-8, 8px) var(--space-16, 16px) var(--space-8, 8px);
 }
 
-.eval-graph-placeholder {
-  height: 80px;
-  border-radius: var(--radius-lg, 8px);
-  overflow: clip;
-  background: linear-gradient(
-    to right,
-    rgba(255, 255, 255, 0.06) 0%,
-    rgba(255, 255, 255, 0.03) 30%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 70%,
-    rgba(255, 255, 255, 0.06) 100%
-  );
-}
 
 /* Move navigation controls */
 .controls-bar {
   display: flex;
   gap: var(--space-8, 8px);
-  padding: var(--space-16, 16px) var(--space-24, 24px);
+  padding: var(--space-8, 8px) var(--space-24, 24px) var(--space-16, 16px);
   background: #21201d;
   flex-shrink: 0;
   border-radius: 0 0 var(--radius-md, 5px) var(--radius-md, 5px);
 }
 
-.panel-lg .controls-bar {
-  padding: var(--space-16, 16px);
+.panel-sm .controls-bar {
+  padding: var(--space-8, 8px) var(--space-16, 16px) var(--space-16, 16px);
 }
 
 .controls-bar > :deep(*) {
   flex: 1;
   min-width: 0;
+}
+
+/* Remove move-row horizontal padding — container handles it */
+:deep(.move-row) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Overview responsive overrides */
+.panel-sm :deep(.overview-scroll) {
+  padding-left: var(--space-16, 16px);
+  padding-right: var(--space-16, 16px);
+}
+
+.panel-sm :deep(.overview-bottom) {
+  padding-left: var(--space-16, 16px);
+  padding-right: var(--space-16, 16px);
+}
+
+.screen-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Feature flag configurator (prototype-awards style) */
+.feature-flags {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9998;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  transform-origin: bottom right;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: width 0.22s ease, height 0.22s ease, border-radius 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.feature-flags.is-open {
+  width: 220px;
+  height: 145px;
+}
+
+.feature-flags-toggle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.feature-flags-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  min-height: 52px;
+  background: rgba(255, 255, 255, 0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feature-flags:not(.is-open) .feature-flags-footer {
+  background: transparent;
+  border-top-color: transparent;
+}
+
+.feature-flags-cog {
+  width: 20px;
+  height: 20px;
+}
+
+.feature-flags-panel {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 1;
+  width: 220px;
+  padding: 12px 0 64px;
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: bottom right;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.feature-flags.is-open .feature-flags-panel {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.feature-flag-group {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feature-flag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feature-flag-row.is-toggle-row {
+  cursor: pointer;
+}
+
+.feature-flag-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feature-switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.feature-switch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.feature-switch-ui {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  width: 30px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  transition: background 0.18s ease;
+}
+
+.feature-switch-ui::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.18s ease;
+}
+
+.feature-switch input:checked + .feature-switch-ui {
+  background: rgba(129, 182, 76, 0.8);
+}
+
+.feature-switch input:checked + .feature-switch-ui::after {
+  transform: translateX(16px);
 }
 </style>

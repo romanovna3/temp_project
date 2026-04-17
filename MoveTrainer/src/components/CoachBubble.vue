@@ -1,6 +1,7 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, nextTick } from 'vue'
 import { CcIcon } from '@chesscom/design-system'
+import { useTypewriter } from '../composables/useTypewriter.js'
 
 const base = import.meta.env.BASE_URL
 
@@ -8,79 +9,83 @@ const props = defineProps({
   headerIcon: { type: String, default: '' },
   headerText: { type: String, default: '' },
   evalText: { type: String, default: '' },
-  whiteAdvantage: { type: Boolean, default: true }, // true = white advantage (light badge), false = black advantage (orange badge)
+  whiteAdvantage: { type: Boolean, default: true },
   message: { type: String, default: '' },
   showTip: { type: Boolean, default: true },
-  visible: { type: Boolean, default: true },
+  startPosition: { type: Boolean, default: false },
+  typewriter: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['after-leave'])
-
-// Ref for measuring bubble element
 const bubbleRef = ref(null)
 
-// Default to classification-brilliant icon if no icon specified
-const iconName = computed(() => props.headerIcon || 'classification-brilliant')
+const iconName = computed(() => props.headerIcon)
 const avatarSrc = `${base}icons/misc/coach-avatar.svg`
 const tipSrc = `${base}icons/misc/bubble-tip.svg`
 
-// Preserve wrapper height when bubble hides to prevent layout shift
-const preservedHeight = ref(null)
+const contentRef = ref(null)
 
-watch(() => props.visible, (newVal, oldVal) => {
-  // When hiding, capture current height to preserve space (keep max height)
-  if (!newVal && oldVal && bubbleRef.value) {
-    const currentHeight = bubbleRef.value.offsetHeight
-    // Keep the maximum height to prevent shrinkage when shorter content fades out
-    preservedHeight.value = Math.max(currentHeight, preservedHeight.value || 0)
+function updateScrollFades() {
+  const el = contentRef.value
+  const bubble = bubbleRef.value
+  if (!el || !bubble) return
+
+  const isScrollable = el.scrollHeight - el.clientHeight > 1
+  if (!isScrollable) {
+    bubble.style.setProperty('--top-opacity', '0')
+    bubble.style.setProperty('--bottom-opacity', '0')
+    return
   }
+
+  const isAtTop = el.scrollTop === 0
+  const isAtBottom = el.scrollHeight - el.clientHeight <= el.scrollTop + 1
+  bubble.style.setProperty('--top-opacity', isAtTop ? '0' : '1')
+  bubble.style.setProperty('--bottom-opacity', isAtBottom ? '0' : '1')
+}
+
+watch([() => props.message, () => props.headerText], async () => {
+  await nextTick()
+  updateScrollFades()
 })
 
-function onAfterLeave() {
-  emit('after-leave')
-}
+onMounted(() => {
+  nextTick(() => updateScrollFades())
+})
+
+const typewriterResult = props.typewriter
+  ? useTypewriter(() => props.message, { autoStart: true })
+  : null
 </script>
 
 <template>
-  <div class="coach-container">
+  <div class="coach-container" :class="{ 'start-position': startPosition }">
     <!-- Coach Avatar (always visible) -->
     <div class="coach-avatar">
       <img :src="avatarSrc" alt="Coach" />
     </div>
     
-    <!-- Bubble wrapper maintains space even when bubble is hidden -->
-    <div class="bubble-wrapper" :style="preservedHeight ? { minHeight: preservedHeight + 'px' } : {}">
-      <!-- Speech Bubble with transition -->
-      <Transition
-        name="bubble"
-        @after-leave="onAfterLeave"
-      >
-        <div v-if="visible" ref="bubbleRef" class="bubble">
-          <!-- Tip pointing to avatar -->
-          <div v-if="showTip" class="tip">
-            <img :src="tipSrc" alt="" />
+    <div class="bubble-wrapper">
+      <div ref="bubbleRef" class="bubble">
+        <div v-if="showTip" class="tip">
+          <img :src="tipSrc" alt="" />
+        </div>
+        
+        <div ref="contentRef" class="bubble-content" @scroll="updateScrollFades">
+          <div v-if="headerText" class="bubble-header">
+            <div class="classification">
+              <cc-icon v-if="iconName" :name="iconName" variant="color" class="classification-icon" />
+              <span class="classification-text">{{ headerText }}</span>
+            </div>
+            <div v-if="evalText" class="eval-badge" :class="{ 'white-advantage': whiteAdvantage, 'black-advantage': !whiteAdvantage }">
+              <span>{{ evalText }}</span>
+            </div>
           </div>
           
-          <div class="bubble-content">
-            <!-- Header with classification + eval -->
-            <div v-if="headerText" class="bubble-header">
-              <div class="classification">
-                <cc-icon v-if="iconName" :name="iconName" variant="color" class="classification-icon" />
-                <span class="classification-text">{{ headerText }}</span>
-              </div>
-              <div v-if="evalText" class="eval-badge" :class="{ 'white-advantage': whiteAdvantage, 'black-advantage': !whiteAdvantage }">
-                <span>{{ evalText }}</span>
-              </div>
-            </div>
-            
-            <!-- Coach message -->
-            <p v-if="message" class="coach-message">{{ message }}</p>
-            
-            <!-- Fallback for empty -->
-            <p v-if="!headerText && !message" class="empty">No message</p>
-          </div>
+          <p v-if="typewriter && typewriterResult" class="coach-message" v-html="typewriterResult.displayedText.value" />
+          <p v-else-if="message" class="coach-message">{{ message }}</p>
+          
+          <p v-if="!headerText && !message" class="empty">No message</p>
         </div>
-      </Transition>
+      </div>
     </div>
   </div>
 </template>
@@ -89,10 +94,10 @@ function onAfterLeave() {
 .coach-container {
   position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 0;
   width: 100%;
-  min-height: var(--coach-avatar-size, 80px);
+  height: var(--coach-container-height, 116px);
 }
 
 .coach-avatar {
@@ -109,67 +114,55 @@ function onAfterLeave() {
   object-fit: cover;
 }
 
-/* Wrapper maintains space when bubble is hidden */
 .bubble-wrapper {
   position: relative;
   flex: 1;
   min-width: 0;
-  min-height: var(--coach-avatar-size, 80px);
   margin-left: -6px;
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .bubble {
+  --top-opacity: 0;
+  --bottom-opacity: 0;
   position: relative;
   width: 100%;
   background: #ffffff;
   border-radius: 10px;
   overflow: visible;
+  box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.3);
 }
 
-/* Bubble transition animations */
-.bubble-enter-active,
-.bubble-leave-active {
-  transition: 
-    opacity var(--motion-steady) var(--motion-ease-out-gentle),
-    transform var(--motion-steady) var(--motion-ease-out-gentle);
+.bubble::before,
+.bubble::after {
+  content: '';
+  height: 4rem;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  z-index: 1;
 }
 
-.bubble-enter-from {
-  opacity: 0;
-  transform: translateX(-2rem);
+.bubble::before {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), transparent);
+  border-radius: 10px;
+  opacity: var(--top-opacity);
+  top: 0;
 }
 
-.bubble-enter-to,
-.bubble-leave-from {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.bubble-leave-to {
-  opacity: 0;
-}
-
-/* Respect reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
-  .bubble-enter-active,
-  .bubble-leave-active {
-    transition: opacity var(--motion-steady) var(--motion-ease-out-gentle);
-  }
-
-  .bubble-enter-from,
-  .bubble-enter-to,
-  .bubble-leave-from,
-  .bubble-leave-to {
-    transform: none;
-  }
+.bubble::after {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.8), transparent);
+  border-radius: 10px;
+  bottom: 0;
+  opacity: var(--bottom-opacity);
 }
 
 .tip {
   position: absolute;
   left: -13px;
-  bottom: 20px;
+  top: var(--coach-tip-top, 50px);
   width: 14px;
   height: 22px;
   z-index: 1;
@@ -183,16 +176,30 @@ function onAfterLeave() {
 .bubble-content {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: flex-start;
   gap: 8px;
-  padding: 12px;
-  min-height: 64px;
+  padding: 12px 16px;
+  min-height: 96px;
+  max-height: var(--bubble-max-height, 116px);
+  overflow-y: scroll;
+  scrollbar-width: none;
+}
+
+.bubble-content:has(.bubble-header) {
+  justify-content: flex-start;
+}
+
+.bubble-content:not(:has(.bubble-header)) {
+  justify-content: center;
+}
+
+.bubble-content::-webkit-scrollbar {
+  display: none;
 }
 
 .bubble-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
@@ -268,5 +275,19 @@ function onAfterLeave() {
   margin: 0;
   color: #9a9a9a;
   font-size: 14px;
+}
+
+.start-position .bubble-wrapper {
+  height: var(--coach-avatar-size, 80px);
+  align-items: flex-end;
+}
+
+.start-position .bubble-content {
+  min-height: 64px;
+}
+
+.start-position .tip {
+  top: auto;
+  bottom: var(--coach-tip-bottom, 2px);
 }
 </style>

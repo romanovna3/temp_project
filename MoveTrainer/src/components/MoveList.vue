@@ -1,11 +1,43 @@
 <script setup>
+import { ref, watch, nextTick } from 'vue'
 import { CcIcon } from '@chesscom/design-system'
 import { MOVE_CLASSIFICATIONS } from '../data/classifications.js'
+import BookTooltip from './BookTooltip.vue'
 
-defineProps({
+const hoveredBook = ref(null)
+const tooltipPos = ref({ top: 0, left: 0 })
+let hideTimeout = null
+
+function onBookEnter(event, opening) {
+  clearTimeout(hideTimeout)
+  const rect = event.currentTarget.getBoundingClientRect()
+  tooltipPos.value = {
+    top: rect.top + rect.height / 2,
+    left: rect.right + 10,
+  }
+  hoveredBook.value = opening
+}
+
+function onBookLeave() {
+  hideTimeout = setTimeout(() => { hoveredBook.value = null }, 120)
+}
+
+function onTooltipEnter() {
+  clearTimeout(hideTimeout)
+}
+
+function onTooltipLeave() {
+  hoveredBook.value = null
+}
+
+const props = defineProps({
   moves: { type: Array, required: true },
   result: { type: String, default: '' },
+  activePly: { type: Number, default: 0 },
+  autoTooltip: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['select-ply'])
 
 function classificationIcon(key) {
   const cls = MOVE_CLASSIFICATIONS[key]
@@ -16,6 +48,98 @@ function classificationColor(key) {
   if (!key) return null
   return `var(--color-classification-${key})`
 }
+
+function plyIndex(moveNum, color) {
+  let idx = 0
+  for (const move of props.moves) {
+    if (move.white) {
+      idx++
+      if (move.num === moveNum && color === 'white') return idx
+    }
+    if (move.black) {
+      idx++
+      if (move.num === moveNum && color === 'black') return idx
+    }
+  }
+  return -1
+}
+
+function isActivePly(moveNum, color) {
+  return plyIndex(moveNum, color) === props.activePly
+}
+
+function onPlyClick(moveNum, color) {
+  emit('select-ply', plyIndex(moveNum, color))
+}
+
+const plyRefs = ref({})
+function setPlyRef(key, el) {
+  if (el) plyRefs.value[key] = el
+}
+
+const bookIconRefs = ref({})
+function setBookIconRef(key, el) {
+  if (el) bookIconRefs.value[key] = el
+}
+
+const autoTooltipShown = ref(false)
+
+function getActivePlyData() {
+  let idx = 0
+  for (const move of props.moves) {
+    if (move.white) {
+      idx++
+      if (idx === props.activePly) return { move, color: 'white', data: move.white }
+    }
+    if (move.black) {
+      idx++
+      if (idx === props.activePly) return { move, color: 'black', data: move.black }
+    }
+  }
+  return null
+}
+
+watch([() => props.activePly, () => props.autoTooltip], async () => {
+  await nextTick()
+  let targetKey = null
+  let idx = 0
+  for (const move of props.moves) {
+    if (move.white) { idx++; if (idx === props.activePly) { targetKey = `${move.num}-white`; break } }
+    if (move.black) { idx++; if (idx === props.activePly) { targetKey = `${move.num}-black`; break } }
+  }
+  if (targetKey && plyRefs.value[targetKey]) {
+    plyRefs.value[targetKey].scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }
+
+  if (!props.autoTooltip) {
+    if (autoTooltipShown.value) {
+      hoveredBook.value = null
+    }
+    autoTooltipShown.value = false
+    return
+  }
+
+  const plyInfo = getActivePlyData()
+  if (plyInfo && plyInfo.data.lastBook) {
+    const key = `${plyInfo.move.num}-${plyInfo.color}`
+    await nextTick()
+    const el = bookIconRefs.value[key]
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      tooltipPos.value = {
+        top: rect.top + rect.height / 2,
+        left: rect.right + 10,
+      }
+      hoveredBook.value = plyInfo.data.opening
+      autoTooltipShown.value = true
+    }
+  } else {
+    if (autoTooltipShown.value) {
+      hoveredBook.value = null
+      autoTooltipShown.value = false
+    }
+  }
+})
 </script>
 
 <template>
@@ -30,10 +154,15 @@ function classificationColor(key) {
         <span class="move-number">{{ move.num }}.</span>
 
         <!-- White ply -->
-        <div v-if="move.white" class="ply-cell">
+        <div
+          v-if="move.white"
+          class="ply-cell"
+          :ref="(el) => setPlyRef(`${move.num}-white`, el)"
+          @click="onPlyClick(move.num, 'white')"
+        >
           <div class="classification-slot">
             <CcIcon
-              v-if="move.white.classification"
+              v-if="move.white.highlighted"
               :name="classificationIcon(move.white.classification)"
               variant="color"
               :size="16"
@@ -41,27 +170,41 @@ function classificationColor(key) {
           </div>
           <div
             class="ply"
-            :class="{ 'ply-selected': move.white.selected }"
+            :class="{ 'ply-selected': isActivePly(move.num, 'white') }"
           >
             <div class="piece-notation">
               <span
                 v-if="move.white.piece"
                 class="piece-glyph"
-                :style="move.white.classification ? { color: classificationColor(move.white.classification) } : {}"
+                :style="move.white.highlighted ? { color: classificationColor(move.white.classification) } : {}"
               >{{ move.white.piece }}</span>
               <span
                 class="notation"
-                :style="move.white.classification ? { color: classificationColor(move.white.classification) } : {}"
+                :style="move.white.highlighted ? { color: classificationColor(move.white.classification) } : {}"
               >{{ move.white.san }}</span>
             </div>
+          </div>
+          <div
+            v-if="move.white.lastBook && autoTooltip"
+            :ref="(el) => setBookIconRef(`${move.num}-white`, el)"
+            class="last-book-wrapper"
+            @mouseenter="(e) => onBookEnter(e, move.white.opening)"
+            @mouseleave="onBookLeave"
+          >
+            <CcIcon name="circle-fill-info" :size="16" class="last-book-icon" />
           </div>
         </div>
 
         <!-- Black ply -->
-        <div v-if="move.black" class="ply-cell">
+        <div
+          v-if="move.black"
+          class="ply-cell"
+          :ref="(el) => setPlyRef(`${move.num}-black`, el)"
+          @click="onPlyClick(move.num, 'black')"
+        >
           <div class="classification-slot">
             <CcIcon
-              v-if="move.black.classification"
+              v-if="move.black.highlighted"
               :name="classificationIcon(move.black.classification)"
               variant="color"
               :size="16"
@@ -69,17 +212,17 @@ function classificationColor(key) {
           </div>
           <div
             class="ply"
-            :class="{ 'ply-selected': move.black.selected }"
+            :class="{ 'ply-selected': isActivePly(move.num, 'black') }"
           >
             <div class="piece-notation">
               <span
                 v-if="move.black.piece"
                 class="piece-glyph"
-                :style="move.black.classification ? { color: classificationColor(move.black.classification) } : {}"
+                :style="move.black.highlighted ? { color: classificationColor(move.black.classification) } : {}"
               >{{ move.black.piece }}</span>
               <span
                 class="notation"
-                :style="move.black.classification ? { color: classificationColor(move.black.classification) } : {}"
+                :style="move.black.highlighted ? { color: classificationColor(move.black.classification) } : {}"
               >{{ move.black.san }}</span>
             </div>
           </div>
@@ -93,6 +236,19 @@ function classificationColor(key) {
         <span class="move-number result-text">{{ result }}</span>
       </div>
     </div>
+
+    <!-- Teleported tooltip escapes all overflow:clip ancestors -->
+    <Teleport to="body">
+      <div
+        v-if="hoveredBook"
+        class="book-tooltip-portal"
+        :style="{ top: tooltipPos.top + 'px', left: tooltipPos.left + 'px' }"
+        @mouseenter="onTooltipEnter"
+        @mouseleave="onTooltipLeave"
+      >
+        <BookTooltip :opening="hoveredBook" />
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -141,6 +297,12 @@ function classificationColor(key) {
   gap: var(--space-4, 4px);
   width: 100px;
   flex-shrink: 0;
+  cursor: pointer;
+}
+
+.ply-cell:hover .ply {
+  background: var(--color-bg-subtlest, rgba(255, 255, 255, 0.04));
+  border-radius: var(--radius-xs, 2px);
 }
 
 .classification-slot {
@@ -196,5 +358,27 @@ function classificationColor(key) {
   justify-content: flex-end;
   height: 18px;
   white-space: nowrap;
+}
+
+.last-book-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.last-book-icon {
+  flex-shrink: 0;
+  color: var(--color-icon-default, rgba(255, 255, 255, 0.72));
+  cursor: pointer;
+}
+
+</style>
+
+<style>
+.book-tooltip-portal {
+  position: fixed;
+  transform: translateY(-50%);
+  z-index: 10000;
 }
 </style>
