@@ -4,11 +4,15 @@ import '@chesscom/design-system/dist/style.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'
-import router from './router'
+
+document.body.classList.add('dark-mode')
 
 const app = createApp(App)
+app.provide('design-system-key', {
+  trans: { Back: 'Back', Close: 'Close' },
+  routes: { webMemberView: () => '#' },
+})
 app.config.errorHandler = (err, _instance, info) => {
   console.error('[Vue error]', info, err)
 }
-app.use(router)
 app.mount('#app')
