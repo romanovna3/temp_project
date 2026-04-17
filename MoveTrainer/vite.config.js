@@ -2,19 +2,20 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
 
-/** Local dev: `/`. Deploy like upstream: `VITE_BASE=/ChessDesign/game-review-layout/ npm run build` */
 export default defineConfig({
-  base: process.env.VITE_BASE ?? '/',
-  plugins: [vue()],
-  server: {
-    host: true,
-    port: 5174,
-    strictPort: false,
-  },
+  base: '/ChessDesign/game-review-layout/',
+  plugins: [
+    vue(),
+    vueDevTools(),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Vendored copy of ChessDesign `shared/chess-components` (monorepo used `../../shared/...`).
+      '@chess/components': fileURLToPath(new URL('./shared/chess-components', import.meta.url)),
+      '@chesscom/design-system': fileURLToPath(new URL('./node_modules/@chesscom/design-system', import.meta.url))
     },
   },
 })

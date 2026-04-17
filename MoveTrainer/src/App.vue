@@ -6,6 +6,10 @@ import MoveList from './components/MoveList.vue'
 import { MOVE_CLASSIFICATIONS } from './data/classifications.js'
 import { SAMPLE_GAME } from './data/gameData.js'
 
+// #region agent log
+fetch('http://127.0.0.1:7249/ingest/fd793dea-b233-4457-aa9c-fda6b0d9d190',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee0b0a'},body:JSON.stringify({sessionId:'ee0b0a',location:'App.vue:setup',message:'App.vue setup reached',data:{hasCcSidebarHeader:typeof CcSidebarHeader,hasCcButton:typeof CcButton,hasMoveList:typeof MoveList,hasCoachBubble:typeof CoachBubble,hasSampleGame:!!SAMPLE_GAME,sampleGameMoves:SAMPLE_GAME?.moves?.length,hasMoveClassifications:!!MOVE_CLASSIFICATIONS},timestamp:Date.now(),hypothesisId:'H-A,H-B'})}).catch(()=>{});
+// #endregion
+
 // ============================================
 // BOARD
 // ============================================
