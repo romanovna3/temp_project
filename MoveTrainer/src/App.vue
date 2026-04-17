@@ -165,7 +165,7 @@ const getPieceOnSquare = (square) => {
 const MIN_PANEL_WIDTH = 300
 const MAX_PANEL_WIDTH = 500
 
-const panelWidth = ref(400)
+const panelWidth = ref(460)
 
 const panelBreakpoint = computed(() => {
   if (panelWidth.value < 360) return 'sm'
