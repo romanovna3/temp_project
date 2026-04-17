@@ -1,8 +1,8 @@
 export const SAMPLE_GAME = {
   initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
   players: {
-    white: { name: 'AnishGiri', avatar: '/avatars/anishgiri.svg', rating: 2300, accuracy: 84.4, isWinner: true },
-    black: { name: 'LongUsername123', avatar: '/avatars/hikaru.svg', rating: 1450, accuracy: 76.9, isWinner: false },
+    white: { name: 'AnishGiri', avatar: '/avatars/anishgiri.png', rating: 2300, accuracy: 84.4, isWinner: true },
+    black: { name: 'LongUsername123', avatar: '/avatars/hikaru.png', rating: 1450, accuracy: 76.9, isWinner: false },
   },
   timeControl: { label: '3 min', icon: 'game-time-blitz' },
   advancedStats: [
@@ -40,7 +40,7 @@ export const SAMPLE_GAME = {
           course: {
             title: 'Chessable Course',
             subtitle: 'Short & Sweet: 1. d4',
-            image: '/avatars/fabianocaruana.svg',
+            image: '/images/chessable-qg.png',
           },
         },
         fen: 'rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2',
