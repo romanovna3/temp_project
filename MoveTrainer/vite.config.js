@@ -13,7 +13,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      // Vendored copy of ChessDesign `shared/chess-components` (monorepo used `../../shared/...`).
+      // Only change vs macakuaya/ChessDesign monorepo: vendored `shared/` lives beside this app (`../../shared` upstream).
       '@chess/components': fileURLToPath(new URL('./shared/chess-components', import.meta.url)),
       '@chesscom/design-system': fileURLToPath(new URL('./node_modules/@chesscom/design-system', import.meta.url))
     },
