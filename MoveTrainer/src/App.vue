@@ -3,7 +3,6 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { CcButton, CcIcon, CcSidebarHeader } from '@chesscom/design-system'
 import CoachBubble from './components/CoachBubble.vue'
 import MoveList from './components/MoveList.vue'
-import EvalGraph from './components/EvalGraph.vue'
 import OverviewPanel from './components/OverviewPanel.vue'
 import { MOVE_CLASSIFICATIONS } from './data/classifications.js'
 import { SAMPLE_GAME } from './data/gameData.js'
@@ -372,17 +371,6 @@ function onMoveListScroll(e) {
               </div>
             </div>
 
-            <!-- Evaluation graph -->
-            <div class="eval-graph-section">
-              <EvalGraph
-                :plies="allPlies"
-                :active-ply="currentPly"
-                :highlight-best-worst="featureFlags.highlightBestAndWorst"
-                :limit-one-per-type="true"
-                @select-ply="goToPly"
-              />
-            </div>
-
             <!-- Move navigation controls -->
             <div class="controls-bar">
               <CcButton variant="secondary" size="large" :icon="{ name: 'arrow-chevron-start' }" :disabled="atStart" @click="goToStart" />
@@ -673,18 +661,6 @@ body {
 .panel-sm .move-list-scroll {
   padding: var(--space-8, 8px) var(--space-16, 16px) var(--space-24, 24px);
 }
-
-/* Eval graph */
-.eval-graph-section {
-  background: #272522;
-  padding: var(--space-8, 8px) var(--space-24, 24px) var(--space-8, 8px);
-  flex-shrink: 0;
-}
-
-.panel-sm .eval-graph-section {
-  padding: var(--space-8, 8px) var(--space-16, 16px) var(--space-8, 8px);
-}
-
 
 /* Move navigation controls */
 .controls-bar {
