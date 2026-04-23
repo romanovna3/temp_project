@@ -10,6 +10,8 @@ const SOUND_FILES = {
   castle: 'castle.mp3',
   check: 'move-check.mp3',
   promote: 'promote.mp3',
+  /** Wrong / illegal feedback (unassisted quiz, etc.) */
+  incorrect: 'game-end.mp3',
 }
 
 /**

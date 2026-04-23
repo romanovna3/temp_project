@@ -1,17 +1,47 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isUnlocked } from '../lib/protectedProjects.js'
+import { MOVE_TRAINER_LINE_ORDER } from '@move-trainer/data/moveTrainerLineOrder.js'
 
 // History mode so path-based URLs work on GitHub Pages (404.html serves the app for all paths).
 // Locally: base '/'. Production: base '/temp_project/' so URLs are e.g. .../temp_project/courses/v8
+/** Same MoveTrainer assisted URLs (`…/intro-1/aq-1`, `…/intro-2/aq-1`). */
+const introAssistedRoutes = [
+  {
+    path: '/move-trainer/page-:pageNum/intro-1/:assistedStep',
+    name: 'move-trainer-intro-1-assisted',
+    component: () => import('../views/move-trainer/GameReviewLayoutPage.vue'),
+  },
+  {
+    path: '/move-trainer/page-:pageNum/intro-2/:assistedStep',
+    name: 'move-trainer-intro-2-assisted',
+    component: () => import('../views/move-trainer/GameReviewLayoutPage.vue'),
+  },
+]
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'index', component: () => import('../views/Index.vue') },
-    {
-      path: '/move-trainer/game-review',
-      name: 'move-trainer-game-review',
+    ...introAssistedRoutes,
+    ...MOVE_TRAINER_LINE_ORDER.map((e) => ({
+      path: e.path,
+      name: e.name,
       component: () => import('../views/move-trainer/GameReviewLayoutPage.vue'),
+    })),
+    ...MOVE_TRAINER_LINE_ORDER.map((e) => ({
+      path: `/move-trainer/${e.path.split('/').pop()}`,
+      redirect: e.path,
+    })),
+    {
+      path: '/move-trainer/introduction-1',
+      redirect: MOVE_TRAINER_LINE_ORDER[0].path,
     },
+    {
+      path: '/move-trainer/info-1',
+      redirect: MOVE_TRAINER_LINE_ORDER.find((en) => en.name === 'move-trainer-intro-1').path,
+    },
+    { path: '/move-trainer/intro', redirect: MOVE_TRAINER_LINE_ORDER[0].path },
+    { path: '/move-trainer/game-review', redirect: MOVE_TRAINER_LINE_ORDER[0].path },
     {
       path: '/empty',
       name: 'empty',

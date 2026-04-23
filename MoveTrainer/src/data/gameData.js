@@ -1,5 +1,7 @@
 export const SAMPLE_GAME = {
   initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  /** Shown in the move-list opening line header (review mode). */
+  openingDisplayTitle: "Queen's Gambit Accepted",
   players: {
     white: { name: 'AnishGiri', avatar: '/avatars/anishgiri.png', rating: 2300, accuracy: 84.4, isWinner: true },
     black: { name: 'LongUsername123', avatar: '/avatars/hikaru.png', rating: 1450, accuracy: 76.9, isWinner: false },
@@ -18,7 +20,26 @@ export const SAMPLE_GAME = {
         san: 'd4',
         classification: 'book',
         fen: 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1',
-        coachText: 'Solid opening, controlling the center.',
+        coachText: `Ever wanted to learn from the greatest female player in history? Now you can, with this scintillating course by Judit Polgar, former World No. 8 and attacking genius. A slayer of titans like Garry Kasparov, Anatoly Karpov, Vishwanathan Anand, and Magnus Carlsen, Judit is no stranger to victory over the chessboard, and in this course, she takes you through some of her greatest masterpieces.
+
+Judit's brilliance over the chessboard is not just a matter of incredible talent, however. Her searing tactical play was always based on rock-solid chess principles, and this course shows you how Judit (and others) put these principles to great effect.
+
+The course is divided into four main chapters, each covering vital aspects of the game.
+
+Opening Disasters − Learn how to avoid major pitfalls in opening play and punish your opponent's opening mistakes!
+
+Calculation − Learn how to out-calculate your opponent and become an awesome tactician like Judit!
+
+Positional Play − Learn how to outclass your foes with keen positional awareness. Put your pieces on the best squares and your enemy's on the worst!
+
+Endgame Technique − Learn how to enter the endgame with confidence. Fewer pieces don't mean fewer tactical opportunities! Explore the magical world of studies to enhance your calculation and endgame skills.
+
+
+Let Judit guide you through some of the best games of chess ever played, with 7 hours of video and more than 200 trainable variations.
+
+Judit is ably supported by award-winning International Master and chess coach Andras Toth, whose exceptionally popular courses you can also find on Chessable.
+
+The examples provided in this Free Lesson offer a brief glimpse of what you can discover in the broader and complete course. Enjoy the puzzles and, perhaps, have a great journey further on with none other than Judit Polgar on your side!`,
         eval: '+0.3',
       },
       black: {
@@ -203,6 +224,274 @@ export const SAMPLE_GAME = {
     },
   ],
   result: '1-0',
+}
+
+/** Scandinavian-style line for `intro-1` (move list + board plies). */
+export const INTRO_1_GAME = {
+  initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  moves: [
+    {
+      num: 1,
+      white: {
+        san: 'e4',
+        classification: 'book',
+        fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+        coachText: 'White stakes a claim in the center.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'd5',
+        classification: 'book',
+        fen: 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2',
+        coachText: 'Black immediately challenges the center.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 2,
+      white: {
+        san: 'exd5',
+        classification: 'book',
+        fen: 'rnbqkbnr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2',
+        coachText: 'White captures, opening the e-file.',
+        eval: '+0.1',
+      },
+      black: {
+        san: 'Qxd5',
+        piece: 'Q',
+        classification: 'book',
+        fen: 'rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3',
+        coachText: 'The queen recaptures, but it can be exposed later.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 3,
+      white: {
+        san: 'Nc3',
+        piece: 'n',
+        classification: 'book',
+        fen: 'rnb1kbnr/ppp1pppp/8/3q4/8/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 3',
+        coachText: 'Development with tempo against the queen.',
+        eval: '+0.3',
+      },
+      black: {
+        san: 'Qc6',
+        piece: 'Q',
+        classification: 'book',
+        fen: 'rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4',
+        coachText: 'The queen sidesteps, staying in the fight.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 4,
+      white: {
+        san: 'Bb5',
+        piece: 'b',
+        classification: 'book',
+        fen: 'rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4',
+        coachText: 'A pin on the queen along the a3–f8 diagonal.',
+        eval: '+0.4',
+      },
+    },
+  ],
+  result: '',
+}
+
+/** Scholar's Mate attempt line for `intro-2` ("Don't Try Scholar's Mate!"). */
+export const INTRO_2_GAME = {
+  initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  moves: [
+    {
+      num: 1,
+      white: {
+        san: 'e4',
+        classification: 'book',
+        fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+        coachText: 'White opens with the king\'s pawn.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'e5',
+        classification: 'book',
+        fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',
+        coachText: 'Black mirrors in the center.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 2,
+      white: {
+        san: 'Qh5',
+        piece: 'q',
+        classification: 'book',
+        fen: 'rnbqkbnr/pppp1ppp/8/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 1 2',
+        coachText: 'An early queen sortie — tempting but risky.',
+        eval: '-0.5',
+      },
+      black: {
+        san: 'Nc6',
+        piece: 'N',
+        classification: 'book',
+        fen: 'r1bqkbnr/pppp1ppp/2n5/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3',
+        coachText: 'Defends e5 and develops toward the center.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 3,
+      white: {
+        san: 'Bc4',
+        piece: 'b',
+        classification: 'book',
+        fen: 'r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3',
+        coachText: 'Aiming at f7 — a classic Scholar\'s Mate idea.',
+        eval: '-0.3',
+      },
+      black: {
+        san: 'g6',
+        classification: 'book',
+        fen: 'r1bqkbnr/pppp1p1p/2n3p1/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 4',
+        coachText: 'Guards f7 while developing the dark bishop.',
+        eval: '+0.2',
+      },
+    },
+    {
+      num: 4,
+      white: {
+        san: 'Qf3',
+        piece: 'q',
+        classification: 'book',
+        fen: 'r1bqkbnr/pppp1p1p/2n3p1/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR b KQkq - 1 4',
+        coachText: 'Doubling down on the f7 threat.',
+        eval: '-0.4',
+      },
+      black: {
+        san: 'Nf6',
+        piece: 'N',
+        classification: 'book',
+        fen: 'r1bqkb1r/pppp1p1p/2n2np1/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 2 5',
+        coachText: 'Develops and blocks the queen\'s attack on f7.',
+        eval: '+0.3',
+      },
+    },
+    {
+      num: 5,
+      white: {
+        san: 'g4',
+        classification: 'book',
+        fen: 'r1bqkb1r/pppp1p1p/2n2np1/4p3/2B1P1P1/5Q2/PPPP1P1P/RNB1K1NR b KQkq - 0 5',
+        coachText: 'Pushing the g-pawn — overextension.',
+        eval: '-0.8',
+      },
+      black: {
+        san: 'd5',
+        classification: 'book',
+        fen: 'r1bqkb1r/ppp2p1p/2n2np1/3pp3/2B1P1P1/5Q2/PPPP1P1P/RNB1K1NR w KQkq - 0 6',
+        coachText: 'Strikes the center and opens lines.',
+        eval: '+0.5',
+      },
+    },
+    {
+      num: 6,
+      white: {
+        san: 'exd5',
+        classification: 'book',
+        fen: 'r1bqkb1r/ppp2p1p/2n2np1/3Pp3/2B3P1/5Q2/PPPP1P1P/RNB1K1NR b KQkq - 0 6',
+        coachText: 'Captures, but the center collapses around the king.',
+        eval: '-0.5',
+      },
+      black: {
+        san: 'Nd4',
+        piece: 'N',
+        classification: 'book',
+        fen: 'r1bqkb1r/ppp2p1p/5np1/3Pp3/2Bn2P1/5Q2/PPPP1P1P/RNB1K1NR w KQkq - 1 7',
+        coachText: 'Knight jumps in with tempo against the queen.',
+        eval: '+1.2',
+      },
+    },
+    {
+      num: 7,
+      white: {
+        san: 'Qd1',
+        piece: 'q',
+        classification: 'book',
+        fen: 'r1bqkb1r/ppp2p1p/5np1/3Pp3/2Bn2P1/8/PPPP1P1P/RNBQK1NR b KQkq - 2 7',
+        coachText: 'The queen retreats — already in trouble.',
+        eval: '-1.0',
+      },
+      black: {
+        san: 'Bxg4',
+        piece: 'B',
+        classification: 'book',
+        fen: 'r2qkb1r/ppp2p1p/5np1/3Pp3/2Bn2b1/8/PPPP1P1P/RNBQK1NR w KQkq - 0 8',
+        coachText: 'Wins material; White\'s king is exposed.',
+        eval: '+2.0',
+      },
+    },
+    {
+      num: 8,
+      white: {
+        san: 'Ne2',
+        piece: 'n',
+        classification: 'book',
+        fen: 'r2qkb1r/ppp2p1p/5np1/3Pp3/2Bn2b1/8/PPPPNP1P/RNBQK2R b KQkq - 1 8',
+        coachText: 'Trying to untangle, but it\'s too late.',
+        eval: '-1.5',
+      },
+      black: {
+        san: 'Nf3+',
+        piece: 'N',
+        classification: 'great',
+        fen: 'r2qkb1r/ppp2p1p/5np1/3Pp3/2B3b1/5n2/PPPPNP1P/RNBQK2R w KQkq - 2 9',
+        coachText: 'A crushing fork — king and rook are both hit.',
+        eval: '+5.0',
+      },
+    },
+    {
+      num: 9,
+      white: {
+        san: 'Kf1',
+        piece: 'k',
+        classification: 'book',
+        fen: 'r2qkb1r/ppp2p1p/5np1/3Pp3/2B3b1/5n2/PPPPNP1P/RNBQ1K1R b kq - 3 9',
+        coachText: 'The only legal king move.',
+        eval: '-M1',
+      },
+      black: {
+        san: 'Bh3#',
+        piece: 'B',
+        classification: 'great',
+        highlighted: true,
+        fen: 'r2qkb1r/ppp2p1p/5np1/3Pp3/2B5/5n1b/PPPPNP1P/RNBQ1K1R w kq - 4 10',
+        coachText: 'Checkmate — don\'t try Scholar\'s Mate this way!',
+        eval: '#',
+      },
+    },
+  ],
+  result: '0-1',
+}
+
+/** Tactics: Double Attack #1 (`intro-3`) — one move in the list: figurine R + `f7` (see `MoveList` + `piece: 'R'` + `san: 'Rf7'`). */
+export const INTRO_3_GAME = {
+  initialFen: '6k1/3p1p1p/8/8/8/8/8/5RK1 w - - 0 1',
+  moves: [
+    {
+      num: 1,
+      white: {
+        san: 'Rf7',
+        piece: 'R',
+        classification: 'best',
+        highlighted: true,
+        fen: '6k1/3p1R1p/8/8/8/8/8/6K1 b - - 0 1',
+        coachText:
+          'The rook seizes the seventh rank with tempo — a classic double-attack idea: the king is exposed and the attack continues.',
+        eval: '+1.0',
+      },
+    },
+  ],
+  result: '',
 }
 
 // ChessNote font character map: lowercase = white pieces, uppercase = black pieces

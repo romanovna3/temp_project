@@ -1,6 +1,6 @@
 <script setup>
 import { provide } from 'vue'
-import GameReviewApp from '@move-trainer/App.vue'
+import MoveTrainerView from '@move-trainer/views/MoveTrainerView.vue'
 
 provide('design-system-key', {
   trans: { Back: 'Back', Close: 'Close' },
@@ -9,5 +9,5 @@ provide('design-system-key', {
 </script>
 
 <template>
-  <GameReviewApp />
+  <MoveTrainerView />
 </template>

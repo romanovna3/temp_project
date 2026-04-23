@@ -8,13 +8,16 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:chessdesign-base": "VITE_BASE=/ChessDesign/game-review-layout/ vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run"
   },
   "dependencies": {
     "@chesscom/design-system": "^0.22.1",
-    "vue": "^3.5.26"
+    "chess.js": "^1.4.0",
+    "vue": "^3.5.26",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",

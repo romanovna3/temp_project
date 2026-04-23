@@ -35,6 +35,8 @@ const props = defineProps({
   result: { type: String, default: '' },
   activePly: { type: Number, default: 0 },
   autoTooltip: { type: Boolean, default: false },
+  /** When false, hides the score line under the move list (e.g. "1-0"). */
+  showGameResult: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['select-ply'])
@@ -44,9 +46,20 @@ function classificationIcon(key) {
   return cls ? cls.icon : null
 }
 
-function classificationColor(key) {
-  if (!key) return null
-  return `var(--color-classification-${key})`
+/** Figurine `piece` replaces the SAN piece letter — hide Q/N/B/etc. when the icon is shown. */
+const PIECE_GLYPH_TO_SAN_LETTER = Object.freeze({
+  k: 'K', K: 'K',
+  q: 'Q', Q: 'Q',
+  r: 'R', R: 'R',
+  b: 'B', B: 'B',
+  n: 'N', N: 'N',
+})
+
+function sanDisplayForPieceIcon(san, pieceGlyph) {
+  if (!pieceGlyph || !san) return san
+  const letter = PIECE_GLYPH_TO_SAN_LETTER[pieceGlyph]
+  if (!letter || !san.startsWith(letter)) return san
+  return san.slice(1)
 }
 
 function plyIndex(moveNum, color) {
@@ -151,7 +164,7 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
       :class="{ 'alt-row': idx % 2 === 1 }"
     >
       <div class="plys">
-        <span class="move-number">{{ move.num }}.</span>
+        <span class="move-number cc-paragraph-medium">{{ move.num }}.</span>
 
         <!-- White ply -->
         <div
@@ -164,7 +177,7 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
             <CcIcon
               v-if="move.white.highlighted"
               :name="classificationIcon(move.white.classification)"
-              variant="color"
+              variant="glyph"
               :size="16"
             />
           </div>
@@ -176,12 +189,10 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
               <span
                 v-if="move.white.piece"
                 class="piece-glyph"
-                :style="move.white.highlighted ? { color: classificationColor(move.white.classification) } : {}"
               >{{ move.white.piece }}</span>
               <span
                 class="notation"
-                :style="move.white.highlighted ? { color: classificationColor(move.white.classification) } : {}"
-              >{{ move.white.san }}</span>
+              >{{ sanDisplayForPieceIcon(move.white.san, move.white.piece) }}</span>
             </div>
           </div>
           <div
@@ -206,7 +217,7 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
             <CcIcon
               v-if="move.black.highlighted"
               :name="classificationIcon(move.black.classification)"
-              variant="color"
+              variant="glyph"
               :size="16"
             />
           </div>
@@ -218,12 +229,10 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
               <span
                 v-if="move.black.piece"
                 class="piece-glyph"
-                :style="move.black.highlighted ? { color: classificationColor(move.black.classification) } : {}"
               >{{ move.black.piece }}</span>
               <span
                 class="notation"
-                :style="move.black.highlighted ? { color: classificationColor(move.black.classification) } : {}"
-              >{{ move.black.san }}</span>
+              >{{ sanDisplayForPieceIcon(move.black.san, move.black.piece) }}</span>
             </div>
           </div>
         </div>
@@ -231,9 +240,9 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
     </div>
 
     <!-- Game result -->
-    <div v-if="result" class="move-row">
+    <div v-if="result && showGameResult" class="move-row">
       <div class="plys">
-        <span class="move-number result-text">{{ result }}</span>
+        <span class="move-number result-text cc-paragraph-medium">{{ result }}</span>
       </div>
     </div>
 
@@ -264,7 +273,7 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
   display: flex;
   align-items: center;
   height: 30px;
-  padding: 0 var(--space-24, 24px);
+  padding: 0 var(--space-16, 16px);
   overflow: clip;
   flex-shrink: 0;
 }
@@ -281,9 +290,7 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
 .move-number {
   width: 24px;
   flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 16px;
+  font-family: var(--font-family-system, system-ui, sans-serif);
   color: var(--color-text-subtle, rgba(255, 255, 255, 0.5));
 }
 
@@ -309,6 +316,10 @@ watch([() => props.activePly, () => props.autoTooltip], async () => {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-default, rgba(255, 255, 255, 0.72));
 }
 
 .ply {

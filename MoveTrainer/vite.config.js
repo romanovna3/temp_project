@@ -5,9 +5,12 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
-/** Matches ChessDesign Pages deploy; override with `VITE_BASE=/` for root hosting. */
+/**
+ * Default `/` so local dev (`npm run dev`) matches router paths like `/move-trainer`.
+ * Production deploy: set `VITE_BASE=/ChessDesign/game-review-layout/` (or your path).
+ */
 export default defineConfig({
-  base: process.env.VITE_BASE ?? '/ChessDesign/game-review-layout/',
+  base: process.env.VITE_BASE ?? '/',
   plugins: [vue(), vueDevTools()],
   resolve: {
     alias: {
@@ -18,7 +21,7 @@ export default defineConfig({
   },
   server: {
     host: true,
-    port: 5174,
+    port: 5173,
     strictPort: false,
   },
   test: {
