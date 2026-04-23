@@ -1,0 +1,90 @@
+# Deploy external/design-prototypes to Cloudflare Pages via Wrangler.
+#
+# wrangler-action@v3 defaults command to "deploy" (Workers). A Vite app must use
+# "pages deploy …" or npx exits with code 1. See cloudflare/wrangler-action README.
+#
+# GitHub Actions secrets (repo Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   — Create at Cloudflare Dashboard → My Profile → API Tokens.
+#                            Permissions: Account → Cloudflare Pages → Edit (and read as needed).
+#   CLOUDFLARE_ACCOUNT_ID  — Account ID from the Cloudflare dashboard sidebar / Workers overview.
+#   NPM_TOKEN              — Same PAT as the GitHub Pages workflow: read:packages for @chesscom.
+#
+# Optional repo variable: CLOUDFLARE_PAGES_PROJECT_NAME (defaults to anna-design-prototypes).
+name: Deploy design prototypes (Cloudflare Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'external/design-prototypes/**'
+      - '.github/workflows/deploy-design-prototypes-cloudflare.yml'
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Submodule checkout does not include repo-local .npmrc; scope @chesscom to GitHub Packages for npm ci.
+      - name: GitHub Packages registry for @chesscom
+        working-directory: external/design-prototypes
+        run: printf '%s\n' '@chesscom:registry=https://npm.pkg.github.com' > .npmrc
+
+      - name: Check required secrets
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          missing=
+          [ -z "$CF_TOKEN" ] && missing="${missing} CLOUDFLARE_API_TOKEN"
+          [ -z "$CF_ACCOUNT" ] && missing="${missing} CLOUDFLARE_ACCOUNT_ID"
+          [ -z "$NPM_TOKEN" ] && missing="${missing} NPM_TOKEN"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets:$missing. See comments in deploy-design-prototypes-cloudflare.yml"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@chesscom'
+          cache: npm
+          cache-dependency-path: external/design-prototypes/package-lock.json
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: external/design-prototypes
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GIT_TERMINAL_PROMPT: '0'
+
+      - name: Build
+        working-directory: external/design-prototypes
+        run: npm run build
+        env:
+          CI: true
+
+      - name: Resolve Pages project name
+        id: pages
+        run: |
+          NAME='${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}'
+          if [ -z "$NAME" ]; then NAME='anna-design-prototypes'; fi
+          echo "project_name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: external/design-prototypes
+          wranglerVersion: '4'
+          command: pages deploy dist --project-name=${{ steps.pages.outputs.project_name }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
