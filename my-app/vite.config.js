@@ -22,8 +22,11 @@ export default defineConfig({
     alias: {
       '@move-trainer': path.resolve(__dirname, '../MoveTrainer/src'),
       '@chess/components': path.resolve(__dirname, '../MoveTrainer/shared/chess-components'),
-      // Ensure DS resolves when bundling files under ../MoveTrainer (outside default root)
+      // Bundled files live under ../MoveTrainer; Node would not find my-app/node_modules from there.
       '@chesscom/design-system': path.resolve(__dirname, 'node_modules/@chesscom/design-system'),
+      vue: path.resolve(__dirname, 'node_modules/vue'),
+      'vue-router': path.resolve(__dirname, 'node_modules/vue-router'),
+      'chess.js': path.resolve(__dirname, 'node_modules/chess.js'),
     },
   },
   define: {
