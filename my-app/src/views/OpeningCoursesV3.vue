@@ -4092,6 +4092,8 @@ const isMoveTrainer3 = computed(() => {
 })
 /** Preset bar + app-body + Opening-style mobile board placement. */
 const usesOpeningV3Shell = computed(() => isOpeningCoursesV3.value || isMoveTrainer3.value)
+/** Move Trainer 3: no viewport/scenario bar (full layout below the bar area). */
+const showOpeningV3PresetBar = computed(() => usesOpeningV3Shell.value && !isMoveTrainer3.value)
 const isVideoV2_2 = computed(() => route.path === '/courses/v2.2' || isOpeningCoursesV3.value || isMoveTrainer3.value)
 /** Defer opening-courses-v3 layout until after first paint to avoid Error -102 (renderer crash). */
 const openingV3Ready = ref(false)
@@ -6262,9 +6264,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app dark-mode" :class="[usesOpeningV3Shell ? `app--viewport-${effectiveViewportPreset}` : '', usesOpeningV3Shell ? 'app--with-preset-bar' : '']">
+  <div class="app dark-mode" :class="[usesOpeningV3Shell ? `app--viewport-${effectiveViewportPreset}` : '', showOpeningV3PresetBar ? 'app--with-preset-bar' : '']">
     <!-- Opening Courses V1: viewport and scenario preset bar (same placement as V9). Viewport hidden when SHOW_VIEWPORT_PRESET_IN_BAR is false; see docs/opening-courses-viewport-preset.md -->
-    <div v-if="usesOpeningV3Shell" class="viewport-preset-bar" role="toolbar" aria-label="Viewport and scenario preset">
+    <div v-if="showOpeningV3PresetBar" class="viewport-preset-bar" role="toolbar" aria-label="Viewport and scenario preset">
       <div v-if="SHOW_VIEWPORT_PRESET_IN_BAR" class="viewport-preset-bar__group">
         <PresetBarSelect
           v-model="viewportPreset"
