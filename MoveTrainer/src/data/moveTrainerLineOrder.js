@@ -29,6 +29,27 @@ export const MOVE_TRAINER_LINE_ORDER = RAW_LINES.map((entry, i) => ({
   kind: entry.kind,
 }))
 
+/** Separate entry URL for Move Trainer 2 — same experience as intro-1 (`move-trainer-intro-1`). */
+export const MOVE_TRAINER_2_PATH = '/move-trainer/move-trainer-2'
+
+/** Move Trainer 3 — shell matches Opening Courses V3 (layout, board, panel chrome); content TBD. */
+export const MOVE_TRAINER_3_PATH = '/move-trainer/move-trainer-3'
+
+const MOVE_TRAINER_2_EQUIVALENT_PATH =
+  MOVE_TRAINER_LINE_ORDER.find((e) => e.name === 'move-trainer-intro-1')?.path
+  ?? '/move-trainer/page-5/intro-1'
+
+/**
+ * Map alternate landing URLs (e.g. Move Trainer 2) to the canonical move-trainer path for logic/navigation.
+ * @param {string} routePath
+ */
+export function canonicalMoveTrainerPath(routePath) {
+  const n = normalizeAppPath(routePath).replace(/\/$/, '') || '/'
+  const alias = MOVE_TRAINER_2_PATH.replace(/\/$/, '')
+  if (n === alias) return MOVE_TRAINER_2_EQUIVALENT_PATH
+  return normalizeAppPath(routePath)
+}
+
 /** @type {Record<string, { steps: { id: string, coachMessage: string }[] }>} */
 export const ASSISTED_INTRO_ROUTES = {
   'intro-1': { steps: INTRO_1_ASSISTED_STEPS },
@@ -106,7 +127,7 @@ export function buildIntro1AssistedPath(stepId) {
 
 /** @param {{ path: string, name?: string }} route */
 export function moveTrainerCurrentLine(route) {
-  const path = normalizeAppPath(route.path)
+  const path = canonicalMoveTrainerPath(route.path).replace(/\/$/, '')
   const assisted = parseIntroAssistedPath(path)
   if (assisted) {
     const baseIdx = MOVE_TRAINER_LINE_ORDER.findIndex(e => e.name === `move-trainer-${assisted.introSlug}`)
@@ -179,7 +200,7 @@ function intro1AssistedPrevPath(assisted) {
 }
 
 export function moveTrainerNextPath(currentPath) {
-  const path = normalizeAppPath(currentPath)
+  const path = canonicalMoveTrainerPath(currentPath)
   const uq = parseUnassistedQuizPath(path)
   if (uq && uq.hasUnassistedConfig) {
     const cfg = UNASSISTED_QUIZZES[uq.slug]
@@ -214,7 +235,7 @@ export function moveTrainerNextPath(currentPath) {
 }
 
 export function moveTrainerPrevPath(currentPath) {
-  const path = normalizeAppPath(currentPath)
+  const path = canonicalMoveTrainerPath(currentPath)
   const uq = parseUnassistedQuizPath(path)
   if (uq && uq.hasUnassistedConfig && uq.step > 1) {
     const line = MOVE_TRAINER_LINE_ORDER.find(e => e.name === `move-trainer-${uq.slug}`)

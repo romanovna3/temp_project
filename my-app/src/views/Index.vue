@@ -9,6 +9,7 @@ import {
   getPasswordProjectById,
   clearProjectUnlock,
 } from '../lib/protectedProjects.js'
+import { MOVE_TRAINER_2_PATH, MOVE_TRAINER_3_PATH, MOVE_TRAINER_LINE_ORDER } from '@move-trainer/data/moveTrainerLineOrder.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -32,7 +33,9 @@ const openingFolderItems = [
 ]
 
 const moveTrainerFolderItems = [
-  { path: '/move-trainer/game-review', title: 'Game review layout', versionKey: 'moveTrainerGr' },
+  { path: MOVE_TRAINER_LINE_ORDER[0].path, title: 'Move Trainer', versionKey: 'moveTrainerGr' },
+  { path: MOVE_TRAINER_2_PATH, title: 'Move Trainer 2', versionKey: 'moveTrainer2' },
+  { path: MOVE_TRAINER_3_PATH, title: 'Move Trainer 3', versionKey: 'moveTrainer3' },
 ]
 
 /** Same archive list as before, plus Empty page (password-gated folder) */
@@ -171,6 +174,8 @@ const versionLastEdited = {
   openingV3: buildTime,
   empty: buildTime,
   moveTrainerGr: buildTime,
+  moveTrainer2: buildTime,
+  moveTrainer3: buildTime,
 }
 
 function getEditedAgo(isoString) {
@@ -256,7 +261,7 @@ function editedAgoFor(version) {
                 class="folder-card"
                 role="button"
                 tabindex="0"
-                aria-label="MoveTrainer folder, 1 page"
+                :aria-label="`MoveTrainer folder, ${moveTrainerFolderItems.length} pages`"
                 @click="openFolderMoveTrainer"
                 @keydown.enter.prevent="openFolderMoveTrainer"
                 @keydown.space.prevent="openFolderMoveTrainer"

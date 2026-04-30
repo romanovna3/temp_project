@@ -22,6 +22,16 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'index', component: () => import('../views/Index.vue') },
+    {
+      path: '/move-trainer/move-trainer-2',
+      name: 'move-trainer-2-landing',
+      component: () => import('../views/move-trainer/move-trainer-2/MoveTrainer2Landing.vue'),
+    },
+    {
+      path: '/move-trainer/move-trainer-3',
+      name: 'move-trainer-3-landing',
+      component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3Landing.vue'),
+    },
     ...introAssistedRoutes,
     ...MOVE_TRAINER_LINE_ORDER.map((e) => ({
       path: e.path,

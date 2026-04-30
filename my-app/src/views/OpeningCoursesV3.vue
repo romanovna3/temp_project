@@ -3033,7 +3033,7 @@ const boardRef = ref(null)
 // Opening Courses V1: hint dismissed after first drag (card-selection watch is below, after selectedOpeningCardId is defined)
 const openingHintDismissed = ref(false)
 watch(isDragging, (dragging) => {
-  if (dragging && isOpeningCoursesV3.value) {
+  if (dragging && (isOpeningCoursesV3.value || isMoveTrainer3.value)) {
     setTimeout(() => { openingHintDismissed.value = true }, 320)
   }
 })
@@ -3544,7 +3544,7 @@ const handleSquareClick = (square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
 
   const piece = getPieceOnSquare(square)
-  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
+  const isOpeningV1FreePlay = panelView.value === 'courses' && (isOpeningCoursesV3.value || isMoveTrainer3.value) && currentQuestionIndex.value < 0
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
   const isLastMovedPiece = piece && isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && square === lastMove.value.to
   const canSelectPiece = piece && (isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w'))
@@ -3834,7 +3834,7 @@ const tryMove = (from, to) => {
   const movingPiece = getPieceOnSquare(from)
   if (!movingPiece) return false
 
-  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
+  const isOpeningV1FreePlay = panelView.value === 'courses' && (isOpeningCoursesV3.value || isMoveTrainer3.value) && currentQuestionIndex.value < 0
 
   // Opening Courses V3: undo by moving piece back – check before side-to-move (undo moves the piece that just moved, i.e. “wrong” color). If 1 move → chip disappears, board resets; if 2+ moves → chip stays, board shows position after remaining moves.
   if (currentQuestionIndex.value < 0 && isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && from === lastMove.value.to && to === lastMove.value.from) {
@@ -3958,7 +3958,7 @@ const handleDragStart = (event, square) => {
   const piece = getPieceOnSquare(square)
   if (!piece) return
   // Opening Courses V3 free play: allow the side to move, or allow dragging the last-moved piece (for undo)
-  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
+  const isOpeningV1FreePlay = panelView.value === 'courses' && (isOpeningCoursesV3.value || isMoveTrainer3.value) && currentQuestionIndex.value < 0
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
   const isLastMovedPiece = isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && square === lastMove.value.to
   const canMove = isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w')
@@ -4067,7 +4067,6 @@ const handleRetry = () => {
 // V2: video visible by default, one per chapter, not sticky
 const isVideoV2 = computed(() => route.path === '/courses/v2')
 // V2.2: same as V2 but play button toggles to pause and makes that video sticky. Opening Courses V1 uses same layout.
-const isVideoV2_2 = computed(() => route.path === '/courses/v2.2' || isOpeningCoursesV3.value)
 // Match decoded path; also match when hash is encoded (#%2Flearn%2Fopening-courses-v3) so -102 is avoided
 const isOpeningCoursesV3 = computed(() => {
   if (!route?.path) return false
@@ -4080,10 +4079,24 @@ const isOpeningCoursesV3 = computed(() => {
     return false
   }
 })
+/** Move Trainer 3: same chrome as Opening Courses V3 (see MoveTrainer3Landing.vue). */
+const isMoveTrainer3 = computed(() => {
+  if (!route?.path) return false
+  const p = route.path
+  if (p === '/move-trainer/move-trainer-3') return true
+  try {
+    return decodeURIComponent(p) === '/move-trainer/move-trainer-3'
+  } catch {
+    return false
+  }
+})
+/** Preset bar + app-body + Opening-style mobile board placement. */
+const usesOpeningV3Shell = computed(() => isOpeningCoursesV3.value || isMoveTrainer3.value)
+const isVideoV2_2 = computed(() => route.path === '/courses/v2.2' || isOpeningCoursesV3.value || isMoveTrainer3.value)
 /** Defer opening-courses-v3 layout until after first paint to avoid Error -102 (renderer crash). */
 const openingV3Ready = ref(false)
 let openingV3ReadyTimer = null
-watch(isOpeningCoursesV3, (isV1) => {
+watch(usesOpeningV3Shell, (isV1) => {
   if (openingV3ReadyTimer) {
     clearTimeout(openingV3ReadyTimer)
     openingV3ReadyTimer = null
@@ -4152,7 +4165,7 @@ const isMobileViewport = computed(
   () => effectiveViewportPreset.value === 'mobile-a' || effectiveViewportPreset.value === 'mobile-b',
 )
 const isOpeningMobileBLayout = computed(
-  () => isOpeningCoursesV3.value && panelView.value === 'courses' && effectiveViewportPreset.value === 'mobile-b',
+  () => usesOpeningV3Shell.value && panelView.value === 'courses' && effectiveViewportPreset.value === 'mobile-b',
 )
 const isOpeningMobileBoardInPanel = computed(() => isOpeningMobileBLayout.value)
 const openingV3ScenarioPreset = ref(_initialOpeningV1Preset.scenarioPreset)
@@ -4316,7 +4329,7 @@ const openingFilterMoves = ref([])
 /** Moves undone from the opening list board (LIFO); footer Next replays them until a new move clears this stack. */
 const openingFreePlayRedoStack = ref([])
 const openingListFreePlay = computed(
-  () => isOpeningCoursesV3.value && panelView.value === 'courses' && currentQuestionIndex.value < 0
+  () => (isOpeningCoursesV3.value || isMoveTrainer3.value) && panelView.value === 'courses' && currentQuestionIndex.value < 0
 )
 const openingBoardPointerEligible = computed(
   () =>
@@ -4868,7 +4881,7 @@ function clearBoardPosition() {
 function onOpeningContentScroll() {
   try {
     const el = openingV3ScrollWrapRef.value
-    if (!el || !isOpeningCoursesV3.value) return
+    if (!el || !(isOpeningCoursesV3.value || isMoveTrainer3.value)) return
     const st = typeof el.scrollTop === 'number' ? el.scrollTop : 0
     if (effectiveViewportPreset.value === 'mobile-b') {
       lastOpeningScrollTop = st
@@ -4904,7 +4917,7 @@ function setupOpeningSearchBarResizeObserver() {
   openingSearchBarResizeObserver.observe(target)
 }
 
-watch([isOpeningCoursesV3, openingV3Ready, openingV3ScenarioPreset, effectiveViewportPreset], ([isV1, ready]) => {
+watch([usesOpeningV3Shell, openingV3Ready, openingV3ScenarioPreset, effectiveViewportPreset], ([isV1, ready]) => {
   if (!isV1 || !ready) {
     teardownOpeningSearchBarResizeObserver()
     return
@@ -4917,7 +4930,7 @@ watch([isOpeningCoursesV3, openingV3Ready, openingV3ScenarioPreset, effectiveVie
 
 // Restore scroll position and selected card when returning from an OC course page (Back from chapter).
 // Also restore global preset bar (viewport + scenario) so it stays in sync with Course page.
-watch([isOpeningCoursesV3, openingV3Ready], ([isV1, ready]) => {
+watch([usesOpeningV3Shell, openingV3Ready], ([isV1, ready]) => {
   if (!isV1 || !ready) return
   // Restore viewport + scenario from session (e.g. after Back from course page).
   try {
@@ -6249,9 +6262,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app dark-mode" :class="[isOpeningCoursesV3 ? `app--viewport-${effectiveViewportPreset}` : '', isOpeningCoursesV3 ? 'app--with-preset-bar' : '']">
+  <div class="app dark-mode" :class="[usesOpeningV3Shell ? `app--viewport-${effectiveViewportPreset}` : '', usesOpeningV3Shell ? 'app--with-preset-bar' : '']">
     <!-- Opening Courses V1: viewport and scenario preset bar (same placement as V9). Viewport hidden when SHOW_VIEWPORT_PRESET_IN_BAR is false; see docs/opening-courses-viewport-preset.md -->
-    <div v-if="isOpeningCoursesV3" class="viewport-preset-bar" role="toolbar" aria-label="Viewport and scenario preset">
+    <div v-if="usesOpeningV3Shell" class="viewport-preset-bar" role="toolbar" aria-label="Viewport and scenario preset">
       <div v-if="SHOW_VIEWPORT_PRESET_IN_BAR" class="viewport-preset-bar__group">
         <PresetBarSelect
           v-model="viewportPreset"
@@ -6268,7 +6281,7 @@ onUnmounted(() => {
         />
       </div>
     </div>
-    <div :class="{ 'app-body': isOpeningCoursesV3 }">
+    <div :class="{ 'app-body': usesOpeningV3Shell }">
     <div class="layout">
       <!-- Left: Chessboard (Mobile B opening list: board is in-panel scroll) -->
       <div v-if="!isOpeningMobileBoardInPanel" class="board-section">
@@ -6443,7 +6456,7 @@ onUnmounted(() => {
             </div>
             <div class="sidebar-header-title" :class="{ 'sidebar-header-title--line': panelView === 'line' || panelView === 'opening-course' }">
               <CcIcon v-if="panelView === 'courses' || panelView === 'opening-course'" name="book-stack-pawn" variant="color" :size="24" class="sidebar-header-icon" aria-hidden="true" />
-              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' || panelView === 'opening-course' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : (panelView === 'opening-course' ? (selectedOpeningCard?.title ?? 'Course') : (isOpeningCoursesV3 ? 'Openings' : 'Courses')) }}</span>
+              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' || panelView === 'opening-course' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : (panelView === 'opening-course' ? (selectedOpeningCard?.title ?? 'Course') : (isMoveTrainer3 ? 'Move Trainer 3' : (isOpeningCoursesV3 ? 'Openings' : 'Courses'))) }}</span>
             </div>
             <div class="sidebar-header-right" aria-hidden="true" />
           </header>
@@ -7468,6 +7481,198 @@ onUnmounted(() => {
             </div>
           </div>
           <div v-else class="opening-v1-placeholder" aria-hidden="true" />
+          </template>
+          <template v-else-if="isMoveTrainer3">
+            <div
+              v-if="openingV3Ready"
+              class="opening-v1-layout"
+              :class="{ 'opening-v1-layout--mobile-b': isOpeningMobileBLayout }"
+              :style="openingV1LayoutBindingStyle"
+            >
+              <div
+                ref="openingV3ScrollWrapRef"
+                class="opening-v1-scroll-wrap"
+                :class="{ 'opening-v1-scroll-wrap--mobile-b': isOpeningMobileBLayout }"
+                @scroll.passive="onOpeningContentScroll"
+              >
+                <div class="opening-v1-scroll-wrap__sheet">
+                  <template v-if="isOpeningMobileBLayout">
+                    <div class="opening-mobile-b-board-outer">
+                      <div class="board-wrapper opening-mobile-b-board-wrapper">
+                        <div class="chessboard opening-mobile-b-chessboard" ref="boardRef">
+            <div 
+              v-for="square in squares" 
+              :key="square"
+              class="square"
+              :class="[
+                isLightSquare(square) ? 'light' : 'dark',
+                { 'selected': isSelected(square), 'last-move': isLastMove(square), 'wrong-move': isWrongMove(square) }
+              ]"
+              :data-square="square"
+              @click="handleSquareClick(square)"
+            >
+              <div 
+                v-if="hasSkillHighlight(square)" 
+                class="skill-highlight-overlay"
+              ></div>
+              <div 
+                v-if="hasSkillHighlight(square)" 
+                class="skill-plus-icon" 
+                :style="getSkillHighlightStyle"
+              >+1</div>
+              <div 
+                v-if="hasSkillHighlight(square) && skillHighlightLabel" 
+                class="skill-label-bubble"
+                :style="getSkillHighlightStyle"
+              >
+                <span class="skill-label-text">{{ skillHighlightLabel }}</span>
+              </div>
+              <div 
+                v-if="hasBrilliantHighlight(square)" 
+                class="brilliant-highlight-overlay"
+              ></div>
+              <div 
+                v-if="hasBrilliantHighlight(square)" 
+                class="brilliant-icon-wrapper"
+              >
+                <CcIcon name="move-exclamation-double" :customSize="51" class="brilliant-icon" />
+              </div>
+              <div 
+                v-if="hasBrilliantHighlight(square)" 
+                class="brilliant-label-bubble"
+              >
+                <span class="brilliant-label-text">Brilliant!</span>
+              </div>
+              <div 
+                v-if="hasCheckmateHighlight(square)" 
+                class="checkmate-highlight-overlay"
+              ></div>
+              <div 
+                v-if="hasCheckmateHighlight(square)" 
+                class="checkmate-icon-wrapper"
+              >
+                <CcIcon :name="checkmateKingIcon" :customSize="51" class="checkmate-king-icon" :style="{ color: checkmateIconColor, fill: checkmateIconColor }" />
+              </div>
+              <div 
+                v-if="hasCheckmateHighlight(square)" 
+                class="checkmate-label-bubble"
+              >
+                <span class="checkmate-label-text">Checkmate</span>
+              </div>
+              <img 
+                v-if="getPieceOnSquare(square) && !isPieceDragged(square) && !(openingCardAnimatingMove && openingCardAnimatingMove.from === square)" 
+                class="piece"
+                :class="{ 'draggable': getPieceOnSquare(square)?.type.startsWith('w') }"
+                :src="getPieceImage(getPieceOnSquare(square))"
+                :alt="getPieceOnSquare(square).type"
+                draggable="false"
+                @mousedown="handleDragStart($event, square)"
+                @touchstart="handleDragStart($event, square)"
+              />
+              <span v-if="square[1] === (boardViewBlack ? '8' : '1')" class="coord file-coord">{{ square[0] }}</span>
+              <span v-if="square[0] === (boardViewBlack ? 'h' : 'a')" class="coord rank-coord">{{ square[1] }}</span>
+            </div>
+            <div
+              v-if="openingCardAnimatingMove && openingCardAnimatingMove.from && openingCardAnimatingMove.to && openingCardAnimatingMove.pieceType"
+              class="opening-card-moving-piece"
+              :style="openingCardMovingPieceStyle"
+              aria-hidden="true"
+            >
+              <img
+                :src="getPieceImage({ type: openingCardAnimatingMove.pieceType })"
+                :alt="''"
+                class="opening-card-moving-piece__img"
+              />
+            </div>
+            <div
+              v-if="openingBoardPointerShow"
+              class="opening-board-pointer-hint"
+              :style="openingBoardPointerStyle"
+              aria-hidden="true"
+            >
+              <img
+                class="opening-board-pointer-hint__img"
+                :src="baseUrl + 'icons/opening-board-pointer.png'"
+                alt=""
+                width="50"
+                height="50"
+                draggable="false"
+              />
+            </div>
+          </div>
+                      </div>
+                    </div>
+                  </template>
+                  <div class="move-trainer-3-panel-body panel-content" data-move-trainer-3-main />
+                  <div
+                    v-if="panelView === 'courses' && isMobileViewport"
+                    class="panel-footer-frame opening-v3-footer-in-scroll"
+                    data-name="MoveTrainer3ListFooterInScroll"
+                  >
+                    <div class="panel-footer-container">
+                      <section class="footer-section footer-section-actions" data-name="ButtonsFooter">
+                        <div class="footer-buttons-container footer-buttons-container--cta-only">
+                          <div class="footer-buttons-row footer-buttons-row-icon-cta">
+                            <CcButton
+                              v-if="openingV3ScenarioPreset !== 'new-user'"
+                              variant="secondary"
+                              size="large"
+                              class="course-page-line-list-icon-cta"
+                              disabled
+                              aria-label="Coming soon"
+                            >
+                              <CcIcon
+                                name="layout-list-bullet"
+                                variant="glyph"
+                                :size="22"
+                                class="course-page-line-list-icon-cta__icon"
+                              />
+                            </CcButton>
+                            <div class="footer-course-cta-slot">
+                              <CcButton
+                                variant="primary"
+                                size="large"
+                                class="footer-btn-full"
+                                disabled
+                              >{{ openingV3FooterPrimaryLabel }}</CcButton>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+                      <section class="footer-section footer-section-toolbar" data-name="IconFooter">
+                        <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
+                          <button type="button" class="footer-icon-btn" aria-label="More options">
+                            <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
+                          </button>
+                        </div>
+                        <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
+                          <button
+                            type="button"
+                            class="footer-icon-btn"
+                            :disabled="!((panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasPreviousPlyInLine()) || openingFooterCanUndo)"
+                            aria-label="Previous"
+                            @click="onFooterPreviousClick"
+                          >
+                            <CcIcon name="arrow-chevron-left" variant="glyph" :size="20" class="footer-icon" />
+                          </button>
+                          <button
+                            type="button"
+                            class="footer-icon-btn"
+                            :disabled="!((panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasNextPlyInLine()) || openingFooterCanRedo)"
+                            aria-label="Next"
+                            @click="onFooterNextClick"
+                          >
+                            <CcIcon name="arrow-chevron-right" variant="glyph" :size="20" class="footer-icon" />
+                          </button>
+                        </div>
+                      </section>
+                      <footer class="panel-footer" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
           <!-- Normal content (course card, video, sections) – not Opening Courses V1 -->
           <div
@@ -9081,7 +9286,7 @@ v-if="isVideoV6OrV7"
 
         </div>
         <!-- Footer frame: fixed to panel bottom; hidden on OC V3 list only when mobile (scroll footer is inside list then). -->
-        <div v-if="!(isOpeningCoursesV3 && panelView === 'courses' && isMobileViewport)" class="panel-footer-frame">
+        <div v-if="!(usesOpeningV3Shell && panelView === 'courses' && isMobileViewport)" class="panel-footer-frame">
         <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV3 && panelView === 'line') }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
@@ -9186,6 +9391,34 @@ v-if="isVideoV6OrV7"
                     class="footer-btn-full"
                     :disabled="!selectedOpeningCardId"
                     @click="openOpeningCourse()"
+                  >{{ openingV3FooterPrimaryLabel }}</CcButton>
+                </div>
+              </div>
+            </div>
+            <!-- Move Trainer 3 (courses view): same footer row as Opening V3; CTAs disabled until content is wired. -->
+            <div v-else-if="isMoveTrainer3 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
+              <div class="footer-buttons-row footer-buttons-row-icon-cta">
+                <CcButton
+                  v-if="openingV3ScenarioPreset !== 'new-user'"
+                  variant="secondary"
+                  size="large"
+                  class="course-page-line-list-icon-cta"
+                  disabled
+                  aria-label="Coming soon"
+                >
+                  <CcIcon
+                    name="layout-list-bullet"
+                    variant="glyph"
+                    :size="22"
+                    class="course-page-line-list-icon-cta__icon"
+                  />
+                </CcButton>
+                <div class="footer-course-cta-slot">
+                  <CcButton
+                    variant="primary"
+                    size="large"
+                    class="footer-btn-full"
+                    disabled
                   >{{ openingV3FooterPrimaryLabel }}</CcButton>
                 </div>
               </div>
