@@ -68,9 +68,13 @@ function onOpeningLineNext() {
   width: 100%;
 }
 
-/* Flush under panel header — match Move Trainer 2 (no gap above line header). */
+/* Move Trainer 3 / Opening panel: 45px band, centered row, default header vertical padding (8px). */
 .move-trainer-3-line-header :deep(.move-list-header) {
-  padding-top: 0;
+  box-sizing: border-box;
+  height: 45px;
+  min-height: 45px;
+  justify-content: center;
+  align-items: center;
   margin-top: 0;
 }
 
