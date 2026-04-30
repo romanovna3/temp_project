@@ -19,6 +19,7 @@ import ColorToggle from './opening-courses/ColorToggle.vue'
 import FilterChipV2 from './opening-courses/FilterChipV2.vue'
 import { OPENING_FIRST_10_MOVES } from '../data/openingFirst10Moves.js'
 import { useOpeningBoardPointerHint } from '../composables/useOpeningBoardPointerHint.js'
+import MoveTrainer3PanelContent from './move-trainer/move-trainer-3/MoveTrainer3PanelContent.vue'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -3033,7 +3034,7 @@ const boardRef = ref(null)
 // Opening Courses V1: hint dismissed after first drag (card-selection watch is below, after selectedOpeningCardId is defined)
 const openingHintDismissed = ref(false)
 watch(isDragging, (dragging) => {
-  if (dragging && (isOpeningCoursesV3.value || isMoveTrainer3.value)) {
+  if (dragging && isOpeningCoursesV3.value) {
     setTimeout(() => { openingHintDismissed.value = true }, 320)
   }
 })
@@ -3401,11 +3402,29 @@ function setBoardToDefault() {
   checkmateHighlight.value = null
 }
 
+/** Move Trainer 3: intro-1 panel drives the main board (sync with move list ply). */
+function onMoveTrainer3BoardSync(payload) {
+  if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+  if (!payload?.fen) return
+  try {
+    pieces.value = parseFEN(payload.fen)
+    lastMove.value = payload.lastMove ?? null
+    selectedSquare.value = null
+    checkmateHighlight.value = null
+  } catch (_) {
+    pieces.value = parseFEN(STARTING_FEN)
+    lastMove.value = null
+  }
+}
+
 // Board sync: Line view (selected ply), Opening Courses V3 selected card, chapter hover, then default.
 // On Opening V3, selected course card wins over hoveredChapterLine so the main board matches the card.
 // Wrapped in try/catch so a reactive error here cannot break the app or leave global listeners dangling.
 watchEffect(() => {
   try {
+    if (isMoveTrainer3.value && panelView.value === 'courses') {
+      return
+    }
     if (panelView.value === 'line') {
       if (!selectedLine.value) return
       if (currentLineType.value === 'ready') {
@@ -3542,9 +3561,10 @@ const isWrongMove = (square) => {
 // ============================================
 const handleSquareClick = (square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
+  if (isMoveTrainer3.value && panelView.value === 'courses') return
 
   const piece = getPieceOnSquare(square)
-  const isOpeningV1FreePlay = panelView.value === 'courses' && (isOpeningCoursesV3.value || isMoveTrainer3.value) && currentQuestionIndex.value < 0
+  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
   const isLastMovedPiece = piece && isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && square === lastMove.value.to
   const canSelectPiece = piece && (isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w'))
@@ -3834,7 +3854,7 @@ const tryMove = (from, to) => {
   const movingPiece = getPieceOnSquare(from)
   if (!movingPiece) return false
 
-  const isOpeningV1FreePlay = panelView.value === 'courses' && (isOpeningCoursesV3.value || isMoveTrainer3.value) && currentQuestionIndex.value < 0
+  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
 
   // Opening Courses V3: undo by moving piece back – check before side-to-move (undo moves the piece that just moved, i.e. “wrong” color). If 1 move → chip disappears, board resets; if 2+ moves → chip stays, board shows position after remaining moves.
   if (currentQuestionIndex.value < 0 && isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && from === lastMove.value.to && to === lastMove.value.from) {
@@ -3954,11 +3974,12 @@ const tryMove = (from, to) => {
 // ============================================
 const handleDragStart = (event, square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
+  if (isMoveTrainer3.value && panelView.value === 'courses') return
 
   const piece = getPieceOnSquare(square)
   if (!piece) return
   // Opening Courses V3 free play: allow the side to move, or allow dragging the last-moved piece (for undo)
-  const isOpeningV1FreePlay = panelView.value === 'courses' && (isOpeningCoursesV3.value || isMoveTrainer3.value) && currentQuestionIndex.value < 0
+  const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
   const isLastMovedPiece = isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && square === lastMove.value.to
   const canMove = isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w')
@@ -4331,7 +4352,7 @@ const openingFilterMoves = ref([])
 /** Moves undone from the opening list board (LIFO); footer Next replays them until a new move clears this stack. */
 const openingFreePlayRedoStack = ref([])
 const openingListFreePlay = computed(
-  () => (isOpeningCoursesV3.value || isMoveTrainer3.value) && panelView.value === 'courses' && currentQuestionIndex.value < 0
+  () => isOpeningCoursesV3.value && panelView.value === 'courses' && currentQuestionIndex.value < 0
 )
 const openingBoardPointerEligible = computed(
   () =>
@@ -7605,71 +7626,8 @@ onUnmounted(() => {
                       </div>
                     </div>
                   </template>
-                  <div class="move-trainer-3-panel-body panel-content" data-move-trainer-3-main />
-                  <div
-                    v-if="panelView === 'courses' && isMobileViewport"
-                    class="panel-footer-frame opening-v3-footer-in-scroll"
-                    data-name="MoveTrainer3ListFooterInScroll"
-                  >
-                    <div class="panel-footer-container">
-                      <section class="footer-section footer-section-actions" data-name="ButtonsFooter">
-                        <div class="footer-buttons-container footer-buttons-container--cta-only">
-                          <div class="footer-buttons-row footer-buttons-row-icon-cta">
-                            <CcButton
-                              v-if="openingV3ScenarioPreset !== 'new-user'"
-                              variant="secondary"
-                              size="large"
-                              class="course-page-line-list-icon-cta"
-                              disabled
-                              aria-label="Coming soon"
-                            >
-                              <CcIcon
-                                name="layout-list-bullet"
-                                variant="glyph"
-                                :size="22"
-                                class="course-page-line-list-icon-cta__icon"
-                              />
-                            </CcButton>
-                            <div class="footer-course-cta-slot">
-                              <CcButton
-                                variant="primary"
-                                size="large"
-                                class="footer-btn-full"
-                                disabled
-                              >{{ openingV3FooterPrimaryLabel }}</CcButton>
-                            </div>
-                          </div>
-                        </div>
-                      </section>
-                      <section class="footer-section footer-section-toolbar" data-name="IconFooter">
-                        <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
-                          <button type="button" class="footer-icon-btn" aria-label="More options">
-                            <CcIcon :name="icons.ellipsis" variant="glyph" :size="20" class="footer-icon" />
-                          </button>
-                        </div>
-                        <div class="footer-icon-group" data-name="V6 Icon Button Ghost Stack">
-                          <button
-                            type="button"
-                            class="footer-icon-btn"
-                            :disabled="!((panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasPreviousPlyInLine()) || openingFooterCanUndo)"
-                            aria-label="Previous"
-                            @click="onFooterPreviousClick"
-                          >
-                            <CcIcon name="arrow-chevron-left" variant="glyph" :size="20" class="footer-icon" />
-                          </button>
-                          <button
-                            type="button"
-                            class="footer-icon-btn"
-                            :disabled="!((panelView === 'line' && (currentLineType === 'completed' || currentLineType === 'uncompleted' || (currentLineType === 'info' && lineViewMoves?.length)) && hasNextPlyInLine()) || openingFooterCanRedo)"
-                            aria-label="Next"
-                            @click="onFooterNextClick"
-                          >
-                            <CcIcon name="arrow-chevron-right" variant="glyph" :size="20" class="footer-icon" />
-                          </button>
-                        </div>
-                      </section>
-                      <footer class="panel-footer" />
-                    </div>
+                  <div class="move-trainer-3-panel-body panel-content" data-move-trainer-3-main>
+                    <MoveTrainer3PanelContent @board-sync="onMoveTrainer3BoardSync" />
                   </div>
                 </div>
               </div>
@@ -9288,7 +9246,7 @@ v-if="isVideoV6OrV7"
 
         </div>
         <!-- Footer frame: fixed to panel bottom; hidden on OC V3 list only when mobile (scroll footer is inside list then). -->
-        <div v-if="!(usesOpeningV3Shell && panelView === 'courses' && isMobileViewport)" class="panel-footer-frame">
+        <div v-if="!(isMoveTrainer3 && panelView === 'courses') && !(usesOpeningV3Shell && panelView === 'courses' && isMobileViewport)" class="panel-footer-frame">
         <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV3 && panelView === 'line') }">
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
@@ -9393,34 +9351,6 @@ v-if="isVideoV6OrV7"
                     class="footer-btn-full"
                     :disabled="!selectedOpeningCardId"
                     @click="openOpeningCourse()"
-                  >{{ openingV3FooterPrimaryLabel }}</CcButton>
-                </div>
-              </div>
-            </div>
-            <!-- Move Trainer 3 (courses view): same footer row as Opening V3; CTAs disabled until content is wired. -->
-            <div v-else-if="isMoveTrainer3 && panelView === 'courses'" class="footer-buttons-container footer-buttons-container--cta-only">
-              <div class="footer-buttons-row footer-buttons-row-icon-cta">
-                <CcButton
-                  v-if="openingV3ScenarioPreset !== 'new-user'"
-                  variant="secondary"
-                  size="large"
-                  class="course-page-line-list-icon-cta"
-                  disabled
-                  aria-label="Coming soon"
-                >
-                  <CcIcon
-                    name="layout-list-bullet"
-                    variant="glyph"
-                    :size="22"
-                    class="course-page-line-list-icon-cta__icon"
-                  />
-                </CcButton>
-                <div class="footer-course-cta-slot">
-                  <CcButton
-                    variant="primary"
-                    size="large"
-                    class="footer-btn-full"
-                    disabled
                   >{{ openingV3FooterPrimaryLabel }}</CcButton>
                 </div>
               </div>
@@ -10880,6 +10810,13 @@ body {
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+}
+.move-trainer-3-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 /* Mobile A/B: minimal gutter (thin bar), track transparent, thumb #fff 60% — reads as overlay on content edge */
 .app.app--viewport-mobile-a .opening-v1-scroll-wrap,
