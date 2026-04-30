@@ -86,5 +86,17 @@ function onOpeningLineNext() {
   flex-shrink: 0;
   position: relative;
   z-index: 2;
+  /* CoachBubble `.tip` uses `top: var(--coach-tip-top, 50px)` — align tip to MT3 spec (20px). */
+  --coach-tip-top: 20px;
+}
+
+.move-trainer-3-coach :deep(.tip) {
+  height: 33px;
+}
+
+/* When intro uses `start-position`, CoachBubble anchors the tip with `bottom`; override to match same offsets. */
+.move-trainer-3-coach :deep(.coach-container.start-position .tip) {
+  top: 20px;
+  bottom: auto;
 }
 </style>
