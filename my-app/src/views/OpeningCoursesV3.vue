@@ -22,7 +22,10 @@ import { useOpeningBoardPointerHint } from '../composables/useOpeningBoardPointe
 import MoveTrainer3LineCoach from './move-trainer/move-trainer-3/MoveTrainer3LineCoach.vue'
 import MoveTrainer3Moves from './move-trainer/move-trainer-3/MoveTrainer3Moves.vue'
 import MoveTrainer3PanelFooter from './move-trainer/move-trainer-3/MoveTrainer3PanelFooter.vue'
-import { watchMoveTrainer3BoardSync } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
+import {
+  watchMoveTrainer3BoardSync,
+  MOVE_TRAINER_3_COURSE_TITLE,
+} from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -6488,8 +6491,15 @@ onUnmounted(() => {
               </button>
             </div>
             <div class="sidebar-header-title" :class="{ 'sidebar-header-title--line': panelView === 'line' || panelView === 'opening-course' }">
-              <CcIcon v-if="panelView === 'courses' || panelView === 'opening-course'" name="book-stack-pawn" variant="color" :size="24" class="sidebar-header-icon" aria-hidden="true" />
-              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' || panelView === 'opening-course' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : (panelView === 'opening-course' ? (selectedOpeningCard?.title ?? 'Course') : (isMoveTrainer3 ? 'Move Trainer 3' : (isOpeningCoursesV3 ? 'Openings' : 'Courses'))) }}</span>
+              <CcIcon
+                v-if="!isMoveTrainer3 && (panelView === 'courses' || panelView === 'opening-course')"
+                name="book-stack-pawn"
+                variant="color"
+                :size="24"
+                class="sidebar-header-icon"
+                aria-hidden="true"
+              />
+              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' || panelView === 'opening-course' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : (panelView === 'opening-course' ? (selectedOpeningCard?.title ?? 'Course') : (isMoveTrainer3 ? MOVE_TRAINER_3_COURSE_TITLE : (isOpeningCoursesV3 ? 'Openings' : 'Courses'))) }}</span>
             </div>
             <div class="sidebar-header-right" aria-hidden="true" />
           </header>

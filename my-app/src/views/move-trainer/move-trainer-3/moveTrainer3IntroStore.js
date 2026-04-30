@@ -1,16 +1,21 @@
 /**
- * Shared intro-1 state for Move Trainer 3 split UI (line/coach, moves, footer).
+ * Move Trainer 3 panel: course title, line header, move list, coach, board sync.
  */
 import { ref, computed, watch } from 'vue'
 import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
-import { INTRO_1_GAME } from '@move-trainer/data/gameData.js'
-import { MOVE_TRAINER_LINE_ORDER } from '@move-trainer/data/moveTrainerLineOrder.js'
+import { MOVE_TRAINER_3_LINE_GAME } from '@move-trainer/data/gameData.js'
 
-const INTRO_COACH_MESSAGE =
+/** Shown in OpeningCoursesV3 panel header (no icon beside title). */
+export const MOVE_TRAINER_3_COURSE_TITLE = 'Black is Back: Old Benoni'
+
+/** Move list header — main line label. */
+export const MOVE_TRAINER_3_LINE_HEADER_TITLE = 'Main Line without c2-c4 – 4.f4'
+
+const REVIEW_MESSAGE =
   "Take a moment to review the moves, then start learning whenever you're ready."
 
-const gameMoves = ref([...INTRO_1_GAME.moves])
-const gameResult = ref(INTRO_1_GAME.result)
+const gameMoves = ref([...MOVE_TRAINER_3_LINE_GAME.moves])
+const gameResult = ref(MOVE_TRAINER_3_LINE_GAME.result)
 
 const allPlies = computed(() => {
   const plies = []
@@ -27,20 +32,13 @@ const reviewMaxPly = computed(() => totalPlies.value)
 const atStart = computed(() => currentPly.value === 0)
 const atReviewLineEnd = computed(() => currentPly.value >= reviewMaxPly.value)
 
-export const intro1Line = computed(() => MOVE_TRAINER_LINE_ORDER.find((e) => e.name === 'move-trainer-intro-1'))
+export const lineHeaderTitle = computed(() => MOVE_TRAINER_3_LINE_HEADER_TITLE)
 
-export const lineHeaderTitle = computed(() => intro1Line.value?.lineHeader ?? 'Leave the Queen at Home!')
-
-export const moveTrainerLineNav = computed(() => {
-  const line = intro1Line.value
-  if (!line) return { prevDisabled: true, nextDisabled: true }
-  const last = MOVE_TRAINER_LINE_ORDER.length - 1
-  const idx = MOVE_TRAINER_LINE_ORDER.findIndex((e) => e.path === line.path)
-  return {
-    prevDisabled: idx <= 0,
-    nextDisabled: idx < 0 || idx >= last,
-  }
-})
+/** Single demo line — no prev/next line in the catalog for this view. */
+export const moveTrainerLineNav = computed(() => ({
+  prevDisabled: true,
+  nextDisabled: true,
+}))
 
 const coachPlyData = computed(() => allPlies.value[0] ?? null)
 
@@ -54,7 +52,7 @@ export const coachHeaderText = computed(() => {
   const ply = coachPlyData.value
   if (!ply) return ''
   const cls = MOVE_CLASSIFICATIONS[ply.classification]
-  const moveName = `${ply.piece || ''}${ply.san}`
+  const moveName = ply.san
   if (!cls) return moveName
   return `${moveName} is a ${cls.label.toLowerCase()} move`
 })
@@ -66,15 +64,15 @@ export const coachWhiteAdvantage = computed(() => {
   return !ev.startsWith('-')
 })
 
-export const coachMessage = computed(() => INTRO_COACH_MESSAGE)
+export const coachMessage = computed(() => REVIEW_MESSAGE)
 export const coachTurnStripText = 'White to move'
 export const bubbleStartPosition = computed(() => !coachHeaderText.value)
 export const coachAvatarIconPx = 96
 
 export const currentFen = computed(() => {
-  if (currentPly.value === 0) return INTRO_1_GAME.initialFen
+  if (currentPly.value === 0) return MOVE_TRAINER_3_LINE_GAME.initialFen
   const ply = allPlies.value[currentPly.value - 1]
-  return ply?.fen ?? INTRO_1_GAME.initialFen
+  return ply?.fen ?? MOVE_TRAINER_3_LINE_GAME.initialFen
 })
 
 export function goBack() {

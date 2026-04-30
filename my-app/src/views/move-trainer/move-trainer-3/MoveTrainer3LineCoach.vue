@@ -1,11 +1,9 @@
 <script setup>
 import CoachBubble from '@move-trainer/components/CoachBubble.vue'
 import MoveListHeader from '@move-trainer/components/MoveListHeader.vue'
-import { useRouter } from 'vue-router'
 import {
   lineHeaderTitle,
   moveTrainerLineNav,
-  intro1Line,
   coachHeaderIcon,
   coachHeaderText,
   coachEvalText,
@@ -15,23 +13,6 @@ import {
   bubbleStartPosition,
   coachAvatarIconPx,
 } from './moveTrainer3IntroStore.js'
-import { moveTrainerNextPath, moveTrainerPrevPath } from '@move-trainer/data/moveTrainerLineOrder.js'
-
-const router = useRouter()
-
-function onOpeningLinePrev() {
-  const base = intro1Line.value?.path
-  if (!base) return
-  const prev = moveTrainerPrevPath(base)
-  if (prev) router.push(prev)
-}
-
-function onOpeningLineNext() {
-  const base = intro1Line.value?.path
-  if (!base) return
-  const next = moveTrainerNextPath(base)
-  if (next) router.push(next)
-}
 </script>
 
 <template>
@@ -40,8 +21,6 @@ function onOpeningLineNext() {
       :title="lineHeaderTitle"
       :prev-disabled="moveTrainerLineNav.prevDisabled"
       :next-disabled="moveTrainerLineNav.nextDisabled"
-      @next="onOpeningLineNext"
-      @prev="onOpeningLinePrev"
     />
   </div>
   <div class="move-trainer-3-coach">

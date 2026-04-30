@@ -299,6 +299,194 @@ export const INTRO_1_GAME = {
   result: '',
 }
 
+/**
+ * Main-line preview for Move Trainer 3 (Old Benoni) — course panel move list + board plies.
+ * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a6 7.a4 g6 8.Nf3 Bg4 9.Be2 Bg7 10.O-O O-O
+ */
+export const MOVE_TRAINER_3_LINE_GAME = {
+  initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  moves: [
+    {
+      num: 1,
+      white: {
+        san: 'd4',
+        classification: 'book',
+        fen: 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1',
+        coachText: 'White claims space with the queen\'s pawn — a flexible start toward this Benoni-style setup.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'c5',
+        classification: 'book',
+        fen: 'rnbqkbnr/pp1ppppp/8/2p5/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2',
+        coachText: 'Black stakes a Sicilian-style fight on the flank.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 2,
+      white: {
+        san: 'd5',
+        classification: 'book',
+        fen: 'rnbqkbnr/pp1ppppp/8/2pP4/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2',
+        coachText: 'The advance clamps the center — typical of the Old Benoni structure.',
+        eval: '+0.1',
+      },
+      black: {
+        san: 'e5',
+        classification: 'book',
+        fen: 'rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3',
+        coachText: 'Black fights for the e5 square from the semi-open files.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 3,
+      white: {
+        san: 'e4',
+        classification: 'book',
+        fen: 'rnbqkbnr/pp1p1ppp/8/2pPp3/4P3/8/PPP2PPP/RNBQKBNR b KQkq - 0 3',
+        coachText: 'White expands in the center — space and tension.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'd6',
+        classification: 'book',
+        fen: 'rnbqkbnr/pp3ppp/3p4/2pPp3/4P3/8/PPP2PPP/RNBQKBNR w KQkq - 0 4',
+        coachText: 'Black reinforces the center and prepares kingside development.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 4,
+      white: {
+        san: 'f4',
+        classification: 'book',
+        fen: 'rnbqkbnr/pp3ppp/3p4/2pPp3/4PP2/8/PPP3PP/RNBQKBNR b KQkq - 0 4',
+        coachText: 'A sharp pawn stab — heightening the central tension.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'exf4',
+        classification: 'book',
+        fen: 'rnbqkbnr/pp3ppp/3p4/2pP4/4Pp2/8/PPP3PP/RNBQKBNR w KQkq - 0 5',
+        coachText: 'Black captures on f4, opening lines toward White\'s king.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 5,
+      white: {
+        san: 'Bxf4',
+        piece: 'B',
+        classification: 'book',
+        fen: 'rnbqkbnr/pp3ppp/3p4/2pP4/4PB2/8/PPP3PP/RN1QKBNR b KQkq - 0 5',
+        coachText: 'The bishop recaptures with the f-pawn gone — development follows.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'Nf6',
+        piece: 'N',
+        classification: 'book',
+        fen: 'rnbqkb1r/pp3ppp/3p1n2/2pP4/4PB2/8/PPP3PP/RN1QKBNR w KQkq - 1 6',
+        coachText: 'The knight hits e4 and d5 — a natural square.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 6,
+      white: {
+        san: 'Nc3',
+        piece: 'N',
+        classification: 'book',
+        fen: 'rnbqkb1r/pp3ppp/3p1n2/2pP4/4PB2/2N5/PPP3PP/R2QKBNR b KQkq - 2 6',
+        coachText: 'Development with control over d5 and future e4 support.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'a6',
+        classification: 'book',
+        fen: 'rnbqkb1r/1p3ppp/p2p1n2/2pP4/4PB2/2N5/PPP3PP/R2QKBNR w KQkq - 0 7',
+        coachText: 'A useful waiting move — often preparing …b5 ideas.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 7,
+      white: {
+        san: 'a4',
+        classification: 'book',
+        fen: 'rnbqkb1r/1p3ppp/p2p1n2/2pP4/P3PB2/2N5/1PP3PP/R2QKBNR b KQkq - 0 7',
+        coachText: 'White clamps queenside expansion.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'g6',
+        classification: 'book',
+        fen: 'rnbqkb1r/1p3p1p/p2p1np1/2pP4/P3PB2/2N5/1PP3PP/R2QKBNR w KQkq - 0 8',
+        coachText: 'Fianchetto prep — the bishop will breathe on g7.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 8,
+      white: {
+        san: 'Nf3',
+        piece: 'N',
+        classification: 'book',
+        fen: 'rnbqkb1r/1p3p1p/p2p1np1/2pP4/P3PB2/2N2N2/1PP3PP/R2QKB1R b KQkq - 1 8',
+        coachText: 'Natural development — eyes on e5 and the center.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'Bg4',
+        piece: 'B',
+        classification: 'book',
+        fen: 'rn1qkb1r/1p3p1p/p2p1np1/2pP4/P3PBb1/2N2N2/1PP3PP/R2QKB1R w KQkq - 2 9',
+        coachText: 'Pinning the knight — classic Benoni pressure.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 9,
+      white: {
+        san: 'Be2',
+        piece: 'B',
+        classification: 'book',
+        fen: 'rn1qkb1r/1p3p1p/p2p1np1/2pP4/P3PBb1/2N2N2/1PP1B1PP/R2QK2R b KQkq - 3 9',
+        coachText: 'Breaking the pin while staying solid.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'Bg7',
+        piece: 'B',
+        classification: 'book',
+        fen: 'rn1qk2r/1p3pbp/p2p1np1/2pP4/P3PBb1/2N2N2/1PP1B1PP/R2QK2R w KQkq - 4 10',
+        coachText: 'The fianchettoed bishop dominates the long diagonal.',
+        eval: '0.0',
+      },
+    },
+    {
+      num: 10,
+      white: {
+        san: 'O-O',
+        classification: 'book',
+        fen: 'rn1qk2r/1p3pbp/p2p1np1/2pP4/P3PBb1/2N2N2/1PP1B1PP/R2Q1RK1 b kq - 5 10',
+        coachText: 'White castles — the king is safe; rooks connect.',
+        eval: '+0.2',
+      },
+      black: {
+        san: 'O-O',
+        classification: 'book',
+        fen: 'rn1q1rk1/1p3pbp/p2p1np1/2pP4/P3PBb1/2N2N2/1PP1B1PP/R2Q1RK1 w - - 6 11',
+        coachText: 'Black castles — both sides are fully developed.',
+        eval: '0.0',
+      },
+    },
+  ],
+  result: '',
+}
+
 /** Scholar's Mate attempt line for `intro-2` ("Don't Try Scholar's Mate!"). */
 export const INTRO_2_GAME = {
   initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
