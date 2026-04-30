@@ -10718,7 +10718,7 @@ body {
 }
 /* Line header directly under main panel header (no .panel-content top/gap). */
 .move-trainer-3-column.panel-content {
-  padding-top: 0;
+  padding: 0;
   gap: 0;
 }
 /* Mobile A/B: minimal gutter (thin bar), track transparent, thumb #fff 60% — reads as overlay on content edge */
