@@ -19,7 +19,10 @@ import ColorToggle from './opening-courses/ColorToggle.vue'
 import FilterChipV2 from './opening-courses/FilterChipV2.vue'
 import { OPENING_FIRST_10_MOVES } from '../data/openingFirst10Moves.js'
 import { useOpeningBoardPointerHint } from '../composables/useOpeningBoardPointerHint.js'
-import MoveTrainer3PanelContent from './move-trainer/move-trainer-3/MoveTrainer3PanelContent.vue'
+import MoveTrainer3LineCoach from './move-trainer/move-trainer-3/MoveTrainer3LineCoach.vue'
+import MoveTrainer3Moves from './move-trainer/move-trainer-3/MoveTrainer3Moves.vue'
+import MoveTrainer3PanelFooter from './move-trainer/move-trainer-3/MoveTrainer3PanelFooter.vue'
+import { watchMoveTrainer3BoardSync } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
 provide('design-system-key', {
@@ -4111,6 +4114,12 @@ const isMoveTrainer3 = computed(() => {
     return false
   }
 })
+
+watchMoveTrainer3BoardSync((payload) => {
+  if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+  onMoveTrainer3BoardSync(payload)
+})
+
 /** Preset bar + app-body + Opening-style mobile board placement. */
 const usesOpeningV3Shell = computed(() => isOpeningCoursesV3.value || isMoveTrainer3.value)
 /** Move Trainer 3: no viewport/scenario bar (full layout below the bar area). */
@@ -4190,7 +4199,8 @@ const isMobileViewport = computed(
 const isOpeningMobileBLayout = computed(
   () => usesOpeningV3Shell.value && panelView.value === 'courses' && effectiveViewportPreset.value === 'mobile-b',
 )
-const isOpeningMobileBoardInPanel = computed(() => isOpeningMobileBLayout.value)
+/** Mobile B: in-panel board above scroll — not for Move Trainer 3 (line header must sit directly under panel header). */
+const isOpeningMobileBoardInPanel = computed(() => isOpeningMobileBLayout.value && !isMoveTrainer3.value)
 const openingV3ScenarioPreset = ref(_initialOpeningV1Preset.scenarioPreset)
 /** RUB only: active tab 'my-openings' | 'all' */
 const openingV3RubActiveTab = ref('my-openings')
@@ -7506,131 +7516,9 @@ onUnmounted(() => {
           <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
           <template v-else-if="isMoveTrainer3">
-            <div
-              v-if="openingV3Ready"
-              class="opening-v1-layout"
-              :class="{ 'opening-v1-layout--mobile-b': isOpeningMobileBLayout }"
-              :style="openingV1LayoutBindingStyle"
-            >
-              <div
-                ref="openingV3ScrollWrapRef"
-                class="opening-v1-scroll-wrap"
-                :class="{ 'opening-v1-scroll-wrap--mobile-b': isOpeningMobileBLayout }"
-                @scroll.passive="onOpeningContentScroll"
-              >
-                <div class="opening-v1-scroll-wrap__sheet">
-                  <template v-if="isOpeningMobileBLayout">
-                    <div class="opening-mobile-b-board-outer">
-                      <div class="board-wrapper opening-mobile-b-board-wrapper">
-                        <div class="chessboard opening-mobile-b-chessboard" ref="boardRef">
-            <div 
-              v-for="square in squares" 
-              :key="square"
-              class="square"
-              :class="[
-                isLightSquare(square) ? 'light' : 'dark',
-                { 'selected': isSelected(square), 'last-move': isLastMove(square), 'wrong-move': isWrongMove(square) }
-              ]"
-              :data-square="square"
-              @click="handleSquareClick(square)"
-            >
-              <div 
-                v-if="hasSkillHighlight(square)" 
-                class="skill-highlight-overlay"
-              ></div>
-              <div 
-                v-if="hasSkillHighlight(square)" 
-                class="skill-plus-icon" 
-                :style="getSkillHighlightStyle"
-              >+1</div>
-              <div 
-                v-if="hasSkillHighlight(square) && skillHighlightLabel" 
-                class="skill-label-bubble"
-                :style="getSkillHighlightStyle"
-              >
-                <span class="skill-label-text">{{ skillHighlightLabel }}</span>
-              </div>
-              <div 
-                v-if="hasBrilliantHighlight(square)" 
-                class="brilliant-highlight-overlay"
-              ></div>
-              <div 
-                v-if="hasBrilliantHighlight(square)" 
-                class="brilliant-icon-wrapper"
-              >
-                <CcIcon name="move-exclamation-double" :customSize="51" class="brilliant-icon" />
-              </div>
-              <div 
-                v-if="hasBrilliantHighlight(square)" 
-                class="brilliant-label-bubble"
-              >
-                <span class="brilliant-label-text">Brilliant!</span>
-              </div>
-              <div 
-                v-if="hasCheckmateHighlight(square)" 
-                class="checkmate-highlight-overlay"
-              ></div>
-              <div 
-                v-if="hasCheckmateHighlight(square)" 
-                class="checkmate-icon-wrapper"
-              >
-                <CcIcon :name="checkmateKingIcon" :customSize="51" class="checkmate-king-icon" :style="{ color: checkmateIconColor, fill: checkmateIconColor }" />
-              </div>
-              <div 
-                v-if="hasCheckmateHighlight(square)" 
-                class="checkmate-label-bubble"
-              >
-                <span class="checkmate-label-text">Checkmate</span>
-              </div>
-              <img 
-                v-if="getPieceOnSquare(square) && !isPieceDragged(square) && !(openingCardAnimatingMove && openingCardAnimatingMove.from === square)" 
-                class="piece"
-                :class="{ 'draggable': getPieceOnSquare(square)?.type.startsWith('w') }"
-                :src="getPieceImage(getPieceOnSquare(square))"
-                :alt="getPieceOnSquare(square).type"
-                draggable="false"
-                @mousedown="handleDragStart($event, square)"
-                @touchstart="handleDragStart($event, square)"
-              />
-              <span v-if="square[1] === (boardViewBlack ? '8' : '1')" class="coord file-coord">{{ square[0] }}</span>
-              <span v-if="square[0] === (boardViewBlack ? 'h' : 'a')" class="coord rank-coord">{{ square[1] }}</span>
-            </div>
-            <div
-              v-if="openingCardAnimatingMove && openingCardAnimatingMove.from && openingCardAnimatingMove.to && openingCardAnimatingMove.pieceType"
-              class="opening-card-moving-piece"
-              :style="openingCardMovingPieceStyle"
-              aria-hidden="true"
-            >
-              <img
-                :src="getPieceImage({ type: openingCardAnimatingMove.pieceType })"
-                :alt="''"
-                class="opening-card-moving-piece__img"
-              />
-            </div>
-            <div
-              v-if="openingBoardPointerShow"
-              class="opening-board-pointer-hint"
-              :style="openingBoardPointerStyle"
-              aria-hidden="true"
-            >
-              <img
-                class="opening-board-pointer-hint__img"
-                :src="baseUrl + 'icons/opening-board-pointer.png'"
-                alt=""
-                width="50"
-                height="50"
-                draggable="false"
-              />
-            </div>
-          </div>
-                      </div>
-                    </div>
-                  </template>
-                  <div class="move-trainer-3-panel-body panel-content" data-move-trainer-3-main>
-                    <MoveTrainer3PanelContent @board-sync="onMoveTrainer3BoardSync" />
-                  </div>
-                </div>
-              </div>
+            <div v-if="openingV3Ready" class="move-trainer-3-column panel-content" data-move-trainer-3-main>
+              <MoveTrainer3LineCoach />
+              <MoveTrainer3Moves />
             </div>
             <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
@@ -9245,9 +9133,16 @@ v-if="isVideoV6OrV7"
         </template>
 
         </div>
-        <!-- Footer frame: fixed to panel bottom; hidden on OC V3 list only when mobile (scroll footer is inside list then). -->
-        <div v-if="!(isMoveTrainer3 && panelView === 'courses') && !(usesOpeningV3Shell && panelView === 'courses' && isMobileViewport)" class="panel-footer-frame">
+        <!-- Footer frame: fixed to panel bottom; hidden on OC V3 courses list when mobile (in-scroll footer). Move Trainer 3 keeps this footer (Video / Start Learning). -->
+        <div
+          v-if="!(isOpeningCoursesV3 && !isMoveTrainer3 && panelView === 'courses' && isMobileViewport)"
+          class="panel-footer-frame"
+        >
         <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV3 && panelView === 'line') }">
+          <template v-if="isMoveTrainer3 && panelView === 'courses'">
+            <MoveTrainer3PanelFooter />
+          </template>
+          <template v-else>
           <!-- Level footer: Practice in (completed) or Ready (ready lines) + Next Level – Lines only; hidden on uncompleted -->
           <div v-if="panelView === 'line' && currentLineType !== 'uncompleted' && currentLineType !== 'info'" class="extra-data" data-name="LevelFooter">
             <!-- Completed lines: Practice in + time chip -->
@@ -9495,6 +9390,7 @@ v-if="isVideoV6OrV7"
               </button>
             </div>
           </section>
+          </template>
 
           <footer class="panel-footer" />
         </div>
@@ -10811,12 +10707,19 @@ body {
   width: 100%;
   box-sizing: border-box;
 }
-.move-trainer-3-panel-body {
-  flex: 1 1 auto;
-  min-height: 0;
+.move-trainer-3-column {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
   width: 100%;
+  box-sizing: border-box;
+}
+/* Line header directly under main panel header (no .panel-content top/gap). */
+.move-trainer-3-column.panel-content {
+  padding-top: 0;
+  gap: 0;
 }
 /* Mobile A/B: minimal gutter (thin bar), track transparent, thumb #fff 60% — reads as overlay on content edge */
 .app.app--viewport-mobile-a .opening-v1-scroll-wrap,
