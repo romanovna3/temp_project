@@ -18,10 +18,8 @@ import {
   moveTrainer3PathIsOpponentsMove,
   moveTrainer3OpponentsMoveStepFromPath,
   getMoveTrainer3OpponentsMoveCheckpoint,
-  getMoveTrainer3OmWhiteReplyCoachText,
+  moveTrainer3CoachReplayScrubbing,
   moveTrainer3OmAuthorNoteStep,
-  moveTrainer3StartLearningNonce,
-  moveTrainer3FooterNavMaxPly,
   moveTrainer3AllPlies,
   currentPly,
 } from './moveTrainer3IntroStore.js'
@@ -48,11 +46,10 @@ const opponentsMoveCheckpoint = computed(() =>
 
 const introCoachBubbleMessage = computed(() => MOVE_TRAINER_3_INTRO_COACH_MESSAGE)
 
-/** Unified replay coach — avoids swapping OM vs Play Move shells while `currentPly` trails `footerNavMaxPly`. */
+/** Unified replay coach — footer scrub before unlocked tip only (live progression unchanged). */
 const showMt3ReplayCoachPreview = computed(
   () =>
-    moveTrainer3StartLearningNonce.value > 0 &&
-    currentPly.value < moveTrainer3FooterNavMaxPly.value &&
+    moveTrainer3CoachReplayScrubbing.value &&
     (isPlayMoveLayout.value || isOpponentsMoveLayout.value),
 )
 
@@ -78,23 +75,28 @@ const playMoveCoachBubbleMessage = computed(() =>
   isPlayMoveLayout.value ? '' : introCoachBubbleMessage.value,
 )
 
-/** OM v1 top bubble: same source as line data (`coachText` on White’s reply for this segment). */
-const omVariant1TopBubbleMessage = computed(() =>
-  opponentsMoveStep.value ? getMoveTrainer3OmWhiteReplyCoachText(opponentsMoveStep.value) : '',
+/** OM v1 live tip: designer checkpoint commentary (replay uses preview branch + line `coachText`). */
+const omVariant1TopBubbleMessage = computed(() => opponentsMoveCheckpoint.value?.whiteCommentary ?? '')
+
+/** OM v1: dynamic “Play …” when Black to move; checkpoint fallback during scripted White etc. */
+const omVariant1PlayLeadBold = computed(
+  () =>
+    coachPlayMoveLeadBold.value ||
+    opponentsMoveCheckpoint.value?.nextBlackLeadBold ||
+    '',
 )
 
-/** OM variant 1: bottom bubble — Black reply chip only (`2... e5` style). */
-const omVariant1PlayLeadBold = computed(() => coachPlayMoveLeadBold.value)
+const omVariant1PlayTurnStrip = computed(
+  () =>
+    coachPlayMoveTurnLabel.value ||
+    opponentsMoveCheckpoint.value?.nextBlackTurnStrip ||
+    '',
+)
 
-const omVariant1PlayTurnStrip = computed(() => coachPlayMoveTurnLabel.value)
-
-/** OM variant 1: checkpoint exists + White segment narration is defined on the main line. */
-const showOmVariant1 = computed(() => {
-  if (!isOpponentsMoveLayout.value) return false
-  const step = opponentsMoveStep.value
-  if (!step || !getMoveTrainer3OpponentsMoveCheckpoint(step)) return false
-  return !!getMoveTrainer3OmWhiteReplyCoachText(step)
-})
+/** OM variant 1: checkpoint defines this shell. */
+const showOmVariant1 = computed(
+  () => isOpponentsMoveLayout.value && !!opponentsMoveCheckpoint.value?.whiteCommentary,
+)
 
 /** Long author commentary after graded Black move — Video + Continue in footer; URL stays on same OM step. */
 const showOmAuthorReading = computed(() => {

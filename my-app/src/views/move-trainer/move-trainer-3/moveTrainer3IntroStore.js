@@ -44,11 +44,14 @@ const OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE =
 
 /**
  * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
- * White narration + “next Black” chip come from main-line `coachText` / notation only (single source).
- * Optional `afterBlackMoveAuthorNote`: long author-only note after that Black reply → reading phase + Continue.
+ * Live progression coach uses `whiteCommentary` + `nextBlack*`; replay (footer scrub) uses line `coachText` + notation in MoveTrainer3LineCoach.
+ * Optional `afterBlackMoveAuthorNote`: long author note after that Black reply → reading phase + Continue.
  */
 export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
   1: {
+    whiteCommentary: 'White immediately locks up the center, grabbing space.',
+    nextBlackLeadBold: 'Play e5',
+    nextBlackTurnStrip: 'Black to play',
     afterBlackMoveAuthorNote: OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE,
   },
 })
@@ -81,19 +84,7 @@ export function getMoveTrainer3OpponentsMoveCheckpoint(step) {
   return MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[n] ?? null
 }
 
-/**
- * OM stacked-coach top bubble: White’s reply on this segment lives on `MOVE_TRAINER_3_LINE_GAME.moves[step].white`.
- * (`step` === opponents-move index after Black’s step-th successful reply.)
- */
-export function getMoveTrainer3OmWhiteReplyCoachText(step) {
-  const n = typeof step === 'number' && step > 0 ? step : 0
-  if (!n) return ''
-  const pair = MOVE_TRAINER_3_LINE_GAME.moves[n]
-  const t = pair?.white?.coachText
-  return typeof t === 'string' ? t : ''
-}
-
-/** Single-line coach chip when Black is on move, e.g. `2... e5` */
+/** Single-line coach chip when Black is on move, e.g. `2... e5` (replay scrub only). */
 function formatMt3BlackHalfMoveLabel(ply) {
   if (!ply?.san || ply.color !== 'black') return ''
   const num = ply.moveNum
@@ -277,21 +268,40 @@ export const currentFen = computed(() => {
   return ply?.fen ?? MOVE_TRAINER_3_LINE_GAME.initialFen
 })
 
-/** Black-to-move coach chip — notation only (`1... c5`), no “Play” / second subtitle line. */
+/** True while footer scrubbed before furthest unlocked ply — replay coach vs live progression copy. */
+export const moveTrainer3CoachReplayScrubbing = computed(
+  () =>
+    moveTrainer3StartLearningNonce.value > 0 &&
+    currentPly.value < moveTrainer3FooterNavMaxPly.value,
+)
+
+/** Live progression: “Play …”; replay scrub: notation-only (`1... c5`). */
 export const coachPlayMoveLeadBold = computed(() => {
+  const replay = moveTrainer3CoachReplayScrubbing.value
   const pending = moveTrainer3CoachPendingBlackSan.value
   if (pending) {
-    const p = allPlies.value.find((x) => x.color === 'black' && x.san === pending)
-    return formatMt3BlackHalfMoveLabel(p) || pending
+    if (replay) {
+      const p = allPlies.value.find((x) => x.color === 'black' && x.san === pending)
+      return formatMt3BlackHalfMoveLabel(p) || pending
+    }
+    return `Play ${pending}`
   }
   const side = currentFen.value.split(/\s+/)[1]
   if (side !== 'b') return ''
   const next = allPlies.value[currentPly.value]
-  return formatMt3BlackHalfMoveLabel(next)
+  if (!next?.san || next.color !== 'black') return ''
+  if (replay) return formatMt3BlackHalfMoveLabel(next)
+  return `Play ${next.san}`
 })
 
-/** Deliberately empty — move notation stands alone (see `coachPlayMoveLeadBold`). */
-export const coachPlayMoveTurnLabel = computed(() => '')
+/** Hidden during replay scrub; “Black to play” during live progression when Black is on move. */
+export const coachPlayMoveTurnLabel = computed(() => {
+  if (moveTrainer3CoachReplayScrubbing.value) return ''
+  if (moveTrainer3CoachPendingBlackSan.value) return 'Black to play'
+  const side = currentFen.value.split(/\s+/)[1]
+  if (side !== 'b') return ''
+  return 'Black to play'
+})
 
 /**
  * Narration for the half-move selected via footer scrub (`currentPly - 1`) from main-line `coachText`.
