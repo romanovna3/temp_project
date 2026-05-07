@@ -38,6 +38,10 @@ import {
   goForward,
   resetMoveTrainer3LearnProgress,
   recordMoveTrainer3BlackLearnSuccess,
+  moveTrainer3BlackMovesCompleted,
+  moveTrainer3AllPlies,
+  moveTrainer3PathIsOpponentsMove,
+  moveTrainer3OpponentsMoveStepFromPath,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -3656,7 +3660,7 @@ const isWrongMove = (square) => {
 // ============================================
 // MOVE HANDLING
 // ============================================
-const handleSquareClick = (square) => {
+const handleSquareClick = async (square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
   const mt3PlayBoard =
     isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path)
@@ -3710,7 +3714,7 @@ const handleSquareClick = (square) => {
 
   // Default board (index -1): free play – any legal move executes (Opening V1 uses tryMove to record filter)
   if (currentQuestionIndex.value < 0) {
-    if (tryMove(from, to)) {
+    if (await tryMove(from, to)) {
       selectedSquare.value = null
     }
     return
@@ -3956,7 +3960,7 @@ const triggerCheckmateAnimation = (kingSquare, isBlackKing, onComplete) => {
   }, 800)
 }
 
-function tryMoveTrainer3PlayMove(from, to) {
+async function tryMoveTrainer3PlayMove(from, to) {
   const hint = getMoveTrainer3BlackHintSquares()
   if (!hint || hint.from !== from || hint.to !== to) return false
   try {
@@ -3973,11 +3977,14 @@ function tryMoveTrainer3PlayMove(from, to) {
   playSound(isCapture ? 'capture' : 'move')
   goForward()
   recordMoveTrainer3BlackLearnSuccess()
+  const step = moveTrainer3BlackMovesCompleted.value
+  await nextTick()
+  await router.push(`/move-trainer/move-trainer-3/opponents-move-${step}`)
   return true
 }
 
 // Try to make a move (used by both click and drag)
-const tryMove = (from, to) => {
+const tryMove = async (from, to) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return false
 
   const movingPiece = getPieceOnSquare(from)
@@ -3986,7 +3993,7 @@ const tryMove = (from, to) => {
   const mt3PlayBoard =
     isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path)
   if (mt3PlayBoard) {
-    return tryMoveTrainer3PlayMove(from, to)
+    return await tryMoveTrainer3PlayMove(from, to)
   }
 
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
@@ -4168,7 +4175,7 @@ const handleDragMove = (event) => {
   dragPosition.value = { x: clientX, y: clientY }
 }
 
-const handleDragEnd = (event) => {
+const handleDragEnd = async (event) => {
   if (!isDragging.value) return
 
   const clientX = event.changedTouches ? event.changedTouches[0].clientX : event.clientX
@@ -4178,7 +4185,7 @@ const handleDragEnd = (event) => {
   const targetSquare = getSquareFromPosition(clientX, clientY)
   
   if (targetSquare && targetSquare !== draggedFrom.value) {
-    tryMove(draggedFrom.value, targetSquare)
+    await tryMove(draggedFrom.value, targetSquare)
   }
   
   // Reset drag state
@@ -4258,15 +4265,13 @@ const isOpeningCoursesV3 = computed(() => {
     return false
   }
 })
-/** Move Trainer 3 (Intro screen + Play Move screen): same chrome as Opening Courses V3. */
+/** Move Trainer 3: intro, Play Move, Opponents Move checkpoints — shared OpeningCoursesV3 chrome. */
 const isMoveTrainer3 = computed(() => {
   if (!route?.path) return false
   const p = route.path
-  if (p === '/move-trainer/move-trainer-3') return true
-  if (p === '/move-trainer/move-trainer-3/play-move') return true
+  if (p.startsWith('/move-trainer/move-trainer-3')) return true
   try {
-    const decoded = decodeURIComponent(p)
-    return decoded === '/move-trainer/move-trainer-3' || decoded === '/move-trainer/move-trainer-3/play-move'
+    return decodeURIComponent(p).startsWith('/move-trainer/move-trainer-3')
   } catch {
     return false
   }
@@ -4363,6 +4368,7 @@ const moveTrainer3HintArrowLine = computed(() => {
 function isPieceDraggableForMainBoard(square) {
   const piece = getPieceOnSquare(square)
   if (!piece) return false
+  if (moveTrainer3PathIsOpponentsMove(route.path)) return false
   if (isMoveTrainer3PlayMoveBoard.value) {
     try {
       const chess = new Chess(moveTrainer3CurrentFen.value)
@@ -4376,6 +4382,49 @@ function isPieceDraggableForMainBoard(square) {
 }
 
 let moveTrainer3StartLearningBusy = false
+/** Dedupe scripted White reply on Opponents Move routes (same path + ply + SAN). */
+let moveTrainer3OmAnimationKey = ''
+
+watch(
+  () => [
+    isMoveTrainer3.value,
+    panelView.value,
+    route.path,
+    moveTrainer3CurrentPly.value,
+    moveTrainer3CurrentFen.value,
+  ],
+  async () => {
+    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+    if (!moveTrainer3PathIsOpponentsMove(route.path)) {
+      moveTrainer3OmAnimationKey = ''
+      return
+    }
+    const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
+    if (!step || step !== moveTrainer3BlackMovesCompleted.value) return
+
+    const plyIdx = moveTrainer3CurrentPly.value
+    const nextWhite = moveTrainer3AllPlies.value[plyIdx]
+    if (!nextWhite?.san || nextWhite.color !== 'white') return
+
+    const dedupeKey = `${route.path}|${plyIdx}|${nextWhite.san}`
+    if (moveTrainer3OmAnimationKey === dedupeKey) return
+    moveTrainer3OmAnimationKey = dedupeKey
+
+    moveTrainer3SkipBoardSyncFromStore.value = true
+    try {
+      await nextTick()
+      playOpeningThirdMove(moveTrainer3CurrentFen.value, nextWhite.san, { forceSound: true })
+      await new Promise((resolve) => {
+        setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
+      })
+      goForward()
+    } finally {
+      moveTrainer3SkipBoardSyncFromStore.value = false
+    }
+  },
+  { flush: 'post' },
+)
+
 watch(moveTrainer3StartLearningNonce, async (nonce) => {
   if (!nonce || !isMoveTrainer3.value || moveTrainer3StartLearningBusy) return
   if (!moveTrainer3PathIsIntro(route.path)) return
@@ -9522,7 +9571,9 @@ v-if="isVideoV6OrV7"
             'panel-footer-container--move-trainer-3-intro':
               isMoveTrainer3 && panelView === 'courses' && moveTrainer3PathIsIntro(route.path),
             'panel-footer-container--move-trainer-3-play-move':
-              isMoveTrainer3 && panelView === 'courses' && moveTrainer3PathIsPlayMove(route.path),
+              isMoveTrainer3 &&
+              panelView === 'courses' &&
+              (moveTrainer3PathIsPlayMove(route.path) || moveTrainer3PathIsOpponentsMove(route.path)),
           }"
         >
           <template v-if="isMoveTrainer3 && panelView === 'courses'">

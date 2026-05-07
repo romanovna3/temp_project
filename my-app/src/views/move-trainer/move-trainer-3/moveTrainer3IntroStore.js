@@ -11,6 +11,9 @@
  * **`/play-move` reload**: store resets `currentPly` to 0; OpeningCoursesV3 bumps to ply **1** (after 1.d4)
  * so the coach shows Black’s reply (“Play …”) instead of an empty bubble + White-only silence.
  *
+ * **Opponents Move** (`/opponents-move-N`): after Black’s Nth graded success on Play Move, route jumps here;
+ * White’s scripted reply animates on entry; coach checkpoint copy keyed by **N** (see `MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS`).
+ *
  * **Footer progress**: Black replies vs Black moves in the variation (`CcProgressBar`: `completed-steps` / `total-step-count`);
  * resets when **Start Learning** runs; increments only on graded Play Move successes (not footer prev/next).
  */
@@ -30,6 +33,46 @@ export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line togethe
 
 /** Play Move layout — body copy under pinned heading (optional); empty = heading only. */
 export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = ''
+
+/**
+ * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
+ * Variant 1 UI: commentary bubble + second bubble with “Play …” for the **next** Black move.
+ */
+export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
+  1: {
+    whiteCommentary: 'White immediately locks up the center, grabbing space.',
+    nextBlackLeadBold: 'Play e5',
+    nextBlackTurnStrip: 'Black to play',
+  },
+})
+
+export function moveTrainer3PathIsOpponentsMove(path) {
+  if (!path || typeof path !== 'string') return false
+  try {
+    const d = decodeURIComponent(path)
+    return /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(d)
+  } catch {
+    return /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(path)
+  }
+}
+
+/** Parses trailing `-N` from `/move-trainer/move-trainer-3/opponents-move-N`. */
+export function moveTrainer3OpponentsMoveStepFromPath(path) {
+  if (!path || typeof path !== 'string') return 0
+  let p = path
+  try {
+    p = decodeURIComponent(path)
+  } catch {
+    /* keep raw */
+  }
+  const m = p.match(/\/opponents-move-(\d+)$/)
+  return m ? parseInt(m[1], 10) : 0
+}
+
+export function getMoveTrainer3OpponentsMoveCheckpoint(step) {
+  const n = typeof step === 'number' && step > 0 ? step : 0
+  return MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[n] ?? null
+}
 
 const gameMoves = ref([...MOVE_TRAINER_3_LINE_GAME.moves])
 const gameResult = ref(MOVE_TRAINER_3_LINE_GAME.result)

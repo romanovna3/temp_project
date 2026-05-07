@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { CcButton, CcIcon, CcProgressBar } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
 import MoveTrainer3PlayMoveHorizontalMovelist from './MoveTrainer3PlayMoveHorizontalMovelist.vue'
@@ -16,9 +16,11 @@ import {
   moveTrainer3BlackMovesCompleted,
   moveTrainer3BlackMovesTotal,
   moveTrainer3AllPlies,
+  moveTrainer3PathIsOpponentsMove,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
+const router = useRouter()
 
 const isPlayMoveLayout = computed(() => {
   const p = route.path
@@ -29,6 +31,15 @@ const isPlayMoveLayout = computed(() => {
     return false
   }
 })
+
+const isOpponentsMoveLayout = computed(() => moveTrainer3PathIsOpponentsMove(route.path))
+
+/** Shared footer chrome: Play Move + Opponents Move (not intro landing). */
+const isPlayMoveShellLayout = computed(() => isPlayMoveLayout.value || isOpponentsMoveLayout.value)
+
+function goPlayMoveFromOm() {
+  router.push('/move-trainer/move-trainer-3/play-move')
+}
 
 /** Plies applied on the board — grows as White/Black moves advance `currentPly` (footer nav + Play Move grading). */
 const playMoveDisplayedPlies = computed(() => {
@@ -54,30 +65,50 @@ function onHint() {
   <PanelFooterV10
     class="move-trainer-3-panel-footer-v10"
     :class="{
-      'move-trainer-3-panel-footer-v10--intro': !isPlayMoveLayout,
-      'move-trainer-3-panel-footer-v10--play-move': isPlayMoveLayout,
+      'move-trainer-3-panel-footer-v10--intro': !isPlayMoveShellLayout,
+      'move-trainer-3-panel-footer-v10--play-move': isPlayMoveShellLayout,
     }"
   >
     <template #actions>
       <div class="move-trainer-3-footer-actions-stack">
         <MoveTrainer3PlayMoveHorizontalMovelist
-          v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveLayout"
+          v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveShellLayout"
           :plies="playMoveDisplayedPlies"
           :active-ply-index="playMoveMovelistActiveIndex"
         />
         <div
-          v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveLayout"
+          v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveShellLayout"
           class="mt3-learn-progress-slot footer-progress-bar-wrap"
         >
           <CcProgressBar
             v-if="moveTrainer3BlackMovesTotal > 0"
+            :key="`${route.path}-${currentPly}`"
             :completed-steps="moveTrainer3BlackMovesCompleted"
             :total-step-count="moveTrainer3BlackMovesTotal"
             :is-change-animated="true"
           />
         </div>
         <div class="footer-buttons-row footer-buttons-row-split">
-          <template v-if="isPlayMoveLayout">
+          <template v-if="isOpponentsMoveLayout">
+            <CcButton
+              variant="secondary"
+              size="large"
+              class="footer-btn-equal"
+              disabled
+              :icon="{ name: 'media-camera-video-on' }"
+            >
+              Video
+            </CcButton>
+            <CcButton
+              variant="primary"
+              size="large"
+              class="footer-btn-equal"
+              @click="goPlayMoveFromOm"
+            >
+              Continue
+            </CcButton>
+          </template>
+          <template v-else-if="isPlayMoveLayout">
             <CcButton
               variant="secondary"
               size="large"

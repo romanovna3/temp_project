@@ -15,6 +15,9 @@ import {
   coachPlayMoveTurnLabel,
   bubbleStartPosition,
   coachAvatarIconPx,
+  moveTrainer3PathIsOpponentsMove,
+  moveTrainer3OpponentsMoveStepFromPath,
+  getMoveTrainer3OpponentsMoveCheckpoint,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -29,14 +32,84 @@ const isPlayMoveLayout = computed(() => {
   }
 })
 
+const isOpponentsMoveLayout = computed(() => moveTrainer3PathIsOpponentsMove(route.path))
+
+const opponentsMoveStep = computed(() => moveTrainer3OpponentsMoveStepFromPath(route.path))
+
+const opponentsMoveCheckpoint = computed(() =>
+  opponentsMoveStep.value ? getMoveTrainer3OpponentsMoveCheckpoint(opponentsMoveStep.value) : null,
+)
+
 const coachBodyMessage = computed(() =>
   isPlayMoveLayout.value ? MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE : MOVE_TRAINER_3_INTRO_COACH_MESSAGE,
 )
+
+/** OM variant 1: top bubble = White-move commentary; second bubble = next Black “Play …”. */
+const showOmVariant1 = computed(
+  () => isOpponentsMoveLayout.value && !!opponentsMoveCheckpoint.value?.whiteCommentary,
+)
+
+const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 </script>
 
 <template>
   <div class="move-trainer-3-intro-stack">
+    <!-- Opponents Move (checkpoint copy); variant 1 = stacked bubbles -->
+    <div v-if="showOmVariant1" class="move-trainer-3-coach move-trainer-3-coach--om-v1">
+      <CoachBubble
+        class="mt3-om-commentary-coach"
+        :coach-avatar-src="davidCoachAvatarUrl"
+        header-icon=""
+        header-text=""
+        eval-text=""
+        :white-advantage="true"
+        :message="opponentsMoveCheckpoint.whiteCommentary"
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        turn-strip-text=""
+        :show-tip="true"
+        :typewriter="false"
+        :fill-available-height="false"
+        :start-position="false"
+      />
+      <CoachBubble
+        class="mt3-om-play-coach"
+        :coach-avatar-src="davidCoachAvatarUrl"
+        header-icon=""
+        header-text=""
+        eval-text=""
+        :white-advantage="true"
+        message=""
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        turn-strip-text=""
+        :show-tip="false"
+        :typewriter="false"
+        :intro-coach-combined-bubble="true"
+        :intro-combined-lead-bold="opponentsMoveCheckpoint.nextBlackLeadBold"
+        :intro-combined-turn-strip-regular="opponentsMoveCheckpoint.nextBlackTurnStrip"
+        :fill-available-height="false"
+        :start-position="false"
+      />
+    </div>
+
+    <div v-else-if="isOpponentsMoveLayout" class="move-trainer-3-coach move-trainer-3-coach--om-v1">
+      <CoachBubble
+        :coach-avatar-src="davidCoachAvatarUrl"
+        header-icon=""
+        header-text=""
+        eval-text=""
+        :white-advantage="true"
+        :message="omPlaceholderMessage"
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        turn-strip-text=""
+        :show-tip="true"
+        :typewriter="false"
+        :fill-available-height="false"
+        :start-position="false"
+      />
+    </div>
+
     <div
+      v-else
       class="move-trainer-3-coach"
       :class="{ 'move-trainer-3-coach--play-move-fill': isPlayMoveLayout }"
     >
@@ -60,7 +133,10 @@ const coachBodyMessage = computed(() =>
     </div>
 
     <!-- Intro: default slot (move list) scrolls below the coach -->
-    <div v-if="!isPlayMoveLayout" class="move-trainer-3-below-coach-scroll">
+    <div
+      v-if="!isPlayMoveLayout && !isOpponentsMoveLayout"
+      class="move-trainer-3-below-coach-scroll"
+    >
       <slot />
     </div>
   </div>
@@ -85,6 +161,28 @@ const coachBodyMessage = computed(() =>
   position: relative;
   z-index: 2;
   --coach-tip-top: 20px;
+}
+
+.move-trainer-3-coach--om-v1 {
+  gap: var(--space-12, 12px);
+}
+
+/* Second bubble: hide duplicate avatar; indent bubble under first speech column */
+.mt3-om-play-coach :deep(.coach-avatar) {
+  display: none;
+}
+
+.mt3-om-play-coach :deep(.bubble-wrapper) {
+  margin-left: calc(var(--coach-avatar-size, 80px) + 6px);
+}
+
+.mt3-om-commentary-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single),
+.mt3-om-play-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
+  margin-top: 16px;
+}
+
+.mt3-om-play-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
+  margin-top: 0;
 }
 
 /*

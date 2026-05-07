@@ -1,6 +1,6 @@
 <script setup>
 /**
- * Single persistent shell for Move Trainer 3 intro + Play Move URLs.
+ * Single persistent shell for Move Trainer 3 (intro, Play Move, Opponents Move checkpoints).
  * Keeps one OpeningCoursesV3 instance so board state survives route changes (e.g. after animating 1.d4).
  */
 import { RouterView } from 'vue-router'
