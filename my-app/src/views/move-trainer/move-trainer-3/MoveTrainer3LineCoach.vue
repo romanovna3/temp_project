@@ -88,6 +88,7 @@ import {
 
 /* MT3-only: remove extra gap below informational single bubble wrapper. */
 .move-trainer-3-coach :deep(.coach-container--single-bubble-hug .bubble-wrapper--informational-single) {
+  margin-top: 16px;
   margin-bottom: 0;
 }
 
