@@ -158,6 +158,10 @@ function onHint() {
   Do not reuse for Move Trainer 2 assisted quiz or other footers (see .cursor/rules/footer-variants-isolation.mdc).
 -->
 <style>
+.move-trainer-3-panel-footer-v10.panel-footer-v10-root .panel-footer-container {
+  padding-top: 0;
+}
+
 .mt3-learn-progress-slot.footer-progress-bar-wrap .cc-progress-bar-component {
   width: 100%;
   background-color: rgba(255, 255, 255, 0.12);
