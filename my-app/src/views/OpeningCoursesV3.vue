@@ -4272,10 +4272,12 @@ const isMoveTrainer3PlayMoveBoard = computed(
 )
 
 /** Hint arrow geometry in SVG viewBox 0–100 (matches marker userSpaceOnUse). */
-const MT3_HINT_ARROW_HEAD_LEN = 8.1 * 0.8 // 20% shorter tip than prior head length
+const MT3_HINT_ARROW_HEAD_LEN = (8.1 * 0.8) * 0.85 // 15% smaller pointer vs prior head length
+const MT3_HINT_ARROW_HALF_BASE = 4.5 * 0.85 // half-height at base (same scale as head length)
+const MT3_HINT_ARROW_HEAD_PATH_D = `M${MT3_HINT_ARROW_HEAD_LEN},4.5 L0,${4.5 - MT3_HINT_ARROW_HALF_BASE} L0,${4.5 + MT3_HINT_ARROW_HALF_BASE} Z`
 const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 * 0.8 // 20% narrower than prior shaft
-/** Nudge tail start off the piece (~16px at `BOARD_SIZE`; scales with board because viewBox spans it). */
-const MT3_HINT_ARROW_FROM_INSET_VB = (16 / BOARD_SIZE) * 100
+/** Nudge tail start off the piece (~5px at `BOARD_SIZE`; scales with board because viewBox spans it). */
+const MT3_HINT_ARROW_FROM_INSET_VB = (5 / BOARD_SIZE) * 100
 
 const moveTrainer3HintArrowLine = computed(() => {
   if (!isMoveTrainer3PlayMoveBoard.value || isDragging.value) return null
@@ -6675,7 +6677,7 @@ onUnmounted(() => {
                   orient="auto"
                   viewBox="0 0 9 9"
                 >
-                  <path d="M6.48,4.5 L0,0 L0,9 Z" fill="#3FD0FF" />
+                  <path :d="MT3_HINT_ARROW_HEAD_PATH_D" fill="#3FD0FF" />
                 </marker>
               </defs>
               <g opacity="0.6">
@@ -6991,7 +6993,7 @@ onUnmounted(() => {
                   orient="auto"
                   viewBox="0 0 9 9"
                 >
-                  <path d="M6.48,4.5 L0,0 L0,9 Z" fill="#3FD0FF" />
+                  <path :d="MT3_HINT_ARROW_HEAD_PATH_D" fill="#3FD0FF" />
                 </marker>
               </defs>
               <g opacity="0.6">
