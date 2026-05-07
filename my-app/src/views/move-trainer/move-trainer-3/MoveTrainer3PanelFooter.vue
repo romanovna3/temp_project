@@ -208,6 +208,18 @@ function onHint() {
   background-color: unset;
 }
 
+.move-trainer-3-panel-footer-v10--intro.panel-footer-v10-root .footer-section-toolbar {
+  align-self: stretch;
+  padding: 12px 16px 12px;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.panel-sm .move-trainer-3-panel-footer-v10--intro.panel-footer-v10-root .footer-section-toolbar {
+  padding: 12px 8px 12px;
+}
+
 /* Play Move — nested shell (movelist + progress + CTAs + toolbar). */
 .move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .panel-footer-container {
   padding-top: 3px;
