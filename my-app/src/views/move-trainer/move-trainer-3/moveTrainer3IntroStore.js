@@ -281,6 +281,16 @@ export function goForward() {
   }
   currentPly.value = Math.min(reviewMaxPly.value, currentPly.value + 1)
 }
+
+/** One ply forward after graded Black / scripted White — extends footer max; do not use capped `goForward()`. */
+export function advanceMoveTrainer3PlyFromGameplay() {
+  const cap = reviewMaxPly.value
+  const next = Math.min(cap, currentPly.value + 1)
+  if (next <= currentPly.value) return
+  currentPly.value = next
+  bumpMoveTrainer3FooterNavMaxPly(next)
+}
+
 export function goToPly(index) {
   currentPly.value = Math.max(0, Math.min(reviewMaxPly.value, index))
 }

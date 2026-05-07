@@ -45,6 +45,7 @@ import {
   bumpMoveTrainer3FooterNavMaxPly,
   resetMoveTrainer3FooterNavMaxPly,
   moveTrainer3BlackMovesThroughPly,
+  advanceMoveTrainer3PlyFromGameplay,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -3982,8 +3983,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
   makeMove(from, to)
   lastMove.value = { from, to }
   playSound(isCapture ? 'capture' : 'move')
-  goForward()
-  bumpMoveTrainer3FooterNavMaxPly(moveTrainer3CurrentPly.value)
+  advanceMoveTrainer3PlyFromGameplay()
   recordMoveTrainer3BlackLearnSuccess()
   const step = moveTrainer3BlackMovesCompleted.value
   await nextTick()
@@ -4469,8 +4469,7 @@ watch(
       await new Promise((resolve) => {
         setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
       })
-      goForward()
-      bumpMoveTrainer3FooterNavMaxPly(moveTrainer3CurrentPly.value)
+      advanceMoveTrainer3PlyFromGameplay()
     } finally {
       moveTrainer3SkipBoardSyncFromStore.value = false
     }
