@@ -3109,6 +3109,43 @@ function squareCenterNorm(square) {
     y: (rowFromTop + 0.5) / 8,
   }
 }
+
+/** Axis-aligned square bounds (0–1), same frame as `squareCenterNorm`. */
+function squareBoundsNorm(square) {
+  if (!square || typeof square !== 'string' || square.length < 2) return null
+  const fileIndex = square.charCodeAt(0) - 97
+  const rank = parseInt(square[1], 10)
+  if (fileIndex < 0 || fileIndex > 7 || rank < 1 || rank > 8) return null
+  const col = boardViewBlack.value ? 7 - fileIndex : fileIndex
+  const rowFromTop = boardViewBlack.value ? rank - 1 : 8 - rank
+  return {
+    xMin: col / 8,
+    xMax: (col + 1) / 8,
+    yMin: rowFromTop / 8,
+    yMax: (rowFromTop + 1) / 8,
+  }
+}
+
+/** Distance from (cx,cy) along unit direction (ux,uy) to first intersection with square boundary (cx,cy inside). Result in same units as rect (0–1 = full board width). */
+function rayDistanceToSquareEdge(cx, cy, ux, uy, rect) {
+  let tHit = Infinity
+  const tol = 1e-12
+  const onSegY = (y) => y >= rect.yMin - 1e-9 && y <= rect.yMax + 1e-9
+  const onSegX = (x) => x >= rect.xMin - 1e-9 && x <= rect.xMax + 1e-9
+  if (Math.abs(ux) > tol) {
+    const tr = (rect.xMax - cx) / ux
+    if (tr > tol && onSegY(cy + tr * uy)) tHit = Math.min(tHit, tr)
+    const tl = (rect.xMin - cx) / ux
+    if (tl > tol && onSegY(cy + tl * uy)) tHit = Math.min(tHit, tl)
+  }
+  if (Math.abs(uy) > tol) {
+    const tb = (rect.yMax - cy) / uy
+    if (tb > tol && onSegX(cx + tb * ux)) tHit = Math.min(tHit, tb)
+    const tt = (rect.yMin - cy) / uy
+    if (tt > tol && onSegX(cx + tt * ux)) tHit = Math.min(tHit, tt)
+  }
+  return Number.isFinite(tHit) ? tHit : 0
+}
 function clearOpeningAutoMove() {
   if (openingAutoMoveTimeoutId != null) {
     clearTimeout(openingAutoMoveTimeoutId)
@@ -4276,8 +4313,6 @@ const MT3_HINT_ARROW_HEAD_LEN = (8.1 * 0.8) * 0.85 // 15% smaller pointer vs pri
 const MT3_HINT_ARROW_HALF_BASE = 4.5 * 0.85 // half-height at base (same scale as head length)
 const MT3_HINT_ARROW_HEAD_PATH_D = `M${MT3_HINT_ARROW_HEAD_LEN},4.5 L0,${4.5 - MT3_HINT_ARROW_HALF_BASE} L0,${4.5 + MT3_HINT_ARROW_HALF_BASE} Z`
 const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 * 0.8 // 20% narrower than prior shaft
-/** Nudge tail start off the piece (~5px at `BOARD_SIZE`; scales with board because viewBox spans it). */
-const MT3_HINT_ARROW_FROM_INSET_VB = (5 / BOARD_SIZE) * 100
 
 const moveTrainer3HintArrowLine = computed(() => {
   if (!isMoveTrainer3PlayMoveBoard.value || isDragging.value) return null
@@ -4287,6 +4322,7 @@ const moveTrainer3HintArrowLine = computed(() => {
   if (!hint) return null
   const a = squareCenterNorm(hint.from)
   const b = squareCenterNorm(hint.to)
+  const fromRect = squareBoundsNorm(hint.from)
   const ax = a.x * 100
   const ay = a.y * 100
   const bx = b.x * 100
@@ -4298,12 +4334,20 @@ const moveTrainer3HintArrowLine = computed(() => {
   const ux = dx / len
   const uy = dy / len
   const headLen = MT3_HINT_ARROW_HEAD_LEN
-  const fromInset = Math.min(
-    MT3_HINT_ARROW_FROM_INSET_VB,
-    Math.max(0, len - headLen - 0.35),
-  )
-  const x1 = ax + ux * fromInset
-  const y1 = ay + uy * fromInset
+  const sqVB = 100 / 8
+  // Start near the exit edge of the source square (toward destination) so the shaft misses the piece art; stay slightly inside the tile.
+  let tailAlongVB = sqVB * 0.12
+  if (fromRect) {
+    const tExitNorm = rayDistanceToSquareEdge(a.x, a.y, ux, uy, fromRect)
+    if (tExitNorm > 1e-9) {
+      const tExitVB = tExitNorm * 100
+      tailAlongVB = Math.max(tExitVB * 0.82, tExitVB - sqVB * 0.06)
+    }
+  }
+  const maxTailVB = Math.max(0, len - headLen - 0.2)
+  tailAlongVB = Math.min(tailAlongVB, maxTailVB)
+  const x1 = ax + ux * tailAlongVB
+  const y1 = ay + uy * tailAlongVB
   const x2 = bx - ux * headLen
   const y2 = by - uy * headLen
   return { x1, y1, x2, y2, strokeWidth: MT3_HINT_ARROW_STROKE_WIDTH }
