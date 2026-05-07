@@ -330,7 +330,19 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   line-height: 1.2;
 }
 
-/* Move line only — heading sits above visible body copy */
+/*
+ * Move line + coach body (e.g. 2.d5 + commentary) — hug height; tight gap heading→copy;
+ * beat CoachBubble default 64px heading band + 96px body min-height + 16px pads.
+ */
+.move-trainer-3-coach--mt3-replay-preview
+  :deep(
+    .bubble-informational-inner:has(
+        .bubble-content.bubble-content--informational-below-heading:not(.bubble-content--informational-heading-only)
+      )
+  ) {
+  flex: 0 0 auto;
+}
+
 .move-trainer-3-coach--mt3-replay-preview
   :deep(
     .bubble-informational-inner:has(
@@ -338,9 +350,10 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
       )
       .coach-intro-combined-heading
   ) {
-  min-height: 64px;
-  justify-content: center;
-  padding-bottom: var(--space-6, 6px);
+  min-height: 0;
+  justify-content: flex-start;
+  padding: 10px var(--space-16, 16px) var(--space-4, 4px);
+  box-sizing: border-box;
 }
 
 .move-trainer-3-coach--mt3-replay-preview
@@ -349,14 +362,16 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         .bubble-content--informational-heading-only
       )
   ) {
-  min-height: 64px;
+  min-height: 0 !important;
   max-height: none;
   flex: 0 0 auto;
-  padding-top: var(--space-8, 8px);
-  padding-bottom: var(--space-8, 8px);
+  padding-top: 0 !important;
+  padding-bottom: var(--space-12, 12px) !important;
+  padding-left: var(--space-16, 16px) !important;
+  padding-right: var(--space-16, 16px) !important;
   box-sizing: border-box;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .move-trainer-3-coach--mt3-replay-preview :deep(.bubble-content--informational-message .coach-message) {
