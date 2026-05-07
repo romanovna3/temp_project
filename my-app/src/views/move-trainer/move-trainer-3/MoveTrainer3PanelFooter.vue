@@ -226,36 +226,15 @@ function onHint() {
 }
 
 .move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-toolbar {
-  position: relative;
   align-self: stretch;
-  padding: 0 16px 12px;
-  justify-content: flex-start;
-  align-items: flex-start;
-  background-color: transparent;
-}
-
-.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-toolbar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
+  padding: 12px 16px 12px;
+  justify-content: center;
+  align-items: center;
   background-color: rgba(0, 0, 0, 0.2);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-toolbar > * {
-  position: relative;
-  z-index: 1;
-}
-
-.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root
-  .footer-section-toolbar
-  .footer-icon-group:last-child {
-  margin-left: auto;
 }
 
 .panel-sm .move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-toolbar {
-  padding: 0 8px 12px;
+  padding: 12px 8px 12px;
 }
 
 .mt3-learn-progress-slot.footer-progress-bar-wrap .cc-progress-bar-component {
