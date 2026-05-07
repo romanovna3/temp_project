@@ -4480,8 +4480,11 @@ function isPieceDraggableForMainBoard(square) {
 }
 
 let moveTrainer3StartLearningBusy = false
-/** Dedupe scripted White reply on Opponents Move routes (same path + ply + SAN). */
-let moveTrainer3OmAnimationKey = ''
+/**
+ * Scripted White reply on OM: increment when the watch re-runs so in-flight async work
+ * (delays + advance) aborts if the user scrubs with footer chevrons — avoids jumping past a White ply.
+ */
+let moveTrainer3OmWhiteReplyGen = 0
 
 watch(
   () => [
@@ -4494,7 +4497,6 @@ watch(
   async () => {
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
     if (!moveTrainer3PathIsOpponentsMove(route.path)) {
-      moveTrainer3OmAnimationKey = ''
       return
     }
     const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
@@ -4504,20 +4506,31 @@ watch(
     const nextWhite = moveTrainer3AllPlies.value[plyIdx]
     if (!nextWhite?.san || nextWhite.color !== 'white') return
 
-    const dedupeKey = `${route.path}|${plyIdx}|${nextWhite.san}`
-    if (moveTrainer3OmAnimationKey === dedupeKey) return
-    moveTrainer3OmAnimationKey = dedupeKey
+    const runId = ++moveTrainer3OmWhiteReplyGen
+    const guardPly = plyIdx
 
     moveTrainer3SkipBoardSyncFromStore.value = true
     try {
       await nextTick()
+      if (runId !== moveTrainer3OmWhiteReplyGen) return
+      if (moveTrainer3CurrentPly.value !== guardPly) return
+
       await new Promise((resolve) => {
         setTimeout(resolve, MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS)
       })
+      if (runId !== moveTrainer3OmWhiteReplyGen) return
+      if (moveTrainer3CurrentPly.value !== guardPly) return
+      if (!moveTrainer3PathIsOpponentsMove(route.path)) return
+      if (moveTrainer3OpponentsMoveStepFromPath(route.path) !== step) return
+      if (moveTrainer3OpponentsMoveStepFromPath(route.path) !== moveTrainer3BlackMovesCompleted.value) return
+
       playOpeningThirdMove(moveTrainer3CurrentFen.value, nextWhite.san, { forceSound: true })
       await new Promise((resolve) => {
         setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
       })
+      if (runId !== moveTrainer3OmWhiteReplyGen) return
+      if (moveTrainer3CurrentPly.value !== guardPly) return
+
       advanceMoveTrainer3PlyFromGameplay()
     } finally {
       moveTrainer3SkipBoardSyncFromStore.value = false
