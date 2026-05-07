@@ -23,7 +23,8 @@ import MoveTrainer3LineCoach from './move-trainer/move-trainer-3/MoveTrainer3Lin
 import MoveTrainer3Moves from './move-trainer/move-trainer-3/MoveTrainer3Moves.vue'
 import MoveTrainer3PanelFooter from './move-trainer/move-trainer-3/MoveTrainer3PanelFooter.vue'
 import {
-  watchMoveTrainer3BoardSync,
+  getMoveTrainer3BoardSyncPayload,
+  currentFen as moveTrainer3CurrentFen,
   MOVE_TRAINER_3_COURSE_TITLE,
   moveTrainer3StartLearningNonce,
   goToPly,
@@ -4127,10 +4128,16 @@ const isMoveTrainer3 = computed(() => {
   }
 })
 
-watchMoveTrainer3BoardSync((payload) => {
-  if (!isMoveTrainer3.value || panelView.value !== 'courses') return
-  onMoveTrainer3BoardSync(payload)
-})
+// MT3: re-sync when FEN changes *and* when this OpeningCoursesV3 instance becomes eligible (route swap remount
+// used to skip sync until panelView settled — watch(currentFen) alone missed second subscribe tick).
+watch(
+  () => [isMoveTrainer3.value, panelView.value, moveTrainer3CurrentFen.value],
+  () => {
+    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+    onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
+  },
+  { immediate: true },
+)
 
 function moveTrainer3PathIsIntro(path) {
   if (!path || typeof path !== 'string') return false

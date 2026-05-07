@@ -1,7 +1,11 @@
 /**
  * Move Trainer 3 panel: course title, line header, move list, coach, board sync.
+ *
+ * **Black repertoire UX**: Only Black moves are “yours” in Play Move — prompt `Play …` only when
+ * Black is on move (`coachPlayMoveLeadBold`). **White moves are opponent/engine**: apply them in code
+ * (sound/animation); never show a Play-{white-SAN} coach heading when stepping with footer arrows.
  */
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
 import { MOVE_TRAINER_3_LINE_GAME } from '@move-trainer/data/gameData.js'
 
@@ -86,17 +90,20 @@ export const currentFen = computed(() => {
   return ply?.fen ?? MOVE_TRAINER_3_LINE_GAME.initialFen
 })
 
-/** Play Move coach heading — next expected SAN from current board index (`currentPly`). */
+/** Play Move coach heading — only when Black is to move (user plays Black); never for opponent White SANs. */
 export const coachPlayMoveLeadBold = computed(() => {
+  const side = currentFen.value.split(/\s+/)[1]
+  if (side !== 'b') return ''
   const next = allPlies.value[currentPly.value]
-  if (!next?.san) return ''
+  if (!next?.san || next.color !== 'black') return ''
   return `Play ${next.san}`
 })
 
-/** Play Move second heading line — same typography as coach body; regular weight. */
+/** Pinned subtitle — only with Black to move (paired with `coachPlayMoveLeadBold`). Hidden during White/engine moves. */
 export const coachPlayMoveTurnLabel = computed(() => {
-  const token = currentFen.value.split(' ')[1]
-  return token === 'b' ? 'Black to play' : 'White to play'
+  const side = currentFen.value.split(/\s+/)[1]
+  if (side !== 'b') return ''
+  return 'Black to play'
 })
 
 export function goBack() {
@@ -118,19 +125,14 @@ export function toggleVideoToolbar() {
 
 export { gameMoves, gameResult }
 
-/** @param {(payload: { fen: string, lastMove: { from: string, to: string } | null }) => void} cb */
-export function watchMoveTrainer3BoardSync(cb) {
-  watch(
-    currentFen,
-    () => {
-      const fen = currentFen.value
-      let lastMove = null
-      if (currentPly.value > 0) {
-        const ply = allPlies.value[currentPly.value - 1]
-        if (ply?.from && ply?.to) lastMove = { from: ply.from, to: ply.to }
-      }
-      cb({ fen, lastMove })
-    },
-    { immediate: true },
-  )
+/** Snapshot for main board sync — reuse wherever OpeningCoursesV3 applies MT3 FEN + last-move highlight. */
+export function getMoveTrainer3BoardSyncPayload() {
+  const fen = currentFen.value
+  let lastMove = null
+  if (currentPly.value > 0) {
+    const ply = allPlies.value[currentPly.value - 1]
+    if (ply?.from && ply?.to) lastMove = { from: ply.from, to: ply.to }
+  }
+  return { fen, lastMove }
 }
+
