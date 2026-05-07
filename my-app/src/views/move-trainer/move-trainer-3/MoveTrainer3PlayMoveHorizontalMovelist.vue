@@ -83,7 +83,7 @@ const hasMoves = computed(() => props.plies.length > 0)
   gap: 2px;
   flex-shrink: 0;
   padding: var(--space-2, 2px) var(--space-4, 4px);
-  border-radius: var(--radius-md, 6px);
+  border-radius: 3px;
   font-family: var(--font-family-body, 'Inter', sans-serif);
   font-size: 14px;
   font-weight: 600;
