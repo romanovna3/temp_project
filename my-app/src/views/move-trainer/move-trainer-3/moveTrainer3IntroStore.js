@@ -16,6 +16,9 @@
  *
  * **Footer progress**: Black replies vs Black moves in the variation (`CcProgressBar`: `completed-steps` / `total-step-count`);
  * resets when **Start Learning** runs; increments only on graded Play Move successes (not footer prev/next).
+ *
+ * **Footer chevrons** (after Start Learning): on “Play …” (ply 1) both prev/next disabled until Black progresses the line.
+ * Prev/next then scrub between unlocked plies only (`moveTrainer3FooterNavMaxPly`); routes stay aligned via OpeningCoursesV3.
  */
 import { ref, computed } from 'vue'
 import { Chess } from 'chess.js'
@@ -153,6 +156,7 @@ export const moveTrainer3BlackMovesTotal = computed(() => {
 
 export function resetMoveTrainer3LearnProgress() {
   moveTrainer3BlackMovesCompleted.value = 0
+  resetMoveTrainer3FooterNavMaxPly()
 }
 
 export function recordMoveTrainer3BlackLearnSuccess() {
@@ -164,6 +168,36 @@ export function recordMoveTrainer3BlackLearnSuccess() {
 const reviewMaxPly = computed(() => totalPlies.value)
 const atStart = computed(() => currentPly.value === 0)
 const atReviewLineEnd = computed(() => currentPly.value >= reviewMaxPly.value)
+
+/**
+ * After Start Learning, footer prev/next scrub between plies without undoing lesson progress counters.
+ * Forward never exceeds the furthest ply reached via gameplay (Black success + scripted White on OM).
+ * Back never goes before Black’s first checkpoint (after 1.d4 → ply 1).
+ */
+export const MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY = 1
+
+/** Max `currentPly` unlocked by gameplay; incremented explicitly from OpeningCoursesV3 (not by footer clicks). */
+export const moveTrainer3FooterNavMaxPly = ref(0)
+
+export function resetMoveTrainer3FooterNavMaxPly() {
+  moveTrainer3FooterNavMaxPly.value = 0
+}
+
+export function bumpMoveTrainer3FooterNavMaxPly(ply) {
+  const n = Math.max(0, Math.floor(Number(ply)))
+  if (n > moveTrainer3FooterNavMaxPly.value) moveTrainer3FooterNavMaxPly.value = n
+}
+
+/** Black half-moves applied among `allPlies[0..ply-1]` — drives OM route vs `/play-move` when scrubbing. */
+export function moveTrainer3BlackMovesThroughPly(ply) {
+  const p = Math.max(0, Math.floor(Number(ply)))
+  let c = 0
+  const plies = allPlies.value
+  for (let i = 0; i < p && i < plies.length; i++) {
+    if (plies[i]?.color === 'black') c++
+  }
+  return c
+}
 
 export const lineHeaderTitle = computed(() => MOVE_TRAINER_3_LINE_HEADER_TITLE)
 
@@ -228,17 +262,34 @@ export const coachPlayMoveTurnLabel = computed(() => {
 })
 
 export function goBack() {
-  currentPly.value = Math.max(0, currentPly.value - 1)
+  const floor =
+    moveTrainer3StartLearningNonce.value > 0 ? MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY : 0
+  currentPly.value = Math.max(floor, currentPly.value - 1)
 }
 export function goForward() {
-  currentPly.value = Math.min(reviewMaxPly.value, currentPly.value + 1)
+  const cap =
+    moveTrainer3StartLearningNonce.value > 0
+      ? Math.min(reviewMaxPly.value, moveTrainer3FooterNavMaxPly.value)
+      : reviewMaxPly.value
+  currentPly.value = Math.min(cap, currentPly.value + 1)
 }
 export function goToPly(index) {
   currentPly.value = Math.max(0, Math.min(reviewMaxPly.value, index))
 }
 
-export const footerNavBackDisabled = computed(() => atStart.value)
-export const footerNavForwardDisabled = computed(() => atReviewLineEnd.value)
+export const footerNavBackDisabled = computed(() => {
+  if (moveTrainer3StartLearningNonce.value > 0) {
+    return currentPly.value <= MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY
+  }
+  return atStart.value
+})
+
+export const footerNavForwardDisabled = computed(() => {
+  if (moveTrainer3StartLearningNonce.value > 0) {
+    return currentPly.value >= moveTrainer3FooterNavMaxPly.value
+  }
+  return atReviewLineEnd.value
+})
 
 export function toggleVideoToolbar() {
   /* Placeholder — parity with Move Trainer 2 */

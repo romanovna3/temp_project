@@ -42,6 +42,9 @@ import {
   moveTrainer3AllPlies,
   moveTrainer3PathIsOpponentsMove,
   moveTrainer3OpponentsMoveStepFromPath,
+  bumpMoveTrainer3FooterNavMaxPly,
+  resetMoveTrainer3FooterNavMaxPly,
+  moveTrainer3BlackMovesThroughPly,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -80,6 +83,10 @@ function moveTrainer3PathIsPlayMove(path) {
   } catch {
     return false
   }
+}
+
+function moveTrainer3LearnShellPath(path) {
+  return moveTrainer3PathIsPlayMove(path) || moveTrainer3PathIsOpponentsMove(path)
 }
 
 const isVideoV2_4 = computed(() => route.path === '/courses/v4')
@@ -3976,6 +3983,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
   lastMove.value = { from, to }
   playSound(isCapture ? 'capture' : 'move')
   goForward()
+  bumpMoveTrainer3FooterNavMaxPly(moveTrainer3CurrentPly.value)
   recordMoveTrainer3BlackLearnSuccess()
   const step = moveTrainer3BlackMovesCompleted.value
   await nextTick()
@@ -4294,6 +4302,7 @@ watch(
   (p) => {
     if (!isMoveTrainer3.value || !moveTrainer3PathIsIntro(p)) return
     goToPly(0)
+    resetMoveTrainer3FooterNavMaxPly()
   },
   { immediate: true },
 )
@@ -4307,9 +4316,52 @@ watch(
   () => {
     if (!isMoveTrainer3.value || !moveTrainer3PathIsPlayMove(route.path)) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
-    if (moveTrainer3CurrentPly.value === 0) goToPly(1)
+    if (moveTrainer3CurrentPly.value === 0) {
+      goToPly(1)
+      if (moveTrainer3StartLearningNonce.value > 0) {
+        bumpMoveTrainer3FooterNavMaxPly(1)
+      }
+    }
   },
   { immediate: true },
+)
+
+/** Footer prev/next: swap `/play-move` vs `/opponents-move-N` from replay cursor so coach UI matches the board. */
+watch(
+  () => [
+    isMoveTrainer3.value,
+    panelView.value,
+    route.path,
+    moveTrainer3CurrentPly.value,
+    moveTrainer3StartLearningNonce.value,
+    moveTrainer3WhiteOpeningAnimationActive.value,
+    moveTrainer3SkipBoardSyncFromStore.value,
+  ],
+  async () => {
+    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+    if (moveTrainer3StartLearningNonce.value === 0) return
+    if (!moveTrainer3LearnShellPath(route.path)) return
+    if (moveTrainer3WhiteOpeningAnimationActive.value) return
+    if (moveTrainer3SkipBoardSyncFromStore.value) return
+
+    const ply = moveTrainer3CurrentPly.value
+    const nBlack = moveTrainer3BlackMovesThroughPly(ply)
+    const target =
+      nBlack === 0
+        ? '/move-trainer/move-trainer-3/play-move'
+        : `/move-trainer/move-trainer-3/opponents-move-${nBlack}`
+
+    let current = route.path
+    try {
+      current = decodeURIComponent(current)
+    } catch {
+      /* keep raw */
+    }
+    if (current === target) return
+
+    await router.replace(target)
+  },
+  { flush: 'post' },
 )
 
 const isMoveTrainer3PlayMoveBoard = computed(
@@ -4418,6 +4470,7 @@ watch(
         setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
       })
       goForward()
+      bumpMoveTrainer3FooterNavMaxPly(moveTrainer3CurrentPly.value)
     } finally {
       moveTrainer3SkipBoardSyncFromStore.value = false
     }
@@ -4445,6 +4498,7 @@ watch(moveTrainer3StartLearningNonce, async (nonce) => {
     })
     clearMoveTrainer3CoachPendingBlackSan()
     goToPly(1)
+    bumpMoveTrainer3FooterNavMaxPly(1)
     moveTrainer3SkipBoardSyncFromStore.value = false
     await nextTick()
   } finally {
