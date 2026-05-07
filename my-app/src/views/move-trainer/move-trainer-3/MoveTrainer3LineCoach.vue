@@ -2,11 +2,8 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import CoachBubble from '@move-trainer/components/CoachBubble.vue'
-import MoveListHeader from '@move-trainer/components/MoveListHeader.vue'
 import davidCoachAvatarUrl from '@move-trainer/assets/coaches/coach-david.png?url'
 import {
-  lineHeaderTitle,
-  moveTrainerLineNav,
   coachHeaderIcon,
   coachHeaderText,
   coachEvalText,
@@ -50,15 +47,8 @@ const isPlayMoveLayout = computed(() => {
       />
     </div>
 
-    <!-- Intro: line header + default slot (move list) scroll together below the coach -->
+    <!-- Intro: default slot (move list) scrolls below the coach -->
     <div v-if="!isPlayMoveLayout" class="move-trainer-3-below-coach-scroll">
-      <div class="move-trainer-3-line-header">
-        <MoveListHeader
-          :title="lineHeaderTitle"
-          :prev-disabled="moveTrainerLineNav.prevDisabled"
-          :next-disabled="moveTrainerLineNav.nextDisabled"
-        />
-      </div>
       <slot />
     </div>
   </div>
@@ -72,21 +62,6 @@ const isPlayMoveLayout = computed(() => {
   min-height: 0;
   min-width: 0;
   width: 100%;
-}
-
-.move-trainer-3-line-header {
-  flex-shrink: 0;
-  width: 100%;
-}
-
-/* Move Trainer 3 / Opening panel: 45px band, centered row, default header vertical padding (8px). */
-.move-trainer-3-line-header :deep(.move-list-header) {
-  box-sizing: border-box;
-  height: 45px;
-  min-height: 45px;
-  justify-content: center;
-  align-items: center;
-  margin-top: 0;
 }
 
 .move-trainer-3-coach {
