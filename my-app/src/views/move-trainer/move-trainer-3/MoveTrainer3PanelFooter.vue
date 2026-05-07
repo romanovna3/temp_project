@@ -3,7 +3,9 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { CcButton, CcIcon, CcProgressBar } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
+import MoveTrainer3PlayMoveHorizontalMovelist from './MoveTrainer3PlayMoveHorizontalMovelist.vue'
 import {
+  currentPly,
   footerNavBackDisabled,
   footerNavForwardDisabled,
   goBack,
@@ -13,6 +15,7 @@ import {
   moveTrainer3StartLearningNonce,
   moveTrainer3BlackMovesCompleted,
   moveTrainer3BlackMovesTotal,
+  moveTrainer3AllPlies,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -25,6 +28,17 @@ const isPlayMoveLayout = computed(() => {
   } catch {
     return false
   }
+})
+
+/** Plies applied on the board — grows as White/Black moves advance `currentPly` (footer nav + Play Move grading). */
+const playMoveDisplayedPlies = computed(() => {
+  const n = currentPly.value
+  return moveTrainer3AllPlies.value.slice(0, n)
+})
+
+const playMoveMovelistActiveIndex = computed(() => {
+  const n = currentPly.value
+  return n > 0 ? n - 1 : -1
 })
 
 function onStartLearning() {
@@ -40,6 +54,11 @@ function onHint() {
   <PanelFooterV10 class="move-trainer-3-panel-footer-v10">
     <template #actions>
       <div class="move-trainer-3-footer-actions-stack">
+        <MoveTrainer3PlayMoveHorizontalMovelist
+          v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveLayout"
+          :plies="playMoveDisplayedPlies"
+          :active-ply-index="playMoveMovelistActiveIndex"
+        />
         <div
           v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveLayout"
           class="mt3-learn-progress-slot footer-progress-bar-wrap"

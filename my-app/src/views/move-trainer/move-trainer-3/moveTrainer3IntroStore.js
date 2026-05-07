@@ -201,7 +201,7 @@ export function toggleVideoToolbar() {
   /* Placeholder — parity with Move Trainer 2 */
 }
 
-export { gameMoves, gameResult }
+export { gameMoves, gameResult, allPlies as moveTrainer3AllPlies }
 
 /** Snapshot for main board sync — reuse wherever OpeningCoursesV3 applies MT3 FEN + last-move highlight. */
 export function getMoveTrainer3BoardSyncPayload() {
