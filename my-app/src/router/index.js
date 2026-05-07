@@ -29,13 +29,19 @@ const router = createRouter({
     },
     {
       path: '/move-trainer/move-trainer-3',
-      name: 'move-trainer-3-landing',
-      component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3Landing.vue'),
-    },
-    {
-      path: '/move-trainer/move-trainer-3/play-move',
-      name: 'move-trainer-3-play-move',
-      component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3PlayMove.vue'),
+      component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3Shell.vue'),
+      children: [
+        {
+          path: '',
+          name: 'move-trainer-3-landing',
+          component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3RouteStub.vue'),
+        },
+        {
+          path: 'play-move',
+          name: 'move-trainer-3-play-move',
+          component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3RouteStub.vue'),
+        },
+      ],
     },
     ...introAssistedRoutes,
     ...MOVE_TRAINER_LINE_ORDER.map((e) => ({

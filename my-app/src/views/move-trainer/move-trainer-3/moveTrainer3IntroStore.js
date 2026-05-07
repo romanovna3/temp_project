@@ -1,9 +1,12 @@
 /**
- * Move Trainer 3 panel: course title, line header, move list, coach, board sync.
+ * Move Trainer 3 — panel state (course title, line header, move list, coach, board sync).
  *
- * **Black repertoire UX**: Only Black moves are “yours” in Play Move — prompt `Play …` only when
- * Black is on move (`coachPlayMoveLeadBold`). **White moves are opponent/engine**: apply them in code
- * (sound/animation); never show a Play-{white-SAN} coach heading when stepping with footer arrows.
+ * **Turn-taking model**
+ * - **White** = opponent/engine: performed in code (slide + sound on Start Learning for 1.d4, etc.).
+ * - **Black** = user: coach shows `Play …` only when FEN side-to-move is Black (`coachPlayMoveLeadBold`).
+ *
+ * Flow after **Start Learning**: animate White’s first move → advance `currentPly` → route to Play Move →
+ * **same** OpeningCoursesV3 instance keeps pieces on the board (see MoveTrainer3Shell nested routes).
  */
 import { ref, computed } from 'vue'
 import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
