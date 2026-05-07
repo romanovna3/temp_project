@@ -5,7 +5,6 @@ import CoachBubble from '@move-trainer/components/CoachBubble.vue'
 import davidCoachAvatarUrl from '@move-trainer/assets/coaches/coach-david.png?url'
 import {
   MOVE_TRAINER_3_INTRO_COACH_MESSAGE,
-  MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE,
   coachHeaderIcon,
   coachHeaderText,
   coachEvalText,
@@ -13,6 +12,7 @@ import {
   coachTurnStripText,
   coachPlayMoveLeadBold,
   coachPlayMoveTurnLabel,
+  coachSelectedPlyCommentary,
   bubbleStartPosition,
   coachAvatarIconPx,
   moveTrainer3PathIsOpponentsMove,
@@ -41,9 +41,22 @@ const opponentsMoveCheckpoint = computed(() =>
   opponentsMoveStep.value ? getMoveTrainer3OpponentsMoveCheckpoint(opponentsMoveStep.value) : null,
 )
 
-const coachBodyMessage = computed(() =>
-  isPlayMoveLayout.value ? MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE : MOVE_TRAINER_3_INTRO_COACH_MESSAGE,
+const introCoachBubbleMessage = computed(() => MOVE_TRAINER_3_INTRO_COACH_MESSAGE)
+
+/** Play Move: body copy tracks scrubbed ply (`coachText`); intro keeps landing copy. */
+const playMoveCoachBubbleMessage = computed(() =>
+  isPlayMoveLayout.value ? coachSelectedPlyCommentary.value : introCoachBubbleMessage.value,
 )
+
+/** OM v1 top bubble: line narration when scrubbing; checkpoint copy only as fallback. */
+const omVariant1TopBubbleMessage = computed(() => {
+  const line = coachSelectedPlyCommentary.value
+  if (line) return line
+  return opponentsMoveCheckpoint.value?.whiteCommentary ?? ''
+})
+
+/** OM variant 1: bottom “Play …” chip tracks board turn (same as Play Move), hidden when White to move. */
+const showOmVariant1PlayBubble = computed(() => !!coachPlayMoveLeadBold.value)
 
 /** OM variant 1: top bubble = White-move commentary; second bubble = next Black “Play …”. */
 const showOmVariant1 = computed(
@@ -92,7 +105,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         header-text=""
         eval-text=""
         :white-advantage="true"
-        :message="opponentsMoveCheckpoint.whiteCommentary"
+        :message="omVariant1TopBubbleMessage"
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
         :show-tip="true"
@@ -101,6 +114,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :start-position="false"
       />
       <CoachBubble
+        v-if="showOmVariant1PlayBubble"
         class="mt3-om-play-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
@@ -113,8 +127,8 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :show-tip="false"
         :typewriter="false"
         :intro-coach-combined-bubble="true"
-        :intro-combined-lead-bold="opponentsMoveCheckpoint.nextBlackLeadBold"
-        :intro-combined-turn-strip-regular="opponentsMoveCheckpoint.nextBlackTurnStrip"
+        :intro-combined-lead-bold="coachPlayMoveLeadBold"
+        :intro-combined-turn-strip-regular="coachPlayMoveTurnLabel"
         :fill-available-height="false"
         :start-position="false"
       />
@@ -149,7 +163,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :header-text="coachHeaderText"
         :eval-text="coachEvalText"
         :white-advantage="coachWhiteAdvantage"
-        :message="coachBodyMessage"
+        :message="playMoveCoachBubbleMessage"
         :coach-avatar-icon-px="coachAvatarIconPx"
         :turn-strip-text="coachTurnStripText"
         :intro-combined-lead-bold="isPlayMoveLayout ? coachPlayMoveLeadBold : ''"

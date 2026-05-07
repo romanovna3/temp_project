@@ -279,6 +279,18 @@ export const coachPlayMoveTurnLabel = computed(() => {
   return 'Black to play'
 })
 
+/**
+ * Narration for the half-move selected via footer scrub — matches horizontal movelist highlight (`currentPly - 1`).
+ * Sourced from main-line `coachText` (White and Black); readable while stepping before/after Black “Play …”.
+ */
+export const coachSelectedPlyCommentary = computed(() => {
+  const idx = currentPly.value - 1
+  if (idx < 0) return ''
+  const ply = allPlies.value[idx]
+  const t = ply?.coachText
+  return typeof t === 'string' ? t : ''
+})
+
 export function goBack() {
   if (moveTrainer3StartLearningNonce.value > 0) {
     const floor = MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY
