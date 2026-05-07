@@ -3097,6 +3097,8 @@ const openingCardAnimatingMove = ref(null) // { from, to, pieceType } when slidi
 const openingCardAnimPhase = ref('from')   // 'from' | 'to' – for CSS transition
 const OPENING_AUTO_MOVE_DELAY_MS = 420
 const OPENING_AUTO_MOVE_DURATION_MS = 320
+/** Move Trainer 3: brief pause after Black’s move + route change so White’s reply isn’t instant on top. */
+const MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS = 300
 function squareToPercent(square) {
   if (!square || typeof square !== 'string' || square.length < 2) return { left: '0%', top: '0%' }
   const fileIndex = square.charCodeAt(0) - 97 // a=0 .. h=7
@@ -4465,6 +4467,9 @@ watch(
     moveTrainer3SkipBoardSyncFromStore.value = true
     try {
       await nextTick()
+      await new Promise((resolve) => {
+        setTimeout(resolve, MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS)
+      })
       playOpeningThirdMove(moveTrainer3CurrentFen.value, nextWhite.san, { forceSound: true })
       await new Promise((resolve) => {
         setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
