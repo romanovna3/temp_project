@@ -331,7 +331,7 @@ export const MOVE_TRAINER_3_LINE_GAME = {
         san: 'd5',
         classification: 'book',
         fen: 'rnbqkbnr/pp1ppppp/8/2pP4/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2',
-        coachText: 'The advance clamps the center — typical of the Old Benoni structure.',
+        coachText: 'White immediately locks up the center, grabbing space.',
         eval: '+0.1',
       },
       black: {

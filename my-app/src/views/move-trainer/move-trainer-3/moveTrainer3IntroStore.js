@@ -44,14 +44,11 @@ const OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE =
 
 /**
  * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
- * Variant 1 UI: commentary bubble + second bubble with “Play …” for the **next** Black move.
- * Optional `afterBlackMoveAuthorNote`: long read-after-move coach body → OM reading phase + Continue.
+ * White narration + “next Black” chip come from main-line `coachText` / notation only (single source).
+ * Optional `afterBlackMoveAuthorNote`: long author-only note after that Black reply → reading phase + Continue.
  */
 export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
   1: {
-    whiteCommentary: 'White immediately locks up the center, grabbing space.',
-    nextBlackLeadBold: 'Play e5',
-    nextBlackTurnStrip: 'Black to play',
     afterBlackMoveAuthorNote: OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE,
   },
 })
@@ -82,6 +79,26 @@ export function moveTrainer3OpponentsMoveStepFromPath(path) {
 export function getMoveTrainer3OpponentsMoveCheckpoint(step) {
   const n = typeof step === 'number' && step > 0 ? step : 0
   return MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[n] ?? null
+}
+
+/**
+ * OM stacked-coach top bubble: White’s reply on this segment lives on `MOVE_TRAINER_3_LINE_GAME.moves[step].white`.
+ * (`step` === opponents-move index after Black’s step-th successful reply.)
+ */
+export function getMoveTrainer3OmWhiteReplyCoachText(step) {
+  const n = typeof step === 'number' && step > 0 ? step : 0
+  if (!n) return ''
+  const pair = MOVE_TRAINER_3_LINE_GAME.moves[n]
+  const t = pair?.white?.coachText
+  return typeof t === 'string' ? t : ''
+}
+
+/** Single-line coach chip when Black is on move, e.g. `2... e5` */
+function formatMt3BlackHalfMoveLabel(ply) {
+  if (!ply?.san || ply.color !== 'black') return ''
+  const num = ply.moveNum
+  if (typeof num !== 'number') return ply.san
+  return `${num}... ${ply.san}`
 }
 
 const gameMoves = ref([...MOVE_TRAINER_3_LINE_GAME.moves])
@@ -260,24 +277,21 @@ export const currentFen = computed(() => {
   return ply?.fen ?? MOVE_TRAINER_3_LINE_GAME.initialFen
 })
 
-/** Play Move coach heading — only when Black is to move (user plays Black); never for opponent White SANs. */
+/** Black-to-move coach chip — notation only (`1... c5`), no “Play” / second subtitle line. */
 export const coachPlayMoveLeadBold = computed(() => {
   const pending = moveTrainer3CoachPendingBlackSan.value
-  if (pending) return `Play ${pending}`
+  if (pending) {
+    const p = allPlies.value.find((x) => x.color === 'black' && x.san === pending)
+    return formatMt3BlackHalfMoveLabel(p) || pending
+  }
   const side = currentFen.value.split(/\s+/)[1]
   if (side !== 'b') return ''
   const next = allPlies.value[currentPly.value]
-  if (!next?.san || next.color !== 'black') return ''
-  return `Play ${next.san}`
+  return formatMt3BlackHalfMoveLabel(next)
 })
 
-/** Pinned subtitle — only with Black to move (paired with `coachPlayMoveLeadBold`). Hidden during White/engine moves. */
-export const coachPlayMoveTurnLabel = computed(() => {
-  if (moveTrainer3CoachPendingBlackSan.value) return 'Black to play'
-  const side = currentFen.value.split(/\s+/)[1]
-  if (side !== 'b') return ''
-  return 'Black to play'
-})
+/** Deliberately empty — move notation stands alone (see `coachPlayMoveLeadBold`). */
+export const coachPlayMoveTurnLabel = computed(() => '')
 
 /**
  * Narration for the half-move selected via footer scrub (`currentPly - 1`) from main-line `coachText`.

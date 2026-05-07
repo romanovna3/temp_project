@@ -43,6 +43,7 @@ import {
   moveTrainer3PathIsOpponentsMove,
   moveTrainer3OpponentsMoveStepFromPath,
   getMoveTrainer3OpponentsMoveCheckpoint,
+  getMoveTrainer3OmWhiteReplyCoachText,
   bumpMoveTrainer3FooterNavMaxPly,
   resetMoveTrainer3FooterNavMaxPly,
   moveTrainer3FooterNavMaxPly,
@@ -4406,16 +4407,24 @@ const moveTrainer3BlackInteractiveBoard = computed(() => {
   if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
   if (moveTrainer3OmAuthorNoteStep.value !== 0) return false
   const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
-  return !!(step && getMoveTrainer3OpponentsMoveCheckpoint(step)?.whiteCommentary)
+  return !!(
+    step &&
+    getMoveTrainer3OpponentsMoveCheckpoint(step) &&
+    getMoveTrainer3OmWhiteReplyCoachText(step)
+  )
 })
 
-/** OM variant 1: stacked commentary + “Play …” bubble — show hint arrow after scripted White (Black to move). */
+/** OM variant 1: stacked commentary + Black-move chip — show hint arrow after scripted White (Black to move). */
 const moveTrainer3OmVariant1HintBoard = computed(() => {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return false
   if (moveTrainer3OmAuthorNoteStep.value !== 0) return false
   if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
   const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
-  return !!(step && getMoveTrainer3OpponentsMoveCheckpoint(step)?.whiteCommentary)
+  return !!(
+    step &&
+    getMoveTrainer3OpponentsMoveCheckpoint(step) &&
+    getMoveTrainer3OmWhiteReplyCoachText(step)
+  )
 })
 
 /** Hint arrow geometry in SVG viewBox 0–100 (matches marker userSpaceOnUse). */

@@ -18,6 +18,7 @@ import {
   moveTrainer3PathIsOpponentsMove,
   moveTrainer3OpponentsMoveStepFromPath,
   getMoveTrainer3OpponentsMoveCheckpoint,
+  getMoveTrainer3OmWhiteReplyCoachText,
   moveTrainer3OmAuthorNoteStep,
   moveTrainer3StartLearningNonce,
   moveTrainer3FooterNavMaxPly,
@@ -64,13 +65,7 @@ const mt3ReplayPreviewHalfMove = computed(() => {
 const mt3ReplayPreviewLeadBold = computed(() => {
   const ply = mt3ReplayPreviewHalfMove.value
   if (!ply?.san) return 'Review'
-  return ply.color === 'white' ? `${ply.moveNum}.${ply.san}` : `${ply.moveNum}…${ply.san}`
-})
-
-const mt3ReplayPreviewSubtitle = computed(() => {
-  const ply = mt3ReplayPreviewHalfMove.value
-  if (!ply) return ''
-  return ply.color === 'white' ? "White's move" : "Black's move"
+  return ply.color === 'white' ? `${ply.moveNum}.${ply.san}` : `${ply.moveNum}... ${ply.san}`
 })
 
 const mt3ReplayPreviewMessage = computed(() => {
@@ -83,28 +78,23 @@ const playMoveCoachBubbleMessage = computed(() =>
   isPlayMoveLayout.value ? '' : introCoachBubbleMessage.value,
 )
 
-/** OM v1 live tip: designer checkpoint copy; replay uses unified preview branch. */
-const omVariant1TopBubbleMessage = computed(() => opponentsMoveCheckpoint.value?.whiteCommentary ?? '')
-
-/** OM variant 1: bottom bubble — dynamic “Play …” when Black to move; checkpoint fallback so it never disappears mid-flow. */
-const omVariant1PlayLeadBold = computed(
-  () =>
-    coachPlayMoveLeadBold.value ||
-    opponentsMoveCheckpoint.value?.nextBlackLeadBold ||
-    '',
+/** OM v1 top bubble: same source as line data (`coachText` on White’s reply for this segment). */
+const omVariant1TopBubbleMessage = computed(() =>
+  opponentsMoveStep.value ? getMoveTrainer3OmWhiteReplyCoachText(opponentsMoveStep.value) : '',
 )
 
-const omVariant1PlayTurnStrip = computed(
-  () =>
-    coachPlayMoveTurnLabel.value ||
-    opponentsMoveCheckpoint.value?.nextBlackTurnStrip ||
-    '',
-)
+/** OM variant 1: bottom bubble — Black reply chip only (`2... e5` style). */
+const omVariant1PlayLeadBold = computed(() => coachPlayMoveLeadBold.value)
 
-/** OM variant 1: top bubble = White-move commentary; second bubble = next Black “Play …”. */
-const showOmVariant1 = computed(
-  () => isOpponentsMoveLayout.value && !!opponentsMoveCheckpoint.value?.whiteCommentary,
-)
+const omVariant1PlayTurnStrip = computed(() => coachPlayMoveTurnLabel.value)
+
+/** OM variant 1: checkpoint exists + White segment narration is defined on the main line. */
+const showOmVariant1 = computed(() => {
+  if (!isOpponentsMoveLayout.value) return false
+  const step = opponentsMoveStep.value
+  if (!step || !getMoveTrainer3OpponentsMoveCheckpoint(step)) return false
+  return !!getMoveTrainer3OmWhiteReplyCoachText(step)
+})
 
 /** Long author commentary after graded Black move — Video + Continue in footer; URL stays on same OM step. */
 const showOmAuthorReading = computed(() => {
@@ -137,7 +127,6 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :typewriter="false"
         :intro-coach-combined-bubble="true"
         :intro-combined-lead-bold="mt3ReplayPreviewLeadBold"
-        :intro-combined-turn-strip-regular="mt3ReplayPreviewSubtitle"
         :fill-available-height="true"
         :start-position="false"
       />
