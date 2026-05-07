@@ -267,18 +267,77 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 }
 
 /*
- * Replay scrub — hug-height bubble (no fill stretch); heading + body bands ≥64px; center one-line copy.
- * Reserve vertical space so toggling heading-only vs heading+body doesn’t collapse the column (footer/movelist “jump”).
+ * Replay scrub — hug-height bubble (no fill stretch).
+ * Heading-only moves (e.g. 1.d4): white bubble exactly 64px; notation vertically centered.
+ * Moves with body copy: ≥64px message band below heading (see :not(heading-only) rules).
  */
-.move-trainer-3-coach--mt3-replay-preview {
-  min-height: 148px;
-}
-
 .move-trainer-3-coach--mt3-replay-preview :deep(.bubble-wrapper--informational-single) {
   min-height: 0;
 }
 
-.move-trainer-3-coach--mt3-replay-preview :deep(.coach-intro-combined-heading) {
+/* Single-line move chip — collapse empty body slot; pin bubble + scroll panel to 64px */
+.move-trainer-3-coach--mt3-replay-preview :deep(.bubble--informational-single:has(.bubble-content--informational-heading-only)) {
+  --coach-tip-top: 21px;
+  min-height: 64px;
+  height: 64px;
+}
+
+.move-trainer-3-coach--mt3-replay-preview
+  :deep(.bubble-scroll-panel--informational:has(.bubble-content--informational-heading-only)) {
+  min-height: 64px;
+  height: 64px;
+  flex: 0 0 auto;
+}
+
+.move-trainer-3-coach--mt3-replay-preview
+  :deep(.bubble-informational-inner:has(.bubble-content--informational-heading-only)) {
+  min-height: 64px;
+  height: 64px;
+  flex: 0 0 auto;
+}
+
+.move-trainer-3-coach--mt3-replay-preview
+  :deep(
+    .bubble-informational-inner:has(.bubble-content--informational-heading-only) .coach-intro-combined-heading
+  ) {
+  flex: 1 1 auto;
+  min-height: 64px;
+  height: 64px;
+  max-height: 64px;
+  padding: 0 var(--space-16, 16px);
+  margin: 0;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+.move-trainer-3-coach--mt3-replay-preview
+  :deep(
+    .bubble-informational-inner:has(.bubble-content--informational-heading-only)
+      .bubble-content.bubble-content--informational-heading-only
+  ) {
+  display: none !important;
+}
+
+.move-trainer-3-coach--mt3-replay-preview
+  :deep(
+    .coach-container--single-bubble-hug .bubble-wrapper--informational-single:has(.bubble-content--informational-heading-only)
+  ) {
+  align-self: flex-start;
+}
+
+.move-trainer-3-coach--mt3-replay-preview :deep(.coach-intro-combined-heading__lead) {
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Move line only — heading sits above visible body copy */
+.move-trainer-3-coach--mt3-replay-preview
+  :deep(
+    .bubble-informational-inner:has(
+        .bubble-content.bubble-content--informational-below-heading:not(.bubble-content--informational-heading-only)
+      )
+      .coach-intro-combined-heading
+  ) {
   min-height: 64px;
   justify-content: center;
   padding-bottom: var(--space-6, 6px);
@@ -305,7 +364,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 }
 
 .move-trainer-3-coach--mt3-replay-preview :deep(.coach-avatar) {
-  align-self: flex-start;
+  align-self: center;
 }
 
 .move-trainer-3-coach--om-v1 {
