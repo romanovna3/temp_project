@@ -159,7 +159,7 @@ function onHint() {
 -->
 <style>
 .move-trainer-3-panel-footer-v10.panel-footer-v10-root .panel-footer-container {
-  padding-top: 12px;
+  padding-top: 0;
 }
 
 .mt3-learn-progress-slot.footer-progress-bar-wrap .cc-progress-bar-component {
