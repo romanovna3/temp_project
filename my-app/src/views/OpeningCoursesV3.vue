@@ -36,6 +36,8 @@ import {
   clearMoveTrainer3CoachPendingBlackSan,
   goToPly,
   goForward,
+  resetMoveTrainer3LearnProgress,
+  recordMoveTrainer3BlackLearnSuccess,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -3970,6 +3972,7 @@ function tryMoveTrainer3PlayMove(from, to) {
   lastMove.value = { from, to }
   playSound(isCapture ? 'capture' : 'move')
   goForward()
+  recordMoveTrainer3BlackLearnSuccess()
   return true
 }
 
@@ -4381,6 +4384,7 @@ watch(moveTrainer3StartLearningNonce, async (nonce) => {
   moveTrainer3SkipBoardSyncFromStore.value = true
   setMoveTrainer3CoachPendingBlackSan(getMoveTrainer3FirstBlackReplySan())
   try {
+    resetMoveTrainer3LearnProgress()
     clearOpeningAutoMove()
     goToPly(0)
     await nextTick()

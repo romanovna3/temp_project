@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { CcButton, CcIcon } from '@chesscom/design-system'
+import { CcButton, CcIcon, CcProgressBar } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
 import {
   footerNavBackDisabled,
@@ -10,6 +10,8 @@ import {
   goForward,
   toggleVideoToolbar,
   requestMoveTrainer3StartLearning,
+  moveTrainer3LearnProgressPercent,
+  moveTrainer3LearnProgressVariant,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -34,48 +36,56 @@ function onHint() {
 </script>
 
 <template>
-  <PanelFooterV10 class="move-trainer-3-panel-footer-v10">
+  <PanelFooterV10 class="move-trainer-3-panel-footer-v10 panel-footer-v10--assisted-quiz">
     <template #actions>
-      <div class="footer-buttons-row footer-buttons-row-split">
-        <template v-if="isPlayMoveLayout">
-          <CcButton
-            variant="secondary"
-            size="large"
-            class="footer-btn-equal"
-            disabled
-            :icon="{ name: 'media-camera-video-on' }"
-          >
-            Video
-          </CcButton>
-          <CcButton
-            variant="secondary"
-            size="large"
-            class="footer-btn-equal"
-            :icon="{ name: 'device-bulb-glow', variant: 'glyph' }"
-            @click="onHint"
-          >
-            Hint
-          </CcButton>
-        </template>
-        <template v-else>
-          <CcButton
-            variant="secondary"
-            size="large"
-            class="footer-btn-equal"
-            :icon="{ name: 'media-camera-video-on' }"
-            @click="toggleVideoToolbar"
-          >
-            Video
-          </CcButton>
-          <CcButton
-            variant="primary"
-            size="large"
-            class="footer-btn-equal"
-            @click="onStartLearning"
-          >
-            Start Learning
-          </CcButton>
-        </template>
+      <div class="move-trainer-3-footer-actions-stack">
+        <div class="footer-progress-bar-wrap">
+          <CcProgressBar
+            :value="moveTrainer3LearnProgressPercent"
+            :variant="moveTrainer3LearnProgressVariant"
+          />
+        </div>
+        <div class="footer-buttons-row footer-buttons-row-split">
+          <template v-if="isPlayMoveLayout">
+            <CcButton
+              variant="secondary"
+              size="large"
+              class="footer-btn-equal"
+              disabled
+              :icon="{ name: 'media-camera-video-on' }"
+            >
+              Video
+            </CcButton>
+            <CcButton
+              variant="secondary"
+              size="large"
+              class="footer-btn-equal"
+              :icon="{ name: 'device-bulb-glow', variant: 'glyph' }"
+              @click="onHint"
+            >
+              Hint
+            </CcButton>
+          </template>
+          <template v-else>
+            <CcButton
+              variant="secondary"
+              size="large"
+              class="footer-btn-equal"
+              :icon="{ name: 'media-camera-video-on' }"
+              @click="toggleVideoToolbar"
+            >
+              Video
+            </CcButton>
+            <CcButton
+              variant="primary"
+              size="large"
+              class="footer-btn-equal"
+              @click="onStartLearning"
+            >
+              Start Learning
+            </CcButton>
+          </template>
+        </div>
       </div>
     </template>
     <template #toolbar>
@@ -116,6 +126,27 @@ function onHint() {
 
 <style scoped>
 .move-trainer-3-panel-footer-v10 {
+  width: 100%;
+}
+
+.move-trainer-3-footer-actions-stack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.footer-progress-bar-wrap {
+  width: 100%;
+  padding: 10px 0 8px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  background: unset;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.footer-progress-bar-wrap :deep(.cc-progress-bar),
+.footer-progress-bar-wrap :deep([class*='progress']) {
   width: 100%;
 }
 </style>

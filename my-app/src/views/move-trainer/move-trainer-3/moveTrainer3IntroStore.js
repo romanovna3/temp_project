@@ -10,6 +10,9 @@
  *
  * **`/play-move` reload**: store resets `currentPly` to 0; OpeningCoursesV3 bumps to ply **1** (after 1.d4)
  * so the coach shows Black’s reply (“Play …”) instead of an empty bubble + White-only silence.
+ *
+ * **Footer progress**: `moveTrainer3LearnProgressPercent` = correct Black replies / Black moves in the variation;
+ * resets when **Start Learning** runs; increments only on graded Play Move successes (not footer prev/next).
  */
 import { ref, computed } from 'vue'
 import { Chess } from 'chess.js'
@@ -92,6 +95,39 @@ export function getMoveTrainer3BlackHintSquares() {
 export function requestMoveTrainer3StartLearning() {
   moveTrainer3StartLearningNonce.value += 1
 }
+
+/** Successful graded Black replies on Play Move (one increment per correct main-line Black move). */
+export const moveTrainer3BlackMovesCompleted = ref(0)
+
+/** Black half-moves in the scripted variation — denominator for footer progress. */
+export const moveTrainer3BlackMovesTotal = computed(() => {
+  let n = 0
+  for (const m of gameMoves.value) {
+    if (m.black?.san) n++
+  }
+  return n
+})
+
+export const moveTrainer3LearnProgressPercent = computed(() => {
+  const t = moveTrainer3BlackMovesTotal.value
+  if (!t) return 0
+  return Math.min(100, Math.round((moveTrainer3BlackMovesCompleted.value / t) * 100))
+})
+
+export const moveTrainer3LearnProgressVariant = computed(() =>
+  moveTrainer3LearnProgressPercent.value >= 100 ? 'success' : 'default',
+)
+
+export function resetMoveTrainer3LearnProgress() {
+  moveTrainer3BlackMovesCompleted.value = 0
+}
+
+export function recordMoveTrainer3BlackLearnSuccess() {
+  const t = moveTrainer3BlackMovesTotal.value
+  if (!t || moveTrainer3BlackMovesCompleted.value >= t) return
+  moveTrainer3BlackMovesCompleted.value++
+}
+
 const reviewMaxPly = computed(() => totalPlies.value)
 const atStart = computed(() => currentPly.value === 0)
 const atReviewLineEnd = computed(() => currentPly.value >= reviewMaxPly.value)
