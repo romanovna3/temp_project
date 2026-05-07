@@ -4430,15 +4430,24 @@ watch(openingFilterColor, (val) => {
     sessionStorage.setItem(OPENING_COURSES_V3_FILTER_COLOR_KEY, val)
   } catch (_) {}
 }, { immediate: false })
-/** Main board orientation + default position when switching White ↔ Black header toggle. */
+/**
+ * Main board orientation when switching White ↔ Black header toggle (Opening Courses V3),
+ * plus Move Trainer 3: repertoire “Black is Back” — Black POV (`squares`: rank 1 at top, h–a;
+ * **h8** bottom-left **dark**, matching standard algebraic coloring — see `squares` computed comment).
+ */
 watch(
-  () => [isOpeningCoursesV3.value, openingFilterColor.value, selectedOpeningCardId.value],
+  () => [isOpeningCoursesV3.value, isMoveTrainer3.value, openingFilterColor.value, selectedOpeningCardId.value],
   (newVal, oldVal) => {
-    const onV2 = newVal[0]
-    const fc = newVal[1]
-    const prevFc = oldVal?.[1]
-    if (!onV2) {
+    const onOpeningV3 = newVal[0]
+    const onMt3 = newVal[1]
+    const fc = newVal[2]
+    const prevFc = oldVal?.[2]
+    if (!onOpeningV3 && !onMt3) {
       boardViewBlack.value = false
+      return
+    }
+    if (onMt3) {
+      boardViewBlack.value = true
       return
     }
     if (fc === 'black') {
@@ -4448,11 +4457,12 @@ watch(
       boardViewBlack.value = false
       openingPlaySide.value = 'white'
     } else {
-      const card = selectedOpeningCardId.value != null ? openingCourseCards.find((c) => c.id === selectedOpeningCardId.value) : null
+      const cardId = newVal[3]
+      const card = cardId != null ? openingCourseCards.find((c) => c.id === cardId) : null
       boardViewBlack.value = card?.type === 'Black' ?? false
     }
     if (
-      onV2 &&
+      onOpeningV3 &&
       prevFc != null &&
       (prevFc === 'white' || prevFc === 'black') &&
       (fc === 'white' || fc === 'black') &&
