@@ -63,6 +63,8 @@ const tipSrc = `${base}icons/misc/bubble-tip.svg`
 const coachAvatarSrcResolved = computed(() => props.coachAvatarSrc || coachDannyPortraitUrl)
 
 const contentRef = ref(null)
+/** Informational / intro-combined: scroll panel wrapper (resize tells us when flex allocated height). */
+const informationalScrollPanelRef = ref(null)
 
 /** Native scrollbars are often overlay/hover-only; we show a fixed rail + thumb when content overflows. */
 const contentScrollable = ref(false)
@@ -73,7 +75,7 @@ function updateScrollFades() {
   const bubble = bubbleRef.value
   if (!el || !bubble) return
 
-  const isScrollable = el.scrollHeight - el.clientHeight > 1
+  const isScrollable = el.scrollHeight - el.clientHeight > 0.5
   if (!isScrollable) {
     bubble.style.setProperty('--top-opacity', '0')
     bubble.style.setProperty('--bottom-opacity', '0')
@@ -114,9 +116,21 @@ function measureContentScrollable() {
     contentScrollable.value = false
     return
   }
-  contentScrollable.value = el.scrollHeight - el.clientHeight > 1
+  contentScrollable.value = el.scrollHeight - el.clientHeight > 0.5
   syncScrollbarThumb()
   updateScrollFades()
+}
+
+/** Fill-height layouts settle after flex pass; remeasure so fades/rail reflect real overflow. */
+function scheduleMeasureAfterLayout() {
+  nextTick(() => {
+    measureContentScrollable()
+    if (!props.fillAvailableHeight) return
+    requestAnimationFrame(() => {
+      measureContentScrollable()
+      requestAnimationFrame(() => measureContentScrollable())
+    })
+  })
 }
 
 function onBubbleContentScroll() {
@@ -125,6 +139,7 @@ function onBubbleContentScroll() {
 }
 
 let contentResizeObserver = null
+let informationalPanelResizeObserver = null
 
 watch(
   () => contentRef.value,
@@ -137,13 +152,27 @@ watch(
     }
     contentResizeObserver = new ResizeObserver(() => measureContentScrollable())
     contentResizeObserver.observe(el)
-    nextTick(() => measureContentScrollable())
+    scheduleMeasureAfterLayout()
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => informationalScrollPanelRef.value,
+  (el) => {
+    informationalPanelResizeObserver?.disconnect()
+    informationalPanelResizeObserver = null
+    if (!el) return
+    informationalPanelResizeObserver = new ResizeObserver(() => measureContentScrollable())
+    informationalPanelResizeObserver.observe(el)
+    scheduleMeasureAfterLayout()
   },
   { flush: 'post' },
 )
 
 onUnmounted(() => {
   contentResizeObserver?.disconnect()
+  informationalPanelResizeObserver?.disconnect()
 })
 
 /**
@@ -241,14 +270,12 @@ watch(
   ],
   async () => {
     await nextTick()
-    measureContentScrollable()
+    scheduleMeasureAfterLayout()
   },
 )
 
 onMounted(() => {
-  nextTick(() => {
-    measureContentScrollable()
-  })
+  scheduleMeasureAfterLayout()
 })
 
 const typewriterResult = props.typewriter
@@ -345,7 +372,7 @@ const typewriterResult = props.typewriter
         <div v-if="showTip" class="tip">
           <img :src="tipSrc" alt="" />
         </div>
-        <div class="bubble-scroll-panel bubble-scroll-panel--informational">
+        <div ref="informationalScrollPanelRef" class="bubble-scroll-panel bubble-scroll-panel--informational">
           <div
             ref="contentRef"
             class="bubble-content bubble-content--informational-message bubble-content--hide-native-scrollbar"
@@ -874,12 +901,14 @@ const typewriterResult = props.typewriter
 }
 
 .coach-container--fill-available .bubble--informational-single .bubble-scroll-panel--informational {
-  flex: 1 1 auto;
+  /* basis 0 so panel takes flex space instead of growing to content (enables inner scroll + fades). */
+  flex: 1 1 0;
   min-height: 0;
 }
 
 .coach-container--fill-available .bubble--informational-single .bubble-content--informational-message {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 0;
   max-height: none;
   overflow-y: auto;
