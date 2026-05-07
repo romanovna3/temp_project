@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { CcButton, CcIcon, CcProgressBar } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
 import MoveTrainer3PlayMoveHorizontalMovelist from './MoveTrainer3PlayMoveHorizontalMovelist.vue'
@@ -16,11 +16,9 @@ import {
   moveTrainer3BlackMovesCompleted,
   moveTrainer3BlackMovesTotal,
   moveTrainer3AllPlies,
-  moveTrainer3PathIsOpponentsMove,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
-const router = useRouter()
 
 const isPlayMoveLayout = computed(() => {
   const p = route.path
@@ -32,14 +30,17 @@ const isPlayMoveLayout = computed(() => {
   }
 })
 
-const isOpponentsMoveLayout = computed(() => moveTrainer3PathIsOpponentsMove(route.path))
-
 /** Shared footer chrome: Play Move + Opponents Move (not intro landing). */
-const isPlayMoveShellLayout = computed(() => isPlayMoveLayout.value || isOpponentsMoveLayout.value)
-
-function goPlayMoveFromOm() {
-  router.push('/move-trainer/move-trainer-3/play-move')
-}
+const isPlayMoveShellLayout = computed(() => {
+  const p = route.path
+  if (isPlayMoveLayout.value) return true
+  try {
+    const d = decodeURIComponent(p)
+    return /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(d)
+  } catch {
+    return /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(p)
+  }
+})
 
 /** Plies applied on the board — grows as White/Black moves advance `currentPly` (footer nav + Play Move grading). */
 const playMoveDisplayedPlies = computed(() => {
@@ -89,26 +90,7 @@ function onHint() {
           />
         </div>
         <div class="footer-buttons-row footer-buttons-row-split">
-          <template v-if="isOpponentsMoveLayout">
-            <CcButton
-              variant="secondary"
-              size="large"
-              class="footer-btn-equal"
-              disabled
-              :icon="{ name: 'media-camera-video-on' }"
-            >
-              Video
-            </CcButton>
-            <CcButton
-              variant="primary"
-              size="large"
-              class="footer-btn-equal"
-              @click="goPlayMoveFromOm"
-            >
-              Continue
-            </CcButton>
-          </template>
-          <template v-else-if="isPlayMoveLayout">
+          <template v-if="isPlayMoveShellLayout">
             <CcButton
               variant="secondary"
               size="large"

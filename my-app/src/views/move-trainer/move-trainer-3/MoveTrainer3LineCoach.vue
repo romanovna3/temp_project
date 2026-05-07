@@ -164,25 +164,54 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 }
 
 .move-trainer-3-coach--om-v1 {
-  gap: var(--space-12, 12px);
+  gap: 10px;
+  padding: 4px 16px 12px;
 }
 
-/* Second bubble: hide duplicate avatar; indent bubble under first speech column */
+/*
+ * OM variant 1 — CoachBubble reserves ~116px row / panel min-heights for other flows.
+ * Without overrides the commentary bubble uses `bubble--has-scroll-panel` min-height 116px and looks empty.
+ */
+.move-trainer-3-coach--om-v1 :deep(.coach-container) {
+  height: auto;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.move-trainer-3-coach--om-v1 :deep(.bubble--has-scroll-panel) {
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+.move-trainer-3-coach--om-v1 :deep(.bubble--has-scroll-panel .bubble-scroll-panel) {
+  flex: 0 0 auto;
+}
+
+.move-trainer-3-coach--om-v1 :deep(.coach-container--informational-single) {
+  min-height: 0;
+}
+
+.move-trainer-3-coach--om-v1 :deep(.bubble-wrapper--informational-single) {
+  min-height: 0;
+}
+
+.move-trainer-3-coach--om-v1 :deep(.bubble-content.bubble-content--informational-message) {
+  min-height: 0 !important;
+  max-height: none;
+}
+
+.move-trainer-3-coach--om-v1 .mt3-om-commentary-coach :deep(.bubble-wrapper) {
+  margin-top: 6px;
+}
+
+/* Second bubble: hide duplicate avatar; align wrapper with first bubble (wrapper uses margin-left -6px on avatar row). */
 .mt3-om-play-coach :deep(.coach-avatar) {
   display: none;
 }
 
-.mt3-om-play-coach :deep(.bubble-wrapper) {
-  margin-left: calc(var(--coach-avatar-size, 80px) + 6px);
-}
-
-.mt3-om-commentary-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single),
-.mt3-om-play-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
-  margin-top: 16px;
-}
-
 .mt3-om-play-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
   margin-top: 0;
+  margin-left: calc(var(--coach-avatar-size, 80px) - 6px);
 }
 
 /*
@@ -213,18 +242,21 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 /*
  * Same top inset for the white bubble on intro + Play Move (fill layout defaulted to 8px).
  * Keeps one consistent “start line” for the speech bubble regardless of height mode.
+ * Opponents Move (--om-v1) sets its own offsets — do not apply here.
  */
-.move-trainer-3-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
+.move-trainer-3-coach:not(.move-trainer-3-coach--om-v1)
+  :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
   margin-top: 16px;
   margin-bottom: 0;
 }
 
-/* Intro only: hug-height bubble + DS max-height cap for short copy */
-.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill) :deep(.bubble-content) {
+/* Intro only (not OM): hug-height bubble + DS max-height cap for short copy */
+.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill):not(.move-trainer-3-coach--om-v1)
+  :deep(.bubble-content) {
   min-height: 64px;
 }
 
-.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill)
+.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill):not(.move-trainer-3-coach--om-v1)
   :deep(.coach-container--single-bubble-hug .bubble-content.bubble-content--informational-message) {
   min-height: 64px;
   justify-content: center;

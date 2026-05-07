@@ -1,0 +1,28 @@
+---
+description: Move Trainer 3 Opponents Move (OM) — scope and UI constraints so OM doesn’t inherit Intro/Play Move tweaks by accident.
+alwaysApply: false
+---
+
+# Move Trainer 3 — Opponents Move
+
+When adding or editing **`/move-trainer/move-trainer-3/opponents-move-*`** flows:
+
+## Product scope
+
+- **Variant 1 (small coach, two bubbles):** commentary on White’s reply + second bubble with **Play …** / turn strip. Do **not** add **Continue** or other CTAs unless the user explicitly asks (Continue belongs to **variant 2** pacing).
+- **Variant 2:** Documented separately when implemented — large scroll bubble, **Video + Continue**, reveal “Play …” only after Continue.
+
+## Footer
+
+- Unless the user specifies otherwise, **OM footer CTAs match Play Move:** **Video + Hint**, plus existing movelist/progress/toolbar shell rules.
+- Route change **Play Move → OM → Play Move** may rely on **browser / app back** after Black’s move until product adds an explicit primary CTA.
+
+## Coach layout (`MoveTrainer3LineCoach.vue`)
+
+- OM wrapper **must** use **`move-trainer-3-coach--om-v1`** (or future OM-specific class).
+- **Exclude OM** from Intro-only selectors that use `:not(.move-trainer-3-coach--play-move-fill)` — those rules assume Intro movelist layout and force **`min-height`** / margins that break OM “hug content” bubbles.
+- `CoachBubble` uses fixed **~116px** row/min-heights for generic and informational branches; OM needs **scoped `:deep()` overrides** so bubbles **hug copy** (do not ship OM with empty vertical padding from DS defaults).
+
+## Isolation
+
+- Do not reuse **`panel-footer-v10--assisted-quiz`** or other footer variants on OM unless requested (see `footer-variants-isolation.mdc`).
