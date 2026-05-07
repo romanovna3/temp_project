@@ -13,7 +13,6 @@ import {
   coachTurnStripText,
   coachPlayMoveLeadBold,
   coachPlayMoveTurnLabel,
-  coachPlayMoveTurnSide,
   bubbleStartPosition,
   coachAvatarIconPx,
 } from './moveTrainer3IntroStore.js'
@@ -52,7 +51,6 @@ const coachBodyMessage = computed(() =>
         :turn-strip-text="coachTurnStripText"
         :intro-combined-lead-bold="isPlayMoveLayout ? coachPlayMoveLeadBold : ''"
         :intro-combined-turn-strip-regular="isPlayMoveLayout ? coachPlayMoveTurnLabel : ''"
-        :intro-combined-turn-side="isPlayMoveLayout ? coachPlayMoveTurnSide : 'white'"
         :show-tip="true"
         :typewriter="false"
         :intro-coach-combined-bubble="true"

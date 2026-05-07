@@ -105,16 +105,11 @@ export const coachPlayMoveLeadBold = computed(() => {
   return `Play ${next.san}`
 })
 
-/** Side to move from current position FEN (field 2). */
-export const coachPlayMoveTurnSide = computed(() => {
+/** Play Move second heading line — same typography as coach body; regular weight. */
+export const coachPlayMoveTurnLabel = computed(() => {
   const token = currentFen.value.split(' ')[1]
-  return token === 'b' ? 'black' : 'white'
+  return token === 'b' ? 'Black to play' : 'White to play'
 })
-
-/** Play Move second heading line — regular weight, paired with turn indicator square. */
-export const coachPlayMoveTurnLabel = computed(() =>
-  coachPlayMoveTurnSide.value === 'white' ? 'White to play' : 'Black to play',
-)
 
 export function goBack() {
   currentPly.value = Math.max(0, currentPly.value - 1)

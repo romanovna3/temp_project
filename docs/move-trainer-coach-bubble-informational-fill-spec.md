@@ -24,11 +24,12 @@ Specs for the shell used when **`introCoachCombinedBubble`** (and optionally **`
 
 Implemented via CoachBubble props:
 
-- **`introCombinedLeadBold`** — line 1 (e.g. `Play c5`): **`cc-text-large-bold`**.
-- **`introCombinedTurnStripRegular`** — line 2 (e.g. `White to play`): **`cc-text-large`** (regular).
-- **`introCombinedTurnSide`** — `'white' \| 'black'` for the turn square (`white-indicator` / `black-indicator`).
+- **`introCombinedLeadBold`** — line 1 (e.g. `Play c5`): `.coach-message.cc-text-speech`, **`font-weight: 700`**.
+- **`introCombinedTurnStripRegular`** — line 2 (e.g. `Black to play`): same speech paragraph style, **`font-weight: 400`**. No icons / DS headline utilities.
 
-Copy for Move Trainer 3 is computed in **`moveTrainer3IntroStore.js`** (`coachPlayMoveLeadBold`, `coachPlayMoveTurnLabel`, `coachPlayMoveTurnSide`) from **`currentPly`** / **`currentFen`**.
+When this heading is shown, the informational column uses **`font-family: -apple-system, BlinkMacSystemFont, sans-serif`** for all `.coach-message.cc-text-speech` in that stack (heading + scrolling body) so type matches end-to-end.
+
+Copy for Move Trainer 3 is computed in **`moveTrainer3IntroStore.js`** (`coachPlayMoveLeadBold`, `coachPlayMoveTurnLabel`) from **`currentPly`** / **`currentFen`**.
 
 ## Related files
 

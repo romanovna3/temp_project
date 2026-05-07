@@ -57,10 +57,8 @@ const props = defineProps({
    * When set, non-scrolling heading sits above scrollable `message` / segments.
    */
   introCombinedLeadBold: { type: String, default: '' },
-  /** Second line: regular-weight turn hint (e.g. “White to play”). Uses `cc-text-large` + side indicator. */
+  /** Second line: same typography as coach body (`cc-text-speech`), regular weight (e.g. “Black to play”). */
   introCombinedTurnStripRegular: { type: String, default: '' },
-  /** Side for the 24×24 turn square: `white` | `black`. */
-  introCombinedTurnSide: { type: String, default: 'white' },
 })
 
 defineEmits(['selectInformationalPly'])
@@ -212,8 +210,6 @@ const showIntroCombinedHeading =
       (useIntroCoachCombinedBubble.value || useInformationalSingleBubble.value)
       && !!props.introCombinedLeadBold?.trim(),
   )
-
-const introCombinedTurnSideBlack = computed(() => props.introCombinedTurnSide === 'black')
 
 /** Single light bubble without fill: shrink coach row to copy (intro); informational fill keeps stretch layout. */
 const useSingleBubbleHug = computed(
@@ -393,18 +389,13 @@ const typewriterResult = props.typewriter
         <div ref="informationalScrollPanelRef" class="bubble-scroll-panel bubble-scroll-panel--informational">
           <div class="bubble-informational-inner">
             <div v-if="showIntroCombinedHeading" class="coach-intro-combined-heading">
-              <p class="coach-intro-combined-heading__lead cc-text-large-bold">{{ introCombinedLeadBold }}</p>
-              <div
+              <p class="coach-message cc-text-speech coach-intro-combined-heading__lead">{{ introCombinedLeadBold }}</p>
+              <p
                 v-if="introCombinedTurnStripRegular?.trim()"
-                class="coach-turn-strip coach-intro-combined-heading__turn"
+                class="coach-message cc-text-speech coach-intro-combined-heading__subtitle"
               >
-                <span
-                  class="color-indicator"
-                  :class="introCombinedTurnSideBlack ? 'black-indicator' : 'white-indicator'"
-                  aria-hidden="true"
-                />
-                <span class="classification-text cc-text-large">{{ introCombinedTurnStripRegular }}</span>
-              </div>
+                {{ introCombinedTurnStripRegular }}
+              </p>
             </div>
             <div
               ref="contentRef"
@@ -624,10 +615,6 @@ const typewriterResult = props.typewriter
   background: #ffffff;
 }
 
-.black-indicator {
-  background: #312e2b;
-}
-
 .bubble-informational-inner {
   display: flex;
   flex-direction: column;
@@ -644,13 +631,17 @@ const typewriterResult = props.typewriter
   gap: var(--space-8, 8px);
 }
 
-.coach-intro-combined-heading__lead {
-  margin: 0;
-  color: var(--coach-bubble-fg, #312e2b);
+/* Play Move: `-apple-system` stack for pinned heading + same `.coach-message.cc-text-speech` body below (no DS headline utilities). */
+.bubble-informational-inner:has(.coach-intro-combined-heading) .coach-message.cc-text-speech {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.coach-intro-combined-heading__turn {
-  margin: 0;
+.coach-intro-combined-heading .coach-intro-combined-heading__lead {
+  font-weight: 700;
+}
+
+.coach-intro-combined-heading .coach-intro-combined-heading__subtitle {
+  font-weight: 400;
 }
 
 .bubble-content.bubble-content--informational-message.bubble-content--informational-below-heading {
