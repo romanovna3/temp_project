@@ -12,6 +12,7 @@
  * so the coach shows Black’s reply (“Play …”) instead of an empty bubble + White-only silence.
  */
 import { ref, computed } from 'vue'
+import { Chess } from 'chess.js'
 import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
 import { MOVE_TRAINER_3_LINE_GAME } from '@move-trainer/data/gameData.js'
 
@@ -45,6 +46,48 @@ export const currentPly = ref(0)
 
 /** Incremented by footer Start Learning — OpeningCoursesV3 plays 1.d4 + routes to Play Move. */
 export const moveTrainer3StartLearningNonce = ref(0)
+
+/** While true, skip applying store FEN to the main board (Start Learning owns pieces during 1.d4 animation). */
+export const moveTrainer3SkipBoardSyncFromStore = ref(false)
+
+/** While true, Play Move URL must not auto-advance ply 0→1 (would fight the opening animation). */
+export const moveTrainer3WhiteOpeningAnimationActive = ref(false)
+
+/** Coach heading override: show “Play …” during 1.d4 slide before `currentPly` reaches Black’s checkpoint. */
+export const moveTrainer3CoachPendingBlackSan = ref('')
+
+export function setMoveTrainer3CoachPendingBlackSan(san) {
+  moveTrainer3CoachPendingBlackSan.value = typeof san === 'string' ? san : ''
+}
+
+export function clearMoveTrainer3CoachPendingBlackSan() {
+  moveTrainer3CoachPendingBlackSan.value = ''
+}
+
+export function getMoveTrainer3FirstBlackReplySan() {
+  const m = MOVE_TRAINER_3_LINE_GAME.moves[0]?.black?.san
+  return typeof m === 'string' ? m : ''
+}
+
+/**
+ * Expected Black reply from the scripted line at `currentPly` (from/to for hint arrows & tap validation).
+ * Returns null when it is not Black’s turn or the next scripted ply is not Black.
+ */
+export function getMoveTrainer3BlackHintSquares() {
+  try {
+    const fen = currentFen.value
+    const chess = new Chess(fen)
+    if (chess.turn() !== 'b') return null
+    const next = allPlies.value[currentPly.value]
+    if (!next?.san || next.color !== 'black') return null
+    const copy = new Chess(fen)
+    const mv = copy.move(next.san)
+    if (!mv || typeof mv.from !== 'string' || typeof mv.to !== 'string') return null
+    return { from: mv.from, to: mv.to }
+  } catch {
+    return null
+  }
+}
 
 export function requestMoveTrainer3StartLearning() {
   moveTrainer3StartLearningNonce.value += 1
@@ -98,6 +141,8 @@ export const currentFen = computed(() => {
 
 /** Play Move coach heading — only when Black is to move (user plays Black); never for opponent White SANs. */
 export const coachPlayMoveLeadBold = computed(() => {
+  const pending = moveTrainer3CoachPendingBlackSan.value
+  if (pending) return `Play ${pending}`
   const side = currentFen.value.split(/\s+/)[1]
   if (side !== 'b') return ''
   const next = allPlies.value[currentPly.value]
@@ -107,6 +152,7 @@ export const coachPlayMoveLeadBold = computed(() => {
 
 /** Pinned subtitle — only with Black to move (paired with `coachPlayMoveLeadBold`). Hidden during White/engine moves. */
 export const coachPlayMoveTurnLabel = computed(() => {
+  if (moveTrainer3CoachPendingBlackSan.value) return 'Black to play'
   const side = currentFen.value.split(/\s+/)[1]
   if (side !== 'b') return ''
   return 'Black to play'

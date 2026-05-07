@@ -24,11 +24,18 @@ import MoveTrainer3Moves from './move-trainer/move-trainer-3/MoveTrainer3Moves.v
 import MoveTrainer3PanelFooter from './move-trainer/move-trainer-3/MoveTrainer3PanelFooter.vue'
 import {
   getMoveTrainer3BoardSyncPayload,
+  getMoveTrainer3BlackHintSquares,
+  getMoveTrainer3FirstBlackReplySan,
   currentFen as moveTrainer3CurrentFen,
   currentPly as moveTrainer3CurrentPly,
   MOVE_TRAINER_3_COURSE_TITLE,
   moveTrainer3StartLearningNonce,
+  moveTrainer3SkipBoardSyncFromStore,
+  moveTrainer3WhiteOpeningAnimationActive,
+  setMoveTrainer3CoachPendingBlackSan,
+  clearMoveTrainer3CoachPendingBlackSan,
   goToPly,
+  goForward,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -48,6 +55,27 @@ const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
 // Version: V2.3 = legacy content (14 sections), V2.4 = real course (7 chapters). V5/V6 = same layout as V4 but different line-card styling.
 const route = useRoute()
 const router = useRouter()
+
+function moveTrainer3PathIsIntro(path) {
+  if (!path || typeof path !== 'string') return false
+  if (path === '/move-trainer/move-trainer-3') return true
+  try {
+    return decodeURIComponent(path) === '/move-trainer/move-trainer-3'
+  } catch {
+    return false
+  }
+}
+
+function moveTrainer3PathIsPlayMove(path) {
+  if (!path || typeof path !== 'string') return false
+  if (path === '/move-trainer/move-trainer-3/play-move') return true
+  try {
+    return decodeURIComponent(path) === '/move-trainer/move-trainer-3/play-move'
+  } catch {
+    return false
+  }
+}
+
 const isVideoV2_4 = computed(() => route.path === '/courses/v4')
 const isVideoV5 = computed(() => route.path === '/courses/v5')
 const isVideoV6 = computed(() => route.path === '/courses/v6')
@@ -3067,6 +3095,20 @@ function squareToPercent(square) {
     top: `${topPct}%`,
   }
 }
+
+/** Normalized center of square (0–1) for SVG overlays; matches `squareToPercent` orientation. */
+function squareCenterNorm(square) {
+  if (!square || typeof square !== 'string' || square.length < 2) return { x: 0, y: 0 }
+  const fileIndex = square.charCodeAt(0) - 97
+  const rank = parseInt(square[1], 10)
+  if (fileIndex < 0 || fileIndex > 7 || rank < 1 || rank > 8) return { x: 0, y: 0 }
+  const col = boardViewBlack.value ? 7 - fileIndex : fileIndex
+  const rowFromTop = boardViewBlack.value ? rank - 1 : 8 - rank
+  return {
+    x: (col + 0.5) / 8,
+    y: (rowFromTop + 0.5) / 8,
+  }
+}
 function clearOpeningAutoMove() {
   if (openingAutoMoveTimeoutId != null) {
     clearTimeout(openingAutoMoveTimeoutId)
@@ -3420,6 +3462,7 @@ function setBoardToDefault() {
 /** Move Trainer 3: intro-1 panel drives the main board (sync with move list ply). */
 function onMoveTrainer3BoardSync(payload) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+  if (moveTrainer3SkipBoardSyncFromStore.value) return
   if (!payload?.fen) return
   try {
     pieces.value = parseFEN(payload.fen)
@@ -3576,13 +3619,25 @@ const isWrongMove = (square) => {
 // ============================================
 const handleSquareClick = (square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
-  if (isMoveTrainer3.value && panelView.value === 'courses') return
+  const mt3PlayBoard =
+    isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path)
+  if (isMoveTrainer3.value && panelView.value === 'courses' && !mt3PlayBoard) return
 
   const piece = getPieceOnSquare(square)
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
   const isLastMovedPiece = piece && isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && square === lastMove.value.to
-  const canSelectPiece = piece && (isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w'))
+  let canSelectPiece =
+    piece && (isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w'))
+  if (mt3PlayBoard && piece) {
+    try {
+      const chess = new Chess(moveTrainer3CurrentFen.value)
+      const blackTurn = chess.turn() === 'b'
+      canSelectPiece = blackTurn && piece.type.startsWith('b')
+    } catch {
+      canSelectPiece = false
+    }
+  }
 
   // If no piece selected yet
   if (!selectedSquare.value) {
@@ -3862,12 +3917,37 @@ const triggerCheckmateAnimation = (kingSquare, isBlackKing, onComplete) => {
   }, 800)
 }
 
+function tryMoveTrainer3PlayMove(from, to) {
+  const hint = getMoveTrainer3BlackHintSquares()
+  if (!hint || hint.from !== from || hint.to !== to) return false
+  try {
+    const chess = new Chess(moveTrainer3CurrentFen.value)
+    if (chess.turn() !== 'b') return false
+    const result = chess.move({ from, to })
+    if (!result) return false
+  } catch {
+    return false
+  }
+  const isCapture = getPieceOnSquare(to) !== undefined
+  makeMove(from, to)
+  lastMove.value = { from, to }
+  playSound(isCapture ? 'capture' : 'move')
+  goForward()
+  return true
+}
+
 // Try to make a move (used by both click and drag)
 const tryMove = (from, to) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return false
 
   const movingPiece = getPieceOnSquare(from)
   if (!movingPiece) return false
+
+  const mt3PlayBoard =
+    isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path)
+  if (mt3PlayBoard) {
+    return tryMoveTrainer3PlayMove(from, to)
+  }
 
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
 
@@ -3989,10 +4069,33 @@ const tryMove = (from, to) => {
 // ============================================
 const handleDragStart = (event, square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
-  if (isMoveTrainer3.value && panelView.value === 'courses') return
+  const mt3PlayBoard =
+    isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path)
+  if (isMoveTrainer3.value && panelView.value === 'courses' && !mt3PlayBoard) return
 
   const piece = getPieceOnSquare(square)
   if (!piece) return
+
+  if (mt3PlayBoard) {
+    if (!piece.type.startsWith('b')) return
+    try {
+      const chess = new Chess(moveTrainer3CurrentFen.value)
+      if (chess.turn() !== 'b') return
+    } catch {
+      return
+    }
+    event.preventDefault()
+    isDragging.value = true
+    draggedPiece.value = piece
+    draggedFrom.value = square
+    selectedSquare.value = square
+    if (openingBoardPointerEligible.value) openingBoardPointerDismissedByDrag.value = true
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX
+    const clientY = event.touches ? event.touches[0].clientY : event.clientY
+    dragPosition.value = { x: clientX, y: clientY }
+    return
+  }
+
   // Opening Courses V3 free play: allow the side to move, or allow dragging the last-moved piece (for undo)
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
   const sideToMove = isOpeningV1FreePlay && openingFilterMoves.value.length % 2 === 1 ? 'black' : 'white'
@@ -4140,26 +4243,6 @@ watch(
   { immediate: true },
 )
 
-function moveTrainer3PathIsIntro(path) {
-  if (!path || typeof path !== 'string') return false
-  if (path === '/move-trainer/move-trainer-3') return true
-  try {
-    return decodeURIComponent(path) === '/move-trainer/move-trainer-3'
-  } catch {
-    return false
-  }
-}
-
-function moveTrainer3PathIsPlayMove(path) {
-  if (!path || typeof path !== 'string') return false
-  if (path === '/move-trainer/move-trainer-3/play-move') return true
-  try {
-    return decodeURIComponent(path) === '/move-trainer/move-trainer-3/play-move'
-  } catch {
-    return false
-  }
-}
-
 /** Intro route: always review from the initial position (clean 1.d4 on Start Learning). */
 watch(
   () => (isMoveTrainer3.value ? route.path : ''),
@@ -4175,30 +4258,71 @@ watch(
  * for White’s turn → empty bubble (“No message”). Snap to ply 1 so board + “Play c5” coach match.
  */
 watch(
-  () => [isMoveTrainer3.value, route.path, moveTrainer3CurrentPly.value],
+  () => [isMoveTrainer3.value, route.path, moveTrainer3CurrentPly.value, moveTrainer3WhiteOpeningAnimationActive.value],
   () => {
     if (!isMoveTrainer3.value || !moveTrainer3PathIsPlayMove(route.path)) return
+    if (moveTrainer3WhiteOpeningAnimationActive.value) return
     if (moveTrainer3CurrentPly.value === 0) goToPly(1)
   },
   { immediate: true },
 )
+
+const isMoveTrainer3PlayMoveBoard = computed(
+  () => isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path),
+)
+
+const moveTrainer3HintArrowLine = computed(() => {
+  if (!isMoveTrainer3PlayMoveBoard.value || isDragging.value) return null
+  moveTrainer3CurrentFen.value
+  moveTrainer3CurrentPly.value
+  const hint = getMoveTrainer3BlackHintSquares()
+  if (!hint) return null
+  const a = squareCenterNorm(hint.from)
+  const b = squareCenterNorm(hint.to)
+  return { x1: a.x * 100, y1: a.y * 100, x2: b.x * 100, y2: b.y * 100 }
+})
+
+function isPieceDraggableForMainBoard(square) {
+  const piece = getPieceOnSquare(square)
+  if (!piece) return false
+  if (isMoveTrainer3PlayMoveBoard.value) {
+    try {
+      const chess = new Chess(moveTrainer3CurrentFen.value)
+      const blackTurn = chess.turn() === 'b'
+      return blackTurn && piece.type.startsWith('b')
+    } catch {
+      return false
+    }
+  }
+  return piece.type.startsWith('w')
+}
 
 let moveTrainer3StartLearningBusy = false
 watch(moveTrainer3StartLearningNonce, async (nonce) => {
   if (!nonce || !isMoveTrainer3.value || moveTrainer3StartLearningBusy) return
   if (!moveTrainer3PathIsIntro(route.path)) return
   moveTrainer3StartLearningBusy = true
+  moveTrainer3WhiteOpeningAnimationActive.value = true
+  moveTrainer3SkipBoardSyncFromStore.value = true
+  setMoveTrainer3CoachPendingBlackSan(getMoveTrainer3FirstBlackReplySan())
   try {
     clearOpeningAutoMove()
     goToPly(0)
+    await nextTick()
+    await router.push('/move-trainer/move-trainer-3/play-move')
     await nextTick()
     playOpeningThirdMove(STARTING_FEN, 'd4', { forceSound: true })
     await new Promise((resolve) => {
       setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
     })
+    clearMoveTrainer3CoachPendingBlackSan()
     goToPly(1)
-    await router.push('/move-trainer/move-trainer-3/play-move')
+    moveTrainer3SkipBoardSyncFromStore.value = false
+    await nextTick()
   } finally {
+    moveTrainer3WhiteOpeningAnimationActive.value = false
+    moveTrainer3SkipBoardSyncFromStore.value = false
+    clearMoveTrainer3CoachPendingBlackSan()
     moveTrainer3StartLearningBusy = false
   }
 })
@@ -6494,7 +6618,7 @@ onUnmounted(() => {
               <img 
                 v-if="getPieceOnSquare(square) && !isPieceDragged(square) && !(openingCardAnimatingMove && openingCardAnimatingMove.from === square)" 
                 class="piece"
-                :class="{ 'draggable': getPieceOnSquare(square)?.type.startsWith('w') }"
+                :class="{ draggable: isPieceDraggableForMainBoard(square) }"
                 :src="getPieceImage(getPieceOnSquare(square))"
                 :alt="getPieceOnSquare(square).type"
                 draggable="false"
@@ -6506,6 +6630,39 @@ onUnmounted(() => {
               <!-- Rank label (left column: a-file white, h-file black) -->
               <span v-if="square[0] === (boardViewBlack ? 'h' : 'a')" class="coord rank-coord">{{ square[1] }}</span>
             </div>
+            <!-- Move Trainer 3 Play Move: coach hint arrow (hidden while dragging) -->
+            <svg
+              v-if="moveTrainer3HintArrowLine"
+              class="mt3-play-hint-arrow-svg"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <marker
+                  id="mt3-play-hint-arrowhead-desktop"
+                  markerWidth="5"
+                  markerHeight="5"
+                  refX="4"
+                  refY="2.5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path d="M0,0 L5,2.5 L0,5 Z" fill="#3FD0FF" fill-opacity="0.6" />
+                </marker>
+              </defs>
+              <line
+                :x1="moveTrainer3HintArrowLine.x1"
+                :y1="moveTrainer3HintArrowLine.y1"
+                :x2="moveTrainer3HintArrowLine.x2"
+                :y2="moveTrainer3HintArrowLine.y2"
+                stroke="#3FD0FF"
+                stroke-opacity="0.6"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                marker-end="url(#mt3-play-hint-arrowhead-desktop)"
+              />
+            </svg>
             <!-- Opening Courses V1: sliding piece for auto-played 3rd move (White) -->
             <div
               v-if="openingCardAnimatingMove && openingCardAnimatingMove.from && openingCardAnimatingMove.to && openingCardAnimatingMove.pieceType"
@@ -6775,7 +6932,7 @@ onUnmounted(() => {
               <img 
                 v-if="getPieceOnSquare(square) && !isPieceDragged(square) && !(openingCardAnimatingMove && openingCardAnimatingMove.from === square)" 
                 class="piece"
-                :class="{ 'draggable': getPieceOnSquare(square)?.type.startsWith('w') }"
+                :class="{ draggable: isPieceDraggableForMainBoard(square) }"
                 :src="getPieceImage(getPieceOnSquare(square))"
                 :alt="getPieceOnSquare(square).type"
                 draggable="false"
@@ -6787,6 +6944,39 @@ onUnmounted(() => {
               <!-- Rank label (left column: a-file white, h-file black) -->
               <span v-if="square[0] === (boardViewBlack ? 'h' : 'a')" class="coord rank-coord">{{ square[1] }}</span>
             </div>
+            <!-- Move Trainer 3 Play Move: coach hint arrow (hidden while dragging) -->
+            <svg
+              v-if="moveTrainer3HintArrowLine"
+              class="mt3-play-hint-arrow-svg"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <marker
+                  id="mt3-play-hint-arrowhead-mobile"
+                  markerWidth="5"
+                  markerHeight="5"
+                  refX="4"
+                  refY="2.5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path d="M0,0 L5,2.5 L0,5 Z" fill="#3FD0FF" fill-opacity="0.6" />
+                </marker>
+              </defs>
+              <line
+                :x1="moveTrainer3HintArrowLine.x1"
+                :y1="moveTrainer3HintArrowLine.y1"
+                :x2="moveTrainer3HintArrowLine.x2"
+                :y2="moveTrainer3HintArrowLine.y2"
+                stroke="#3FD0FF"
+                stroke-opacity="0.6"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                marker-end="url(#mt3-play-hint-arrowhead-mobile)"
+              />
+            </svg>
             <!-- Opening Courses V1: sliding piece for auto-played 3rd move (White) -->
             <div
               v-if="openingCardAnimatingMove && openingCardAnimatingMove.from && openingCardAnimatingMove.to && openingCardAnimatingMove.pieceType"
@@ -9660,6 +9850,15 @@ body {
   grid-template-rows: repeat(8, 1fr);
   border-radius: 3px;
   overflow: hidden; /* Clip corners */
+}
+
+.mt3-play-hint-arrow-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 8;
 }
 
 /* Opening Courses V1: piece sliding from source to destination for auto-played 3rd move */
