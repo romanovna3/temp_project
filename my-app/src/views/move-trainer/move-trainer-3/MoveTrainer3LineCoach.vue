@@ -93,6 +93,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
     <div v-else-if="isOpponentsMoveLayout" class="move-trainer-3-coach move-trainer-3-coach--om-v1">
       <CoachBubble
+        class="mt3-om-commentary-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
         header-text=""
@@ -212,12 +213,26 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   max-height: none;
 }
 
+/*
+ * Commentary row: generic bubble sits beside an 80px avatar — align bubble + tip to the avatar row
+ * (same intent as CoachBubble `start-position`) while OM `:deep()` rules keep copy height hugged.
+ */
 .move-trainer-3-coach--om-v1 .mt3-om-commentary-coach {
-  --coach-tip-top: 14px;
+  --coach-tip-bottom: 10px;
 }
 
 .move-trainer-3-coach--om-v1 .mt3-om-commentary-coach :deep(.bubble-wrapper) {
   margin-top: 0;
+  min-height: var(--coach-avatar-size, 80px);
+  align-items: flex-end;
+}
+
+.move-trainer-3-coach--om-v1 .mt3-om-commentary-coach :deep(.tip) {
+  top: auto;
+  bottom: var(--coach-tip-bottom, 10px);
+  /* Parent `.move-trainer-3-coach` forces 33px tip height — breaks SVG proportion & attachment point. */
+  height: 22px;
+  width: 14px;
 }
 
 /* Second bubble: hide duplicate avatar; align wrapper with first bubble (wrapper uses margin-left -6px on avatar row). */
