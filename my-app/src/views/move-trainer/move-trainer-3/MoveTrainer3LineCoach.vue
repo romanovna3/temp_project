@@ -88,6 +88,14 @@ const isPlayMoveLayout = computed(() => {
   justify-content: center;
 }
 
+/*
+ * DS caps informational body at ~116px which forces inner scroll. MT3: grow with copy downward only;
+ * max-height + footer clamp scroll comes later.
+ */
+.move-trainer-3-coach :deep(.bubble-content.bubble-content--informational-message) {
+  max-height: none;
+}
+
 .move-trainer-3-coach :deep(.coach-container--single-bubble-hug .bubble-wrapper--informational-single) {
   margin-top: 16px;
   margin-bottom: 0;
