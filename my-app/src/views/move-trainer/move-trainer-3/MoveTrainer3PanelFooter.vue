@@ -195,16 +195,16 @@ function onHint() {
   align-self: stretch;
   padding: 0 16px 12px;
   justify-content: flex-start;
-  align-items: center;
+  align-items: flex-start;
   background-color: transparent;
 }
 
-/* #000 25% fill below toolbar icons (distinct from frame fill). */
+/* #000 20% fill below toolbar icons (distinct from frame fill). */
 .move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.25);
+  background-color: rgba(0, 0, 0, 0.2);
   pointer-events: none;
   z-index: 0;
 }
