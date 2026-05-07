@@ -6639,29 +6639,32 @@ onUnmounted(() => {
               aria-hidden="true"
             >
               <defs>
+                <!-- Tip length ~10% shorter than a 9-unit head; userSpaceOnUse keeps head size when stroke widens -->
                 <marker
                   id="mt3-play-hint-arrowhead-desktop"
-                  markerWidth="5"
-                  markerHeight="5"
-                  refX="4"
-                  refY="2.5"
+                  markerUnits="userSpaceOnUse"
+                  markerWidth="9"
+                  markerHeight="9"
+                  refX="8.1"
+                  refY="4.5"
                   orient="auto"
-                  markerUnits="strokeWidth"
+                  viewBox="0 0 9 9"
                 >
-                  <path d="M0,0 L5,2.5 L0,5 Z" fill="#3FD0FF" fill-opacity="0.6" />
+                  <path d="M8.1,4.5 L0,0 L0,9 Z" fill="#3FD0FF" />
                 </marker>
               </defs>
-              <line
-                :x1="moveTrainer3HintArrowLine.x1"
-                :y1="moveTrainer3HintArrowLine.y1"
-                :x2="moveTrainer3HintArrowLine.x2"
-                :y2="moveTrainer3HintArrowLine.y2"
-                stroke="#3FD0FF"
-                stroke-opacity="0.6"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                marker-end="url(#mt3-play-hint-arrowhead-desktop)"
-              />
+              <g opacity="0.6">
+                <line
+                  :x1="moveTrainer3HintArrowLine.x1"
+                  :y1="moveTrainer3HintArrowLine.y1"
+                  :x2="moveTrainer3HintArrowLine.x2"
+                  :y2="moveTrainer3HintArrowLine.y2"
+                  stroke="#3FD0FF"
+                  stroke-width="5.4"
+                  stroke-linecap="square"
+                  marker-end="url(#mt3-play-hint-arrowhead-desktop)"
+                />
+              </g>
             </svg>
             <!-- Opening Courses V1: sliding piece for auto-played 3rd move (White) -->
             <div
@@ -6955,27 +6958,29 @@ onUnmounted(() => {
               <defs>
                 <marker
                   id="mt3-play-hint-arrowhead-mobile"
-                  markerWidth="5"
-                  markerHeight="5"
-                  refX="4"
-                  refY="2.5"
+                  markerUnits="userSpaceOnUse"
+                  markerWidth="9"
+                  markerHeight="9"
+                  refX="8.1"
+                  refY="4.5"
                   orient="auto"
-                  markerUnits="strokeWidth"
+                  viewBox="0 0 9 9"
                 >
-                  <path d="M0,0 L5,2.5 L0,5 Z" fill="#3FD0FF" fill-opacity="0.6" />
+                  <path d="M8.1,4.5 L0,0 L0,9 Z" fill="#3FD0FF" />
                 </marker>
               </defs>
-              <line
-                :x1="moveTrainer3HintArrowLine.x1"
-                :y1="moveTrainer3HintArrowLine.y1"
-                :x2="moveTrainer3HintArrowLine.x2"
-                :y2="moveTrainer3HintArrowLine.y2"
-                stroke="#3FD0FF"
-                stroke-opacity="0.6"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                marker-end="url(#mt3-play-hint-arrowhead-mobile)"
-              />
+              <g opacity="0.6">
+                <line
+                  :x1="moveTrainer3HintArrowLine.x1"
+                  :y1="moveTrainer3HintArrowLine.y1"
+                  :x2="moveTrainer3HintArrowLine.x2"
+                  :y2="moveTrainer3HintArrowLine.y2"
+                  stroke="#3FD0FF"
+                  stroke-width="5.4"
+                  stroke-linecap="square"
+                  marker-end="url(#mt3-play-hint-arrowhead-mobile)"
+                />
+              </g>
             </svg>
             <!-- Opening Courses V1: sliding piece for auto-played 3rd move (White) -->
             <div
