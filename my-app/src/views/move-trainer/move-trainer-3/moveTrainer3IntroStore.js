@@ -11,8 +11,7 @@ export const MOVE_TRAINER_3_COURSE_TITLE = 'Black is Back: Old Benoni'
 /** Move list header — main line label. */
 export const MOVE_TRAINER_3_LINE_HEADER_TITLE = 'Main Line without c2-c4 – 4.f4'
 
-const REVIEW_MESSAGE =
-  "Take a moment to review the moves, then start learning whenever you're ready."
+const REVIEW_MESSAGE = "Let's learn this line together"
 
 const gameMoves = ref([...MOVE_TRAINER_3_LINE_GAME.moves])
 const gameResult = ref(MOVE_TRAINER_3_LINE_GAME.result)

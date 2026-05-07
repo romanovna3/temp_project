@@ -73,6 +73,11 @@ import {
   height: 33px;
 }
 
+/* MT3-only: reduce minimum bubble height per spec */
+.move-trainer-3-coach :deep(.bubble-content) {
+  min-height: 64px;
+}
+
 /* When intro uses `start-position`, CoachBubble anchors the tip with `bottom`; override to match same offsets. */
 .move-trainer-3-coach :deep(.coach-container.start-position .tip) {
   top: 20px;
