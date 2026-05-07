@@ -185,6 +185,18 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
 .move-trainer-3-coach--om-v1 :deep(.bubble--has-scroll-panel .bubble-scroll-panel) {
   flex: 0 0 auto;
+  align-items: flex-start;
+}
+
+/*
+ * Commentary bubble uses the generic single-bubble branch (`bubble--has-scroll-panel`), which applies
+ * min-height 96px + justify-content: center when there is no header — looks vertically “off”.
+ */
+.move-trainer-3-coach--om-v1 :deep(.bubble--has-scroll-panel .bubble-content:not(.bubble-content--informational-message)) {
+  min-height: 0;
+  max-height: none;
+  flex: 0 1 auto;
+  justify-content: flex-start;
 }
 
 .move-trainer-3-coach--om-v1 :deep(.coach-container--informational-single) {
@@ -200,8 +212,12 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   max-height: none;
 }
 
+.move-trainer-3-coach--om-v1 .mt3-om-commentary-coach {
+  --coach-tip-top: 14px;
+}
+
 .move-trainer-3-coach--om-v1 .mt3-om-commentary-coach :deep(.bubble-wrapper) {
-  margin-top: 6px;
+  margin-top: 0;
 }
 
 /* Second bubble: hide duplicate avatar; align wrapper with first bubble (wrapper uses margin-left -6px on avatar row). */
