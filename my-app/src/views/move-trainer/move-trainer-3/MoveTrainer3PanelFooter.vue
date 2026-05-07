@@ -190,6 +190,15 @@ function onHint() {
   padding-top: 0;
 }
 
+.move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar {
+  padding: 0 16px 12px;
+  background-color: rgba(30, 28, 26, 0.14);
+}
+
+.panel-sm .move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar {
+  padding: 0 8px 12px;
+}
+
 .mt3-learn-progress-slot.footer-progress-bar-wrap .cc-progress-bar-component {
   width: 100%;
   background-color: rgba(255, 255, 255, 0.12);
