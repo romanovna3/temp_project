@@ -182,6 +182,7 @@ function onHint() {
   height: 190px;
   justify-content: flex-end;
   align-items: flex-start;
+  border-radius: 3px;
 }
 
 .move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-actions {

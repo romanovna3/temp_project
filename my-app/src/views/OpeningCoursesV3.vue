@@ -9513,7 +9513,15 @@ v-if="isVideoV6OrV7"
           v-if="!(isOpeningCoursesV3 && !isMoveTrainer3 && panelView === 'courses' && isMobileViewport)"
           class="panel-footer-frame"
         >
-        <div class="panel-footer-container" :class="{ 'panel-footer-container--no-icon-footer': !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') || (isOpeningCoursesV3 && panelView === 'line') }">
+        <div
+          class="panel-footer-container"
+          :class="{
+            'panel-footer-container--no-icon-footer':
+              !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') ||
+              (isOpeningCoursesV3 && panelView === 'line'),
+            'panel-footer-container--move-trainer-3': isMoveTrainer3 && panelView === 'courses',
+          }"
+        >
           <template v-if="isMoveTrainer3 && panelView === 'courses'">
             <MoveTrainer3PanelFooter />
           </template>
@@ -14642,6 +14650,16 @@ body {
   position: relative;
   z-index: 1;
 }
+
+/* Move Trainer 3 — footer chrome in review panel (nested PanelFooterV10 inside). */
+.panel-footer-container--move-trainer-3 {
+  padding: 0 4px 0 4px;
+  height: 190px;
+  justify-content: flex-end;
+  align-items: flex-start;
+  border-radius: 3px;
+}
+
 /* Uncompleted line (or any state with no level row + no icon footer): align spacing and padding */
 .panel-footer-container--no-icon-footer {
   padding: 6px 12px 16px 12px;
