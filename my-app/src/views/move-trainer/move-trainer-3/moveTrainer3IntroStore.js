@@ -280,8 +280,8 @@ export const coachPlayMoveTurnLabel = computed(() => {
 })
 
 /**
- * Narration for the half-move selected via footer scrub — matches horizontal movelist highlight (`currentPly - 1`).
- * Sourced from main-line `coachText` (White and Black); readable while stepping before/after Black “Play …”.
+ * Narration for the half-move selected via footer scrub (`currentPly - 1`) from main-line `coachText`.
+ * MoveTrainer3LineCoach shows this only when `currentPly < footerNavMaxPly` so live-tip Play Move / OM checkpoint flow stays unchanged.
  */
 export const coachSelectedPlyCommentary = computed(() => {
   const idx = currentPly.value - 1

@@ -19,6 +19,9 @@ import {
   moveTrainer3OpponentsMoveStepFromPath,
   getMoveTrainer3OpponentsMoveCheckpoint,
   moveTrainer3OmAuthorNoteStep,
+  moveTrainer3StartLearningNonce,
+  moveTrainer3FooterNavMaxPly,
+  currentPly,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -43,20 +46,41 @@ const opponentsMoveCheckpoint = computed(() =>
 
 const introCoachBubbleMessage = computed(() => MOVE_TRAINER_3_INTRO_COACH_MESSAGE)
 
-/** Play Move: body copy tracks scrubbed ply (`coachText`); intro keeps landing copy. */
-const playMoveCoachBubbleMessage = computed(() =>
-  isPlayMoveLayout.value ? coachSelectedPlyCommentary.value : introCoachBubbleMessage.value,
+/** Only while stepping back with footer chevrons — at the live tip keep the original heading-only Play Move / OM checkpoint shell. */
+const isMt3FooterScrubbingBehindTip = computed(
+  () =>
+    moveTrainer3StartLearningNonce.value > 0 &&
+    currentPly.value < moveTrainer3FooterNavMaxPly.value,
 )
 
-/** OM v1 top bubble: line narration when scrubbing; checkpoint copy only as fallback. */
-const omVariant1TopBubbleMessage = computed(() => {
-  const line = coachSelectedPlyCommentary.value
-  if (line) return line
-  return opponentsMoveCheckpoint.value?.whiteCommentary ?? ''
+/** Play Move: `coachText` only when scrubbing behind the unlocked tip; intro unchanged. */
+const playMoveCoachBubbleMessage = computed(() => {
+  if (!isPlayMoveLayout.value) return introCoachBubbleMessage.value
+  if (!isMt3FooterScrubbingBehindTip.value) return ''
+  return coachSelectedPlyCommentary.value
 })
 
-/** OM variant 1: bottom “Play …” chip tracks board turn (same as Play Move), hidden when White to move. */
-const showOmVariant1PlayBubble = computed(() => !!coachPlayMoveLeadBold.value)
+/** OM v1 top bubble: live tip = checkpoint commentary; scrubbing = line `coachText` when present. */
+const omVariant1TopBubbleMessage = computed(() => {
+  const ck = opponentsMoveCheckpoint.value?.whiteCommentary ?? ''
+  if (!isMt3FooterScrubbingBehindTip.value) return ck
+  return coachSelectedPlyCommentary.value || ck
+})
+
+/** OM variant 1: bottom bubble — dynamic “Play …” when Black to move; checkpoint fallback so it never disappears mid-flow. */
+const omVariant1PlayLeadBold = computed(
+  () =>
+    coachPlayMoveLeadBold.value ||
+    opponentsMoveCheckpoint.value?.nextBlackLeadBold ||
+    '',
+)
+
+const omVariant1PlayTurnStrip = computed(
+  () =>
+    coachPlayMoveTurnLabel.value ||
+    opponentsMoveCheckpoint.value?.nextBlackTurnStrip ||
+    '',
+)
 
 /** OM variant 1: top bubble = White-move commentary; second bubble = next Black “Play …”. */
 const showOmVariant1 = computed(
@@ -114,7 +138,6 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :start-position="false"
       />
       <CoachBubble
-        v-if="showOmVariant1PlayBubble"
         class="mt3-om-play-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
@@ -127,8 +150,8 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :show-tip="false"
         :typewriter="false"
         :intro-coach-combined-bubble="true"
-        :intro-combined-lead-bold="coachPlayMoveLeadBold"
-        :intro-combined-turn-strip-regular="coachPlayMoveTurnLabel"
+        :intro-combined-lead-bold="omVariant1PlayLeadBold"
+        :intro-combined-turn-strip-regular="omVariant1PlayTurnStrip"
         :fill-available-height="false"
         :start-position="false"
       />
