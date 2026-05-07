@@ -218,7 +218,7 @@ function onHint() {
   align-items: flex-start;
   border-radius: 3px;
   background: unset;
-  background-color: rgba(39, 37, 34, 0);
+  background-color: unset;
 }
 
 .move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-actions {

@@ -14767,14 +14767,15 @@ body {
   background-color: transparent;
 }
 
-/* Move Trainer 3 Play Move — fixed-height shell aligned with movelist / progress row. */
-.panel-footer-container--move-trainer-3-play-move {
-  padding: 3px 4px 0 4px;
+/* Move Trainer 3 Play Move — fixed-height shell; beat base `.panel-footer-container` (chained selector). */
+.panel-footer-container.panel-footer-container--move-trainer-3-play-move {
+  padding: 3px 0 0;
   height: 190px;
   justify-content: flex-end;
   align-items: flex-start;
   border-radius: 3px;
-  background-color: rgba(0, 0, 0, 0);
+  background: unset;
+  background-color: unset;
 }
 
 /* Uncompleted line (or any state with no level row + no icon footer): align spacing and padding */
