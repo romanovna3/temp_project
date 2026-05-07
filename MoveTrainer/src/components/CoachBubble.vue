@@ -636,10 +636,13 @@ const typewriterResult = props.typewriter
 
 .coach-intro-combined-heading {
   flex-shrink: 0;
-  padding: var(--space-16, 16px) var(--space-16, 16px) var(--space-8, 8px);
+  /* Reference chrome (~64px tall block for two speech lines); synced with docs/coach-bubble-scrollable-variant-spec.md */
+  padding: 12px var(--space-16, 16px) 12px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-8, 8px);
+  gap: 0;
+  box-sizing: border-box;
+  min-height: 64px;
 }
 
 /* Play Move: `-apple-system` stack for pinned heading + same `.coach-message.cc-text-speech` body below (no DS headline utilities). */

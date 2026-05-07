@@ -1,6 +1,10 @@
-# Coach bubble — informational / intro-combined **fill height** variant (Move Trainer 3 Play Move)
+# Scrollable informational coach bubble (`fillAvailableHeight` + intro-combined)
 
-Specs for the shell used when **`introCoachCombinedBubble`** (and optionally **`informationalSingleBubble`**) is combined with **`fillAvailableHeight`**.
+Canonical layout for **scroll inside the white bubble**, **top/bottom dissolve fades**, optional **pinned two-line heading**, and **hug height when content is shorter than the panel**.
+
+**Quick restore checklist:** [`coach-bubble-scrollable-variant-spec.md`](./coach-bubble-scrollable-variant-spec.md)
+
+Specs apply when **`introCoachCombinedBubble`** (and optionally **`informationalSingleBubble`**) is combined with **`fillAvailableHeight`** (Move Trainer 3 Play Move is the reference integration).
 
 ## Layout
 
@@ -8,7 +12,7 @@ Specs for the shell used when **`introCoachCombinedBubble`** (and optionally **`
 - **Route shell**: Play Move coach wrapper uses **`flex: 0 1 auto`**, **`max-height: 100%`**, **`min-height: 0`** so it does not grow to consume the whole column; intro stack still **`flex: 1 1 0`** so the panel layout stays bounded.
 - **CoachBubble** (`coach-container--fill-available` + informational single): **`align-items: flex-start`**, informational **`bubble-wrapper`** **`align-self: flex-start`** (no cross-axis stretch to the avatar row). Container **`flex: 0 1 auto`**, **`height: auto`**, **`max-height: 100%`**, **`min-height: 0`** (overrides default informational **`min-height: 116px`**).
 - **Scroll region**: `.bubble-scroll-panel--informational` **`flex: 1 1 auto`**, **`min-height: 0`**, **`overflow: hidden`**; `.bubble-content--informational-message` **`overflow-y: auto`** and **`min-height: 0`** under fill-available (drops the default **96px** body min-height).
-- **Optional pinned heading** (Play Move): Non-scrolling block above the scrollable body when **`introCombinedLeadBold`** is set.
+- **Optional pinned heading** (Play Move): Non-scrolling **`.coach-intro-combined-heading`** above scrollable body when **`introCombinedLeadBold`** is set. Spacing matches **`docs/coach-bubble-scrollable-variant-spec.md`** (padding **12px** top/bottom, horizontal **16px**, **`gap: 0`**, **`min-height: 64px`**, `border-box`).
 
 ## Scroll fades (“dissolve”)
 
