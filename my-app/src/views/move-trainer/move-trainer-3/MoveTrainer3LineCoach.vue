@@ -268,7 +268,12 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
 /*
  * Replay scrub — hug-height bubble (no fill stretch); heading + body bands ≥64px; center one-line copy.
+ * Reserve vertical space so toggling heading-only vs heading+body doesn’t collapse the column (footer/movelist “jump”).
  */
+.move-trainer-3-coach--mt3-replay-preview {
+  min-height: 148px;
+}
+
 .move-trainer-3-coach--mt3-replay-preview :deep(.bubble-wrapper--informational-single) {
   min-height: 0;
 }

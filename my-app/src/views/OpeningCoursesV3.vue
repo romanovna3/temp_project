@@ -4330,6 +4330,11 @@ watch(
   () => {
     if (!isMoveTrainer3.value || !moveTrainer3PathIsPlayMove(route.path)) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
+    /** Footer replay scrub — never snap ply 0→1 or bump max (was fighting chevrons + jumping UI). */
+    const replayScrub =
+      moveTrainer3StartLearningNonce.value > 0 &&
+      moveTrainer3CurrentPly.value < moveTrainer3FooterNavMaxPly.value
+    if (replayScrub) return
     if (moveTrainer3CurrentPly.value === 0) {
       goToPly(1)
       if (moveTrainer3StartLearningNonce.value > 0) {

@@ -68,6 +68,8 @@ const hasMoves = computed(() => props.plies.length > 0)
   overflow-y: hidden;
   scrollbar-width: thin;
   flex-shrink: 0;
+  /* Reduce browser scroll anchoring jumps when selection styling updates during scrub. */
+  overflow-anchor: none;
 }
 
 .mt3-hml-move-num {
