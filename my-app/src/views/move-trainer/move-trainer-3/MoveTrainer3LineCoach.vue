@@ -84,6 +84,11 @@ import {
   justify-content: center;
 }
 
+/* MT3-only: remove extra gap below informational single bubble wrapper. */
+.move-trainer-3-coach :deep(.coach-container--single-bubble-hug .bubble-wrapper--informational-single) {
+  margin-bottom: 0;
+}
+
 /* When intro uses `start-position`, CoachBubble anchors the tip with `bottom`; override to match same offsets. */
 .move-trainer-3-coach :deep(.coach-container.start-position .tip) {
   top: 20px;
