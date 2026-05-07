@@ -4271,6 +4271,10 @@ const isMoveTrainer3PlayMoveBoard = computed(
   () => isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path),
 )
 
+/** Hint arrow geometry in SVG viewBox 0–100 (matches marker userSpaceOnUse). */
+const MT3_HINT_ARROW_HEAD_LEN = 8.1 // base → tip; stroke stops at base so tip reaches destination square center
+const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 // 15% narrower than prior shaft
+
 const moveTrainer3HintArrowLine = computed(() => {
   if (!isMoveTrainer3PlayMoveBoard.value || isDragging.value) return null
   moveTrainer3CurrentFen.value
@@ -4279,7 +4283,21 @@ const moveTrainer3HintArrowLine = computed(() => {
   if (!hint) return null
   const a = squareCenterNorm(hint.from)
   const b = squareCenterNorm(hint.to)
-  return { x1: a.x * 100, y1: a.y * 100, x2: b.x * 100, y2: b.y * 100 }
+  const x1 = a.x * 100
+  const y1 = a.y * 100
+  const bx = b.x * 100
+  const by = b.y * 100
+  const dx = bx - x1
+  const dy = by - y1
+  const len = Math.hypot(dx, dy)
+  let x2 = bx
+  let y2 = by
+  if (len > MT3_HINT_ARROW_HEAD_LEN + 1e-6) {
+    const s = (len - MT3_HINT_ARROW_HEAD_LEN) / len
+    x2 = x1 + dx * s
+    y2 = y1 + dy * s
+  }
+  return { x1, y1, x2, y2, strokeWidth: MT3_HINT_ARROW_STROKE_WIDTH }
 })
 
 function isPieceDraggableForMainBoard(square) {
@@ -6639,13 +6657,13 @@ onUnmounted(() => {
               aria-hidden="true"
             >
               <defs>
-                <!-- Tip length ~10% shorter than a 9-unit head; userSpaceOnUse keeps head size when stroke widens -->
+                <!-- ref at triangle base center: shaft ends here (butt cap); head extends to destination square center -->
                 <marker
                   id="mt3-play-hint-arrowhead-desktop"
                   markerUnits="userSpaceOnUse"
                   markerWidth="9"
                   markerHeight="9"
-                  refX="8.1"
+                  refX="0"
                   refY="4.5"
                   orient="auto"
                   viewBox="0 0 9 9"
@@ -6660,8 +6678,8 @@ onUnmounted(() => {
                   :x2="moveTrainer3HintArrowLine.x2"
                   :y2="moveTrainer3HintArrowLine.y2"
                   stroke="#3FD0FF"
-                  stroke-width="5.4"
-                  stroke-linecap="square"
+                  :stroke-width="moveTrainer3HintArrowLine.strokeWidth"
+                  stroke-linecap="butt"
                   marker-end="url(#mt3-play-hint-arrowhead-desktop)"
                 />
               </g>
@@ -6961,7 +6979,7 @@ onUnmounted(() => {
                   markerUnits="userSpaceOnUse"
                   markerWidth="9"
                   markerHeight="9"
-                  refX="8.1"
+                  refX="0"
                   refY="4.5"
                   orient="auto"
                   viewBox="0 0 9 9"
@@ -6976,8 +6994,8 @@ onUnmounted(() => {
                   :x2="moveTrainer3HintArrowLine.x2"
                   :y2="moveTrainer3HintArrowLine.y2"
                   stroke="#3FD0FF"
-                  stroke-width="5.4"
-                  stroke-linecap="square"
+                  :stroke-width="moveTrainer3HintArrowLine.strokeWidth"
+                  stroke-linecap="butt"
                   marker-end="url(#mt3-play-hint-arrowhead-mobile)"
                 />
               </g>
