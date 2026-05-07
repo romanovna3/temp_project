@@ -4272,8 +4272,8 @@ const isMoveTrainer3PlayMoveBoard = computed(
 )
 
 /** Hint arrow geometry in SVG viewBox 0–100 (matches marker userSpaceOnUse). */
-const MT3_HINT_ARROW_HEAD_LEN = 8.1 // base → tip; stroke stops at base so tip reaches destination square center
-const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 // 15% narrower than prior shaft
+const MT3_HINT_ARROW_HEAD_LEN = 8.1 * 0.8 // 20% shorter tip than prior head length
+const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 * 0.8 // 20% narrower than prior shaft
 
 const moveTrainer3HintArrowLine = computed(() => {
   if (!isMoveTrainer3PlayMoveBoard.value || isDragging.value) return null
@@ -6668,7 +6668,7 @@ onUnmounted(() => {
                   orient="auto"
                   viewBox="0 0 9 9"
                 >
-                  <path d="M8.1,4.5 L0,0 L0,9 Z" fill="#3FD0FF" />
+                  <path d="M6.48,4.5 L0,0 L0,9 Z" fill="#3FD0FF" />
                 </marker>
               </defs>
               <g opacity="0.6">
@@ -6984,7 +6984,7 @@ onUnmounted(() => {
                   orient="auto"
                   viewBox="0 0 9 9"
                 >
-                  <path d="M8.1,4.5 L0,0 L0,9 Z" fill="#3FD0FF" />
+                  <path d="M6.48,4.5 L0,0 L0,9 Z" fill="#3FD0FF" />
                 </marker>
               </defs>
               <g opacity="0.6">
