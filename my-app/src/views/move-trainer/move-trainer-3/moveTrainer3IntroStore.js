@@ -316,13 +316,37 @@ export function toggleVideoToolbar() {
 
 export { gameMoves, gameResult, allPlies as moveTrainer3AllPlies }
 
+/**
+ * Half-move at `plyIndex` (0-based in `allPlies`) may omit `from`/`to` in game JSON (Black plies often only have `san`).
+ * Replay from start so board sync still gets last-move squares for the yellow highlight.
+ */
+function getMt3LastMoveSquaresAfterPly(plyIndex) {
+  const plies = allPlies.value
+  const ply = plies[plyIndex]
+  if (!ply) return null
+  if (ply.from && ply.to) return { from: ply.from, to: ply.to }
+  if (!ply.san) return null
+  try {
+    const chess = new Chess(MOVE_TRAINER_3_LINE_GAME.initialFen)
+    for (let i = 0; i < plyIndex; i++) {
+      const p = plies[i]
+      if (!p?.san) return null
+      if (!chess.move(p.san)) return null
+    }
+    const mv = chess.move(ply.san)
+    if (!mv || typeof mv.from !== 'string' || typeof mv.to !== 'string') return null
+    return { from: mv.from, to: mv.to }
+  } catch {
+    return null
+  }
+}
+
 /** Snapshot for main board sync — reuse wherever OpeningCoursesV3 applies MT3 FEN + last-move highlight. */
 export function getMoveTrainer3BoardSyncPayload() {
   const fen = currentFen.value
   let lastMove = null
   if (currentPly.value > 0) {
-    const ply = allPlies.value[currentPly.value - 1]
-    if (ply?.from && ply?.to) lastMove = { from: ply.from, to: ply.to }
+    lastMove = getMt3LastMoveSquaresAfterPly(currentPly.value - 1)
   }
   return { fen, lastMove }
 }
