@@ -2,7 +2,6 @@
 import { useRouter } from 'vue-router'
 import { CcButton, CcIcon } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
-import { firstIntroAssistedPath } from '@move-trainer/data/moveTrainerLineOrder.js'
 import {
   moveTrainerLineNav,
   footerNavBackDisabled,
@@ -15,8 +14,7 @@ import {
 const router = useRouter()
 
 function onStartLearning() {
-  const next = firstIntroAssistedPath('intro-1')
-  if (next) router.push(next)
+  router.push('/move-trainer/move-trainer-3/play-move')
 }
 </script>
 
@@ -37,7 +35,6 @@ function onStartLearning() {
           variant="primary"
           size="large"
           class="footer-btn-equal"
-          :disabled="moveTrainerLineNav.nextDisabled"
           @click="onStartLearning"
         >
           Start Learning

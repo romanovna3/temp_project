@@ -4106,13 +4106,26 @@ const isOpeningCoursesV3 = computed(() => {
     return false
   }
 })
-/** Move Trainer 3: same chrome as Opening Courses V3 (see MoveTrainer3Landing.vue). */
+/** Move Trainer 3 (Intro screen + Play Move screen): same chrome as Opening Courses V3. */
 const isMoveTrainer3 = computed(() => {
   if (!route?.path) return false
   const p = route.path
   if (p === '/move-trainer/move-trainer-3') return true
+  if (p === '/move-trainer/move-trainer-3/play-move') return true
   try {
-    return decodeURIComponent(p) === '/move-trainer/move-trainer-3'
+    const decoded = decodeURIComponent(p)
+    return decoded === '/move-trainer/move-trainer-3' || decoded === '/move-trainer/move-trainer-3/play-move'
+  } catch {
+    return false
+  }
+})
+
+const isMoveTrainer3PlayMove = computed(() => {
+  if (!route?.path) return false
+  const p = route.path
+  if (p === '/move-trainer/move-trainer-3/play-move') return true
+  try {
+    return decodeURIComponent(p) === '/move-trainer/move-trainer-3/play-move'
   } catch {
     return false
   }
@@ -7528,7 +7541,7 @@ onUnmounted(() => {
           <template v-else-if="isMoveTrainer3">
             <div v-if="openingV3Ready" class="move-trainer-3-column panel-content" data-move-trainer-3-main>
               <MoveTrainer3LineCoach />
-              <MoveTrainer3Moves />
+              <MoveTrainer3Moves v-if="!isMoveTrainer3PlayMove" />
             </div>
             <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
