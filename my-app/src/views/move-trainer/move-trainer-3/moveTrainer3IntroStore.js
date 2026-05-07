@@ -11,9 +11,19 @@ export const MOVE_TRAINER_3_COURSE_TITLE = 'Black is Back: Old Benoni'
 /** Move list header — main line label. */
 export const MOVE_TRAINER_3_LINE_HEADER_TITLE = 'Main Line without c2-c4 – 4.f4'
 
-/** Coach body copy (`white-space: pre-line` in CoachBubble). ~12 lines to stress-test vertical growth. */
-const REVIEW_MESSAGE = [
-  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+/** Intro screen coach bubble — short copy only (don’t couple Play Move body here). */
+export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line together"
+
+/**
+ * Play Move layout — long instructional body (`white-space: pre-line` in CoachBubble).
+ * Scroll + gradient fades are handled inside CoachBubble when fill-available-height is on.
+ */
+export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = [
+  'In this Old Benoni-style structure Black often reinforces early with …d7–d6 before committing the king, keeping tension while kingside ideas brew.',
+  'White’s Nc3 is multipurpose: it props d5, eyes e4, and buys time to decide whether to clarify the center or invite sharper middlegames.',
+  'Classic White tries include e2–e4 and schemes against …Bg7; delaying c2–c4 can change the pawn skeleton entirely — worth comparing plans side by side.',
+  'After short casting, watch for …a6 and queenside expansion motifs — the semi-open files hint where counterplay usually lands.',
+  'Fianchettoing the bishop on g2, and coordinating it with a knight hopping toward e3 or f4, is one of the clean recipes on this flank.',
   'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
   'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
   'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
@@ -77,7 +87,7 @@ export const coachWhiteAdvantage = computed(() => {
   return !ev.startsWith('-')
 })
 
-export const coachMessage = computed(() => REVIEW_MESSAGE)
+export const coachMessage = computed(() => MOVE_TRAINER_3_INTRO_COACH_MESSAGE)
 export const coachTurnStripText = 'White to move'
 export const bubbleStartPosition = computed(() => !coachHeaderText.value)
 export const coachAvatarIconPx = 96

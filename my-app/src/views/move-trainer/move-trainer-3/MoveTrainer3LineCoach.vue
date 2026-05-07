@@ -4,11 +4,12 @@ import { useRoute } from 'vue-router'
 import CoachBubble from '@move-trainer/components/CoachBubble.vue'
 import davidCoachAvatarUrl from '@move-trainer/assets/coaches/coach-david.png?url'
 import {
+  MOVE_TRAINER_3_INTRO_COACH_MESSAGE,
+  MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE,
   coachHeaderIcon,
   coachHeaderText,
   coachEvalText,
   coachWhiteAdvantage,
-  coachMessage,
   coachTurnStripText,
   bubbleStartPosition,
   coachAvatarIconPx,
@@ -25,24 +26,31 @@ const isPlayMoveLayout = computed(() => {
     return false
   }
 })
+
+const coachBodyMessage = computed(() =>
+  isPlayMoveLayout.value ? MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE : MOVE_TRAINER_3_INTRO_COACH_MESSAGE,
+)
 </script>
 
 <template>
   <div class="move-trainer-3-intro-stack">
-    <div class="move-trainer-3-coach">
+    <div
+      class="move-trainer-3-coach"
+      :class="{ 'move-trainer-3-coach--play-move-fill': isPlayMoveLayout }"
+    >
       <CoachBubble
         :coach-avatar-src="davidCoachAvatarUrl"
         :header-icon="coachHeaderIcon"
         :header-text="coachHeaderText"
         :eval-text="coachEvalText"
         :white-advantage="coachWhiteAdvantage"
-        :message="coachMessage"
+        :message="coachBodyMessage"
         :coach-avatar-icon-px="coachAvatarIconPx"
         :turn-strip-text="coachTurnStripText"
         :show-tip="true"
         :typewriter="false"
         :intro-coach-combined-bubble="true"
-        :fill-available-height="false"
+        :fill-available-height="isPlayMoveLayout"
         :start-position="bubbleStartPosition"
       />
     </div>
@@ -75,28 +83,39 @@ const isPlayMoveLayout = computed(() => {
   --coach-tip-top: 20px;
 }
 
+/* Play Move: fill panel main above footer; CoachBubble handles inner scroll + fade gradients */
+.move-trainer-3-coach--play-move-fill {
+  flex: 1 1 0;
+  min-height: 0;
+  flex-shrink: 1;
+}
+
+.move-trainer-3-coach--play-move-fill :deep(.coach-container.coach-container--fill-available) {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.move-trainer-3-coach--play-move-fill :deep(.coach-avatar) {
+  align-self: flex-start;
+}
+
 .move-trainer-3-coach :deep(.tip) {
   height: 33px;
 }
 
-.move-trainer-3-coach :deep(.bubble-content) {
+/* Intro only: hug-height bubble + DS max-height cap for short copy */
+.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill) :deep(.bubble-content) {
   min-height: 64px;
 }
 
-.move-trainer-3-coach :deep(.coach-container--single-bubble-hug .bubble-content.bubble-content--informational-message) {
+.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill)
+  :deep(.coach-container--single-bubble-hug .bubble-content.bubble-content--informational-message) {
   min-height: 64px;
   justify-content: center;
 }
 
-/*
- * DS caps informational body at ~116px which forces inner scroll. MT3: grow with copy downward only;
- * max-height + footer clamp scroll comes later.
- */
-.move-trainer-3-coach :deep(.bubble-content.bubble-content--informational-message) {
-  max-height: none;
-}
-
-.move-trainer-3-coach :deep(.coach-container--single-bubble-hug .bubble-wrapper--informational-single) {
+.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill)
+  :deep(.coach-container--single-bubble-hug .bubble-wrapper--informational-single) {
   margin-top: 16px;
   margin-bottom: 0;
 }
