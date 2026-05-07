@@ -42,6 +42,7 @@ import {
   moveTrainer3AllPlies,
   moveTrainer3PathIsOpponentsMove,
   moveTrainer3OpponentsMoveStepFromPath,
+  getMoveTrainer3OpponentsMoveCheckpoint,
   bumpMoveTrainer3FooterNavMaxPly,
   resetMoveTrainer3FooterNavMaxPly,
   moveTrainer3BlackMovesThroughPly,
@@ -4370,6 +4371,14 @@ const isMoveTrainer3PlayMoveBoard = computed(
   () => isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path),
 )
 
+/** OM variant 1: stacked commentary + “Play …” bubble — show hint arrow after scripted White (Black to move). */
+const moveTrainer3OmVariant1HintBoard = computed(() => {
+  if (!isMoveTrainer3.value || panelView.value !== 'courses') return false
+  if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
+  const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
+  return !!(step && getMoveTrainer3OpponentsMoveCheckpoint(step)?.whiteCommentary)
+})
+
 /** Hint arrow geometry in SVG viewBox 0–100 (matches marker userSpaceOnUse). */
 const MT3_HINT_ARROW_HEAD_LEN = (8.1 * 0.8) * 0.85 // 15% smaller pointer vs prior head length
 const MT3_HINT_ARROW_HALF_BASE = 4.5 * 0.85 // half-height at base (same scale as head length)
@@ -4379,7 +4388,8 @@ const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 * 0.8 // 20% narrower than prior 
 const MT3_HINT_ARROW_TAIL_OVERLAP_MORE_VB = (5 / BOARD_SIZE) * 100
 
 const moveTrainer3HintArrowLine = computed(() => {
-  if (!isMoveTrainer3PlayMoveBoard.value || isDragging.value) return null
+  const hintBoard = isMoveTrainer3PlayMoveBoard.value || moveTrainer3OmVariant1HintBoard.value
+  if (!hintBoard || isDragging.value) return null
   moveTrainer3CurrentFen.value
   moveTrainer3CurrentPly.value
   const hint = getMoveTrainer3BlackHintSquares()
