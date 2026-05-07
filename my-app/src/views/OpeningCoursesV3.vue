@@ -9519,7 +9519,10 @@ v-if="isVideoV6OrV7"
             'panel-footer-container--no-icon-footer':
               !(panelView === 'courses' || panelView === 'line' || panelView === 'opening-course') ||
               (isOpeningCoursesV3 && panelView === 'line'),
-            'panel-footer-container--move-trainer-3': isMoveTrainer3 && panelView === 'courses',
+            'panel-footer-container--move-trainer-3-intro':
+              isMoveTrainer3 && panelView === 'courses' && moveTrainer3PathIsIntro(route.path),
+            'panel-footer-container--move-trainer-3-play-move':
+              isMoveTrainer3 && panelView === 'courses' && moveTrainer3PathIsPlayMove(route.path),
           }"
         >
           <template v-if="isMoveTrainer3 && panelView === 'courses'">
@@ -14651,8 +14654,17 @@ body {
   z-index: 1;
 }
 
-/* Move Trainer 3 — footer chrome in review panel (nested PanelFooterV10 inside). */
-.panel-footer-container--move-trainer-3 {
+/* Move Trainer 3 intro — compact wrapper (Play Move uses separate rules below). */
+.panel-footer-container--move-trainer-3-intro {
+  padding: 0;
+  height: fit-content;
+  justify-content: flex-end;
+  align-items: stretch;
+  background-color: transparent;
+}
+
+/* Move Trainer 3 Play Move — fixed-height shell aligned with movelist / progress row. */
+.panel-footer-container--move-trainer-3-play-move {
   padding: 3px 4px 0 4px;
   height: 190px;
   justify-content: flex-end;

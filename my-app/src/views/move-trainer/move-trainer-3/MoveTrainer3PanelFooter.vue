@@ -51,7 +51,13 @@ function onHint() {
 </script>
 
 <template>
-  <PanelFooterV10 class="move-trainer-3-panel-footer-v10">
+  <PanelFooterV10
+    class="move-trainer-3-panel-footer-v10"
+    :class="{
+      'move-trainer-3-panel-footer-v10--intro': !isPlayMoveLayout,
+      'move-trainer-3-panel-footer-v10--play-move': isPlayMoveLayout,
+    }"
+  >
     <template #actions>
       <div class="move-trainer-3-footer-actions-stack">
         <MoveTrainer3PlayMoveHorizontalMovelist
@@ -177,20 +183,36 @@ function onHint() {
   Do not reuse for Move Trainer 2 assisted quiz or other footers (see .cursor/rules/footer-variants-isolation.mdc).
 -->
 <style>
-.move-trainer-3-panel-footer-v10.panel-footer-v10-root .panel-footer-container {
+/* Intro — default PanelFooterV10 actions padding gives 12px above CTAs; no fixed footer height. */
+.move-trainer-3-panel-footer-v10--intro.panel-footer-v10-root .panel-footer-container {
+  padding: 0;
+  height: auto;
+  min-height: 0;
+  justify-content: flex-end;
+  align-items: stretch;
+  border-radius: 3px;
+  background: unset;
+  background-color: unset;
+}
+
+/* Play Move — nested shell (movelist + progress + CTAs + toolbar). */
+.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .panel-footer-container {
   padding-top: 3px;
+  padding-left: 0;
+  padding-right: 0;
   height: 190px;
   justify-content: flex-end;
   align-items: flex-start;
   border-radius: 3px;
+  background: unset;
   background-color: rgba(39, 37, 34, 0);
 }
 
-.move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-actions {
+.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-actions {
   padding-top: 0;
 }
 
-.move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar {
+.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-toolbar {
   position: relative;
   align-self: stretch;
   padding: 0 16px 12px;
@@ -199,8 +221,7 @@ function onHint() {
   background-color: transparent;
 }
 
-/* #000 20% fill below toolbar icons (distinct from frame fill). */
-.move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar::before {
+.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-toolbar::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -209,18 +230,18 @@ function onHint() {
   z-index: 0;
 }
 
-.move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar > * {
+.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-toolbar > * {
   position: relative;
   z-index: 1;
 }
 
-.move-trainer-3-panel-footer-v10.panel-footer-v10-root
+.move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root
   .footer-section-toolbar
   .footer-icon-group:last-child {
   margin-left: auto;
 }
 
-.panel-sm .move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar {
+.panel-sm .move-trainer-3-panel-footer-v10--play-move.panel-footer-v10-root .footer-section-toolbar {
   padding: 0 8px 12px;
 }
 
