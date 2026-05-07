@@ -61,7 +61,7 @@ const hasMoves = computed(() => props.plies.length > 0)
   align-items: center;
   gap: 0 6px;
   width: 100%;
-  min-height: 28px;
+  min-height: 32px;
   padding: 0 0 10px;
   box-sizing: border-box;
   overflow-x: auto;
