@@ -225,6 +225,14 @@ const hasInformationalRichBody = computed(
   () => useInformationalSingleBubble.value && props.informationalSegments?.length,
 )
 
+/** Pinned Play Move heading with no rich segments / no body — skip placeholder + shrink scroll slot. */
+const informationalHeadingOnlyBody = computed(
+  () =>
+    showIntroCombinedHeading.value
+    && !props.message?.trim()
+    && !hasInformationalRichBody.value,
+)
+
 /** Keep the active move chip near the vertical center of the scrollable coach area (footer chevrons / chips). */
 function scrollInformationalActiveMoveIntoView() {
   if (!hasInformationalRichBody.value) return
@@ -400,7 +408,10 @@ const typewriterResult = props.typewriter
             <div
               ref="contentRef"
               class="bubble-content bubble-content--informational-message bubble-content--hide-native-scrollbar"
-              :class="{ 'bubble-content--informational-below-heading': showIntroCombinedHeading }"
+              :class="{
+                'bubble-content--informational-below-heading': showIntroCombinedHeading,
+                'bubble-content--informational-heading-only': informationalHeadingOnlyBody,
+              }"
               @scroll="onBubbleContentScroll"
             >
               <CoachMessageRichNotationsLine
@@ -409,8 +420,8 @@ const typewriterResult = props.typewriter
                 :active-ply="informationalActivePly"
                 @select-ply="$emit('selectInformationalPly', $event)"
               />
-              <p v-else-if="message" class="coach-message cc-text-speech">{{ message }}</p>
-              <p v-else class="empty">No message</p>
+              <p v-else-if="message?.trim()" class="coach-message cc-text-speech">{{ message }}</p>
+              <p v-else-if="!showIntroCombinedHeading" class="empty">No message</p>
             </div>
           </div>
           <div v-show="contentScrollable" class="bubble-scroll-panel__rail" aria-hidden="true">
@@ -641,11 +652,19 @@ const typewriterResult = props.typewriter
 }
 
 .coach-intro-combined-heading .coach-intro-combined-heading__subtitle {
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .bubble-content.bubble-content--informational-message.bubble-content--informational-below-heading {
   padding-top: var(--space-8, 8px);
+}
+
+.bubble-content.bubble-content--informational-message.bubble-content--informational-heading-only {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
 }
 
 /* Unassisted quiz — incorrect header (icon + label), matches product “badge + Incorrect” treatment */
@@ -969,6 +988,14 @@ const typewriterResult = props.typewriter
   min-height: 0;
   max-height: none;
   overflow-y: auto;
+}
+
+.coach-container--fill-available
+  .bubble--informational-single
+  .bubble-content--informational-message.bubble-content--informational-heading-only {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .bubble-header {

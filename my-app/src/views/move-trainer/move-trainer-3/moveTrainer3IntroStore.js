@@ -14,28 +14,8 @@ export const MOVE_TRAINER_3_LINE_HEADER_TITLE = 'Main Line without c2-c4 – 4.f
 /** Intro screen coach bubble — short copy only (don’t couple Play Move body here). */
 export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line together"
 
-/**
- * Play Move layout — long instructional body (`white-space: pre-line` in CoachBubble).
- * Scroll + gradient fades are handled inside CoachBubble when fill-available-height is on.
- */
-export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = [
-  'In this Old Benoni-style structure Black often reinforces early with …d7–d6 before committing the king, keeping tension while kingside ideas brew.',
-  'White’s Nc3 is multipurpose: it props d5, eyes e4, and buys time to decide whether to clarify the center or invite sharper middlegames.',
-  'Classic White tries include e2–e4 and schemes against …Bg7; delaying c2–c4 can change the pawn skeleton entirely — worth comparing plans side by side.',
-  'After short casting, watch for …a6 and queenside expansion motifs — the semi-open files hint where counterplay usually lands.',
-  'Fianchettoing the bishop on g2, and coordinating it with a knight hopping toward e3 or f4, is one of the clean recipes on this flank.',
-  'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
-  'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
-  'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-  'Curabitur pretium tincidunt lacus. Nulla gravida orci a odio.',
-  'Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.',
-  'Integer in mauris eu nibh euismod gravida.',
-  'Duis ac tellus et risus vulputate vehicula.',
-  'Donec lobortis risus a elit. Etiam tempor.',
-  'Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam.',
-  'Maecenas fermentum consequat mi.',
-  'Fusce convallis laoreet urna. Pellentesque habitant morbi tristique senectus.',
-].join('\n')
+/** Play Move layout — body copy under pinned heading (optional); empty = heading only. */
+export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = ''
 
 const gameMoves = ref([...MOVE_TRAINER_3_LINE_GAME.moves])
 const gameResult = ref(MOVE_TRAINER_3_LINE_GAME.result)
