@@ -81,6 +81,7 @@ import {
 /* CoachBubble “single-bubble-hug” informational variant explicitly drops min-height to 0 — override for MT3. */
 .move-trainer-3-coach :deep(.coach-container--single-bubble-hug .bubble-content.bubble-content--informational-message) {
   min-height: 64px;
+  justify-content: center;
 }
 
 /* When intro uses `start-position`, CoachBubble anchors the tip with `bottom`; override to match same offsets. */
