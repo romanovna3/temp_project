@@ -103,6 +103,15 @@ const coachBodyMessage = computed(() =>
   height: 33px;
 }
 
+/*
+ * Same top inset for the white bubble on intro + Play Move (fill layout defaulted to 8px).
+ * Keeps one consistent “start line” for the speech bubble regardless of height mode.
+ */
+.move-trainer-3-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
 /* Intro only: hug-height bubble + DS max-height cap for short copy */
 .move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill) :deep(.bubble-content) {
   min-height: 64px;
@@ -114,10 +123,15 @@ const coachBodyMessage = computed(() =>
   justify-content: center;
 }
 
-.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill)
-  :deep(.coach-container--single-bubble-hug .bubble-wrapper--informational-single) {
-  margin-top: 16px;
-  margin-bottom: 0;
+/* Play Move: softer bottom fade when copy scrolls (pseudo sits above panel — see CoachBubble z-index). */
+.move-trainer-3-coach--play-move-fill :deep(.bubble--informational-single::after) {
+  height: 3.25rem;
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.48) 46%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }
 
 .move-trainer-3-coach :deep(.coach-container.start-position .tip) {

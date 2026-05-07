@@ -655,6 +655,9 @@ const typewriterResult = props.typewriter
   min-width: 0;
   min-height: 0;
   width: 100%;
+  /* Keep scroll/copy under ::before/::after fades (see .bubble). */
+  position: relative;
+  z-index: 0;
 }
 
 .bubble-scroll-panel__rail {
@@ -697,7 +700,7 @@ const typewriterResult = props.typewriter
   pointer-events: none;
   position: absolute;
   right: 0;
-  z-index: 1;
+  z-index: 2;
 }
 
 .bubble::before {
@@ -720,7 +723,7 @@ const typewriterResult = props.typewriter
   top: var(--coach-tip-top, 50px);
   width: 14px;
   height: 22px;
-  z-index: 1;
+  z-index: 4;
 }
 
 .tip img {
