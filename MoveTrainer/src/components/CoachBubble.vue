@@ -639,11 +639,9 @@ const typewriterResult = props.typewriter
 }
 
 
+/* Turn strip bubble has no inner scroll — hide fades so the chip row stays clean. */
 .bubble--primary::before,
-.bubble--primary::after,
-/* Scroll fades sit above text (z-index); keep informational copy fully readable without overlay. */
-.bubble--informational-single::before,
-.bubble--informational-single::after {
+.bubble--primary::after {
   display: none;
 }
 
