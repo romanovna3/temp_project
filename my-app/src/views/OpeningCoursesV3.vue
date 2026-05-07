@@ -4274,6 +4274,8 @@ const isMoveTrainer3PlayMoveBoard = computed(
 /** Hint arrow geometry in SVG viewBox 0–100 (matches marker userSpaceOnUse). */
 const MT3_HINT_ARROW_HEAD_LEN = 8.1 * 0.8 // 20% shorter tip than prior head length
 const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 * 0.8 // 20% narrower than prior shaft
+/** Nudge tail start off the piece (~16px at `BOARD_SIZE`; scales with board because viewBox spans it). */
+const MT3_HINT_ARROW_FROM_INSET_VB = (16 / BOARD_SIZE) * 100
 
 const moveTrainer3HintArrowLine = computed(() => {
   if (!isMoveTrainer3PlayMoveBoard.value || isDragging.value) return null
@@ -4283,20 +4285,25 @@ const moveTrainer3HintArrowLine = computed(() => {
   if (!hint) return null
   const a = squareCenterNorm(hint.from)
   const b = squareCenterNorm(hint.to)
-  const x1 = a.x * 100
-  const y1 = a.y * 100
+  const ax = a.x * 100
+  const ay = a.y * 100
   const bx = b.x * 100
   const by = b.y * 100
-  const dx = bx - x1
-  const dy = by - y1
+  const dx = bx - ax
+  const dy = by - ay
   const len = Math.hypot(dx, dy)
-  let x2 = bx
-  let y2 = by
-  if (len > MT3_HINT_ARROW_HEAD_LEN + 1e-6) {
-    const s = (len - MT3_HINT_ARROW_HEAD_LEN) / len
-    x2 = x1 + dx * s
-    y2 = y1 + dy * s
-  }
+  if (len < 1e-6) return null
+  const ux = dx / len
+  const uy = dy / len
+  const headLen = MT3_HINT_ARROW_HEAD_LEN
+  const fromInset = Math.min(
+    MT3_HINT_ARROW_FROM_INSET_VB,
+    Math.max(0, len - headLen - 0.35),
+  )
+  const x1 = ax + ux * fromInset
+  const y1 = ay + uy * fromInset
+  const x2 = bx - ux * headLen
+  const y2 = by - uy * headLen
   return { x1, y1, x2, y2, strokeWidth: MT3_HINT_ARROW_STROKE_WIDTH }
 })
 
