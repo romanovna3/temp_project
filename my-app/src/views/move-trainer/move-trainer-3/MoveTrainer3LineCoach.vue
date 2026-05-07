@@ -165,8 +165,8 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 }
 
 .move-trainer-3-coach--om-v1 {
+  /* Keep inset parity with intro / Play Move (do not tighten top padding — reads as whole panel “jumped up”). */
   gap: 10px;
-  padding: 4px 16px 12px;
 }
 
 /*
