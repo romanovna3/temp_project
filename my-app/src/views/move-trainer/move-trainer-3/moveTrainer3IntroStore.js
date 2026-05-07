@@ -154,21 +154,6 @@ export const moveTrainer3BlackMovesTotal = computed(() => {
   return n
 })
 
-export function resetMoveTrainer3LearnProgress() {
-  moveTrainer3BlackMovesCompleted.value = 0
-  resetMoveTrainer3FooterNavMaxPly()
-}
-
-export function recordMoveTrainer3BlackLearnSuccess() {
-  const t = moveTrainer3BlackMovesTotal.value
-  if (!t || moveTrainer3BlackMovesCompleted.value >= t) return
-  moveTrainer3BlackMovesCompleted.value++
-}
-
-const reviewMaxPly = computed(() => totalPlies.value)
-const atStart = computed(() => currentPly.value === 0)
-const atReviewLineEnd = computed(() => currentPly.value >= reviewMaxPly.value)
-
 /**
  * After Start Learning, footer prev/next scrub between plies without undoing lesson progress counters.
  * Forward never exceeds the furthest ply reached via gameplay (Black success + scripted White on OM).
@@ -198,6 +183,21 @@ export function moveTrainer3BlackMovesThroughPly(ply) {
   }
   return c
 }
+
+export function resetMoveTrainer3LearnProgress() {
+  moveTrainer3BlackMovesCompleted.value = 0
+  resetMoveTrainer3FooterNavMaxPly()
+}
+
+export function recordMoveTrainer3BlackLearnSuccess() {
+  const t = moveTrainer3BlackMovesTotal.value
+  if (!t || moveTrainer3BlackMovesCompleted.value >= t) return
+  moveTrainer3BlackMovesCompleted.value++
+}
+
+const reviewMaxPly = computed(() => totalPlies.value)
+const atStart = computed(() => currentPly.value === 0)
+const atReviewLineEnd = computed(() => currentPly.value >= reviewMaxPly.value)
 
 export const lineHeaderTitle = computed(() => MOVE_TRAINER_3_LINE_HEADER_TITLE)
 
@@ -262,16 +262,24 @@ export const coachPlayMoveTurnLabel = computed(() => {
 })
 
 export function goBack() {
-  const floor =
-    moveTrainer3StartLearningNonce.value > 0 ? MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY : 0
-  currentPly.value = Math.max(floor, currentPly.value - 1)
+  if (moveTrainer3StartLearningNonce.value > 0) {
+    const floor = MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY
+    if (currentPly.value <= floor) return
+    currentPly.value -= 1
+    return
+  }
+  currentPly.value = Math.max(0, currentPly.value - 1)
 }
+
 export function goForward() {
-  const cap =
-    moveTrainer3StartLearningNonce.value > 0
-      ? Math.min(reviewMaxPly.value, moveTrainer3FooterNavMaxPly.value)
-      : reviewMaxPly.value
-  currentPly.value = Math.min(cap, currentPly.value + 1)
+  if (moveTrainer3StartLearningNonce.value > 0) {
+    const cap = Math.min(reviewMaxPly.value, moveTrainer3FooterNavMaxPly.value)
+    const next = currentPly.value + 1
+    if (next > cap) return
+    currentPly.value = next
+    return
+  }
+  currentPly.value = Math.min(reviewMaxPly.value, currentPly.value + 1)
 }
 export function goToPly(index) {
   currentPly.value = Math.max(0, Math.min(reviewMaxPly.value, index))
@@ -286,7 +294,8 @@ export const footerNavBackDisabled = computed(() => {
 
 export const footerNavForwardDisabled = computed(() => {
   if (moveTrainer3StartLearningNonce.value > 0) {
-    return currentPly.value >= moveTrainer3FooterNavMaxPly.value
+    const cap = Math.min(reviewMaxPly.value, moveTrainer3FooterNavMaxPly.value)
+    return currentPly.value >= cap
   }
   return atReviewLineEnd.value
 })
