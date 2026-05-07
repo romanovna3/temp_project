@@ -19,6 +19,7 @@ import {
   moveTrainer3OmAuthorNoteStep,
   resetMoveTrainer3OmAuthorNoteStep,
   moveTrainer3BlackMovesThroughPly,
+  moveTrainer3FooterNavMaxPly,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -46,12 +47,16 @@ const isPlayMoveShellLayout = computed(() => {
   }
 })
 
-/** Plies applied on the board — grows as White/Black moves advance `currentPly` (footer nav + Play Move grading). */
+/**
+ * All half-moves unlocked so far (furthest `currentPly` reached via gameplay).
+ * Chevrons only change `currentPly` / selection — they do not trim this list.
+ */
 const playMoveDisplayedPlies = computed(() => {
-  const n = currentPly.value
-  return moveTrainer3AllPlies.value.slice(0, n)
+  const cap = Math.min(moveTrainer3AllPlies.value.length, moveTrainer3FooterNavMaxPly.value)
+  return moveTrainer3AllPlies.value.slice(0, cap)
 })
 
+/** Highlights the ply for the current board position while scrubbing (footer matches `footerNavForwardDisabled` cap). */
 const playMoveMovelistActiveIndex = computed(() => {
   const n = currentPly.value
   return n > 0 ? n - 1 : -1

@@ -1,14 +1,14 @@
 <script setup>
 /**
- * Play Move only — inline PG notation built from plies played so far (`currentPly`).
- * Selected ply matches MoveList.vue `.ply-selected` (intro vertical movelist).
+ * Play Move + OM shell — inline PG notation for all plies unlocked so far (`footerNavMaxPly`).
+ * `activePlyIndex` tracks the scrub cursor (`currentPly`), not how many pills are shown.
  */
 import { computed } from 'vue'
 
 const props = defineProps({
   /** Flattened main-line plies with moveNum, color, san, piece (optional). */
   plies: { type: Array, required: true },
-  /** Index of the last played ply (0-based); highlight that SAN pill. */
+  /** Index (0-based in `plies`) of the position being viewed; highlight that SAN pill. */
   activePlyIndex: { type: Number, default: -1 },
 })
 
