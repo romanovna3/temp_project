@@ -1,6 +1,7 @@
 <script setup>
 import CoachBubble from '@move-trainer/components/CoachBubble.vue'
 import MoveListHeader from '@move-trainer/components/MoveListHeader.vue'
+import davidCoachAvatarUrl from '../../../../../../.cursor/projects/Users-annahudayarova-projects-temp-project/assets/David_-_coach-a7f19b32-579b-4647-b7a3-103f618c4aae.png?url'
 import {
   lineHeaderTitle,
   moveTrainerLineNav,
@@ -25,6 +26,7 @@ import {
   </div>
   <div class="move-trainer-3-coach">
     <CoachBubble
+      :coach-avatar-src="davidCoachAvatarUrl"
       :header-icon="coachHeaderIcon"
       :header-text="coachHeaderText"
       :eval-text="coachEvalText"

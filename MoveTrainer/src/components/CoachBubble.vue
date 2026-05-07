@@ -50,6 +50,8 @@ const props = defineProps({
   secondaryBubbleExpandToFit: { type: Boolean, default: false },
   /** Pixel size for the coach color icon; keep in sync with `--coach-avatar-size` on the panel. */
   coachAvatarIconPx: { type: Number, default: 80 },
+  /** Optional coach portrait override; defaults to Danny. */
+  coachAvatarSrc: { type: String, default: '' },
 })
 
 defineEmits(['selectInformationalPly'])
@@ -58,6 +60,7 @@ const bubbleRef = ref(null)
 
 const iconName = computed(() => props.headerIcon)
 const tipSrc = `${base}icons/misc/bubble-tip.svg`
+const coachAvatarSrcResolved = computed(() => props.coachAvatarSrc || coachDannyPortraitUrl)
 
 const contentRef = ref(null)
 
@@ -274,7 +277,7 @@ const typewriterResult = props.typewriter
     <div class="coach-avatar">
       <img
         class="coach-avatar__img"
-        :src="coachDannyPortraitUrl"
+        :src="coachAvatarSrcResolved"
         :width="coachAvatarIconPx"
         :height="coachAvatarIconPx"
         alt="IM Danny Rensch"
