@@ -183,6 +183,7 @@ function onHint() {
   justify-content: flex-end;
   align-items: flex-start;
   border-radius: 3px;
+  background-color: rgba(39, 37, 34, 0);
 }
 
 .move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-actions {

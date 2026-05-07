@@ -14653,11 +14653,12 @@ body {
 
 /* Move Trainer 3 — footer chrome in review panel (nested PanelFooterV10 inside). */
 .panel-footer-container--move-trainer-3 {
-  padding: 0 4px 0 4px;
+  padding: 3px 4px 0 4px;
   height: 190px;
   justify-content: flex-end;
   align-items: flex-start;
   border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0);
 }
 
 /* Uncompleted line (or any state with no level row + no icon footer): align spacing and padding */
