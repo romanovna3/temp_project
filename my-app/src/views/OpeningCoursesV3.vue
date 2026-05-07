@@ -25,6 +25,7 @@ import MoveTrainer3PanelFooter from './move-trainer/move-trainer-3/MoveTrainer3P
 import {
   getMoveTrainer3BoardSyncPayload,
   currentFen as moveTrainer3CurrentFen,
+  currentPly as moveTrainer3CurrentPly,
   MOVE_TRAINER_3_COURSE_TITLE,
   moveTrainer3StartLearningNonce,
   goToPly,
@@ -4149,12 +4150,35 @@ function moveTrainer3PathIsIntro(path) {
   }
 }
 
+function moveTrainer3PathIsPlayMove(path) {
+  if (!path || typeof path !== 'string') return false
+  if (path === '/move-trainer/move-trainer-3/play-move') return true
+  try {
+    return decodeURIComponent(path) === '/move-trainer/move-trainer-3/play-move'
+  } catch {
+    return false
+  }
+}
+
 /** Intro route: always review from the initial position (clean 1.d4 on Start Learning). */
 watch(
   () => (isMoveTrainer3.value ? route.path : ''),
   (p) => {
     if (!isMoveTrainer3.value || !moveTrainer3PathIsIntro(p)) return
     goToPly(0)
+  },
+  { immediate: true },
+)
+
+/**
+ * Play Move URL = first Black-to-move demo checkpoint (after 1.d4). Refresh restores store ply 0 + hides coach
+ * for White’s turn → empty bubble (“No message”). Snap to ply 1 so board + “Play c5” coach match.
+ */
+watch(
+  () => [isMoveTrainer3.value, route.path, moveTrainer3CurrentPly.value],
+  () => {
+    if (!isMoveTrainer3.value || !moveTrainer3PathIsPlayMove(route.path)) return
+    if (moveTrainer3CurrentPly.value === 0) goToPly(1)
   },
   { immediate: true },
 )

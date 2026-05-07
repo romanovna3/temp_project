@@ -7,6 +7,9 @@
  *
  * Flow after **Start Learning**: animate White’s first move → advance `currentPly` → route to Play Move →
  * **same** OpeningCoursesV3 instance keeps pieces on the board (see MoveTrainer3Shell nested routes).
+ *
+ * **`/play-move` reload**: store resets `currentPly` to 0; OpeningCoursesV3 bumps to ply **1** (after 1.d4)
+ * so the coach shows Black’s reply (“Play …”) instead of an empty bubble + White-only silence.
  */
 import { ref, computed } from 'vue'
 import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
