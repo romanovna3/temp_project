@@ -10,8 +10,9 @@ import {
   goForward,
   toggleVideoToolbar,
   requestMoveTrainer3StartLearning,
-  moveTrainer3LearnProgressPercent,
-  moveTrainer3LearnProgressVariant,
+  moveTrainer3StartLearningNonce,
+  moveTrainer3BlackMovesCompleted,
+  moveTrainer3BlackMovesTotal,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -36,13 +37,18 @@ function onHint() {
 </script>
 
 <template>
-  <PanelFooterV10 class="move-trainer-3-panel-footer-v10 panel-footer-v10--assisted-quiz">
+  <PanelFooterV10 class="move-trainer-3-panel-footer-v10">
     <template #actions>
       <div class="move-trainer-3-footer-actions-stack">
-        <div class="footer-progress-bar-wrap">
+        <div
+          v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveLayout"
+          class="mt3-learn-progress-slot footer-progress-bar-wrap"
+        >
           <CcProgressBar
-            :value="moveTrainer3LearnProgressPercent"
-            :variant="moveTrainer3LearnProgressVariant"
+            v-if="moveTrainer3BlackMovesTotal > 0"
+            :completed-steps="moveTrainer3BlackMovesCompleted"
+            :total-step-count="moveTrainer3BlackMovesTotal"
+            :is-change-animated="true"
           />
         </div>
         <div class="footer-buttons-row footer-buttons-row-split">
@@ -145,8 +151,17 @@ function onHint() {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.footer-progress-bar-wrap :deep(.cc-progress-bar),
-.footer-progress-bar-wrap :deep([class*='progress']) {
+</style>
+
+<!--
+  Move Trainer 3 only — track tint + sizing for CcProgressBar (step-based API).
+  Do not reuse for Move Trainer 2 assisted quiz or other footers (see .cursor/rules/footer-variants-isolation.mdc).
+-->
+<style>
+.mt3-learn-progress-slot.footer-progress-bar-wrap .cc-progress-bar-component {
   width: 100%;
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 100px;
+  overflow: hidden;
 }
 </style>

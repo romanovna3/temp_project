@@ -1,0 +1,13 @@
+---
+description: Keep footer layouts independent — no shared padding/height across footer variants unless explicitly requested
+alwaysApply: true
+---
+
+# Footer variants — isolate layouts
+
+When working on footers (`PanelFooterV10`, Move Trainer 2/3 footers, Opening Courses footer chrome, Courses views, etc.):
+
+- Each screen’s footer is its **own variant**: padding, min/max height, gaps, and progress styling belong **only** to that variant unless the user explicitly asks to align multiple places.
+- **Do not** reuse modifiers such as `panel-footer-v10--assisted-quiz` on a screen unless that screen is meant to match that exact assisted-quiz shell.
+- **Do not** copy padding or height tweaks from one footer into another “for consistency” unless the user requests it.
+- Prefer **scoped** styles or a **page-specific** wrapper class (e.g. `move-trainer-3-panel-footer-v10`) instead of changing shared `PanelFooterV10.vue` rules when only one consumer needs a change.

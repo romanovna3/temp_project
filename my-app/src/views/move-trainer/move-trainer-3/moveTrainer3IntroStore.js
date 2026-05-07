@@ -11,7 +11,7 @@
  * **`/play-move` reload**: store resets `currentPly` to 0; OpeningCoursesV3 bumps to ply **1** (after 1.d4)
  * so the coach shows Black’s reply (“Play …”) instead of an empty bubble + White-only silence.
  *
- * **Footer progress**: `moveTrainer3LearnProgressPercent` = correct Black replies / Black moves in the variation;
+ * **Footer progress**: Black replies vs Black moves in the variation (`CcProgressBar`: `completed-steps` / `total-step-count`);
  * resets when **Start Learning** runs; increments only on graded Play Move successes (not footer prev/next).
  */
 import { ref, computed } from 'vue'
@@ -107,16 +107,6 @@ export const moveTrainer3BlackMovesTotal = computed(() => {
   }
   return n
 })
-
-export const moveTrainer3LearnProgressPercent = computed(() => {
-  const t = moveTrainer3BlackMovesTotal.value
-  if (!t) return 0
-  return Math.min(100, Math.round((moveTrainer3BlackMovesCompleted.value / t) * 100))
-})
-
-export const moveTrainer3LearnProgressVariant = computed(() =>
-  moveTrainer3LearnProgressPercent.value >= 100 ? 'success' : 'default',
-)
 
 export function resetMoveTrainer3LearnProgress() {
   moveTrainer3BlackMovesCompleted.value = 0
