@@ -199,12 +199,12 @@ function onHint() {
   background-color: transparent;
 }
 
-/* #000 14% fill below toolbar icons (distinct from frame fill). */
+/* #000 25% fill below toolbar icons (distinct from frame fill). */
 .move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.14);
+  background-color: rgba(0, 0, 0, 0.25);
   pointer-events: none;
   z-index: 0;
 }
