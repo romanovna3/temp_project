@@ -47,6 +47,7 @@ import {
   resetMoveTrainer3FooterNavMaxPly,
   moveTrainer3BlackMovesThroughPly,
   advanceMoveTrainer3PlyFromGameplay,
+  moveTrainer3OmAuthorNoteStep,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -3673,9 +3674,8 @@ const isWrongMove = (square) => {
 // ============================================
 const handleSquareClick = async (square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
-  const mt3PlayBoard =
-    isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path)
-  if (isMoveTrainer3.value && panelView.value === 'courses' && !mt3PlayBoard) return
+  const mt3BlackBoard = moveTrainer3BlackInteractiveBoard.value
+  if (isMoveTrainer3.value && panelView.value === 'courses' && !mt3BlackBoard) return
 
   const piece = getPieceOnSquare(square)
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
@@ -3683,7 +3683,7 @@ const handleSquareClick = async (square) => {
   const isLastMovedPiece = piece && isOpeningV1FreePlay && openingFilterMoves.value.length > 0 && lastMove.value && square === lastMove.value.to
   let canSelectPiece =
     piece && (isOpeningV1FreePlay ? (piece.type.startsWith(sideToMove === 'white' ? 'w' : 'b') || isLastMovedPiece) : piece.type.startsWith('w'))
-  if (mt3PlayBoard && piece) {
+  if (mt3BlackBoard && piece) {
     try {
       const chess = new Chess(moveTrainer3CurrentFen.value)
       const blackTurn = chess.turn() === 'b'
@@ -3982,12 +3982,24 @@ async function tryMoveTrainer3PlayMove(from, to) {
   } catch {
     return false
   }
+  const omStep = moveTrainer3PathIsOpponentsMove(route.path)
+    ? moveTrainer3OpponentsMoveStepFromPath(route.path)
+    : 0
+  const omCk = omStep ? getMoveTrainer3OpponentsMoveCheckpoint(omStep) : null
+
   const isCapture = getPieceOnSquare(to) !== undefined
   makeMove(from, to)
   lastMove.value = { from, to }
   playSound(isCapture ? 'capture' : 'move')
   advanceMoveTrainer3PlyFromGameplay()
   recordMoveTrainer3BlackLearnSuccess()
+
+  if (omStep && omCk?.afterBlackMoveAuthorNote) {
+    moveTrainer3OmAuthorNoteStep.value = omStep
+    await nextTick()
+    return true
+  }
+
   const step = moveTrainer3BlackMovesCompleted.value
   await nextTick()
   await router.push(`/move-trainer/move-trainer-3/opponents-move-${step}`)
@@ -4001,9 +4013,8 @@ const tryMove = async (from, to) => {
   const movingPiece = getPieceOnSquare(from)
   if (!movingPiece) return false
 
-  const mt3PlayBoard =
-    isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path)
-  if (mt3PlayBoard) {
+  const mt3BlackBoard = moveTrainer3BlackInteractiveBoard.value
+  if (mt3BlackBoard) {
     return await tryMoveTrainer3PlayMove(from, to)
   }
 
@@ -4127,14 +4138,13 @@ const tryMove = async (from, to) => {
 // ============================================
 const handleDragStart = (event, square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
-  const mt3PlayBoard =
-    isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path)
-  if (isMoveTrainer3.value && panelView.value === 'courses' && !mt3PlayBoard) return
+  const mt3BlackBoard = moveTrainer3BlackInteractiveBoard.value
+  if (isMoveTrainer3.value && panelView.value === 'courses' && !mt3BlackBoard) return
 
   const piece = getPieceOnSquare(square)
   if (!piece) return
 
-  if (mt3PlayBoard) {
+  if (mt3BlackBoard) {
     if (!piece.type.startsWith('b')) return
     try {
       const chess = new Chess(moveTrainer3CurrentFen.value)
@@ -4339,6 +4349,7 @@ watch(
     moveTrainer3StartLearningNonce.value,
     moveTrainer3WhiteOpeningAnimationActive.value,
     moveTrainer3SkipBoardSyncFromStore.value,
+    moveTrainer3OmAuthorNoteStep.value,
   ],
   async () => {
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
@@ -4346,6 +4357,19 @@ watch(
     if (!moveTrainer3LearnShellPath(route.path)) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
     if (moveTrainer3SkipBoardSyncFromStore.value) return
+
+    const anchor = moveTrainer3OmAuthorNoteStep.value
+    if (anchor > 0) {
+      const targetAnchored = `/move-trainer/move-trainer-3/opponents-move-${anchor}`
+      let curAnchored = route.path
+      try {
+        curAnchored = decodeURIComponent(curAnchored)
+      } catch {
+        /* keep raw */
+      }
+      if (curAnchored !== targetAnchored) await router.replace(targetAnchored)
+      return
+    }
 
     const ply = moveTrainer3CurrentPly.value
     const nBlack = moveTrainer3BlackMovesThroughPly(ply)
@@ -4371,9 +4395,20 @@ const isMoveTrainer3PlayMoveBoard = computed(
   () => isMoveTrainer3.value && panelView.value === 'courses' && moveTrainer3PathIsPlayMove(route.path),
 )
 
+/** Play Move or OM variant 1 “Play …” phase — graded Black moves; excludes OM author-reading overlay. */
+const moveTrainer3BlackInteractiveBoard = computed(() => {
+  if (!isMoveTrainer3.value || panelView.value !== 'courses') return false
+  if (moveTrainer3PathIsPlayMove(route.path)) return true
+  if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
+  if (moveTrainer3OmAuthorNoteStep.value !== 0) return false
+  const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
+  return !!(step && getMoveTrainer3OpponentsMoveCheckpoint(step)?.whiteCommentary)
+})
+
 /** OM variant 1: stacked commentary + “Play …” bubble — show hint arrow after scripted White (Black to move). */
 const moveTrainer3OmVariant1HintBoard = computed(() => {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return false
+  if (moveTrainer3OmAuthorNoteStep.value !== 0) return false
   if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
   const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
   return !!(step && getMoveTrainer3OpponentsMoveCheckpoint(step)?.whiteCommentary)
@@ -4432,8 +4467,7 @@ const moveTrainer3HintArrowLine = computed(() => {
 function isPieceDraggableForMainBoard(square) {
   const piece = getPieceOnSquare(square)
   if (!piece) return false
-  if (moveTrainer3PathIsOpponentsMove(route.path)) return false
-  if (isMoveTrainer3PlayMoveBoard.value) {
+  if (moveTrainer3BlackInteractiveBoard.value) {
     try {
       const chess = new Chess(moveTrainer3CurrentFen.value)
       const blackTurn = chess.turn() === 'b'

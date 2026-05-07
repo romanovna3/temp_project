@@ -37,15 +37,22 @@ export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line togethe
 /** Play Move layout — body copy under pinned heading (optional); empty = heading only. */
 export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = ''
 
+const OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE =
+  'This move allows us to also fight for the center. Next, we will go ...d7-d6, creating a sturdy pawn center. Now, the White players reach a crossroads — they have many possible move orders as well as setups they can try.' +
+  '\n\n' +
+  'To my mind, the most dangerous one is when they go Nc3 and e2-e4, keeping the c-pawn in its original position. However, we will investigate all the other possibilities as well, such as playing with c2-c4, fianchettoing the bishop on g2, and so on.'
+
 /**
  * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
  * Variant 1 UI: commentary bubble + second bubble with “Play …” for the **next** Black move.
+ * Optional `afterBlackMoveAuthorNote`: long read-after-move coach body → OM reading phase + Continue.
  */
 export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
   1: {
     whiteCommentary: 'White immediately locks up the center, grabbing space.',
     nextBlackLeadBold: 'Play e5',
     nextBlackTurnStrip: 'Black to play',
+    afterBlackMoveAuthorNote: OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE,
   },
 })
 
@@ -95,6 +102,16 @@ export const currentPly = ref(0)
 
 /** Incremented by footer Start Learning — OpeningCoursesV3 plays 1.d4 + routes to Play Move. */
 export const moveTrainer3StartLearningNonce = ref(0)
+
+/**
+ * OM reading phase: user finished Black reply at `/opponents-move-{step}`; show author note + Continue.
+ * Value is checkpoint step (e.g. `1`), or `0` when inactive.
+ */
+export const moveTrainer3OmAuthorNoteStep = ref(0)
+
+export function resetMoveTrainer3OmAuthorNoteStep() {
+  moveTrainer3OmAuthorNoteStep.value = 0
+}
 
 /** While true, skip applying store FEN to the main board (Start Learning owns pieces during 1.d4 animation). */
 export const moveTrainer3SkipBoardSyncFromStore = ref(false)
@@ -187,6 +204,7 @@ export function moveTrainer3BlackMovesThroughPly(ply) {
 export function resetMoveTrainer3LearnProgress() {
   moveTrainer3BlackMovesCompleted.value = 0
   resetMoveTrainer3FooterNavMaxPly()
+  resetMoveTrainer3OmAuthorNoteStep()
 }
 
 export function recordMoveTrainer3BlackLearnSuccess() {

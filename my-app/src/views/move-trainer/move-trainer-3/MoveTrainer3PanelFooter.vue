@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { CcButton, CcIcon, CcProgressBar } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
 import MoveTrainer3PlayMoveHorizontalMovelist from './MoveTrainer3PlayMoveHorizontalMovelist.vue'
@@ -16,9 +16,13 @@ import {
   moveTrainer3BlackMovesCompleted,
   moveTrainer3BlackMovesTotal,
   moveTrainer3AllPlies,
+  moveTrainer3OmAuthorNoteStep,
+  resetMoveTrainer3OmAuthorNoteStep,
+  moveTrainer3BlackMovesThroughPly,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
+const router = useRouter()
 
 const isPlayMoveLayout = computed(() => {
   const p = route.path
@@ -52,6 +56,20 @@ const playMoveMovelistActiveIndex = computed(() => {
   const n = currentPly.value
   return n > 0 ? n - 1 : -1
 })
+
+const isOmAuthorNoteFooter = computed(() => moveTrainer3OmAuthorNoteStep.value > 0)
+
+async function onOmContinue() {
+  resetMoveTrainer3OmAuthorNoteStep()
+  await nextTick()
+  const ply = currentPly.value
+  const nBlack = moveTrainer3BlackMovesThroughPly(ply)
+  const target =
+    nBlack === 0
+      ? '/move-trainer/move-trainer-3/play-move'
+      : `/move-trainer/move-trainer-3/opponents-move-${nBlack}`
+  await router.replace(target)
+}
 
 function onStartLearning() {
   requestMoveTrainer3StartLearning()
@@ -101,6 +119,16 @@ function onHint() {
               Video
             </CcButton>
             <CcButton
+              v-if="isOmAuthorNoteFooter"
+              variant="primary"
+              size="large"
+              class="footer-btn-equal"
+              @click="onOmContinue"
+            >
+              Continue
+            </CcButton>
+            <CcButton
+              v-else
               variant="secondary"
               size="large"
               class="footer-btn-equal"

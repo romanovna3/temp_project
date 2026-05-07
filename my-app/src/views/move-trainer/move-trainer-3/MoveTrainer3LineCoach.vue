@@ -18,6 +18,7 @@ import {
   moveTrainer3PathIsOpponentsMove,
   moveTrainer3OpponentsMoveStepFromPath,
   getMoveTrainer3OpponentsMoveCheckpoint,
+  moveTrainer3OmAuthorNoteStep,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -49,13 +50,41 @@ const showOmVariant1 = computed(
   () => isOpponentsMoveLayout.value && !!opponentsMoveCheckpoint.value?.whiteCommentary,
 )
 
+/** Long author commentary after graded Black move — Video + Continue in footer; URL stays on same OM step. */
+const showOmAuthorReading = computed(() => {
+  if (!isOpponentsMoveLayout.value) return false
+  const step = opponentsMoveStep.value
+  if (!step || moveTrainer3OmAuthorNoteStep.value !== step) return false
+  return !!(opponentsMoveCheckpoint.value?.afterBlackMoveAuthorNote)
+})
+
 const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 </script>
 
 <template>
   <div class="move-trainer-3-intro-stack">
+    <!-- OM: author note after successful Black move (same route step; reading phase) -->
+    <div v-if="showOmAuthorReading" class="move-trainer-3-coach move-trainer-3-coach--om-reading-fill">
+      <CoachBubble
+        class="mt3-om-reading-coach"
+        :coach-avatar-src="davidCoachAvatarUrl"
+        header-icon=""
+        header-text=""
+        eval-text=""
+        :white-advantage="true"
+        :informational-single-bubble="true"
+        :message="opponentsMoveCheckpoint.afterBlackMoveAuthorNote"
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        turn-strip-text=""
+        :show-tip="true"
+        :typewriter="false"
+        :fill-available-height="true"
+        :start-position="false"
+      />
+    </div>
+
     <!-- Opponents Move (checkpoint copy); variant 1 = stacked bubbles -->
-    <div v-if="showOmVariant1" class="move-trainer-3-coach move-trainer-3-coach--om-v1">
+    <div v-else-if="showOmVariant1" class="move-trainer-3-coach move-trainer-3-coach--om-v1">
       <CoachBubble
         class="mt3-om-commentary-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
@@ -266,6 +295,39 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   align-self: flex-start;
 }
 
+/* OM author-reading — same fill + scroll behavior as Play Move long bubble */
+.move-trainer-3-coach--om-reading-fill {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  width: 100%;
+}
+
+.move-trainer-3-coach--om-reading-fill :deep(.coach-container.coach-container--fill-available) {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.move-trainer-3-coach--om-reading-fill :deep(.coach-avatar) {
+  align-self: flex-start;
+}
+
+.mt3-om-reading-coach :deep(.coach-message),
+.mt3-om-reading-coach :deep(.bubble-content--informational-message) {
+  white-space: pre-wrap;
+}
+
+.move-trainer-3-coach--om-reading-fill :deep(.bubble--informational-single::after) {
+  height: 3.25rem;
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.48) 46%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
 .move-trainer-3-coach :deep(.tip) {
   height: 33px;
 }
@@ -282,12 +344,16 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 }
 
 /* Intro only (not OM): hug-height bubble + DS max-height cap for short copy */
-.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill):not(.move-trainer-3-coach--om-v1)
+.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill):not(.move-trainer-3-coach--om-reading-fill):not(
+    .move-trainer-3-coach--om-v1
+  )
   :deep(.bubble-content) {
   min-height: 64px;
 }
 
-.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill):not(.move-trainer-3-coach--om-v1)
+.move-trainer-3-coach:not(.move-trainer-3-coach--play-move-fill):not(.move-trainer-3-coach--om-reading-fill):not(
+    .move-trainer-3-coach--om-v1
+  )
   :deep(.coach-container--single-bubble-hug .bubble-content.bubble-content--informational-message) {
   min-height: 64px;
   justify-content: center;
