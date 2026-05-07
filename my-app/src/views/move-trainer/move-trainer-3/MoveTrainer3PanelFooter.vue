@@ -211,7 +211,7 @@ function onHint() {
 .move-trainer-3-panel-footer-v10--intro.panel-footer-v10-root .footer-section-toolbar {
   align-self: stretch;
   padding: 12px 16px 12px;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   background-color: rgba(0, 0, 0, 0.2);
 }

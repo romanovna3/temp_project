@@ -3098,7 +3098,7 @@ const openingCardAnimPhase = ref('from')   // 'from' | 'to' – for CSS transiti
 const OPENING_AUTO_MOVE_DELAY_MS = 420
 const OPENING_AUTO_MOVE_DURATION_MS = 320
 /** Move Trainer 3: brief pause after Black’s move + route change so White’s reply isn’t instant on top. */
-const MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS = 300
+const MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS = 420
 function squareToPercent(square) {
   if (!square || typeof square !== 'string' || square.length < 2) return { left: '0%', top: '0%' }
   const fileIndex = square.charCodeAt(0) - 97 // a=0 .. h=7
