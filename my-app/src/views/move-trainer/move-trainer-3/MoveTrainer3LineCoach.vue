@@ -66,6 +66,11 @@ const mt3ReplayPreviewLeadBold = computed(() => {
 })
 
 const mt3ReplayPreviewMessage = computed(() => {
+  const ply = mt3ReplayPreviewHalfMove.value
+  if (!ply?.san) return ''
+  // Replay: notation-only chip — no body under 1.d4 / 1...c5
+  if (ply.color === 'white' && ply.moveNum === 1 && ply.san === 'd4') return ''
+  if (ply.color === 'black' && ply.moveNum === 1 && ply.san === 'c5') return ''
   const t = coachSelectedPlyCommentary.value
   return t || 'No coach note for this move.'
 })
@@ -112,10 +117,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 <template>
   <div class="move-trainer-3-intro-stack">
     <!-- Replay scrub (footer chevrons behind furthest ply): one stable coach; route stays progress-anchored. -->
-    <div
-      v-if="showMt3ReplayCoachPreview"
-      class="move-trainer-3-coach move-trainer-3-coach--play-move-fill move-trainer-3-coach--mt3-replay-preview"
-    >
+    <div v-if="showMt3ReplayCoachPreview" class="move-trainer-3-coach move-trainer-3-coach--mt3-replay-preview">
       <CoachBubble
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
@@ -129,7 +131,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :typewriter="false"
         :intro-coach-combined-bubble="true"
         :intro-combined-lead-bold="mt3ReplayPreviewLeadBold"
-        :fill-available-height="true"
+        :fill-available-height="false"
         :start-position="false"
       />
     </div>
@@ -262,6 +264,43 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   position: relative;
   z-index: 2;
   --coach-tip-top: 20px;
+}
+
+/*
+ * Replay scrub — hug-height bubble (no fill stretch); heading + body bands ≥64px; center one-line copy.
+ */
+.move-trainer-3-coach--mt3-replay-preview :deep(.bubble-wrapper--informational-single) {
+  min-height: 0;
+}
+
+.move-trainer-3-coach--mt3-replay-preview :deep(.coach-intro-combined-heading) {
+  min-height: 64px;
+  justify-content: center;
+  padding-bottom: var(--space-6, 6px);
+}
+
+.move-trainer-3-coach--mt3-replay-preview
+  :deep(
+    .bubble-content.bubble-content--informational-message.bubble-content--informational-below-heading:not(
+        .bubble-content--informational-heading-only
+      )
+  ) {
+  min-height: 64px;
+  max-height: none;
+  flex: 0 0 auto;
+  padding-top: var(--space-8, 8px);
+  padding-bottom: var(--space-8, 8px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.move-trainer-3-coach--mt3-replay-preview :deep(.bubble-content--informational-message .coach-message) {
+  margin: 0;
+}
+
+.move-trainer-3-coach--mt3-replay-preview :deep(.coach-avatar) {
+  align-self: flex-start;
 }
 
 .move-trainer-3-coach--om-v1 {
