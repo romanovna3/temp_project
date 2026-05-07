@@ -1,10 +1,15 @@
 <script setup>
 import MoveList from '@move-trainer/components/MoveList.vue'
 import { gameMoves, gameResult, currentPly, goToPly } from './moveTrainer3IntroStore.js'
+
+defineProps({
+  /** Parent scrolls (intro panel); avoid nested scroll areas. */
+  embeddedInParentScroll: { type: Boolean, default: false },
+})
 </script>
 
 <template>
-  <div class="move-trainer-3-moves">
+  <div class="move-trainer-3-moves" :class="{ 'move-trainer-3-moves--embedded': embeddedInParentScroll }">
     <MoveList
       :moves="gameMoves"
       :result="gameResult"
@@ -25,5 +30,12 @@ import { gameMoves, gameResult, currentPly, goToPly } from './moveTrainer3IntroS
   display: flex;
   flex-direction: column;
   padding: 0 0 var(--space-24, 24px);
+}
+
+.move-trainer-3-moves--embedded {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 </style>

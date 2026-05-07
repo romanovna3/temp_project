@@ -1,9 +1,9 @@
 <script setup>
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { CcButton, CcIcon } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
 import {
-  moveTrainerLineNav,
   footerNavBackDisabled,
   footerNavForwardDisabled,
   goBack,
@@ -11,10 +11,25 @@ import {
   toggleVideoToolbar,
 } from './moveTrainer3IntroStore.js'
 
+const route = useRoute()
 const router = useRouter()
+
+const isPlayMoveLayout = computed(() => {
+  const p = route.path
+  if (p === '/move-trainer/move-trainer-3/play-move') return true
+  try {
+    return decodeURIComponent(p) === '/move-trainer/move-trainer-3/play-move'
+  } catch {
+    return false
+  }
+})
 
 function onStartLearning() {
   router.push('/move-trainer/move-trainer-3/play-move')
+}
+
+function onHint() {
+  /* Placeholder — Play Move hint flow TBD */
 }
 </script>
 
@@ -22,23 +37,45 @@ function onStartLearning() {
   <PanelFooterV10 class="move-trainer-3-panel-footer-v10">
     <template #actions>
       <div class="footer-buttons-row footer-buttons-row-split">
-        <CcButton
-          variant="secondary"
-          size="large"
-          class="footer-btn-equal"
-          :icon="{ name: 'media-camera-video-on' }"
-          @click="toggleVideoToolbar"
-        >
-          Video
-        </CcButton>
-        <CcButton
-          variant="primary"
-          size="large"
-          class="footer-btn-equal"
-          @click="onStartLearning"
-        >
-          Start Learning
-        </CcButton>
+        <template v-if="isPlayMoveLayout">
+          <CcButton
+            variant="secondary"
+            size="large"
+            class="footer-btn-equal"
+            disabled
+            :icon="{ name: 'media-camera-video-on' }"
+          >
+            Video
+          </CcButton>
+          <CcButton
+            variant="secondary"
+            size="large"
+            class="footer-btn-equal"
+            :icon="{ name: 'device-bulb-glow', variant: 'glyph' }"
+            @click="onHint"
+          >
+            Hint
+          </CcButton>
+        </template>
+        <template v-else>
+          <CcButton
+            variant="secondary"
+            size="large"
+            class="footer-btn-equal"
+            :icon="{ name: 'media-camera-video-on' }"
+            @click="toggleVideoToolbar"
+          >
+            Video
+          </CcButton>
+          <CcButton
+            variant="primary"
+            size="large"
+            class="footer-btn-equal"
+            @click="onStartLearning"
+          >
+            Start Learning
+          </CcButton>
+        </template>
       </div>
     </template>
     <template #toolbar>

@@ -4120,17 +4120,6 @@ const isMoveTrainer3 = computed(() => {
   }
 })
 
-const isMoveTrainer3PlayMove = computed(() => {
-  if (!route?.path) return false
-  const p = route.path
-  if (p === '/move-trainer/move-trainer-3/play-move') return true
-  try {
-    return decodeURIComponent(p) === '/move-trainer/move-trainer-3/play-move'
-  } catch {
-    return false
-  }
-})
-
 watchMoveTrainer3BoardSync((payload) => {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   onMoveTrainer3BoardSync(payload)
@@ -7540,8 +7529,9 @@ onUnmounted(() => {
           </template>
           <template v-else-if="isMoveTrainer3">
             <div v-if="openingV3Ready" class="move-trainer-3-column panel-content" data-move-trainer-3-main>
-              <MoveTrainer3LineCoach />
-              <MoveTrainer3Moves v-if="!isMoveTrainer3PlayMove" />
+              <MoveTrainer3LineCoach>
+                <MoveTrainer3Moves embedded-in-parent-scroll />
+              </MoveTrainer3LineCoach>
             </div>
             <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>

@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import CoachBubble from '@move-trainer/components/CoachBubble.vue'
 import MoveListHeader from '@move-trainer/components/MoveListHeader.vue'
 import davidCoachAvatarUrl from '@move-trainer/assets/coaches/coach-david.png?url'
@@ -14,36 +16,64 @@ import {
   bubbleStartPosition,
   coachAvatarIconPx,
 } from './moveTrainer3IntroStore.js'
+
+const route = useRoute()
+
+const isPlayMoveLayout = computed(() => {
+  const p = route.path
+  if (p === '/move-trainer/move-trainer-3/play-move') return true
+  try {
+    return decodeURIComponent(p) === '/move-trainer/move-trainer-3/play-move'
+  } catch {
+    return false
+  }
+})
 </script>
 
 <template>
-  <div class="move-trainer-3-line-header">
-    <MoveListHeader
-      :title="lineHeaderTitle"
-      :prev-disabled="moveTrainerLineNav.prevDisabled"
-      :next-disabled="moveTrainerLineNav.nextDisabled"
-    />
-  </div>
-  <div class="move-trainer-3-coach">
-    <CoachBubble
-      :coach-avatar-src="davidCoachAvatarUrl"
-      :header-icon="coachHeaderIcon"
-      :header-text="coachHeaderText"
-      :eval-text="coachEvalText"
-      :white-advantage="coachWhiteAdvantage"
-      :message="coachMessage"
-      :coach-avatar-icon-px="coachAvatarIconPx"
-      :turn-strip-text="coachTurnStripText"
-      :show-tip="true"
-      :typewriter="false"
-      :intro-coach-combined-bubble="true"
-      :fill-available-height="false"
-      :start-position="bubbleStartPosition"
-    />
+  <div class="move-trainer-3-intro-stack">
+    <div class="move-trainer-3-coach">
+      <CoachBubble
+        :coach-avatar-src="davidCoachAvatarUrl"
+        :header-icon="coachHeaderIcon"
+        :header-text="coachHeaderText"
+        :eval-text="coachEvalText"
+        :white-advantage="coachWhiteAdvantage"
+        :message="coachMessage"
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        :turn-strip-text="coachTurnStripText"
+        :show-tip="true"
+        :typewriter="false"
+        :intro-coach-combined-bubble="true"
+        :fill-available-height="false"
+        :start-position="bubbleStartPosition"
+      />
+    </div>
+
+    <!-- Intro: line header + default slot (move list) scroll together below the coach -->
+    <div v-if="!isPlayMoveLayout" class="move-trainer-3-below-coach-scroll">
+      <div class="move-trainer-3-line-header">
+        <MoveListHeader
+          :title="lineHeaderTitle"
+          :prev-disabled="moveTrainerLineNav.prevDisabled"
+          :next-disabled="moveTrainerLineNav.nextDisabled"
+        />
+      </div>
+      <slot />
+    </div>
   </div>
 </template>
 
 <style scoped>
+.move-trainer-3-intro-stack {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
 .move-trainer-3-line-header {
   flex-shrink: 0;
   width: 100%;
@@ -67,7 +97,6 @@ import {
   flex-shrink: 0;
   position: relative;
   z-index: 2;
-  /* CoachBubble `.tip` uses `top: var(--coach-tip-top, 50px)` — align tip to MT3 spec (20px). */
   --coach-tip-top: 20px;
 }
 
@@ -75,26 +104,31 @@ import {
   height: 33px;
 }
 
-/* MT3-only: reduce minimum bubble height per spec */
 .move-trainer-3-coach :deep(.bubble-content) {
   min-height: 64px;
 }
 
-/* CoachBubble “single-bubble-hug” informational variant explicitly drops min-height to 0 — override for MT3. */
 .move-trainer-3-coach :deep(.coach-container--single-bubble-hug .bubble-content.bubble-content--informational-message) {
   min-height: 64px;
   justify-content: center;
 }
 
-/* MT3-only: remove extra gap below informational single bubble wrapper. */
 .move-trainer-3-coach :deep(.coach-container--single-bubble-hug .bubble-wrapper--informational-single) {
   margin-top: 16px;
   margin-bottom: 0;
 }
 
-/* When intro uses `start-position`, CoachBubble anchors the tip with `bottom`; override to match same offsets. */
 .move-trainer-3-coach :deep(.coach-container.start-position .tip) {
   top: 20px;
   bottom: auto;
+}
+
+.move-trainer-3-below-coach-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 </style>
