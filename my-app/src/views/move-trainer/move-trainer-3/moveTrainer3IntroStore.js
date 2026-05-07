@@ -98,6 +98,24 @@ export const currentFen = computed(() => {
   return ply?.fen ?? MOVE_TRAINER_3_LINE_GAME.initialFen
 })
 
+/** Play Move coach heading — next expected SAN from current board index (`currentPly`). */
+export const coachPlayMoveLeadBold = computed(() => {
+  const next = allPlies.value[currentPly.value]
+  if (!next?.san) return ''
+  return `Play ${next.san}`
+})
+
+/** Side to move from current position FEN (field 2). */
+export const coachPlayMoveTurnSide = computed(() => {
+  const token = currentFen.value.split(' ')[1]
+  return token === 'b' ? 'black' : 'white'
+})
+
+/** Play Move second heading line — regular weight, paired with turn indicator square. */
+export const coachPlayMoveTurnLabel = computed(() =>
+  coachPlayMoveTurnSide.value === 'white' ? 'White to play' : 'Black to play',
+)
+
 export function goBack() {
   currentPly.value = Math.max(0, currentPly.value - 1)
 }

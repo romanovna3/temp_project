@@ -52,6 +52,15 @@ const props = defineProps({
   coachAvatarIconPx: { type: Number, default: 80 },
   /** Optional coach portrait override; defaults to Danny. */
   coachAvatarSrc: { type: String, default: '' },
+  /**
+   * Intro-combined / informational single: bold first line above body (e.g. Play Move “Play c5”).
+   * When set, non-scrolling heading sits above scrollable `message` / segments.
+   */
+  introCombinedLeadBold: { type: String, default: '' },
+  /** Second line: regular-weight turn hint (e.g. “White to play”). Uses `cc-text-large` + side indicator. */
+  introCombinedTurnStripRegular: { type: String, default: '' },
+  /** Side for the 24×24 turn square: `white` | `black`. */
+  introCombinedTurnSide: { type: String, default: 'white' },
 })
 
 defineEmits(['selectInformationalPly'])
@@ -196,6 +205,15 @@ const useTwoBubbleLayout = computed(
     && !props.informationalSingleBubble
     && !props.introCoachCombinedBubble,
 )
+
+const showIntroCombinedHeading =
+  computed(
+    () =>
+      (useIntroCoachCombinedBubble.value || useInformationalSingleBubble.value)
+      && !!props.introCombinedLeadBold?.trim(),
+  )
+
+const introCombinedTurnSideBlack = computed(() => props.introCombinedTurnSide === 'black')
 
 /** Single light bubble without fill: shrink coach row to copy (intro); informational fill keeps stretch layout. */
 const useSingleBubbleHug = computed(
@@ -373,19 +391,36 @@ const typewriterResult = props.typewriter
           <img :src="tipSrc" alt="" />
         </div>
         <div ref="informationalScrollPanelRef" class="bubble-scroll-panel bubble-scroll-panel--informational">
-          <div
-            ref="contentRef"
-            class="bubble-content bubble-content--informational-message bubble-content--hide-native-scrollbar"
-            @scroll="onBubbleContentScroll"
-          >
-            <CoachMessageRichNotationsLine
-              v-if="hasInformationalRichBody"
-              :segments="informationalSegments"
-              :active-ply="informationalActivePly"
-              @select-ply="$emit('selectInformationalPly', $event)"
-            />
-            <p v-else-if="message" class="coach-message cc-text-speech">{{ message }}</p>
-            <p v-else class="empty">No message</p>
+          <div class="bubble-informational-inner">
+            <div v-if="showIntroCombinedHeading" class="coach-intro-combined-heading">
+              <p class="coach-intro-combined-heading__lead cc-text-large-bold">{{ introCombinedLeadBold }}</p>
+              <div
+                v-if="introCombinedTurnStripRegular?.trim()"
+                class="coach-turn-strip coach-intro-combined-heading__turn"
+              >
+                <span
+                  class="color-indicator"
+                  :class="introCombinedTurnSideBlack ? 'black-indicator' : 'white-indicator'"
+                  aria-hidden="true"
+                />
+                <span class="classification-text cc-text-large">{{ introCombinedTurnStripRegular }}</span>
+              </div>
+            </div>
+            <div
+              ref="contentRef"
+              class="bubble-content bubble-content--informational-message bubble-content--hide-native-scrollbar"
+              :class="{ 'bubble-content--informational-below-heading': showIntroCombinedHeading }"
+              @scroll="onBubbleContentScroll"
+            >
+              <CoachMessageRichNotationsLine
+                v-if="hasInformationalRichBody"
+                :segments="informationalSegments"
+                :active-ply="informationalActivePly"
+                @select-ply="$emit('selectInformationalPly', $event)"
+              />
+              <p v-else-if="message" class="coach-message cc-text-speech">{{ message }}</p>
+              <p v-else class="empty">No message</p>
+            </div>
           </div>
           <div v-show="contentScrollable" class="bubble-scroll-panel__rail" aria-hidden="true">
             <div class="bubble-scroll-panel__thumb" :style="scrollbarThumbStyle" />
@@ -587,6 +622,39 @@ const typewriterResult = props.typewriter
 
 .white-indicator {
   background: #ffffff;
+}
+
+.black-indicator {
+  background: #312e2b;
+}
+
+.bubble-informational-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+}
+
+.coach-intro-combined-heading {
+  flex-shrink: 0;
+  padding: var(--space-16, 16px) var(--space-16, 16px) var(--space-8, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8, 8px);
+}
+
+.coach-intro-combined-heading__lead {
+  margin: 0;
+  color: var(--coach-bubble-fg, #312e2b);
+}
+
+.coach-intro-combined-heading__turn {
+  margin: 0;
+}
+
+.bubble-content.bubble-content--informational-message.bubble-content--informational-below-heading {
+  padding-top: var(--space-8, 8px);
 }
 
 /* Unassisted quiz — incorrect header (icon + label), matches product “badge + Incorrect” treatment */

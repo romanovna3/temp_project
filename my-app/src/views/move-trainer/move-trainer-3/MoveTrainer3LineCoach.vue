@@ -11,6 +11,9 @@ import {
   coachEvalText,
   coachWhiteAdvantage,
   coachTurnStripText,
+  coachPlayMoveLeadBold,
+  coachPlayMoveTurnLabel,
+  coachPlayMoveTurnSide,
   bubbleStartPosition,
   coachAvatarIconPx,
 } from './moveTrainer3IntroStore.js'
@@ -47,6 +50,9 @@ const coachBodyMessage = computed(() =>
         :message="coachBodyMessage"
         :coach-avatar-icon-px="coachAvatarIconPx"
         :turn-strip-text="coachTurnStripText"
+        :intro-combined-lead-bold="isPlayMoveLayout ? coachPlayMoveLeadBold : ''"
+        :intro-combined-turn-strip-regular="isPlayMoveLayout ? coachPlayMoveTurnLabel : ''"
+        :intro-combined-turn-side="isPlayMoveLayout ? coachPlayMoveTurnSide : 'white'"
         :show-tip="true"
         :typewriter="false"
         :intro-coach-combined-bubble="true"
