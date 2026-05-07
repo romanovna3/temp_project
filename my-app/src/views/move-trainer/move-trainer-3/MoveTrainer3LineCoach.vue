@@ -87,16 +87,21 @@ const coachBodyMessage = computed(() =>
   --coach-tip-top: 20px;
 }
 
-/* Play Move: fill panel main above footer; CoachBubble handles inner scroll + fade gradients */
+/*
+ * Play Move: hug bubble height to content when shorter than the panel; cap at panel height
+ * and scroll inside when copy exceeds the window (CoachBubble fill-available + max-height chain).
+ */
 .move-trainer-3-coach--play-move-fill {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-height: 0;
-  flex-shrink: 1;
+  max-height: 100%;
+  width: 100%;
 }
 
 .move-trainer-3-coach--play-move-fill :deep(.coach-container.coach-container--fill-available) {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-height: 0;
+  max-height: 100%;
 }
 
 .move-trainer-3-coach--play-move-fill :deep(.coach-avatar) {

@@ -922,9 +922,8 @@ const typewriterResult = props.typewriter
   overflow-wrap: break-word;
 }
 
-/* Informational: fill panel from line header down to footer; message scrolls inside */
-.coach-container--fill-available.coach-container--two-bubbles,
-.coach-container--fill-available.coach-container--informational-single {
+/* Informational: cap at parent height; hug intrinsic height when content is shorter than the window */
+.coach-container--fill-available.coach-container--two-bubbles {
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -933,8 +932,16 @@ const typewriterResult = props.typewriter
   align-items: stretch;
 }
 
-.coach-container--fill-available .bubble-wrapper--two-bubbles,
-.coach-container--fill-available .bubble-wrapper--informational-single {
+.coach-container--fill-available.coach-container--informational-single {
+  flex: 0 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: 100%;
+  margin-bottom: 0;
+  align-items: flex-start;
+}
+
+.coach-container--fill-available .bubble-wrapper--two-bubbles {
   flex: 1;
   min-height: 0;
   margin-top: 8px;
@@ -942,7 +949,11 @@ const typewriterResult = props.typewriter
 }
 
 .coach-container--fill-available .bubble-wrapper--informational-single {
+  flex: 1;
+  min-height: 0;
+  margin-top: 8px;
   margin-bottom: 5px;
+  align-self: flex-start;
 }
 
 .coach-container--fill-available .bubble-stack {
@@ -970,24 +981,29 @@ const typewriterResult = props.typewriter
 }
 
 .coach-container--fill-available .bubble--informational-single {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .coach-container--fill-available .bubble--informational-single .bubble-scroll-panel--informational {
-  /* basis 0 so panel takes flex space instead of growing to content (enables inner scroll + fades). */
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
 }
 
 .coach-container--fill-available .bubble--informational-single .bubble-content--informational-message {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   max-height: none;
   overflow-y: auto;
+}
+
+.coach-container--fill-available .bubble-content.bubble-content--informational-message {
+  min-height: 0;
 }
 
 .coach-container--fill-available

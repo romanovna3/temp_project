@@ -4,10 +4,11 @@ Specs for the shell used when **`introCoachCombinedBubble`** (and optionally **`
 
 ## Layout
 
-- **Route shell**: Parent (`MoveTrainer3LineCoach` + `OpeningCoursesV3`) gives the coach column **`flex: 1 1 0`** + **`min-height: 0`** so the bubble can consume remaining panel height above the footer.
-- **CoachBubble**: `coach-container--fill-available` sets **`max-height: none`** on the informational wrapper stack and uses **`flex: 1` / `min-height: 0`** down to `.bubble--informational-single`.
-- **Scroll region**: `.bubble-scroll-panel--informational` uses **`flex: 1 1 0`** and **`min-height: 0`** so flex allocates a **bounded** height (not “grow to content”). Inner `.bubble-content--informational-message` scrolls with **`overflow-y: auto`**.
-- **Optional pinned heading** (Play Move): When **`introCombinedLeadBold`** is set, a **non-scrolling** block sits above the scrollable body (same horizontal inset as body copy). Long coach copy scrolls **below** it only.
+- **Hug rule**: When informational content is **shorter** than the panel “window”, the white bubble **fits its content** (no stretching to fill dead space). When content is **taller** than the window, height is **capped** (`max-height: 100%` up the chain) and **inner scroll** + fades apply.
+- **Route shell**: Play Move coach wrapper uses **`flex: 0 1 auto`**, **`max-height: 100%`**, **`min-height: 0`** so it does not grow to consume the whole column; intro stack still **`flex: 1 1 0`** so the panel layout stays bounded.
+- **CoachBubble** (`coach-container--fill-available` + informational single): **`align-items: flex-start`**, informational **`bubble-wrapper`** **`align-self: flex-start`** (no cross-axis stretch to the avatar row). Container **`flex: 0 1 auto`**, **`height: auto`**, **`max-height: 100%`**, **`min-height: 0`** (overrides default informational **`min-height: 116px`**).
+- **Scroll region**: `.bubble-scroll-panel--informational` **`flex: 1 1 auto`**, **`min-height: 0`**, **`overflow: hidden`**; `.bubble-content--informational-message` **`overflow-y: auto`** and **`min-height: 0`** under fill-available (drops the default **96px** body min-height).
+- **Optional pinned heading** (Play Move): Non-scrolling block above the scrollable body when **`introCombinedLeadBold`** is set.
 
 ## Scroll fades (“dissolve”)
 
