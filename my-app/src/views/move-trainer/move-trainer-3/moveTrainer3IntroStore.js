@@ -30,7 +30,15 @@ const allPlies = computed(() => {
 })
 
 const totalPlies = computed(() => allPlies.value.length)
-export const currentPly = ref(1)
+/** Intro starts at the initial position; Start Learning animates 1.d4 then advances to 1 for Play Move (…c5). */
+export const currentPly = ref(0)
+
+/** Incremented by footer Start Learning — OpeningCoursesV3 plays 1.d4 + routes to Play Move. */
+export const moveTrainer3StartLearningNonce = ref(0)
+
+export function requestMoveTrainer3StartLearning() {
+  moveTrainer3StartLearningNonce.value += 1
+}
 const reviewMaxPly = computed(() => totalPlies.value)
 const atStart = computed(() => currentPly.value === 0)
 const atReviewLineEnd = computed(() => currentPly.value >= reviewMaxPly.value)

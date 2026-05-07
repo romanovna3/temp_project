@@ -25,6 +25,8 @@ import MoveTrainer3PanelFooter from './move-trainer/move-trainer-3/MoveTrainer3P
 import {
   watchMoveTrainer3BoardSync,
   MOVE_TRAINER_3_COURSE_TITLE,
+  moveTrainer3StartLearningNonce,
+  goToPly,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -3071,7 +3073,8 @@ function clearOpeningAutoMove() {
   openingCardAnimatingMove.value = null
 }
 
-function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite) {
+function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite, moveSoundOpts = {}) {
+  const forceSound = moveSoundOpts.forceSound === true
   openingAutoMoveTimeoutId = null
   if (typeof fenAfterTwo !== 'string' || typeof thirdMoveWhite !== 'string') return
   try {
@@ -3092,9 +3095,13 @@ function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite) {
       }
     } catch (_) {}
     try {
-      const boardSection = document.querySelector('.board-section')
-      if (boardSection && getComputedStyle(boardSection).display !== 'none') {
+      if (forceSound) {
         playSound(isCapture ? 'capture' : 'move')
+      } else {
+        const boardSection = document.querySelector('.board-section')
+        if (boardSection && getComputedStyle(boardSection).display !== 'none') {
+          playSound(isCapture ? 'capture' : 'move')
+        }
       }
     } catch (_) {}
     // Show last-move highlight immediately when the piece “leaves” the square (start of slide)
@@ -4123,6 +4130,46 @@ const isMoveTrainer3 = computed(() => {
 watchMoveTrainer3BoardSync((payload) => {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   onMoveTrainer3BoardSync(payload)
+})
+
+function moveTrainer3PathIsIntro(path) {
+  if (!path || typeof path !== 'string') return false
+  if (path === '/move-trainer/move-trainer-3') return true
+  try {
+    return decodeURIComponent(path) === '/move-trainer/move-trainer-3'
+  } catch {
+    return false
+  }
+}
+
+/** Intro route: always review from the initial position (clean 1.d4 on Start Learning). */
+watch(
+  () => (isMoveTrainer3.value ? route.path : ''),
+  (p) => {
+    if (!isMoveTrainer3.value || !moveTrainer3PathIsIntro(p)) return
+    goToPly(0)
+  },
+  { immediate: true },
+)
+
+let moveTrainer3StartLearningBusy = false
+watch(moveTrainer3StartLearningNonce, async (nonce) => {
+  if (!nonce || !isMoveTrainer3.value || moveTrainer3StartLearningBusy) return
+  if (!moveTrainer3PathIsIntro(route.path)) return
+  moveTrainer3StartLearningBusy = true
+  try {
+    clearOpeningAutoMove()
+    goToPly(0)
+    await nextTick()
+    playOpeningThirdMove(STARTING_FEN, 'd4', { forceSound: true })
+    await new Promise((resolve) => {
+      setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
+    })
+    goToPly(1)
+    await router.push('/move-trainer/move-trainer-3/play-move')
+  } finally {
+    moveTrainer3StartLearningBusy = false
+  }
 })
 
 /** Preset bar + app-body + Opening-style mobile board placement. */

@@ -310,6 +310,8 @@ export const MOVE_TRAINER_3_LINE_GAME = {
       num: 1,
       white: {
         san: 'd4',
+        from: 'd2',
+        to: 'd4',
         classification: 'book',
         fen: 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1',
         coachText: 'White claims space with the queen\'s pawn — a flexible start toward this Benoni-style setup.',

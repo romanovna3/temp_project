@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { CcButton, CcIcon } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
 import {
@@ -9,10 +9,10 @@ import {
   goBack,
   goForward,
   toggleVideoToolbar,
+  requestMoveTrainer3StartLearning,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
-const router = useRouter()
 
 const isPlayMoveLayout = computed(() => {
   const p = route.path
@@ -25,7 +25,7 @@ const isPlayMoveLayout = computed(() => {
 })
 
 function onStartLearning() {
-  router.push('/move-trainer/move-trainer-3/play-move')
+  requestMoveTrainer3StartLearning()
 }
 
 function onHint() {
