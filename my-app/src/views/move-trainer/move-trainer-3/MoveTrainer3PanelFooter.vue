@@ -144,7 +144,7 @@ function onHint() {
 
 .footer-progress-bar-wrap {
   width: 100%;
-  padding: 0 0 12px;
+  padding: 0 0 14px;
   box-sizing: border-box;
   flex-shrink: 0;
   background: unset;
