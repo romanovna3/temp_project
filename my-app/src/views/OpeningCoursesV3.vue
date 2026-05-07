@@ -4313,6 +4313,8 @@ const MT3_HINT_ARROW_HEAD_LEN = (8.1 * 0.8) * 0.85 // 15% smaller pointer vs pri
 const MT3_HINT_ARROW_HALF_BASE = 4.5 * 0.85 // half-height at base (same scale as head length)
 const MT3_HINT_ARROW_HEAD_PATH_D = `M${MT3_HINT_ARROW_HEAD_LEN},4.5 L0,${4.5 - MT3_HINT_ARROW_HALF_BASE} L0,${4.5 + MT3_HINT_ARROW_HALF_BASE} Z`
 const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 * 0.8 // 20% narrower than prior shaft
+/** Pull tail start ~5px toward source square center (longer overlap on tile); scales with board. */
+const MT3_HINT_ARROW_TAIL_OVERLAP_MORE_VB = (5 / BOARD_SIZE) * 100
 
 const moveTrainer3HintArrowLine = computed(() => {
   if (!isMoveTrainer3PlayMoveBoard.value || isDragging.value) return null
@@ -4344,8 +4346,10 @@ const moveTrainer3HintArrowLine = computed(() => {
       tailAlongVB = Math.max(tExitVB * 0.82, tExitVB - sqVB * 0.06)
     }
   }
+  tailAlongVB -= MT3_HINT_ARROW_TAIL_OVERLAP_MORE_VB
   const maxTailVB = Math.max(0, len - headLen - 0.2)
   tailAlongVB = Math.min(tailAlongVB, maxTailVB)
+  tailAlongVB = Math.max(0, tailAlongVB)
   const x1 = ax + ux * tailAlongVB
   const y1 = ay + uy * tailAlongVB
   const x2 = bx - ux * headLen
