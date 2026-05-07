@@ -214,6 +214,12 @@ function onHint() {
   z-index: 1;
 }
 
+.move-trainer-3-panel-footer-v10.panel-footer-v10-root
+  .footer-section-toolbar
+  .footer-icon-group:last-child {
+  margin-left: auto;
+}
+
 .panel-sm .move-trainer-3-panel-footer-v10.panel-footer-v10-root .footer-section-toolbar {
   padding: 0 8px 12px;
 }
