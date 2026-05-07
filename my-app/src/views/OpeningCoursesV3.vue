@@ -45,6 +45,7 @@ import {
   getMoveTrainer3OpponentsMoveCheckpoint,
   bumpMoveTrainer3FooterNavMaxPly,
   resetMoveTrainer3FooterNavMaxPly,
+  moveTrainer3FooterNavMaxPly,
   moveTrainer3BlackMovesThroughPly,
   advanceMoveTrainer3PlyFromGameplay,
   moveTrainer3OmAuthorNoteStep,
@@ -4339,13 +4340,16 @@ watch(
   { immediate: true },
 )
 
-/** Footer prev/next: swap `/play-move` vs `/opponents-move-N` from replay cursor so coach UI matches the board. */
+/**
+ * Align `/play-move` vs `/opponents-move-N` with **furthest gameplay ply** (`footerNavMaxPly`), not the scrub cursor.
+ * Footer chevrons only change `currentPly` + board; avoiding route swaps during replay prevents coach/movelist flicker.
+ */
 watch(
   () => [
     isMoveTrainer3.value,
     panelView.value,
     route.path,
-    moveTrainer3CurrentPly.value,
+    moveTrainer3FooterNavMaxPly.value,
     moveTrainer3StartLearningNonce.value,
     moveTrainer3WhiteOpeningAnimationActive.value,
     moveTrainer3SkipBoardSyncFromStore.value,
@@ -4371,7 +4375,7 @@ watch(
       return
     }
 
-    const ply = moveTrainer3CurrentPly.value
+    const ply = moveTrainer3FooterNavMaxPly.value
     const nBlack = moveTrainer3BlackMovesThroughPly(ply)
     const target =
       nBlack === 0

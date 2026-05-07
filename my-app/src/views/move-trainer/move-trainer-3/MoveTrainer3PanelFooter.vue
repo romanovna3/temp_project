@@ -67,7 +67,7 @@ const isOmAuthorNoteFooter = computed(() => moveTrainer3OmAuthorNoteStep.value >
 async function onOmContinue() {
   resetMoveTrainer3OmAuthorNoteStep()
   await nextTick()
-  const ply = currentPly.value
+  const ply = moveTrainer3FooterNavMaxPly.value
   const nBlack = moveTrainer3BlackMovesThroughPly(ply)
   const target =
     nBlack === 0
@@ -106,7 +106,7 @@ function onHint() {
         >
           <CcProgressBar
             v-if="moveTrainer3BlackMovesTotal > 0"
-            :key="`${route.path}-${currentPly}`"
+            key="mt3-learn-progress"
             :completed-steps="moveTrainer3BlackMovesCompleted"
             :total-step-count="moveTrainer3BlackMovesTotal"
             :is-change-animated="true"

@@ -21,6 +21,7 @@ import {
   moveTrainer3OmAuthorNoteStep,
   moveTrainer3StartLearningNonce,
   moveTrainer3FooterNavMaxPly,
+  moveTrainer3AllPlies,
   currentPly,
 } from './moveTrainer3IntroStore.js'
 
@@ -46,26 +47,44 @@ const opponentsMoveCheckpoint = computed(() =>
 
 const introCoachBubbleMessage = computed(() => MOVE_TRAINER_3_INTRO_COACH_MESSAGE)
 
-/** Only while stepping back with footer chevrons — at the live tip keep the original heading-only Play Move / OM checkpoint shell. */
-const isMt3FooterScrubbingBehindTip = computed(
+/** Unified replay coach — avoids swapping OM vs Play Move shells while `currentPly` trails `footerNavMaxPly`. */
+const showMt3ReplayCoachPreview = computed(
   () =>
     moveTrainer3StartLearningNonce.value > 0 &&
-    currentPly.value < moveTrainer3FooterNavMaxPly.value,
+    currentPly.value < moveTrainer3FooterNavMaxPly.value &&
+    (isPlayMoveLayout.value || isOpponentsMoveLayout.value),
 )
 
-/** Play Move: `coachText` only when scrubbing behind the unlocked tip; intro unchanged. */
-const playMoveCoachBubbleMessage = computed(() => {
-  if (!isPlayMoveLayout.value) return introCoachBubbleMessage.value
-  if (!isMt3FooterScrubbingBehindTip.value) return ''
-  return coachSelectedPlyCommentary.value
+const mt3ReplayPreviewHalfMove = computed(() => {
+  const idx = currentPly.value - 1
+  if (idx < 0) return null
+  return moveTrainer3AllPlies.value[idx] ?? null
 })
 
-/** OM v1 top bubble: live tip = checkpoint commentary; scrubbing = line `coachText` when present. */
-const omVariant1TopBubbleMessage = computed(() => {
-  const ck = opponentsMoveCheckpoint.value?.whiteCommentary ?? ''
-  if (!isMt3FooterScrubbingBehindTip.value) return ck
-  return coachSelectedPlyCommentary.value || ck
+const mt3ReplayPreviewLeadBold = computed(() => {
+  const ply = mt3ReplayPreviewHalfMove.value
+  if (!ply?.san) return 'Review'
+  return ply.color === 'white' ? `${ply.moveNum}.${ply.san}` : `${ply.moveNum}…${ply.san}`
 })
+
+const mt3ReplayPreviewSubtitle = computed(() => {
+  const ply = mt3ReplayPreviewHalfMove.value
+  if (!ply) return ''
+  return ply.color === 'white' ? "White's move" : "Black's move"
+})
+
+const mt3ReplayPreviewMessage = computed(() => {
+  const t = coachSelectedPlyCommentary.value
+  return t || 'No coach note for this move.'
+})
+
+/** Play Move live tip: heading-only “Play …” — replay narration lives in `showMt3ReplayCoachPreview`. */
+const playMoveCoachBubbleMessage = computed(() =>
+  isPlayMoveLayout.value ? '' : introCoachBubbleMessage.value,
+)
+
+/** OM v1 live tip: designer checkpoint copy; replay uses unified preview branch. */
+const omVariant1TopBubbleMessage = computed(() => opponentsMoveCheckpoint.value?.whiteCommentary ?? '')
 
 /** OM variant 1: bottom bubble — dynamic “Play …” when Black to move; checkpoint fallback so it never disappears mid-flow. */
 const omVariant1PlayLeadBold = computed(
@@ -100,8 +119,32 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
 <template>
   <div class="move-trainer-3-intro-stack">
+    <!-- Replay scrub (footer chevrons behind furthest ply): one stable coach; route stays progress-anchored. -->
+    <div
+      v-if="showMt3ReplayCoachPreview"
+      class="move-trainer-3-coach move-trainer-3-coach--play-move-fill move-trainer-3-coach--mt3-replay-preview"
+    >
+      <CoachBubble
+        :coach-avatar-src="davidCoachAvatarUrl"
+        header-icon=""
+        header-text=""
+        eval-text=""
+        :white-advantage="true"
+        :message="mt3ReplayPreviewMessage"
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        turn-strip-text=""
+        :show-tip="true"
+        :typewriter="false"
+        :intro-coach-combined-bubble="true"
+        :intro-combined-lead-bold="mt3ReplayPreviewLeadBold"
+        :intro-combined-turn-strip-regular="mt3ReplayPreviewSubtitle"
+        :fill-available-height="true"
+        :start-position="false"
+      />
+    </div>
+
     <!-- OM: author note after successful Black move (same route step; reading phase) -->
-    <div v-if="showOmAuthorReading" class="move-trainer-3-coach move-trainer-3-coach--om-reading-fill">
+    <div v-else-if="showOmAuthorReading" class="move-trainer-3-coach move-trainer-3-coach--om-reading-fill">
       <CoachBubble
         class="mt3-om-reading-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
