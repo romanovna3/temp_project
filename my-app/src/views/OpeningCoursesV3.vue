@@ -80,15 +80,17 @@ const router = useRouter()
 
 function moveTrainer3PathIsIntro(path) {
   if (!path || typeof path !== 'string') return false
-  if (path === '/move-trainer/move-trainer-3') return true
+  let p = path
   try {
-    return decodeURIComponent(path) === '/move-trainer/move-trainer-3'
+    p = decodeURIComponent(path)
   } catch {
     return false
   }
+  if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1)
+  return p === '/move-trainer/move-trainer-3'
 }
 
-/** Learn shell only — small Restart link returns to intro + resets lesson state (parent gates `openingV3Ready`). */
+/** Learn shell only — small Restart control returns to intro + resets lesson state (hidden on intro route). */
 const showMoveTrainer3RestartLink = computed(
   () => isMoveTrainer3.value && !moveTrainer3PathIsIntro(route.path),
 )
@@ -11393,20 +11395,23 @@ body {
   width: 100%;
   box-sizing: border-box;
 }
-/* MT3 Restart — absolutely positioned under `.layout` (outside `.review-panel`); no flex-wrap / height changes */
+/*
+ * MT3 Restart — `position: fixed` so it stays visible: `.app` uses overflow-x: auto, which pairs with
+ * overflow-y: auto and clips descendants that extend below the centered `.layout` when absolute.
+ */
 .move-trainer-3-restart-float {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  position: fixed;
+  right: max(2.4rem, env(safe-area-inset-right, 0px));
+  bottom: max(2.4rem, env(safe-area-inset-bottom, 0px));
   display: flex;
   justify-content: flex-end;
   align-items: center;
   pointer-events: auto;
-  z-index: 12;
+  z-index: 200;
   box-sizing: border-box;
 }
 .panel-sm .move-trainer-3-restart-float {
-  padding-right: 2px;
+  right: max(8px, env(safe-area-inset-right, 0px));
 }
 .move-trainer-3-restart-float :deep(.move-trainer-3-restart-ghost-btn) {
   min-height: 28px;
