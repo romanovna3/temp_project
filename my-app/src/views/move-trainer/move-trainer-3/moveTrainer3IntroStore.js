@@ -197,21 +197,14 @@ export function setMoveTrainer3OmReadingChipPly(ply) {
   moveTrainer3OmReadingBoardOverride.value = previews[n - 1]
 }
 
-function armMoveTrainer3OmReadingBoardBranchDefault() {
-  const step = moveTrainer3OmAuthorNoteStep.value
-  const previews = MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP[step]
-  if (!previews?.length) return
-  moveTrainer3OmReadingSelectedChipPly.value = 1
-  moveTrainer3OmReadingBoardOverride.value = previews[0]
-}
-
-watch(moveTrainer3OmAuthorNoteStep, (step) => {
+watch(moveTrainer3OmAuthorNoteStep, () => {
   clearMoveTrainer3OmReadingBoardBranch()
-  if (step > 0) {
-    const cp = getMoveTrainer3OpponentsMoveCheckpoint(step)
-    if (cp?.readingSegments?.length) {
-      armMoveTrainer3OmReadingBoardBranchDefault()
-    }
+})
+
+/** Footer movelist / chevrons drive the board during OM reading until the user clicks a bubble chip. */
+watch(currentPly, () => {
+  if (moveTrainer3OmAuthorNoteStep.value > 0) {
+    clearMoveTrainer3OmReadingBoardBranch()
   }
 })
 
