@@ -168,6 +168,11 @@ function onSelectPly(idx) {
   padding: 0 0 10px;
   box-sizing: border-box;
   flex-shrink: 0;
+  /**
+   * Dissolve scrims must fade to the **same opaque panel fill** as `PanelFooterV10`
+   * (`--color-bg-opaque`), not translucent black — otherwise the edge reads darker than the chrome.
+   */
+  --mt3-hml-fade-edge: var(--color-bg-opaque, var(--color-bg-opaque-lighter, #312e2b));
 }
 
 .mt3-hml-scroll {
@@ -192,7 +197,7 @@ function onSelectPly(idx) {
   height: 0;
 }
 
-/* Dissolve scrim — matches dark footer chrome behind movelist */
+/* Dissolve scrim — opaque panel tint → transparent (matches footer, no extra luminance drop). */
 .mt3-hml-fade {
   pointer-events: none;
   position: absolute;
@@ -209,12 +214,12 @@ function onSelectPly(idx) {
 
 .mt3-hml-fade--left {
   left: 0;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.55), transparent);
+  background: linear-gradient(to right, var(--mt3-hml-fade-edge) 0%, transparent 100%);
 }
 
 .mt3-hml-fade--right {
   right: 0;
-  background: linear-gradient(to left, rgba(0, 0, 0, 0.55), transparent);
+  background: linear-gradient(to left, var(--mt3-hml-fade-edge) 0%, transparent 100%);
 }
 
 .mt3-hml-move-num {
