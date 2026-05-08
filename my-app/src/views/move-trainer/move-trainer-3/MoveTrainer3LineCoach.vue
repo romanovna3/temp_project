@@ -344,7 +344,7 @@ const omIntroStackChapterScrollClamp = computed(
       </div>
       <!-- Same shell as `/play-move` + OM **Play …** row (bold lead + **Black to play** subtitle). -->
       <CoachBubble
-        class="mt3-om-play-coach mt3-om-play-coach--under-author-reading"
+        class="mt3-om-play-coach mt3-om-play-coach--under-author-reading mt3-om-play-coach--under-author-reading-64"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
         header-text=""
@@ -353,7 +353,7 @@ const omIntroStackChapterScrollClamp = computed(
         message=""
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
-        :show-tip="true"
+        :show-tip="false"
         :typewriter="false"
         :intro-coach-combined-bubble="true"
         :intro-combined-lead-bold="om7AuthorReadingPlayStripLead"
@@ -682,11 +682,11 @@ const omIntroStackChapterScrollClamp = computed(
   gap: 10px;
 }
 
-/* OM-7 post-…g6: author-reading bubble + Play move strip (second bubble reuses `.mt3-om-play-coach` parity). */
+/* OM-7 post-…g6: author-reading bubble + Play strip — flush below main bubble, no gap. */
 .move-trainer-3-coach--om-author-reading-with-play {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
@@ -695,6 +695,38 @@ const omIntroStackChapterScrollClamp = computed(
 .move-trainer-3-coach--om-author-reading-with-play > .move-trainer-3-coach--om-reading-fill {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* Flush stack: drop default informational coach row margin under the author bubble. */
+.move-trainer-3-coach--om-author-reading-with-play > .move-trainer-3-coach--om-reading-fill :deep(.coach-container--informational-single) {
+  margin-bottom: 0;
+}
+
+/*
+ * Secondary strip: no speech caret, hugged under author bubble, fixed **64px** (matches heading-only Play Move chrome).
+ */
+.move-trainer-3-coach--om-author-reading-with-play .mt3-om-play-coach--under-author-reading-64 :deep(.coach-container.coach-container--informational-single) {
+  --coach-container-height: 64px;
+  min-height: 64px;
+  height: 64px;
+  max-height: 64px;
+  margin-bottom: 0;
+  align-items: center;
+}
+
+.move-trainer-3-coach--om-author-reading-with-play .mt3-om-play-coach--under-author-reading-64 :deep(.bubble-wrapper--informational-single) {
+  margin-top: 0;
+}
+
+.move-trainer-3-coach--om-author-reading-with-play .mt3-om-play-coach--under-author-reading-64 :deep(.bubble.bubble--informational-single) {
+  min-height: 64px;
+  max-height: 64px;
+}
+
+.move-trainer-3-coach--om-author-reading-with-play .mt3-om-play-coach--under-author-reading-64 :deep(.coach-intro-combined-heading) {
+  min-height: 64px;
+  box-sizing: border-box;
+  justify-content: center;
 }
 
 /* Live OM e4 chapter: same fill + scroll + gradient dissolves as OM author-reading (`informational-single` shell). */
