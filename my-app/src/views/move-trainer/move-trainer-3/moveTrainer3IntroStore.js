@@ -164,6 +164,13 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
     nextBlackLeadBold: 'Play exf4',
     nextBlackTurnStrip: 'Black to play',
   },
+  /** After …exf4 — scripted **Bxf4**; commentary on White’s development vs …Nf6 ideas. */
+  4: {
+    whiteCommentary:
+      "Now, White's pieces seem to be coming out pretty rapidly. However, the e5-square becomes a great outpost for a black knight, and the e4-pawn could become rather weak as well.",
+    nextBlackLeadBold: 'Play Nf6',
+    nextBlackTurnStrip: 'Black to play',
+  },
 })
 
 /** Post–graded-move author overlay: plain `afterBlackMoveAuthorNote` only (not live-chapter `readingLead`). */

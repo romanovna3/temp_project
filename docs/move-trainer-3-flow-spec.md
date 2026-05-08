@@ -131,6 +131,15 @@ Steps describe **typical** demo line behavior; exact copy comes from `MOVE_TRAIN
 | Board | **`advanceMoveTrainer3PlyFromGameplay`** after **d6**, then scripted **4.f4** (OpeningCourses OM White-reply watcher). |
 | Coach | L4 — **`whiteCommentary`**: *Direct play like this does not threaten Black at all.* + **Play exf4** / Black turn strip (main line). |
 
+### A4c — OM step 4 after …exf4 (post-**Bxf4** commentary)
+
+| Surface | Behavior |
+|--------|----------|
+| Trigger | Correct **…exf4** on **`/opponents-move-3`**. |
+| Route | **`/opponents-move-4`**. |
+| Board | Ply advances after **exf4**, then scripted **Bxf4** (OM White-reply watcher). |
+| Coach | L4 — top **`whiteCommentary`** on rapid White development / **e5** outpost / **e4** weakness + bottom instruction bubble **Play Nf6** + Black turn strip. |
+
 ### A5 — OM author reading (optional checkpoint field)
 
 | Surface | Behavior |
