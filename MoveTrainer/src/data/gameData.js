@@ -303,9 +303,10 @@ export const INTRO_1_GAME = {
  * Main-line preview for Move Trainer 3 (Old Benoni) — course panel move list + board plies.
  * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a6 7.a4 g6 8.Nf3 Bg4 9.Be2 Bg7 10.O-O O-O
  *
- * **`coachText`:** Default replay-scrub narration under the move heading (movelist preview). Replay prefers OM
- * **`afterBlackMoveAuthorNote`** / checkpoint **`whiteCommentary`** for **4.f4** and **5.Bxf4** when applicable,
- * then falls back to these strings.
+ * **`coachText`:** Replay-scrub fallback narration per half-move (same strings as the original main-line import in
+ * git history — do **not** paste OM **`whiteCommentary`** here or replay will duplicate product copy). Replay prefers
+ * **`afterBlackMoveAuthorNote`** / checkpoint **`whiteCommentary`** for **4.f4** / **5.Bxf4** when applicable, then
+ * these lines.
  */
 export const MOVE_TRAINER_3_LINE_GAME = {
   initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
@@ -335,7 +336,7 @@ export const MOVE_TRAINER_3_LINE_GAME = {
         san: 'd5',
         classification: 'book',
         fen: 'rnbqkbnr/pp1ppppp/8/2pP4/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2',
-        coachText: 'White immediately locks up the center, grabbing space.',
+        coachText: 'The advance clamps the center — typical of the Old Benoni structure.',
         eval: '+0.1',
       },
       black: {
