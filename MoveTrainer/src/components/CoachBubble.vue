@@ -565,9 +565,11 @@ const typewriterResult = props.typewriter
 
 /*
  * Intro-combined: pinned move line + visible body — bubble width follows copy (replay notes, etc.).
- * Column parents stretch flex items by default; align-self keeps intrinsic width. Heading→body gap unchanged.
+ * `.bubble-informational-inner` defaults to `flex: 1 1 0` inside the horizontal scroll row; that grows to
+ * the full row width and defeats shrink-to-fit. Column parents: `inline-flex` + `align-self` so width hugs.
  */
 .coach-container--single-bubble-hug.coach-container--intro-combined-hug-width {
+  display: inline-flex;
   width: auto;
   max-width: 100%;
   align-self: flex-start;
@@ -586,19 +588,22 @@ const typewriterResult = props.typewriter
   max-width: 100%;
 }
 
-.coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble-scroll-panel--informational {
-  width: auto;
+.coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble-scroll-panel.bubble-scroll-panel--informational {
+  width: fit-content;
   max-width: 100%;
   min-width: 0;
 }
 
 .coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble-informational-inner {
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
 }
 
 .coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble-content--informational-message .coach-message {
   min-width: 0;
   max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .bubble-wrapper--informational-single {
