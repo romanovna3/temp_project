@@ -7079,6 +7079,19 @@ onUnmounted(() => {
       <!-- Right: Panel (Courses view) -->
       <div class="review-panel">
         <div class="panel-main">
+          <!-- MT3 learn shell: thin strip above panel header (avoids overlapping coach column). -->
+          <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-bar">
+            <CcButton
+              variant="ghost-link"
+              size="x-small"
+              type="button"
+              class="move-trainer-3-restart-bar__btn"
+              aria-label="Restart course from intro"
+              @click="onMoveTrainer3RestartToIntro"
+            >
+              Restart
+            </CcButton>
+          </div>
           <!-- SidebarHeader: left (back when Line view) | Title (book + Courses) | right placeholder -->
           <header ref="panelHeaderRef" class="panel-header sidebar-header">
             <div class="sidebar-header-left">
@@ -8163,17 +8176,6 @@ onUnmounted(() => {
           </template>
           <template v-else-if="isMoveTrainer3">
             <div v-if="openingV3Ready" class="move-trainer-3-panel-shell">
-              <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-corner">
-                <CcButton
-                  variant="ghost-link"
-                  size="x-small"
-                  type="button"
-                  aria-label="Restart course from intro"
-                  @click="onMoveTrainer3RestartToIntro"
-                >
-                  Restart
-                </CcButton>
-              </div>
               <div class="move-trainer-3-column panel-content" data-move-trainer-3-main>
                 <MoveTrainer3LineCoach>
                   <MoveTrainer3Moves embedded-in-parent-scroll />
@@ -11389,8 +11391,28 @@ body {
   width: 100%;
   box-sizing: border-box;
 }
+/* MT3 Restart — above `.panel-header`; white @ 70% so it reads over dark chrome without covering coach. */
+.move-trainer-3-restart-bar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  padding: 6px 12px 8px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.7);
+}
+.panel-sm .move-trainer-3-restart-bar {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.move-trainer-3-restart-bar__btn {
+  color: rgba(0, 0, 0, 0.82) !important;
+}
+.move-trainer-3-restart-bar__btn:hover {
+  color: rgba(0, 0, 0, 0.95) !important;
+}
 .move-trainer-3-panel-shell {
-  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
@@ -11398,17 +11420,6 @@ body {
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-}
-.move-trainer-3-restart-corner {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  z-index: 8;
-  pointer-events: auto;
-}
-.panel-sm .move-trainer-3-restart-corner {
-  top: 6px;
-  right: 8px;
 }
 .move-trainer-3-column {
   display: flex;
