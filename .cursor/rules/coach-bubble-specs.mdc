@@ -1,0 +1,20 @@
+---
+description: Read canonical coach bubble specs end-to-end before CoachBubble / MT3 coach layout changes
+globs: "**/CoachBubble.vue,**/MoveTrainer3LineCoach.vue,**/moveTrainer3IntroStore.js,docs/coach-bubble*.md,docs/move-trainer-coach-bubble*.md"
+alwaysApply: false
+---
+
+# Coach bubble — specs-first workflow
+
+When the user asks for coach bubble, Play Move shell, OM chapter bubble, informational scroll/fades, or related Move Trainer 3 coach layout changes:
+
+1. **Read these files fully** (not skimmed) before editing:
+   - `docs/coach-bubble-scrollable-variant-spec.md` — pinned heading block (**64px** heading band), route shell (**do not** flex-grow the coach row for heading-only / hug rule), props checklist.
+   - `docs/move-trainer-coach-bubble-informational-fill-spec.md` — hug vs capped scroll, fill-available chain, fades.
+   - `MoveTrainer/src/components/CoachBubble.vue` — the implemented selectors for informational / intro-combined / fill-available (source of truth for behavior).
+
+2. **Do not** reintroduce full-column bubble stretch on Play Move / heading-only shells unless the user explicitly overrides the hug rule above.
+
+3. **Footer / OM chapter phases** (`moveTrainer3OmChapterPhase`, overflow split): coordinate with `moveTrainer3IntroStore.js` (`goBack`, foot nav); preserve movelist scrub semantics documented there.
+
+After substantive behavior changes, run **`npm run build`** under `my-app/` when Vue/store/timed layout is touched.

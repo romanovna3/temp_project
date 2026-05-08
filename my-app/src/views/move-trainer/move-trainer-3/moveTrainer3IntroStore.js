@@ -261,6 +261,18 @@ export function advanceMoveTrainer3OmChapterToInstruction() {
   moveTrainer3OmChapterPhase.value = 'instruction'
 }
 
+/** Footer back from overflow OM instruction step → chapter read UI without scrubbing `currentPly`. */
+export function retreatMoveTrainer3OmChapterFromInstructionToRead() {
+  if (
+    moveTrainer3OmChapterPhase.value === 'instruction'
+    && moveTrainer3OmChapterOverflows.value === true
+  ) {
+    moveTrainer3OmChapterPhase.value = 'read'
+    return true
+  }
+  return false
+}
+
 /** While OM reading shows clickable branch moves — overrides main-line `currentPly` FEN on the panel board. */
 export const moveTrainer3OmReadingBoardOverride = ref(null)
 
@@ -529,6 +541,9 @@ export const coachReplayHalfMoveBody = computed(() => {
 })
 
 export function goBack() {
+  if (retreatMoveTrainer3OmChapterFromInstructionToRead()) {
+    return
+  }
   if (moveTrainer3StartLearningNonce.value > 0) {
     const floor = MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY
     if (currentPly.value <= floor) return
@@ -563,6 +578,12 @@ export function goToPly(index) {
 }
 
 export const footerNavBackDisabled = computed(() => {
+  if (
+    moveTrainer3OmChapterPhase.value === 'instruction'
+    && moveTrainer3OmChapterOverflows.value === true
+  ) {
+    return false
+  }
   if (moveTrainer3StartLearningNonce.value > 0) {
     return currentPly.value <= MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY
   }
