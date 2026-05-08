@@ -376,7 +376,7 @@ export const MOVE_TRAINER_3_LINE_GAME = {
         san: 'exf4',
         classification: 'book',
         fen: 'rnbqkbnr/pp3ppp/3p4/2pP4/4Pp2/8/PPP3PP/RNBQKBNR w KQkq - 0 5',
-        coachText: 'Black captures on f4, opening lines toward White\'s king.',
+        coachText: '',
         eval: '0.0',
       },
     },
