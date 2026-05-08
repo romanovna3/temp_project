@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CoachBubble from '@move-trainer/components/CoachBubble.vue'
 import davidCoachAvatarUrl from '@move-trainer/assets/coaches/coach-david.png?url'
@@ -25,6 +25,10 @@ import {
   setMoveTrainer3OmReadingChipPly,
   moveTrainer3AllPlies,
   currentPly,
+  moveTrainer3OmChapterOverflows,
+  moveTrainer3OmChapterPhase,
+  resetMoveTrainer3OmChapterPhase,
+  applyMoveTrainer3OmChapterOverflowMeasure,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -113,9 +117,46 @@ const omVariant1UsesInformationalChapter = computed(() => {
   )
 })
 
+/** Chapter overflows viewport → two-phase (read + Continue, then Play strip only). */
+const omLiveChapterNeedsTwoPhase = computed(
+  () => omVariant1UsesInformationalChapter.value && moveTrainer3OmChapterOverflows.value === true,
+)
+
+/** Full chapter bubble: hidden during overflow **instruction** phase (Play strip only). */
+const showOmLiveChapterBubble = computed(() => {
+  if (!omVariant1UsesInformationalChapter.value) return false
+  if (!omLiveChapterNeedsTwoPhase.value) return true
+  return moveTrainer3OmChapterPhase.value === 'read'
+})
+
+/** Play strip: hidden until overflow measured when chapter checkpoint (avoid flash); instruction phase after Continue when overflowed; always when chapter fits one screen. */
+const showOmPlayStripOnOmV1 = computed(() => {
+  if (!showOmVariant1.value) return false
+  if (!omVariant1UsesInformationalChapter.value) return true
+  if (moveTrainer3OmChapterOverflows.value === null) return false
+  if (!omLiveChapterNeedsTwoPhase.value) return true
+  return moveTrainer3OmChapterPhase.value === 'instruction'
+})
+
+/** Fill-height chapter shell only while the long bubble is visible (instruction phase = compact Play strip). */
+const omV1LiveChapterLayoutStretch = computed(
+  () =>
+    omVariant1UsesInformationalChapter.value
+    && (!omLiveChapterNeedsTwoPhase.value || moveTrainer3OmChapterPhase.value === 'read'),
+)
+
 function onSelectOmReadingChipPly(ply) {
   setMoveTrainer3OmReadingChipPly(ply, opponentsMoveStep.value)
 }
+
+function onOmChapterInformationalOverflow(overflows) {
+  if (!omVariant1UsesInformationalChapter.value) return
+  applyMoveTrainer3OmChapterOverflowMeasure(overflows)
+}
+
+watch(opponentsMoveStep, () => {
+  resetMoveTrainer3OmChapterPhase()
+})
 
 /** OM v1: dynamic “Play …” when Black to move; checkpoint fallback during scripted White etc. */
 const omVariant1PlayLeadBold = computed(
@@ -251,10 +292,10 @@ const omIntroStackChapterScrollClamp = computed(
     <div
       v-else-if="showOmVariant1"
       class="move-trainer-3-coach move-trainer-3-coach--om-v1"
-      :class="{ 'move-trainer-3-coach--om-v1-live-chapter': omVariant1UsesInformationalChapter }"
+      :class="{ 'move-trainer-3-coach--om-v1-live-chapter': omV1LiveChapterLayoutStretch }"
     >
       <CoachBubble
-        v-if="omVariant1UsesInformationalChapter"
+        v-if="showOmLiveChapterBubble"
         class="mt3-om-commentary-coach mt3-om-live-chapter-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
@@ -266,6 +307,7 @@ const omIntroStackChapterScrollClamp = computed(
         :message="omVariant1LiveChapterMessage"
         :informational-segment-rails="omAuthorReadingSegmentRails"
         :informational-chapter-long-form="true"
+        :report-informational-overflow="true"
         :informational-active-ply="moveTrainer3OmReadingSelectedChipPly"
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
@@ -273,6 +315,7 @@ const omIntroStackChapterScrollClamp = computed(
         :typewriter="false"
         :start-position="false"
         @select-informational-ply="onSelectOmReadingChipPly"
+        @informational-body-overflow="onOmChapterInformationalOverflow"
       />
       <CoachBubble
         v-else
@@ -290,9 +333,8 @@ const omIntroStackChapterScrollClamp = computed(
         :fill-available-height="false"
         :start-position="false"
       />
-      <!-- Long OM chapter: no in-coach “Play …” strip (footer movelist + board only). -->
       <CoachBubble
-        v-if="!omVariant1UsesInformationalChapter"
+        v-if="showOmPlayStripOnOmV1"
         class="mt3-om-play-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
@@ -557,6 +599,8 @@ const omIntroStackChapterScrollClamp = computed(
 .move-trainer-3-coach--om-v1-live-chapter .mt3-om-live-chapter-coach :deep(.bubble-scroll-panel.bubble-scroll-panel--informational) {
   flex: 1 1 auto;
   min-height: 0;
+  /* Flex parents may not cap height; fixed max bounds the scroll port so fades + overflow measure work. */
+  max-height: min(42dvh, 22rem);
 }
 
 .move-trainer-3-coach--om-v1-live-chapter :deep(.coach-avatar) {

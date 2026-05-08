@@ -238,6 +238,29 @@ export const moveTrainer3StartLearningNonce = ref(0)
  */
 export const moveTrainer3OmAuthorNoteStep = ref(0)
 
+/**
+ * Long OM chapter split (read → instruction) — only when `CoachBubble` reports informational overflow.
+ * `inactive`: chapter fits one screen with Play strip, or not measuring / short checkpoint.
+ * `read`: overflow — chapter + rails only; footer Continue → `instruction`.
+ * `instruction`: Play … strip only until Black moves.
+ */
+export const moveTrainer3OmChapterOverflows = ref(null)
+export const moveTrainer3OmChapterPhase = ref('inactive')
+
+export function resetMoveTrainer3OmChapterPhase() {
+  moveTrainer3OmChapterOverflows.value = null
+  moveTrainer3OmChapterPhase.value = 'inactive'
+}
+
+export function applyMoveTrainer3OmChapterOverflowMeasure(overflows) {
+  moveTrainer3OmChapterOverflows.value = overflows
+  moveTrainer3OmChapterPhase.value = overflows ? 'read' : 'inactive'
+}
+
+export function advanceMoveTrainer3OmChapterToInstruction() {
+  moveTrainer3OmChapterPhase.value = 'instruction'
+}
+
 /** While OM reading shows clickable branch moves — overrides main-line `currentPly` FEN on the panel board. */
 export const moveTrainer3OmReadingBoardOverride = ref(null)
 
@@ -373,6 +396,7 @@ export function resetMoveTrainer3LearnProgress() {
   moveTrainer3BlackMovesCompleted.value = 0
   resetMoveTrainer3FooterNavMaxPly()
   resetMoveTrainer3OmAuthorNoteStep()
+  resetMoveTrainer3OmChapterPhase()
 }
 
 export function recordMoveTrainer3BlackLearnSuccess() {

@@ -31,6 +31,8 @@ const props = defineProps({
   informationalSegmentRails: { type: Array, default: null },
   /** Long OM chapter: allocate more vertical space + stronger scroll affordance for lead + rails. */
   informationalChapterLongForm: { type: Boolean, default: false },
+  /** When true with informational + fill-available, emit `informationalBodyOverflow` after measure (OM chapter split). */
+  reportInformationalOverflow: { type: Boolean, default: false },
   /** Highlights the move chip matching the current board ply (same index as MoveList). */
   informationalActivePly: { type: Number, default: 0 },
   /** Primary strip label in two-bubble review layout (e.g. quiz uses "White to play"). */
@@ -68,7 +70,7 @@ const props = defineProps({
   introCombinedTurnStripRegular: { type: String, default: '' },
 })
 
-defineEmits(['selectInformationalPly'])
+const emit = defineEmits(['selectInformationalPly', 'informationalBodyOverflow'])
 
 const bubbleRef = ref(null)
 
@@ -130,9 +132,23 @@ function measureContentScrollable() {
     contentScrollable.value = false
     return
   }
-  contentScrollable.value = el.scrollHeight - el.clientHeight > 0.5
+  const overflows = el.scrollHeight - el.clientHeight > 0.5
+  contentScrollable.value = overflows
   syncScrollbarThumb()
   updateScrollFades()
+
+  /* OM long chapter: parent splits read vs instruction only when copy overflows the scroll port. */
+  if (
+    props.reportInformationalOverflow
+    && useInformationalSingleBubble.value
+    && props.fillAvailableHeight
+    && (props.message?.trim()
+      || props.informationalSegments?.length
+      || (Array.isArray(props.informationalSegmentRails)
+        && props.informationalSegmentRails.some((r) => Array.isArray(r) && r.length)))
+  ) {
+    emit('informationalBodyOverflow', overflows)
+  }
 }
 
 /** Fill-height layouts settle after flex pass; remeasure so fades/rail reflect real overflow. */

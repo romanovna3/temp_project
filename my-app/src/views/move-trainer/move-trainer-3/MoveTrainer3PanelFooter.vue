@@ -20,6 +20,9 @@ import {
   resetMoveTrainer3OmAuthorNoteStep,
   moveTrainer3BlackMovesThroughPly,
   moveTrainer3FooterNavMaxPly,
+  moveTrainer3OmChapterOverflows,
+  moveTrainer3OmChapterPhase,
+  advanceMoveTrainer3OmChapterToInstruction,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -63,6 +66,18 @@ const playMoveMovelistActiveIndex = computed(() => {
 })
 
 const isOmAuthorNoteFooter = computed(() => moveTrainer3OmAuthorNoteStep.value > 0)
+
+/** Long OM chapter overflow — read phase only (Video + Continue before Play strip). */
+const isOmChapterReadFooter = computed(
+  () =>
+    moveTrainer3OmChapterPhase.value === 'read'
+    && moveTrainer3OmChapterOverflows.value === true
+    && moveTrainer3OmAuthorNoteStep.value === 0,
+)
+
+function onOmChapterReadContinue() {
+  advanceMoveTrainer3OmChapterToInstruction()
+}
 
 async function onOmContinue() {
   resetMoveTrainer3OmAuthorNoteStep()
@@ -118,8 +133,8 @@ function onHint() {
               variant="secondary"
               size="large"
               class="footer-btn-equal"
-              disabled
               :icon="{ name: 'media-camera-video-on' }"
+              @click="toggleVideoToolbar"
             >
               Video
             </CcButton>
@@ -129,6 +144,15 @@ function onHint() {
               size="large"
               class="footer-btn-equal"
               @click="onOmContinue"
+            >
+              Continue
+            </CcButton>
+            <CcButton
+              v-else-if="isOmChapterReadFooter"
+              variant="primary"
+              size="large"
+              class="footer-btn-equal"
+              @click="onOmChapterReadContinue"
             >
               Continue
             </CcButton>
