@@ -7079,13 +7079,13 @@ onUnmounted(() => {
       <!-- Right: Panel (Courses view) -->
       <div class="review-panel">
         <div class="panel-main">
-          <!-- MT3 learn shell: thin strip above panel header (avoids overlapping coach column). -->
-          <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-bar">
+          <!-- MT3 learn shell: compact ghost control above panel header (not a full-width bar). -->
+          <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-above-header">
             <CcButton
-              variant="ghost-link"
+              variant="ghost"
               size="x-small"
               type="button"
-              class="move-trainer-3-restart-bar__btn"
+              class="move-trainer-3-restart-ghost-btn"
               aria-label="Restart course from intro"
               @click="onMoveTrainer3RestartToIntro"
             >
@@ -11391,26 +11391,30 @@ body {
   width: 100%;
   box-sizing: border-box;
 }
-/* MT3 Restart — above `.panel-header`; white @ 70% so it reads over dark chrome without covering coach. */
-.move-trainer-3-restart-bar {
+/* MT3 Restart — tiny row above `.panel-header`; pill-sized hit target only (#FFF @ 70%). */
+.move-trainer-3-restart-above-header {
   flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  width: 100%;
-  padding: 6px 12px 8px;
+  padding: 4px 10px 2px;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.7);
 }
-.panel-sm .move-trainer-3-restart-bar {
+.panel-sm .move-trainer-3-restart-above-header {
   padding-left: 8px;
   padding-right: 8px;
 }
-.move-trainer-3-restart-bar__btn {
-  color: rgba(0, 0, 0, 0.82) !important;
+.move-trainer-3-restart-above-header :deep(.move-trainer-3-restart-ghost-btn) {
+  min-height: 28px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.7) !important;
+  color: rgba(0, 0, 0, 0.78) !important;
 }
-.move-trainer-3-restart-bar__btn:hover {
-  color: rgba(0, 0, 0, 0.95) !important;
+.move-trainer-3-restart-above-header :deep(.move-trainer-3-restart-ghost-btn:hover) {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: rgba(0, 0, 0, 0.9) !important;
 }
 .move-trainer-3-panel-shell {
   display: flex;
