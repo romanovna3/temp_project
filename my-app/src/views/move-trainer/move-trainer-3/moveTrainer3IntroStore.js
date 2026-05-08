@@ -189,11 +189,11 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
     nextBlackLeadBold: 'Play g6',
     nextBlackTurnStrip: 'Black to play',
     /**
-     * Under post-…g6 author note: second bubble — same two-line strip as Play Move / OM (**Play …** + turn).
-     * Overrides optional; else **`nextBlackLeadBold`** / **`nextBlackTurnStrip`**.
+     * Under post-…g6 author note: second bubble (bold lead + subtitle). Overrides optional;
+     * else **`nextBlackLeadBold`** / **`nextBlackTurnStrip`**.
      */
-    authorReadingSecondaryPlayLeadBold: 'Play g6',
-    authorReadingSecondaryPlayTurnStrip: 'Black to play',
+    authorReadingSecondaryPlayLeadBold: 'Well Done!',
+    authorReadingSecondaryPlayTurnStrip: 'Now try to play the moves from memory',
     afterBlackMoveAuthorNote:
       'The bishop could also go to e7, but given the freedom to deploy it more actively, we gladly will! It will look great on the long diagonal while also making our king even safer.',
     authorReadingPrimaryLabel: 'Start Quiz',
