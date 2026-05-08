@@ -18,11 +18,12 @@ import {
   moveTrainer3AllPlies,
   moveTrainer3OmAuthorNoteStep,
   resetMoveTrainer3OmAuthorNoteStep,
-  moveTrainer3BlackMovesThroughPly,
   moveTrainer3FooterNavMaxPly,
   moveTrainer3OmChapterOverflows,
   moveTrainer3OmChapterPhase,
   advanceMoveTrainer3OmChapterToInstruction,
+  moveTrainer3LearnShellTargetFromFrontier,
+  tryStartMoveTrainer3OmAuthorContinueChain,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -80,15 +81,13 @@ function onOmChapterReadContinue() {
 }
 
 async function onOmContinue() {
+  if (tryStartMoveTrainer3OmAuthorContinueChain()) {
+    await nextTick()
+    return
+  }
   resetMoveTrainer3OmAuthorNoteStep()
   await nextTick()
-  const ply = moveTrainer3FooterNavMaxPly.value
-  const nBlack = moveTrainer3BlackMovesThroughPly(ply)
-  const target =
-    nBlack === 0
-      ? '/move-trainer/move-trainer-3/play-move'
-      : `/move-trainer/move-trainer-3/opponents-move-${nBlack}`
-  await router.replace(target)
+  await router.replace(moveTrainer3LearnShellTargetFromFrontier())
 }
 
 function onStartLearning() {

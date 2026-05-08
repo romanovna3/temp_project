@@ -170,6 +170,10 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
       "Now, White's pieces seem to be coming out pretty rapidly. However, the e5-square becomes a great outpost for a black knight, and the e4-pawn could become rather weak as well.",
     nextBlackLeadBold: 'Play Nf6',
     nextBlackTurnStrip: 'Black to play',
+    /** Post–…Nf6: author overlay only (no OM instruction strip); Continue → scripted **Nc3** → `/play-move` (**…a6**). */
+    afterBlackMoveAuthorNote: 'For now, we just develop.',
+    afterAuthorContinuePlayWhiteSan: 'Nc3',
+    afterAuthorContinueToPlayMove: true,
   },
 })
 
@@ -205,6 +209,43 @@ export function moveTrainer3OpponentsMoveStepFromPath(path) {
 export function getMoveTrainer3OpponentsMoveCheckpoint(step) {
   const n = typeof step === 'number' && step > 0 ? step : 0
   return MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[n] ?? null
+}
+
+/**
+ * `/play-move` vs `/opponents-move-N` from frontier ply — OM route only when checkpoint **N** is defined.
+ */
+export function moveTrainer3LearnShellTargetFromFrontier() {
+  const ply = moveTrainer3FooterNavMaxPly.value
+  const nBlack = moveTrainer3BlackMovesThroughPly(ply)
+  if (nBlack === 0) return '/move-trainer/move-trainer-3/play-move'
+  const cp = getMoveTrainer3OpponentsMoveCheckpoint(nBlack)
+  return cp ? `/move-trainer/move-trainer-3/opponents-move-${nBlack}` : '/move-trainer/move-trainer-3/play-move'
+}
+
+/**
+ * Learn-shell URL after a graded Black success (`blackMovesCompleted` **after** increment), when not entering author-reading overlay.
+ */
+export function moveTrainer3LearnShellPathAfterBlackSuccessCount(completedBlackMoves) {
+  const n = Math.floor(Number(completedBlackMoves))
+  if (!Number.isFinite(n) || n <= 0) return '/move-trainer/move-trainer-3/play-move'
+  const cp = getMoveTrainer3OpponentsMoveCheckpoint(n)
+  return cp ? `/move-trainer/move-trainer-3/opponents-move-${n}` : '/move-trainer/move-trainer-3/play-move'
+}
+
+/**
+ * OM author **Continue**: optional scripted White half-move then `/play-move` (see checkpoint `afterAuthorContinue*`).
+ * Returns **true** if OpeningCourses should run the chain (footer skips immediate `router.replace`).
+ */
+export function tryStartMoveTrainer3OmAuthorContinueChain() {
+  const step = moveTrainer3OmAuthorNoteStep.value
+  const cp = step ? getMoveTrainer3OpponentsMoveCheckpoint(step) : null
+  const raw = cp?.afterAuthorContinuePlayWhiteSan
+  const san = typeof raw === 'string' ? raw.trim() : ''
+  if (!san || cp?.afterAuthorContinueToPlayMove !== true) return false
+  resetMoveTrainer3OmAuthorNoteStep()
+  moveTrainer3SuppressLearnShellRouteAlign.value = true
+  moveTrainer3OmPostAuthorChain.value = { playWhiteSan: san }
+  return true
 }
 
 /** Parses SAN from OM `nextBlackLeadBold` (e.g. `Play e5` → `e5`). */
@@ -246,6 +287,12 @@ export const moveTrainer3StartLearningNonce = ref(0)
  * Value is checkpoint step (e.g. `1`), or `0` when inactive.
  */
 export const moveTrainer3OmAuthorNoteStep = ref(0)
+
+/** Skip learn-shell route alignment while author **Continue** runs a scripted White reply chain. */
+export const moveTrainer3SuppressLearnShellRouteAlign = ref(false)
+
+/** `{ playWhiteSan }` — OpeningCourses plays this from current FEN, advances ply, then routes `/play-move`. */
+export const moveTrainer3OmPostAuthorChain = ref(null)
 
 /**
  * Long OM chapter split (read → instruction) — only when `CoachBubble` reports informational overflow.
@@ -452,6 +499,8 @@ export function resetMoveTrainer3LearnProgress() {
   resetMoveTrainer3FooterNavMaxPly()
   resetMoveTrainer3OmAuthorNoteStep()
   resetMoveTrainer3OmChapterPhase()
+  moveTrainer3SuppressLearnShellRouteAlign.value = false
+  moveTrainer3OmPostAuthorChain.value = null
 }
 
 export function recordMoveTrainer3BlackLearnSuccess() {

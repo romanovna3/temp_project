@@ -140,11 +140,22 @@ Steps describe **typical** demo line behavior; exact copy comes from `MOVE_TRAIN
 | Board | Ply advances after **exf4**, then scripted **Bxf4** (OM White-reply watcher). |
 | Coach | L4 — top **`whiteCommentary`** on rapid White development / **e5** outpost / **e4** weakness + bottom instruction bubble **Play Nf6** + Black turn strip. |
 
+### A4d — OM step 4 after …Nf6: author note → scripted White → **Play Move**
+
+| Surface | Behavior |
+|--------|----------|
+| Trigger | Correct **…Nf6** on **`/opponents-move-4`**. |
+| Post-move | L6 — **`afterBlackMoveAuthorNote`** only (*For now, we just develop.*); **no** OM Play strip until **Continue**. Footer **Continue** (no Hint). |
+| Continue | Scripted **Nc3** from OpeningCourses (`afterAuthorContinuePlayWhiteSan` on checkpoint **4**), ply advances, then **`/play-move`**. |
+| Next | L2 — **Play a6** (and Black strip only — empty Play Move body; no extra coach copy). |
+
+Learn-shell routing after Black milestones uses **`moveTrainer3LearnShellTargetFromFrontier`** / **`moveTrainer3LearnShellPathAfterBlackSuccessCount`**: **`/opponents-move-{N}`** only when checkpoint **N** exists; otherwise **`/play-move`** (so there is no empty **`opponents-move-5`** after this segment).
+
 ### A5 — OM author reading (optional checkpoint field)
 
 | Surface | Behavior |
 |--------|----------|
-| Coach | L6 — long note; **Continue** returns to frontier-aligned route (often Play Move if no Black milestones pending). |
+| Coach | L6 — long note; **Continue** dismisses overlay (`resetMoveTrainer3OmAuthorNoteStep`). Either **`router.replace`** to **`moveTrainer3LearnShellTargetFromFrontier()`**, or checkpoint **`afterAuthorContinue*`** runs scripted White then **`/play-move`**. |
 | Footer | Video + **Continue** + chevrons (chevrons still tied to `currentPly` / max rules). |
 
 ---

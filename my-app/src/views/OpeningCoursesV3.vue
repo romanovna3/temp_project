@@ -46,13 +46,16 @@ import {
   bumpMoveTrainer3FooterNavMaxPly,
   resetMoveTrainer3FooterNavMaxPly,
   moveTrainer3FooterNavMaxPly,
-  moveTrainer3BlackMovesThroughPly,
   advanceMoveTrainer3PlyFromGameplay,
   moveTrainer3OmAuthorNoteStep,
   moveTrainer3CoachReplayScrubbing,
   moveTrainer3CheckpointHasPostBlackAuthorNote,
   moveTrainer3OmReadingBoardOverride,
   moveTrainer3OmBlackPlayUiActive,
+  moveTrainer3SuppressLearnShellRouteAlign,
+  moveTrainer3OmPostAuthorChain,
+  moveTrainer3LearnShellTargetFromFrontier,
+  moveTrainer3LearnShellPathAfterBlackSuccessCount,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -4007,7 +4010,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
 
   const step = moveTrainer3BlackMovesCompleted.value
   await nextTick()
-  await router.push(`/move-trainer/move-trainer-3/opponents-move-${step}`)
+  await router.push(moveTrainer3LearnShellPathAfterBlackSuccessCount(step))
   return true
 }
 
@@ -4375,6 +4378,7 @@ watch(
     if (!moveTrainer3LearnShellPath(route.path)) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
     if (moveTrainer3SkipBoardSyncFromStore.value) return
+    if (moveTrainer3SuppressLearnShellRouteAlign.value) return
 
     const anchor = moveTrainer3OmAuthorNoteStep.value
     if (anchor > 0) {
@@ -4389,12 +4393,7 @@ watch(
       return
     }
 
-    const ply = moveTrainer3FooterNavMaxPly.value
-    const nBlack = moveTrainer3BlackMovesThroughPly(ply)
-    const target =
-      nBlack === 0
-        ? '/move-trainer/move-trainer-3/play-move'
-        : `/move-trainer/move-trainer-3/opponents-move-${nBlack}`
+    const target = moveTrainer3LearnShellTargetFromFrontier()
 
     let current = route.path
     try {
@@ -4563,6 +4562,46 @@ watch(
       advanceMoveTrainer3PlyFromGameplay()
     } finally {
       moveTrainer3SkipBoardSyncFromStore.value = false
+    }
+  },
+  { flush: 'post' },
+)
+
+/** OM author **Continue** (checkpoint `afterAuthorContinue*`): scripted White half-move → `/play-move` for next Black try (e.g. **…a6**). */
+let moveTrainer3OmPostAuthorChainGen = 0
+watch(
+  () => moveTrainer3OmPostAuthorChain.value,
+  async (chain) => {
+    if (!chain?.playWhiteSan || !isMoveTrainer3.value || panelView.value !== 'courses') return
+    if (moveTrainer3CoachReplayScrubbing.value) {
+      moveTrainer3OmPostAuthorChain.value = null
+      moveTrainer3SuppressLearnShellRouteAlign.value = false
+      return
+    }
+    const runId = ++moveTrainer3OmPostAuthorChainGen
+    moveTrainer3SkipBoardSyncFromStore.value = true
+    try {
+      await nextTick()
+      if (runId !== moveTrainer3OmPostAuthorChainGen) return
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS)
+      })
+      if (runId !== moveTrainer3OmPostAuthorChainGen) return
+      if (moveTrainer3CoachReplayScrubbing.value) return
+
+      playOpeningThirdMove(moveTrainer3CurrentFen.value, chain.playWhiteSan, { forceSound: true })
+      await new Promise((resolve) => {
+        setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
+      })
+      if (runId !== moveTrainer3OmPostAuthorChainGen) return
+
+      advanceMoveTrainer3PlyFromGameplay()
+      moveTrainer3OmPostAuthorChain.value = null
+      await router.replace('/move-trainer/move-trainer-3/play-move')
+    } finally {
+      moveTrainer3SkipBoardSyncFromStore.value = false
+      moveTrainer3SuppressLearnShellRouteAlign.value = false
     }
   },
   { flush: 'post' },
