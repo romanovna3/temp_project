@@ -148,7 +148,6 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
     afterBlackMoveAuthorNote: OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE,
   },
   2: {
-    whiteCommentary: 'White expands in the center — space and tension.',
     nextBlackLeadBold: 'Play d6',
     nextBlackTurnStrip: 'Black to play',
     readingLead: MOVE_TRAINER_3_OM_READING_CHAPTER_E4_LEAD,
@@ -250,9 +249,16 @@ export function clearMoveTrainer3OmReadingBoardBranch() {
   moveTrainer3OmReadingSelectedChipPly.value = 0
 }
 
-export function setMoveTrainer3OmReadingChipPly(ply) {
+/**
+ * `omRouteStep` — OM checkpoint index from the route (e.g. `2` on `/opponents-move-2`).
+ * Required while **live** on an OM step (`moveTrainer3OmAuthorNoteStep === 0`) so branch previews resolve.
+ */
+export function setMoveTrainer3OmReadingChipPly(ply, omRouteStep = 0) {
   const n = Math.floor(Number(ply))
-  const step = moveTrainer3OmAuthorNoteStep.value
+  const authorStep = moveTrainer3OmAuthorNoteStep.value
+  const routeStep = Math.floor(Number(omRouteStep))
+  const step =
+    authorStep > 0 ? authorStep : routeStep > 0 ? routeStep : 0
   const previews = MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP[step]
   if (!previews?.length || !Number.isFinite(n) || n < 1 || n > previews.length) return
   moveTrainer3OmReadingSelectedChipPly.value = n
@@ -263,9 +269,9 @@ watch(moveTrainer3OmAuthorNoteStep, () => {
   clearMoveTrainer3OmReadingBoardBranch()
 })
 
-/** Footer movelist / chevrons drive the board during OM reading until the user clicks a bubble chip. */
+/** Movelist / footer scrub: drop branch preview whenever the main-line ply cursor moves after chip exploration. */
 watch(currentPly, () => {
-  if (moveTrainer3OmAuthorNoteStep.value > 0) {
+  if (moveTrainer3OmReadingBoardOverride.value) {
     clearMoveTrainer3OmReadingBoardBranch()
   }
 })

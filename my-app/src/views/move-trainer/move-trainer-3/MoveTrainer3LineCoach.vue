@@ -92,8 +92,30 @@ const playMoveCoachBubbleMessage = computed(() =>
   isPlayMoveLayout.value ? '' : introCoachBubbleMessage.value,
 )
 
-/** OM v1 live tip: designer checkpoint commentary (replay uses preview branch + line `coachText`). */
+/** OM v1 live tip: short `whiteCommentary` only (long chapter uses informational bubble below). */
 const omVariant1TopBubbleMessage = computed(() => opponentsMoveCheckpoint.value?.whiteCommentary ?? '')
+
+/** Live OM **before** reading phase: full chapter + rails (`readingLead`, not legacy author-note fallback). */
+const omVariant1LiveChapterMessage = computed(() => {
+  const cp = opponentsMoveCheckpoint.value
+  if (!cp?.readingChapterLongForm) return ''
+  const lead = typeof cp.readingLead === 'string' ? cp.readingLead.trim() : ''
+  return lead
+})
+
+/** Informational scroll/dissolve bubble for chapter + clickable rails (same shell as OM author-reading). */
+const omVariant1UsesInformationalChapter = computed(() => {
+  const cp = opponentsMoveCheckpoint.value
+  if (!cp?.readingChapterLongForm) return false
+  return !!(
+    omVariant1LiveChapterMessage.value
+    || (Array.isArray(cp.readingSegmentRails) && cp.readingSegmentRails.some((r) => Array.isArray(r) && r.length))
+  )
+})
+
+function onSelectOmReadingChipPly(ply) {
+  setMoveTrainer3OmReadingChipPly(ply, opponentsMoveStep.value)
+}
 
 /** OM v1: dynamic “Play …” when Black to move; checkpoint fallback during scripted White etc. */
 const omVariant1PlayLeadBold = computed(
@@ -110,10 +132,21 @@ const omVariant1PlayTurnStrip = computed(
     '',
 )
 
-/** OM variant 1: checkpoint defines this shell. */
-const showOmVariant1 = computed(
-  () => isOpponentsMoveLayout.value && !!opponentsMoveCheckpoint.value?.whiteCommentary,
-)
+/** OM variant 1: short White tip and/or long chapter (`readingChapterLongForm`) before reading phase. */
+const showOmVariant1 = computed(() => {
+  if (!isOpponentsMoveLayout.value) return false
+  const cp = opponentsMoveCheckpoint.value
+  if (!cp) return false
+  if (typeof cp.whiteCommentary === 'string' && cp.whiteCommentary.trim()) return true
+  if (
+    cp.readingChapterLongForm
+    && ((typeof cp.readingLead === 'string' && cp.readingLead.trim())
+      || (Array.isArray(cp.readingSegmentRails)
+        && cp.readingSegmentRails.some((r) => Array.isArray(r) && r.length)))
+  )
+    return true
+  return false
+})
 
 /** Long author commentary after graded Black move — Video + Continue in footer; URL stays on same OM step. */
 const showOmAuthorReading = computed(() => {
@@ -200,13 +233,39 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :typewriter="false"
         :fill-available-height="true"
         :start-position="false"
-        @select-informational-ply="setMoveTrainer3OmReadingChipPly"
+        @select-informational-ply="onSelectOmReadingChipPly"
       />
     </div>
 
     <!-- Opponents Move (checkpoint copy); variant 1 = stacked bubbles -->
-    <div v-else-if="showOmVariant1" class="move-trainer-3-coach move-trainer-3-coach--om-v1">
+    <div
+      v-else-if="showOmVariant1"
+      class="move-trainer-3-coach move-trainer-3-coach--om-v1"
+      :class="{ 'move-trainer-3-coach--om-v1-live-chapter': omVariant1UsesInformationalChapter }"
+    >
       <CoachBubble
+        v-if="omVariant1UsesInformationalChapter"
+        class="mt3-om-commentary-coach mt3-om-live-chapter-coach"
+        :coach-avatar-src="davidCoachAvatarUrl"
+        header-icon=""
+        header-text=""
+        eval-text=""
+        :white-advantage="true"
+        :informational-single-bubble="true"
+        :fill-available-height="true"
+        :message="omVariant1LiveChapterMessage"
+        :informational-segment-rails="omAuthorReadingSegmentRails"
+        :informational-chapter-long-form="true"
+        :informational-active-ply="moveTrainer3OmReadingSelectedChipPly"
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        turn-strip-text=""
+        :show-tip="true"
+        :typewriter="false"
+        :start-position="false"
+        @select-informational-ply="onSelectOmReadingChipPly"
+      />
+      <CoachBubble
+        v-else
         class="mt3-om-commentary-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
@@ -434,6 +493,37 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 .move-trainer-3-coach--om-v1 {
   /* Keep inset parity with intro / Play Move (do not tighten top padding — reads as whole panel “jumped up”). */
   gap: 10px;
+}
+
+/* Live OM e4 chapter: same fill + scroll + gradient dissolves as OM author-reading (`informational-single` shell). */
+.move-trainer-3-coach--om-v1-live-chapter {
+  flex: 1 1 0;
+  min-height: min(52vh, 22rem);
+}
+
+.move-trainer-3-coach--om-v1-live-chapter :deep(.coach-container.coach-container--fill-available) {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.move-trainer-3-coach--om-v1-live-chapter :deep(.coach-avatar) {
+  align-self: flex-start;
+}
+
+.move-trainer-3-coach--om-v1-live-chapter :deep(.bubble--informational-single::after) {
+  height: 3.25rem;
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.48) 46%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.mt3-om-live-chapter-coach :deep(.coach-message),
+.mt3-om-live-chapter-coach :deep(.bubble-content--informational-message) {
+  white-space: pre-wrap;
 }
 
 /*
