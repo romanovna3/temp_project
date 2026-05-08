@@ -743,41 +743,21 @@ const omIntroStackChapterScrollClamp = computed(
 }
 
 /*
- * Play Move (+ OM two-phase instruction): coach column consumes panel height above footer;
- * stretch bubble column — CoachBubble defaults use align-self:flex-start on the wrapper which leaves a gap.
+ * Play Move (+ OM instruction parity): **do not** flex-grow the coach row — white bubble **hugs** short copy.
+ * Pinned heading `.coach-intro-combined-heading` stays **min-height 64px** (CoachBubble + docs/coach-bubble-scrollable-variant-spec.md).
+ * Long copy still caps via fill-available + inner scroll (move-trainer-coach-bubble-informational-fill-spec.md hug rule).
  */
 .move-trainer-3-coach--play-move-fill {
-  flex: 1 1 auto;
-  flex-shrink: 1;
+  flex: 0 1 auto;
   min-height: 0;
   max-height: 100%;
   width: 100%;
 }
 
 .move-trainer-3-coach--play-move-fill :deep(.coach-container.coach-container--fill-available) {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   max-height: 100%;
-}
-
-.move-trainer-3-coach--play-move-fill :deep(.coach-container.coach-container--fill-available.coach-container--informational-single) {
-  align-items: stretch;
-}
-
-.move-trainer-3-coach--play-move-fill :deep(.coach-container--fill-available .bubble-wrapper--informational-single) {
-  flex: 1 1 auto;
-  min-height: 0;
-  align-self: stretch;
-}
-
-.move-trainer-3-coach--play-move-fill :deep(.bubble.bubble--informational-single) {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.move-trainer-3-coach--play-move-fill :deep(.bubble-informational-inner) {
-  flex: 1 1 auto;
-  min-height: 0;
 }
 
 .move-trainer-3-coach--play-move-fill :deep(.coach-avatar) {
