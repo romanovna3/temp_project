@@ -253,12 +253,30 @@ const omAuthorReadingChapterLongForm = computed(
 
 const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
-/** Bound OM column height so long informational bubbles scroll inside (fade dissolves + thumb rail). */
-/** OM-7 after **…g6**: author note + second row — same **Play move** combined-bubble variant as `/play-move` (copy TBD). */
+/** OM-7 after **…g6**: author note + second row — same two-line strip as Play Move / OM (**Play …** + **Black to play**). */
 const showOm7PlayMoveUnderAuthorReading = computed(
   () => showOmAuthorReading.value && opponentsMoveStep.value === 7,
 )
 
+const om7AuthorReadingPlayStripLead = computed(() => {
+  if (!showOm7PlayMoveUnderAuthorReading.value) return ''
+  const cp = opponentsMoveCheckpoint.value
+  if (!cp) return ''
+  const sec = typeof cp.authorReadingSecondaryPlayLeadBold === 'string' ? cp.authorReadingSecondaryPlayLeadBold.trim() : ''
+  if (sec) return sec
+  return typeof cp.nextBlackLeadBold === 'string' ? cp.nextBlackLeadBold.trim() : ''
+})
+
+const om7AuthorReadingPlayStripTurn = computed(() => {
+  if (!showOm7PlayMoveUnderAuthorReading.value) return ''
+  const cp = opponentsMoveCheckpoint.value
+  if (!cp) return ''
+  const sec = typeof cp.authorReadingSecondaryPlayTurnStrip === 'string' ? cp.authorReadingSecondaryPlayTurnStrip.trim() : ''
+  if (sec) return sec
+  return typeof cp.nextBlackTurnStrip === 'string' ? cp.nextBlackTurnStrip.trim() : 'Black to play'
+})
+
+/** Bound OM column height so long informational bubbles scroll inside (fade dissolves + thumb rail). */
 const omIntroStackChapterScrollClamp = computed(
   () =>
     (showOmVariant1.value
@@ -324,7 +342,7 @@ const omIntroStackChapterScrollClamp = computed(
           @select-informational-ply="onSelectOmReadingChipPly"
         />
       </div>
-      <!-- Same shell as `/play-move` + OM play strip: heading-only until copy is finalized -->
+      <!-- Same shell as `/play-move` + OM **Play …** row (bold lead + **Black to play** subtitle). -->
       <CoachBubble
         class="mt3-om-play-coach mt3-om-play-coach--under-author-reading"
         :coach-avatar-src="davidCoachAvatarUrl"
@@ -338,9 +356,8 @@ const omIntroStackChapterScrollClamp = computed(
         :show-tip="true"
         :typewriter="false"
         :intro-coach-combined-bubble="true"
-        intro-combined-lead-bold="Play move"
-        intro-combined-turn-strip-regular=""
-        :suppress-intro-combined-no-message-placeholder="true"
+        :intro-combined-lead-bold="om7AuthorReadingPlayStripLead"
+        :intro-combined-turn-strip-regular="om7AuthorReadingPlayStripTurn"
         :fill-available-height="false"
         :start-position="false"
       />
