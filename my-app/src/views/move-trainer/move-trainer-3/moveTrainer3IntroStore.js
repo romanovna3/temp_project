@@ -92,19 +92,8 @@ const MOVE_TRAINER_3_OM_READING_RAIL_TRANSPOSE_TO_E4 = Object.freeze([
   { type: 'text', text: 'transposes to the 3.e4 lines.' },
 ])
 
-/** Second subvariation: same line + club-level **dxe6** EP note (`ply` 6). */
+/** Second subvariation: EP sideline only (**dxe6**); shared **Nc3 … e4** line lives in the first rail above. */
 const MOVE_TRAINER_3_OM_READING_RAIL_DXE6_NOTE = Object.freeze([
-  { type: 'text', text: '3.' },
-  { type: 'move', ply: 1, san: 'Nc3' },
-  { type: 'text', text: ' ' },
-  { type: 'move', ply: 2, san: 'd6' },
-  { type: 'text', text: ' 4.' },
-  { type: 'move', ply: 3, san: 'Nf3' },
-  { type: 'text', text: ' ' },
-  { type: 'move', ply: 4, san: 'Be7' },
-  { type: 'text', text: ' 5.' },
-  { type: 'move', ply: 5, san: 'e4' },
-  { type: 'text', text: '\n\n' },
   {
     type: 'text',
     text: 'Some White players, especially at the club level, can also play 3. ',
@@ -317,6 +306,7 @@ export function applyMoveTrainer3OmChapterOverflowMeasure(overflows) {
 }
 
 export function advanceMoveTrainer3OmChapterToInstruction() {
+  clearMoveTrainer3OmReadingBoardBranch()
   moveTrainer3OmChapterPhase.value = 'instruction'
   moveTrainer3OmChapterContinueUsed.value = true
 }
@@ -332,6 +322,7 @@ export function advanceOmChapterReadToInstructionViaFooterForward() {
   if (moveTrainer3StartLearningNonce.value <= 0) return false
   if (currentPly.value !== moveTrainer3FooterNavMaxPly.value) return false
   if (!getMoveTrainer3BlackHintSquares()) return false
+  clearMoveTrainer3OmReadingBoardBranch()
   moveTrainer3OmChapterPhase.value = 'instruction'
   return true
 }

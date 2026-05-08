@@ -473,13 +473,10 @@ const typewriterResult = props.typewriter
                 </p>
                 <template v-if="hasInformationalRichRails">
                   <template v-for="(rail, ridx) in informationalSegmentRails" :key="ridx">
-                    <hr
-                      v-if="ridx > 0 && Array.isArray(rail) && rail.length"
-                      class="coach-informational-subvariation-divider"
-                    />
                     <div
                       v-if="Array.isArray(rail) && rail.length"
                       class="coach-informational-subvariation-rail"
+                      :class="{ 'coach-informational-subvariation-rail--follow': ridx > 0 }"
                     >
                       <CoachMessageRichNotationsLine
                         :segments="rail"
@@ -773,12 +770,8 @@ const typewriterResult = props.typewriter
   margin: 0;
 }
 
-.coach-informational-subvariation-divider {
-  border: none;
-  border-top: 1px solid rgba(49, 46, 43, 0.14);
-  margin: var(--space-12, 12px) 0 var(--space-12, 12px);
-  padding: 0;
-  align-self: stretch;
+.coach-informational-subvariation-rail--follow {
+  margin-top: var(--space-8, 8px);
 }
 
 /* Long OM chapter: give the scroll panel a usable minimum height inside fill-available shells */

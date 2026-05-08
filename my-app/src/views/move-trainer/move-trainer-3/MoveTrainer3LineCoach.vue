@@ -29,6 +29,7 @@ import {
   moveTrainer3OmChapterPhase,
   resetMoveTrainer3OmChapterPhase,
   applyMoveTrainer3OmChapterOverflowMeasure,
+  clearMoveTrainer3OmReadingBoardBranch,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -164,6 +165,7 @@ function onOmChapterInformationalOverflow(overflows) {
 
 watch(opponentsMoveStep, () => {
   resetMoveTrainer3OmChapterPhase()
+  clearMoveTrainer3OmReadingBoardBranch()
 })
 
 /** OM v1: dynamic “Play …” when Black to move; checkpoint fallback during scripted White etc. */
