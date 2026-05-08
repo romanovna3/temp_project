@@ -290,7 +290,9 @@ const omIntroStackChapterScrollClamp = computed(
         :fill-available-height="false"
         :start-position="false"
       />
+      <!-- Long OM chapter: no in-coach “Play …” strip (footer movelist + board only). -->
       <CoachBubble
+        v-if="!omVariant1UsesInformationalChapter"
         class="mt3-om-play-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
