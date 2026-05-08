@@ -37,6 +37,7 @@ import {
   goToPly,
   goForward,
   resetMoveTrainer3LearnProgress,
+  restartMoveTrainer3ToIntro,
   recordMoveTrainer3BlackLearnSuccess,
   moveTrainer3BlackMovesCompleted,
   moveTrainer3AllPlies,
@@ -85,6 +86,19 @@ function moveTrainer3PathIsIntro(path) {
   } catch {
     return false
   }
+}
+
+/** Learn shell only — small Restart link returns to intro + resets lesson state (parent gates `openingV3Ready`). */
+const showMoveTrainer3RestartLink = computed(
+  () => isMoveTrainer3.value && !moveTrainer3PathIsIntro(route.path),
+)
+
+async function onMoveTrainer3RestartToIntro() {
+  moveTrainer3OmPostAuthorChainGen += 1
+  moveTrainer3StartLearningBusy = false
+  clearOpeningAutoMove()
+  restartMoveTrainer3ToIntro()
+  await router.replace('/move-trainer/move-trainer-3')
 }
 
 function moveTrainer3PathIsPlayMove(path) {
@@ -8133,10 +8147,23 @@ onUnmounted(() => {
           <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
           <template v-else-if="isMoveTrainer3">
-            <div v-if="openingV3Ready" class="move-trainer-3-column panel-content" data-move-trainer-3-main>
-              <MoveTrainer3LineCoach>
-                <MoveTrainer3Moves embedded-in-parent-scroll />
-              </MoveTrainer3LineCoach>
+            <div v-if="openingV3Ready" class="move-trainer-3-panel-shell">
+              <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-corner">
+                <CcButton
+                  variant="ghost-link"
+                  size="x-small"
+                  type="button"
+                  aria-label="Restart course from intro"
+                  @click="onMoveTrainer3RestartToIntro"
+                >
+                  Restart
+                </CcButton>
+              </div>
+              <div class="move-trainer-3-column panel-content" data-move-trainer-3-main>
+                <MoveTrainer3LineCoach>
+                  <MoveTrainer3Moves embedded-in-parent-scroll />
+                </MoveTrainer3LineCoach>
+              </div>
             </div>
             <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
@@ -11346,6 +11373,27 @@ body {
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+}
+.move-trainer-3-panel-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.move-trainer-3-restart-corner {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 8;
+  pointer-events: auto;
+}
+.panel-sm .move-trainer-3-restart-corner {
+  top: 6px;
+  right: 8px;
 }
 .move-trainer-3-column {
   display: flex;

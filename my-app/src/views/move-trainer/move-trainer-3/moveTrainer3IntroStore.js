@@ -500,6 +500,27 @@ export function resetMoveTrainer3LearnProgress() {
   moveTrainer3OmPostAuthorChain.value = null
 }
 
+/**
+ * Full lesson reset for **Restart → intro** — clears ply/progress, OM UI flags, and persisted learn snapshot.
+ * Caller should navigate to `/move-trainer/move-trainer-3` and cancel any in-flight scripted-move timers locally.
+ */
+export function restartMoveTrainer3ToIntro() {
+  resetMoveTrainer3LearnProgress()
+  moveTrainer3StartLearningNonce.value = 0
+  currentPly.value = 0
+  clearMoveTrainer3CoachPendingBlackSan()
+  moveTrainer3SkipBoardSyncFromStore.value = false
+  moveTrainer3WhiteOpeningAnimationActive.value = false
+  moveTrainer3OmReadingSelectedChipPly.value = 0
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      sessionStorage.removeItem(MOVE_TRAINER_3_SESSION_STORAGE_KEY)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 export function recordMoveTrainer3BlackLearnSuccess() {
   const t = moveTrainer3BlackMovesTotal.value
   if (!t || moveTrainer3BlackMovesCompleted.value >= t) return
