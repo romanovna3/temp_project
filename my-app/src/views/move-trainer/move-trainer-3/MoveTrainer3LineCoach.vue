@@ -254,6 +254,11 @@ const omAuthorReadingChapterLongForm = computed(
 const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
 /** Bound OM column height so long informational bubbles scroll inside (fade dissolves + thumb rail). */
+/** OM-7 after **…g6**: author note + second row — same **Play move** combined-bubble variant as `/play-move` (copy TBD). */
+const showOm7PlayMoveUnderAuthorReading = computed(
+  () => showOmAuthorReading.value && opponentsMoveStep.value === 7,
+)
+
 const omIntroStackChapterScrollClamp = computed(
   () =>
     (showOmVariant1.value
@@ -289,6 +294,58 @@ const omIntroStackChapterScrollClamp = computed(
     </div>
 
     <!-- OM: author note after successful Black move (same route step; reading phase) -->
+    <div
+      v-else-if="showOmAuthorReading && showOm7PlayMoveUnderAuthorReading"
+      class="move-trainer-3-coach move-trainer-3-coach--om-author-reading-with-play"
+    >
+      <div
+        class="move-trainer-3-coach move-trainer-3-coach--om-reading-fill"
+        :class="{ 'move-trainer-3-coach--om-reading-long': omAuthorReadingChapterLongForm }"
+      >
+        <CoachBubble
+          class="mt3-om-reading-coach"
+          :coach-avatar-src="davidCoachAvatarUrl"
+          header-icon=""
+          header-text=""
+          eval-text=""
+          :white-advantage="true"
+          :informational-single-bubble="true"
+          :message="omAuthorReadingLead"
+          :informational-segments="omAuthorReadingSegments"
+          :informational-segment-rails="omAuthorReadingSegmentRails"
+          :informational-chapter-long-form="omAuthorReadingChapterLongForm"
+          :informational-active-ply="moveTrainer3OmReadingSelectedChipPly"
+          :coach-avatar-icon-px="coachAvatarIconPx"
+          turn-strip-text=""
+          :show-tip="true"
+          :typewriter="false"
+          :fill-available-height="true"
+          :start-position="false"
+          @select-informational-ply="onSelectOmReadingChipPly"
+        />
+      </div>
+      <!-- Same shell as `/play-move` + OM play strip: heading-only until copy is finalized -->
+      <CoachBubble
+        class="mt3-om-play-coach mt3-om-play-coach--under-author-reading"
+        :coach-avatar-src="davidCoachAvatarUrl"
+        header-icon=""
+        header-text=""
+        eval-text=""
+        :white-advantage="true"
+        message=""
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        turn-strip-text=""
+        :show-tip="true"
+        :typewriter="false"
+        :intro-coach-combined-bubble="true"
+        intro-combined-lead-bold="Play move"
+        intro-combined-turn-strip-regular=""
+        :suppress-intro-combined-no-message-placeholder="true"
+        :fill-available-height="false"
+        :start-position="false"
+      />
+    </div>
+
     <div
       v-else-if="showOmAuthorReading"
       class="move-trainer-3-coach move-trainer-3-coach--om-reading-fill"
@@ -606,6 +663,21 @@ const omIntroStackChapterScrollClamp = computed(
 .move-trainer-3-coach--om-v1 {
   /* Keep inset parity with intro / Play Move (do not tighten top padding — reads as whole panel “jumped up”). */
   gap: 10px;
+}
+
+/* OM-7 post-…g6: author-reading bubble + Play move strip (second bubble reuses `.mt3-om-play-coach` parity). */
+.move-trainer-3-coach--om-author-reading-with-play {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+}
+
+.move-trainer-3-coach--om-author-reading-with-play > .move-trainer-3-coach--om-reading-fill {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Live OM e4 chapter: same fill + scroll + gradient dissolves as OM author-reading (`informational-single` shell). */
