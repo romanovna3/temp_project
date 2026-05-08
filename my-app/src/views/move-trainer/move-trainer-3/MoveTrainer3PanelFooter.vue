@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CcButton, CcIcon, CcProgressBar, CcTooltip } from '@chesscom/design-system'
+import { CcButton, CcIcon, CcProgressBar } from '@chesscom/design-system'
 import PanelFooterV10 from '@move-trainer/components/PanelFooterV10.vue'
 import MoveTrainer3PlayMoveHorizontalMovelist from './MoveTrainer3PlayMoveHorizontalMovelist.vue'
 import {
@@ -104,8 +104,8 @@ async function onOmContinue() {
     await router.replace('/move-trainer/move-trainer-3')
     return
   }
+  /* Scripted White chain runs in OpeningCourses watch — avoid awaiting nextTick here (extra frame before the watcher runs). */
   if (tryStartMoveTrainer3OmAuthorContinueChain()) {
-    await nextTick()
     return
   }
   resetMoveTrainer3OmAuthorNoteStep()
@@ -121,8 +121,6 @@ function onHint() {
   /* Placeholder — Play Move hint flow TBD */
 }
 
-/** Video stays usable on intro only; learn shell matches quiz-style lesson (tooltip on disabled control). */
-const MT3_VIDEO_DISABLED_TOOLTIP = 'Videos are not available during quiz'
 </script>
 
 <template>
@@ -155,28 +153,17 @@ const MT3_VIDEO_DISABLED_TOOLTIP = 'Videos are not available during quiz'
         </div>
         <div class="footer-buttons-row footer-buttons-row-split">
           <template v-if="isPlayMoveShellLayout">
-            <span class="mt3-video-tooltip-host footer-btn-equal">
-              <CcButton
-                variant="secondary"
-                size="large"
-                class="footer-btn-equal mt3-video-btn-fill"
-                :icon="{ name: 'media-camera-video-on' }"
-                :disabled="true"
-                :aria-disabled="true"
-                @click.prevent
-              >
-                Video
-              </CcButton>
-            </span>
-            <CcTooltip
-              for-previous-element
-              class="practice-in-tooltip-no-fade mt3-video-disabled-tooltip"
-              :delay="0"
-              position="top"
-              anchor="center"
+            <CcButton
+              variant="secondary"
+              size="large"
+              class="footer-btn-equal mt3-video-btn-fill"
+              :icon="{ name: 'media-camera-video-on' }"
+              :disabled="true"
+              :aria-disabled="true"
+              @click.prevent
             >
-              <span class="mt3-video-disabled-tooltip__text">{{ MT3_VIDEO_DISABLED_TOOLTIP }}</span>
-            </CcTooltip>
+              Video
+            </CcButton>
             <CcButton
               v-if="isOmAuthorNoteFooter"
               variant="primary"
@@ -352,20 +339,8 @@ const MT3_VIDEO_DISABLED_TOOLTIP = 'Videos are not available during quiz'
   overflow: hidden;
 }
 
-.mt3-video-tooltip-host {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-}
-
 .mt3-video-btn-fill {
   width: 100%;
 }
 
-.mt3-video-disabled-tooltip__text {
-  font-family: var(--font-family-system, system-ui, sans-serif);
-  font-size: 13px;
-  line-height: 1.35;
-  color: var(--color-text-default, #312e2b);
-}
 </style>

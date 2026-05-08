@@ -920,15 +920,28 @@ const omIntroStackChapterScrollClamp = computed(
 /*
  * Short OM author-reading copy (not `--om-reading-long`): **64px** min bubble band — coach-bubble-scrollable-variant-spec /
  * matches instruction-strip chrome (avoids squat single-line bubbles + layout thrash during route transitions).
+ * Plain-message rows (no combined heading): vertically center copy in that band — same intent as intro
+ * `.coach-container--single-bubble-hug .bubble-content--informational-message` { justify-content: center }.
  */
 .move-trainer-3-coach--om-reading-fill:not(.move-trainer-3-coach--om-reading-long) :deep(.bubble.bubble--informational-single) {
   min-height: 64px;
 }
 
 .move-trainer-3-coach--om-reading-fill:not(.move-trainer-3-coach--om-reading-long)
-  :deep(.bubble-scroll-panel--informational .bubble-content.bubble-content--informational-message:not(.bubble-content--informational-heading-only)) {
+  :deep(.bubble-informational-inner:not(:has(.coach-intro-combined-heading))) {
+  justify-content: center;
+}
+
+.move-trainer-3-coach--om-reading-fill:not(.move-trainer-3-coach--om-reading-long)
+  :deep(
+    .bubble-scroll-panel--informational
+      .bubble-content.bubble-content--informational-message:not(.bubble-content--informational-heading-only):not(
+        .bubble-content--informational-below-heading
+      )
+  ) {
   min-height: 64px;
   box-sizing: border-box;
+  justify-content: center;
 }
 
 /* Long OM chapter: coach column grows so scrollable bubble has room above footer */

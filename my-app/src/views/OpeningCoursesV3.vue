@@ -3130,7 +3130,7 @@ const OPENING_AUTO_MOVE_DURATION_MS = 320
  * Scripted White after OM author **Continue** (`afterAuthorContinue*`). Shorter than generic opening anim so
  * coach + route advance feel immediate; still long enough for piece slide + sound.
  */
-const MOVE_TRAINER_3_AUTHOR_CONTINUE_ANIM_MS = 220
+const MOVE_TRAINER_3_AUTHOR_CONTINUE_ANIM_MS = 140
 /** Move Trainer 3: brief pause after Black’s move + route change so White’s reply isn’t instant on top. */
 const MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS = 420
 function squareToPercent(square) {
@@ -4647,11 +4647,8 @@ watch(
     const usePlayMoveShellBeforeWhiteMove = !(typeof nextOmStep === 'number' && nextOmStep > 0)
     moveTrainer3SkipBoardSyncFromStore.value = true
     try {
-      await nextTick()
-      if (runId !== moveTrainer3OmPostAuthorChainGen) return
-
       /**
-       * OM-4 **Continue** after **…Nf6**: `/play-move` **before** scripted **Nc3** (skip extra **nextTick** — fewer blank frames).
+       * OM-4 Continue after …Nf6: `/play-move` before scripted Nc3. Omit leading nextTick so the chain starts same tick as Continue.
        */
       if (usePlayMoveShellBeforeWhiteMove) {
         await router.replace('/move-trainer/move-trainer-3/play-move')
