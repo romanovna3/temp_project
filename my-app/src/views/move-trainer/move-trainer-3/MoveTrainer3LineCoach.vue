@@ -60,12 +60,21 @@ const mt3ReplayPreviewHalfMove = computed(() => {
 })
 
 const mt3ReplayPreviewLeadBold = computed(() => {
+  /** Starting board (ply 0): show White’s first move as the next main-line step — same notation as replay chips. */
+  if (currentPly.value === 0) {
+    const first = moveTrainer3AllPlies.value[0]
+    if (first?.san && first.color === 'white' && typeof first.moveNum === 'number') {
+      return `${first.moveNum}.${first.san}`
+    }
+    return '1.d4'
+  }
   const ply = mt3ReplayPreviewHalfMove.value
   if (!ply?.san) return 'Review'
   return ply.color === 'white' ? `${ply.moveNum}.${ply.san}` : `${ply.moveNum}... ${ply.san}`
 })
 
 const mt3ReplayPreviewMessage = computed(() => {
+  if (currentPly.value === 0) return ''
   const ply = mt3ReplayPreviewHalfMove.value
   if (!ply?.san) return ''
   // Replay: notation-only chip — no body under 1.d4 / 1...c5
