@@ -17,8 +17,8 @@
  * **Footer progress**: Black replies vs Black moves in the variation (`CcProgressBar`: `completed-steps` / `total-step-count`);
  * resets when **Start Learning** runs; increments only on graded Play Move successes (not footer prev/next).
  *
- * **Footer chevrons** (after Start Learning): on “Play …” (ply 1) both prev/next disabled until Black progresses the line.
- * Prev/next then scrub between unlocked plies only (`moveTrainer3FooterNavMaxPly`); routes stay aligned via OpeningCoursesV3.
+ * **Footer chevrons** (after Start Learning): scrub includes **ply 0** (starting board before 1.d4); prev disabled only at 0.
+ * Forward stays capped at `moveTrainer3FooterNavMaxPly`; routes stay aligned via OpeningCoursesV3.
  */
 import { ref, computed } from 'vue'
 import { Chess } from 'chess.js'
@@ -182,9 +182,9 @@ export const moveTrainer3BlackMovesTotal = computed(() => {
 /**
  * After Start Learning, footer prev/next scrub between plies without undoing lesson progress counters.
  * Forward never exceeds the furthest ply reached via gameplay (Black success + scripted White on OM).
- * Back never goes before Black’s first checkpoint (after 1.d4 → ply 1).
+ * Back may reach **ply 0** (initial FEN) — users can review the default position before 1.d4.
  */
-export const MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY = 1
+export const MOVE_TRAINER_3_FOOTER_NAV_MIN_PLY = 0
 
 /** Max `currentPly` unlocked by gameplay; incremented explicitly from OpeningCoursesV3 (not by footer clicks). */
 export const moveTrainer3FooterNavMaxPly = ref(0)
