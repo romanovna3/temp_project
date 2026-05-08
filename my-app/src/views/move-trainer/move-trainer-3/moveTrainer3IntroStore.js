@@ -133,7 +133,7 @@ const MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP = Object.freeze({
  * Live progression coach uses `whiteCommentary` + `nextBlack*` (+ chapter `readingLead` on step **2**).
  * Movelist replay scrub uses the **same** checkpoint strings via `coachReplayHalfMoveBody`, then line `coachText` fallback.
  * **Reading phase:** `readingLead` + optional `readingSegments` / `readingSegmentRails` + optional `readingChapterLongForm`.
- * **`afterBlackMoveAuthorNote`** alone gates the post–graded-move **Continue** author-reading overlay.
+ * **`afterBlackMoveAuthorNote`** gates the post–graded-move **Continue** overlay only when the graded Black SAN matches **`nextBlackLeadBold`** (`Play …` → SAN) or optional **`afterBlackMoveAuthorNoteAfterSan`**.
  * Live OM chapter fields (`readingLead`, rails, etc.) do **not** — they run **before** Black’s reply on that step.
  */
 export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
@@ -175,6 +175,8 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
    * Indexed **6** — step **5** intentionally omitted so frontier routing returns `/play-move` after …Nc3.
    */
   6: {
+    nextBlackLeadBold: 'Play a5',
+    nextBlackTurnStrip: 'Black to play',
     afterBlackMoveAuthorNote: 'I like this move because it prepares ...b7-b5.',
     afterAuthorContinuePlayWhiteSan: 'a4',
     afterAuthorContinueToPlayMove: true,
@@ -201,6 +203,22 @@ export const MOVE_TRAINER_3_PLY_AFTER_WHITE_A4 = 13
 export function moveTrainer3CheckpointHasPostBlackAuthorNote(cp) {
   if (!cp) return false
   return typeof cp.afterBlackMoveAuthorNote === 'string' && cp.afterBlackMoveAuthorNote.trim().length > 0
+}
+
+/** SAN that must have just been graded for `afterBlackMoveAuthorNote` to apply (explicit override or `Play …` lead). */
+export function moveTrainer3ExpectedBlackSanForPostAuthorNote(cp) {
+  if (!cp) return ''
+  const explicit = cp.afterBlackMoveAuthorNoteAfterSan
+  if (typeof explicit === 'string' && explicit.trim()) return explicit.trim()
+  return mt3SanFromOmPlayLeadBold(cp.nextBlackLeadBold)
+}
+
+/** Whether to open the post–Black author overlay after this graded reply (avoids checkpoint **1** note firing after …c5). */
+export function moveTrainer3CheckpointPostBlackAuthorApplies(cp, gradedBlackSan) {
+  if (!moveTrainer3CheckpointHasPostBlackAuthorNote(cp)) return false
+  const expected = moveTrainer3ExpectedBlackSanForPostAuthorNote(cp)
+  if (!expected || typeof gradedBlackSan !== 'string' || !gradedBlackSan.trim()) return false
+  return gradedBlackSan.trim() === expected
 }
 
 export function moveTrainer3PathIsOpponentsMove(path) {

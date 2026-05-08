@@ -50,7 +50,7 @@ import {
   advanceMoveTrainer3PlyFromGameplay,
   moveTrainer3OmAuthorNoteStep,
   moveTrainer3CoachReplayScrubbing,
-  moveTrainer3CheckpointHasPostBlackAuthorNote,
+  moveTrainer3CheckpointPostBlackAuthorApplies,
   moveTrainer3OmReadingBoardOverride,
   moveTrainer3OmBlackPlayUiActive,
   moveTrainer3SuppressLearnShellRouteAlign,
@@ -4000,11 +4000,13 @@ const triggerCheckmateAnimation = (kingSquare, isBlackKing, onComplete) => {
 async function tryMoveTrainer3PlayMove(from, to) {
   const hint = getMoveTrainer3BlackHintSquares()
   if (!hint || hint.from !== from || hint.to !== to) return false
+  let gradedBlackSan = ''
   try {
     const chess = new Chess(moveTrainer3CurrentFen.value)
     if (chess.turn() !== 'b') return false
     const result = chess.move({ from, to })
     if (!result) return false
+    gradedBlackSan = typeof result.san === 'string' ? result.san : ''
   } catch {
     return false
   }
@@ -4024,7 +4026,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
   const completed = moveTrainer3BlackMovesCompleted.value
   const cpJustGraded = getMoveTrainer3OpponentsMoveCheckpoint(completed)
 
-  if (omStep && moveTrainer3CheckpointHasPostBlackAuthorNote(omCk)) {
+  if (omStep && moveTrainer3CheckpointPostBlackAuthorApplies(omCk, gradedBlackSan)) {
     clearMoveTrainer3OmReadingBoardBranch()
     moveTrainer3OmAuthorNoteStep.value = omStep
     await nextTick()
@@ -4033,7 +4035,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
   }
 
   /** Post–Black overlays initiated from `/play-move` (e.g. after **…a5** → checkpoint **6**). */
-  if (!omStep && moveTrainer3CheckpointHasPostBlackAuthorNote(cpJustGraded)) {
+  if (!omStep && moveTrainer3CheckpointPostBlackAuthorApplies(cpJustGraded, gradedBlackSan)) {
     clearMoveTrainer3OmReadingBoardBranch()
     moveTrainer3OmAuthorNoteStep.value = completed
     await router.replace(`/move-trainer/move-trainer-3/opponents-move-${completed}`)
