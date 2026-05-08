@@ -22,7 +22,7 @@ Nested routes (all under **`MoveTrainer3Shell`** → single **`OpeningCoursesV3`
 - **`currentPly`** — Cursor for “which position we’re looking at.” `0` = start FEN before any half-move from the demo line; after half-move *k* has been *played on the board*, the cursor is `k` (see `currentFen` in the store). Footer chevrons and board highlights follow this value.
 - **`moveTrainer3FooterNavMaxPly`** — Furthest ply **unlocked by gameplay** (correct Black moves on Play Move, scripted advances on OM). Footer **forward** chevron cannot go past `min(lineLength, footerNavMaxPly)`. Does **not** move when only scrubbing.
 - **Live progression** — User is at the **frontier**: `currentPly === moveTrainer3FooterNavMaxPly` (after Start Learning). Coach copy reflects **what to do next** (“Play …”, OM checkpoint text, etc.).
-- **Replay scrub** — User stepped **behind** the frontier: `moveTrainer3StartLearningNonce > 0` and `currentPly < moveTrainer3FooterNavMaxPly`. Coach switches to **replay narration** (notation + optional body: **`afterBlackMoveAuthorNote`** for matching Black OM replies; **`whiteCommentary`** from checkpoints **3** / **4** when scrub lands on White **4.f4** / **5.Bxf4**); **URL stays tied to furthest progress**, not the scrub cursor (see OpeningCourses route watcher).
+- **Replay scrub** — User stepped **behind** the frontier: `moveTrainer3StartLearningNonce > 0` and `currentPly < moveTrainer3FooterNavMaxPly`. Coach switches to **replay narration** (notation + body from OM **`afterBlackMoveAuthorNote`** / checkpoint **`whiteCommentary`** for **4.f4** / **5.Bxf4** when applicable, else **`MOVE_TRAINER_3_LINE_GAME` `coachText`** for that half-move); **1.d4** / **1...c5** stay **heading-only** in the preview bubble; **URL stays tied to furthest progress**, not the scrub cursor (see OpeningCourses route watcher).
 - **`moveTrainer3CoachReplayScrubbing`** — Store flag for replay scrub; drives coach bubble mode and Play Move heading/subtitle behavior.
 
 ---
@@ -47,7 +47,7 @@ These are the **distinct coach/footer presentations** users see. **`MoveTrainer3
 ### L3 — Play Move (replay scrub)
 
 - **Same route as L2**, but **`showMt3ReplayCoachPreview`** in `MoveTrainer3LineCoach`.
-- **Coach:** Separate **non-fill** combined bubble — **notation** for selected half-move + optional body: **`afterBlackMoveAuthorNote`** (matching Black OM reply), or **`whiteCommentary`** for **White `4.f4`** / **`5.Bxf4`** (checkpoints **3** / **4**, same copy as OM variant 1); otherwise **heading-only**. At **`currentPly === 0`**, heading shows **first White move** (e.g. `1.d4`) with no body.
+- **Coach:** Separate **non-fill** combined bubble — **notation** for selected half-move + body when present: **`afterBlackMoveAuthorNote`** (matching Black OM reply), **`whiteCommentary`** for **White `4.f4`** / **`5.Bxf4`** (checkpoints **3** / **4**, same copy as OM variant 1), else **line `coachText`** for that half-move; **1.d4** / **1...c5** remain **heading-only**. At **`currentPly === 0`**, heading shows **first White move** (e.g. `1.d4`) with no body.
 - **Footer:** Same shell as L2; movelist highlights **san** for `currentPly - 1` (no pill highlight at ply `0`); chevrons move **`currentPly`** within `[0, footerNavMaxPly]`.
 
 ### L4 — OM variant 1 (live)

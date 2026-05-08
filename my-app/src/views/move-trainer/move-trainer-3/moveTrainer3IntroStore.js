@@ -601,8 +601,9 @@ export const coachSelectedPlyCommentary = computed(() => {
 /**
  * Replay scrub bubble body for the half-move at `currentPly - 1`:
  * - **Black:** checkpoint **`afterBlackMoveAuthorNote`** when SAN matches that OM step’s **`Play …`** lead.
- * - **White:** **`whiteCommentary`** from checkpoints **3** (**4.f4**) and **4** (**5.Bxf4**) — same copy as live OM variant 1 (no duplicate strings in line JSON).
- * No generic line `coachText`, no OM **`readingLead`** in replay. Heading-only chips (1.d4 / 1...c5) → ''.
+ * - **White:** **`whiteCommentary`** from checkpoints **3** (**4.f4**) and **4** (**5.Bxf4**) when set — same copy as live OM variant 1.
+ * - **Fallback:** line JSON **`coachText`** for that half-move (heading-only **1.d4** / **1...c5** stay empty in UI).
+ * No OM **`readingLead`** / chapter in replay.
  */
 export const coachReplayHalfMoveBody = computed(() => {
   const idx = currentPly.value - 1
@@ -635,7 +636,8 @@ export const coachReplayHalfMoveBody = computed(() => {
     }
   }
 
-  return ''
+  const lineBody = ply.coachText
+  return typeof lineBody === 'string' ? lineBody.trim() : ''
 })
 
 export function goBack() {
