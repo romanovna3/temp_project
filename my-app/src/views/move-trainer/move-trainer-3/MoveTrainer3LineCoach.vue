@@ -102,6 +102,15 @@ const suppressOmCoachDuringPostAuthorWhite = computed(
   () => !!moveTrainer3OmPostAuthorChain.value?.playWhiteSan && isOpponentsMoveLayout.value,
 )
 
+/** Play Move: avoid “No message” during White-to-move beats (scripted **Nc3** / similar). */
+const mt3PlayMoveSuppressEmptyCombinedPlaceholder = computed(
+  () =>
+    isPlayMoveLayout.value
+    && !coachPlayMoveLeadBold.value?.trim()
+    && !coachPlayMoveTurnLabel.value?.trim()
+    && !playMoveCoachBubbleMessage.value?.trim(),
+)
+
 /** OM v1 live tip: short `whiteCommentary` only (long chapter uses informational bubble below). */
 const omVariant1TopBubbleMessage = computed(() =>
   suppressOmCoachDuringPostAuthorWhite.value ? '' : (opponentsMoveCheckpoint.value?.whiteCommentary ?? ''),
@@ -412,6 +421,7 @@ const omIntroStackChapterScrollClamp = computed(
         :turn-strip-text="coachTurnStripText"
         :intro-combined-lead-bold="isPlayMoveLayout ? coachPlayMoveLeadBold : ''"
         :intro-combined-turn-strip-regular="isPlayMoveLayout ? coachPlayMoveTurnLabel : ''"
+        :suppress-intro-combined-no-message-placeholder="mt3PlayMoveSuppressEmptyCombinedPlaceholder"
         :show-tip="true"
         :typewriter="false"
         :intro-coach-combined-bubble="true"

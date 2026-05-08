@@ -68,6 +68,8 @@ const props = defineProps({
   introCombinedLeadBold: { type: String, default: '' },
   /** Second line: same typography as coach body (`cc-text-speech`), regular weight (e.g. “Black to play”). */
   introCombinedTurnStripRegular: { type: String, default: '' },
+  /** Intro-combined Play Move: omit “No message” when heading/body are intentionally empty (e.g. White’s scripted half-move beat). */
+  suppressIntroCombinedNoMessagePlaceholder: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['selectInformationalPly', 'informationalBodyOverflow'])
@@ -495,7 +497,12 @@ const typewriterResult = props.typewriter
                 </div>
               </template>
               <p
-                v-else-if="!showIntroCombinedHeading && !message?.trim() && !hasInformationalRichBody"
+                v-else-if="
+                  !showIntroCombinedHeading
+                  && !message?.trim()
+                  && !hasInformationalRichBody
+                  && !suppressIntroCombinedNoMessagePlaceholder
+                "
                 class="empty"
               >
                 No message

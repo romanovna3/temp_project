@@ -151,6 +151,17 @@ Steps describe **typical** demo line behavior; **coach copy is product-authored*
 
 Learn-shell routing after Black milestones uses **`moveTrainer3LearnShellTargetFromFrontier`** / **`moveTrainer3LearnShellPathAfterBlackSuccessCount`**: **`/opponents-move-{N}`** only when checkpoint **N** exists; otherwise **`/play-move`** (so there is no empty **`opponents-move-5`** after this segment).
 
+### A4e — **…a6** on Play Move → OM step **6** author note → **Continue** → **a4** → OM step **7**
+
+| Surface | Behavior |
+|--------|----------|
+| Trigger | Correct **…a6** on **`/play-move`**. |
+| Post-move | **`/opponents-move-6`** + author-reading (**`afterBlackMoveAuthorNote`**). The OM scripted-White watcher skips while **`moveTrainer3OmAuthorNoteStep === step`** (otherwise **a4** would fire immediately — same **`step`** / **`blackMovesCompleted`** collision). |
+| **Continue** | **`afterAuthorContinue*`** on checkpoint **6**: scripted **a4**, ply advance, **`/opponents-move-7`** (no extra OM delay beat before **a4**). |
+| Coach | Checkpoint **7** — **`whiteCommentary`** (*After White's inevitable response…*) + **Play g6** strip + hint arrow (**`moveTrainer3OmBlackPlayUiActive`**). |
+
+Play Move shell: **`suppressIntroCombinedNoMessagePlaceholder`** on **`CoachBubble`** avoids a **“No message”** flash during brief White-to-move beats (e.g. after **Continue** → **Nc3**).
+
 ### A5 — OM author reading (optional checkpoint field)
 
 | Surface | Behavior |

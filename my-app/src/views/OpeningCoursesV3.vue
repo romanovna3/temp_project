@@ -4558,6 +4558,8 @@ watch(
     route.path,
     moveTrainer3CurrentPly.value,
     moveTrainer3CurrentFen.value,
+    moveTrainer3OmAuthorNoteStep.value,
+    moveTrainer3OmPostAuthorChain.value,
   ],
   async () => {
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
@@ -4576,6 +4578,9 @@ watch(
     }
     const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
     if (!step || step !== moveTrainer3BlackMovesCompleted.value) return
+    /** Post–Black author overlay (**Continue** runs `afterAuthorContinue*` scripted White — not this watcher). */
+    if (moveTrainer3OmAuthorNoteStep.value === step) return
+    if (moveTrainer3OmPostAuthorChain.value?.playWhiteSan) return
 
     const plyIdx = moveTrainer3CurrentPly.value
     const nextWhite = moveTrainer3AllPlies.value[plyIdx]
@@ -4641,12 +4646,8 @@ watch(
         await router.replace('/move-trainer/move-trainer-3/play-move')
         await nextTick()
         if (runId !== moveTrainer3OmPostAuthorChainGen) return
-      } else {
-        await new Promise((resolve) => {
-          setTimeout(resolve, MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS)
-        })
-        if (runId !== moveTrainer3OmPostAuthorChainGen) return
       }
+      /** **Nc3** jumps shell first; **a4** stays routed — no OM delay beat (avoids empty OM-6 shell / racing watchers). */
       if (moveTrainer3CoachReplayScrubbing.value) return
 
       playOpeningThirdMove(moveTrainer3CurrentFen.value, chain.playWhiteSan, { forceSound: true })
