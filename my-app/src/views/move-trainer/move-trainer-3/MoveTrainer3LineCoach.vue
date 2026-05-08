@@ -263,6 +263,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   flex-shrink: 0;
   position: relative;
   z-index: 2;
+  /* Single caret anchor for every MT3 coach shell — CoachBubble `.tip` uses `top: var(--coach-tip-top)`. */
   --coach-tip-top: 20px;
 }
 
@@ -277,7 +278,6 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
 /* Single-line move chip — collapse empty body slot; pin bubble + scroll panel to 64px */
 .move-trainer-3-coach--mt3-replay-preview :deep(.bubble--informational-single:has(.bubble-content--informational-heading-only)) {
-  --coach-tip-top: 21px;
   min-height: 64px;
   height: 64px;
 }
@@ -433,23 +433,19 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 }
 
 /*
- * Commentary row: generic bubble sits beside an 80px avatar — align bubble + tip to the avatar row
- * (same intent as CoachBubble `start-position`) while OM `:deep()` rules keep copy height hugged.
+ * Commentary row (generic bubble branch): same 16px bubble top inset + top-anchored caret as intro / replay /
+ * Play Move — avoids OM-only bottom-anchored tip that jumped vs other routes.
  */
-.move-trainer-3-coach--om-v1 .mt3-om-commentary-coach {
-  --coach-tip-bottom: 10px;
-}
-
 .move-trainer-3-coach--om-v1 .mt3-om-commentary-coach :deep(.bubble-wrapper) {
-  margin-top: 0;
-  min-height: var(--coach-avatar-size, 80px);
-  align-items: flex-end;
+  margin-top: 16px;
+  margin-bottom: 0;
+  min-height: 0;
+  align-items: flex-start;
 }
 
 .move-trainer-3-coach--om-v1 .mt3-om-commentary-coach :deep(.tip) {
-  top: auto;
-  bottom: var(--coach-tip-bottom, 10px);
-  /* Parent `.move-trainer-3-coach` forces 33px tip height — breaks SVG proportion & attachment point. */
+  top: var(--coach-tip-top, 20px);
+  bottom: auto;
   height: 22px;
   width: 14px;
 }
@@ -518,14 +514,15 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   );
 }
 
+/* Match CoachBubble `.tip` asset box — never stretch height or the caret appears to slide. */
 .move-trainer-3-coach :deep(.tip) {
-  height: 33px;
+  width: 14px;
+  height: 22px;
 }
 
 /*
- * Same top inset for the white bubble on intro + Play Move (fill layout defaulted to 8px).
- * Keeps one consistent “start line” for the speech bubble regardless of height mode.
- * Opponents Move (--om-v1) sets its own offsets — do not apply here.
+ * Same top inset for informational single-bubble shells on intro / replay / Play Move fill.
+ * OM v1 commentary (generic bubble) uses `.mt3-om-commentary-coach` rules above for the same 16px inset.
  */
 .move-trainer-3-coach:not(.move-trainer-3-coach--om-v1)
   :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
@@ -561,7 +558,7 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 }
 
 .move-trainer-3-coach :deep(.coach-container.start-position .tip) {
-  top: 20px;
+  top: var(--coach-tip-top, 20px);
   bottom: auto;
 }
 

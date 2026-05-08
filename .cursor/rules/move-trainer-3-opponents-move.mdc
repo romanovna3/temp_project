@@ -20,6 +20,7 @@ When adding or editing **`/move-trainer/move-trainer-3/opponents-move-*`** flows
 ## Coach layout (`MoveTrainer3LineCoach.vue`)
 
 - **Coach avatar vertical position:** keep the portrait **top-aligned** with the coach row (`align-self: flex-start`), including replay scrub — **do not** vertically center the avatar against the bubble (`align-self: center`): bubble height varies by ply (heading-only chip vs move + commentary) and centering moves the avatar.
+- **Bubble caret:** one anchor for MT3 — `.move-trainer-3-coach` sets **`--coach-tip-top`** (CoachBubble `.tip` uses `top: var(--coach-tip-top)`). Keep tip box **14×22px** per CoachBubble; **do not** override `.tip` height to ~33px in LineCoach. Use **top** anchoring everywhere (no OM-only **bottom** tip) unless product revisits alignment.
 - OM wrapper **must** use **`move-trainer-3-coach--om-v1`** (or future OM-specific class).
 - **Exclude OM** from Intro-only selectors that use `:not(.move-trainer-3-coach--play-move-fill)` — those rules assume Intro movelist layout and force **`min-height`** / margins that break OM “hug content” bubbles.
 - `CoachBubble` uses fixed **~116px** row/min-heights for generic and informational branches; OM needs **scoped `:deep()` overrides** so bubbles **hug copy** (do not ship OM with empty vertical padding from DS defaults).
