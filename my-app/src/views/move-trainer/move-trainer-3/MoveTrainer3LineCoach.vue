@@ -568,6 +568,11 @@ const omIntroStackChapterScrollClamp = computed(
   overflow: hidden;
 }
 
+/* Row defaults to align-items:flex-start — bubble stays short; stretch so wrapper fills coach height. */
+.move-trainer-3-coach--om-v1-live-chapter :deep(.coach-container.coach-container--fill-available.coach-container--informational-single) {
+  align-items: stretch;
+}
+
 .move-trainer-3-coach--om-v1-live-chapter :deep(.coach-container.mt3-om-live-chapter-coach) {
   flex: 1 1 auto;
   min-height: 0;
@@ -596,11 +601,15 @@ const omIntroStackChapterScrollClamp = computed(
   max-height: 100%;
 }
 
+.move-trainer-3-coach--om-v1-live-chapter .mt3-om-live-chapter-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-self: stretch;
+}
+
 .move-trainer-3-coach--om-v1-live-chapter .mt3-om-live-chapter-coach :deep(.bubble-scroll-panel.bubble-scroll-panel--informational) {
   flex: 1 1 auto;
   min-height: 0;
-  /* Flex parents may not cap height; fixed max bounds the scroll port so fades + overflow measure work. */
-  max-height: min(42dvh, 22rem);
 }
 
 .move-trainer-3-coach--om-v1-live-chapter :deep(.coach-avatar) {
