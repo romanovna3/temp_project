@@ -27,6 +27,9 @@ import {
   tryStartMoveTrainer3OmAuthorContinueChain,
   moveTrainer3OmReadingSelectedChipPly,
   clearMoveTrainer3OmReadingBoardBranch,
+  getMoveTrainer3AuthorReadingPrimaryLabel,
+  moveTrainer3AuthorReadingNavigateIntro,
+  restartMoveTrainer3ToIntro,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -77,6 +80,10 @@ function onMt3MovelistSelectPly(idx) {
 
 const isOmAuthorNoteFooter = computed(() => moveTrainer3OmAuthorNoteStep.value > 0)
 
+const omAuthorReadingPrimaryLabel = computed(() =>
+  getMoveTrainer3AuthorReadingPrimaryLabel(moveTrainer3OmAuthorNoteStep.value),
+)
+
 /** Long OM chapter overflow — read phase only (Video + Continue before Play strip). */
 const isOmChapterReadFooter = computed(
   () =>
@@ -90,6 +97,13 @@ function onOmChapterReadContinue() {
 }
 
 async function onOmContinue() {
+  const authorStep = moveTrainer3OmAuthorNoteStep.value
+  if (moveTrainer3AuthorReadingNavigateIntro(authorStep)) {
+    resetMoveTrainer3OmAuthorNoteStep()
+    restartMoveTrainer3ToIntro()
+    await router.replace('/move-trainer/move-trainer-3')
+    return
+  }
   if (tryStartMoveTrainer3OmAuthorContinueChain()) {
     await nextTick()
     return
@@ -170,7 +184,7 @@ const MT3_VIDEO_DISABLED_TOOLTIP = 'Videos are not available during quiz'
               class="footer-btn-equal"
               @click="onOmContinue"
             >
-              Continue
+              {{ omAuthorReadingPrimaryLabel }}
             </CcButton>
             <CcButton
               v-else-if="isOmChapterReadFooter"

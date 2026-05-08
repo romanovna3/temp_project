@@ -32,7 +32,7 @@ export const MOVE_TRAINER_3_SESSION_STORAGE_KEY = 'chesscom.moveTrainer3.learnSe
 export const MOVE_TRAINER_3_COURSE_TITLE = 'Black is Back: Old Benoni'
 
 /** Move list header — main line label. */
-export const MOVE_TRAINER_3_LINE_HEADER_TITLE = 'Main Line without c2-c4 – 4.f4'
+export const MOVE_TRAINER_3_LINE_HEADER_TITLE = 'Main Line — 7 moves (…g6)'
 
 /** Intro screen coach bubble — short copy only (don’t couple Play Move body here). */
 export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line together"
@@ -165,12 +165,37 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
       "Now, White's pieces seem to be coming out pretty rapidly. However, the e5-square becomes a great outpost for a black knight, and the e4-pawn could become rather weak as well.",
     nextBlackLeadBold: 'Play Nf6',
     nextBlackTurnStrip: 'Black to play',
-    /** Post–…Nf6: author overlay only (no OM instruction strip); Continue → scripted **Nc3** → `/play-move` (**…a6**). */
+    /** Post–…Nf6: author overlay only (no OM instruction strip); Continue → scripted **Nc3** → `/play-move` (**…a5**). */
     afterBlackMoveAuthorNote: 'For now, we just develop.',
     afterAuthorContinuePlayWhiteSan: 'Nc3',
     afterAuthorContinueToPlayMove: true,
   },
+  /**
+   * Post–…a5 (graded on `/play-move`): author overlay + Continue → scripted **7.a4** → `/opponents-move-7`.
+   * Indexed **6** — step **5** intentionally omitted so frontier routing returns `/play-move` after …Nc3.
+   */
+  6: {
+    afterBlackMoveAuthorNote: 'I like this move because it prepares ...b7-b5.',
+    afterAuthorContinuePlayWhiteSan: 'a4',
+    afterAuthorContinueToPlayMove: true,
+    afterAuthorContinueNextOpponentsMoveStep: 7,
+  },
+  /** After **7.a4** — OM commentary + **Play g6**; post–…g6 overlay uses **`authorReadingPrimaryLabel`**. */
+  7: {
+    whiteCommentary:
+      "After White's inevitable response, we no longer have to worry about Bb5+ or Nb5-related ideas!",
+    nextBlackLeadBold: 'Play g6',
+    nextBlackTurnStrip: 'Black to play',
+    afterBlackMoveAuthorNote:
+      'The bishop could also go to e7, but given the freedom to deploy it more actively, we gladly will! It will look great on the long diagonal while also making our king even safer.',
+    authorReadingPrimaryLabel: 'Start Quiz',
+    /** Footer primary clears overlay and returns to MT3 intro (quiz entry stub). */
+    authorReadingNavigateIntro: true,
+  },
 })
+
+/** Half-move cursor **after** **7.a4** is applied (`currentPly`; Black to play …g6). Used for OM-7 shell routing. */
+export const MOVE_TRAINER_3_PLY_AFTER_WHITE_A4 = 13
 
 /** Post–graded-move author overlay: plain `afterBlackMoveAuthorNote` only (not live-chapter `readingLead`). */
 export function moveTrainer3CheckpointHasPostBlackAuthorNote(cp) {
@@ -206,6 +231,19 @@ export function getMoveTrainer3OpponentsMoveCheckpoint(step) {
   return MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[n] ?? null
 }
 
+/** Footer CTA during OM author-reading overlay (`Continue` vs **`authorReadingPrimaryLabel`**). */
+export function getMoveTrainer3AuthorReadingPrimaryLabel(step) {
+  const cp = step ? getMoveTrainer3OpponentsMoveCheckpoint(step) : null
+  const raw = cp?.authorReadingPrimaryLabel
+  if (typeof raw === 'string' && raw.trim()) return raw.trim()
+  return 'Continue'
+}
+
+export function moveTrainer3AuthorReadingNavigateIntro(step) {
+  const cp = step ? getMoveTrainer3OpponentsMoveCheckpoint(step) : null
+  return cp?.authorReadingNavigateIntro === true
+}
+
 /**
  * `/play-move` vs `/opponents-move-N` from frontier ply — OM route only when checkpoint **N** is defined.
  */
@@ -213,6 +251,12 @@ export function moveTrainer3LearnShellTargetFromFrontier() {
   const ply = moveTrainer3FooterNavMaxPly.value
   const nBlack = moveTrainer3BlackMovesThroughPly(ply)
   if (nBlack === 0) return '/move-trainer/move-trainer-3/play-move'
+
+  const cp7 = getMoveTrainer3OpponentsMoveCheckpoint(7)
+  if (cp7 && nBlack === 6 && ply >= MOVE_TRAINER_3_PLY_AFTER_WHITE_A4) {
+    return '/move-trainer/move-trainer-3/opponents-move-7'
+  }
+
   const cp = getMoveTrainer3OpponentsMoveCheckpoint(nBlack)
   return cp ? `/move-trainer/move-trainer-3/opponents-move-${nBlack}` : '/move-trainer/move-trainer-3/play-move'
 }
@@ -237,9 +281,11 @@ export function tryStartMoveTrainer3OmAuthorContinueChain() {
   const raw = cp?.afterAuthorContinuePlayWhiteSan
   const san = typeof raw === 'string' ? raw.trim() : ''
   if (!san || cp?.afterAuthorContinueToPlayMove !== true) return false
+  const nextOm = cp?.afterAuthorContinueNextOpponentsMoveStep
   resetMoveTrainer3OmAuthorNoteStep()
   moveTrainer3SuppressLearnShellRouteAlign.value = true
-  moveTrainer3OmPostAuthorChain.value = { playWhiteSan: san }
+  moveTrainer3OmPostAuthorChain.value =
+    typeof nextOm === 'number' && nextOm > 0 ? { playWhiteSan: san, nextOpponentsMoveStep: nextOm } : { playWhiteSan: san }
   return true
 }
 
@@ -653,6 +699,10 @@ export const coachReplayHalfMoveBody = computed(() => {
     }
     if (ply.moveNum === 5 && ply.san === 'Bxf4') {
       const t = typeof cps[4]?.whiteCommentary === 'string' ? cps[4].whiteCommentary.trim() : ''
+      if (t) return t
+    }
+    if (ply.moveNum === 7 && ply.san === 'a4') {
+      const t = typeof cps[7]?.whiteCommentary === 'string' ? cps[7].whiteCommentary.trim() : ''
       if (t) return t
     }
   }

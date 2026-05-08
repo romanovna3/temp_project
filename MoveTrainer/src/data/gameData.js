@@ -301,7 +301,7 @@ export const INTRO_1_GAME = {
 
 /**
  * Main-line preview for Move Trainer 3 (Old Benoni) — course panel move list + board plies.
- * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a6 7.a4 g6 8.Nf3 Bg4 9.Be2 Bg7 10.O-O O-O
+ * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a5 7.a4 g6 (short demo — quiz follows …g6).
  *
  * **`coachText`:** Fallback narration when a half-move has **no** matching OM checkpoint string in
  * `coachReplayHalfMoveBody` (live course copy always wins from checkpoints for **2.d5**, **3.e4** chapter lead,
@@ -410,10 +410,10 @@ export const MOVE_TRAINER_3_LINE_GAME = {
         eval: '+0.2',
       },
       black: {
-        san: 'a6',
+        san: 'a5',
         classification: 'book',
-        fen: 'rnbqkb1r/1p3ppp/p2p1n2/2pP4/4PB2/2N5/PPP3PP/R2QKBNR w KQkq - 0 7',
-        coachText: 'A useful waiting move — often preparing …b5 ideas.',
+        fen: 'rnbqkb1r/1p3ppp/3p1n2/p1pP4/4PB2/2N5/PPP3PP/R2QKBNR w KQkq - 0 7',
+        coachText: '',
         eval: '0.0',
       },
     },
@@ -422,70 +422,15 @@ export const MOVE_TRAINER_3_LINE_GAME = {
       white: {
         san: 'a4',
         classification: 'book',
-        fen: 'rnbqkb1r/1p3ppp/p2p1n2/2pP4/P3PB2/2N5/1PP3PP/R2QKBNR b KQkq - 0 7',
-        coachText: 'White clamps queenside expansion.',
+        fen: 'rnbqkb1r/1p3ppp/3p1n2/p1pP4/P3PB2/2N5/1PP3PP/R2QKBNR b KQkq - 0 7',
+        coachText: '',
         eval: '+0.2',
       },
       black: {
         san: 'g6',
         classification: 'book',
-        fen: 'rnbqkb1r/1p3p1p/p2p1np1/2pP4/P3PB2/2N5/1PP3PP/R2QKBNR w KQkq - 0 8',
-        coachText: 'Fianchetto prep — the bishop will breathe on g7.',
-        eval: '0.0',
-      },
-    },
-    {
-      num: 8,
-      white: {
-        san: 'Nf3',
-        piece: 'N',
-        classification: 'book',
-        fen: 'rnbqkb1r/1p3p1p/p2p1np1/2pP4/P3PB2/2N2N2/1PP3PP/R2QKB1R b KQkq - 1 8',
-        coachText: 'Natural development — eyes on e5 and the center.',
-        eval: '+0.2',
-      },
-      black: {
-        san: 'Bg4',
-        piece: 'B',
-        classification: 'book',
-        fen: 'rn1qkb1r/1p3p1p/p2p1np1/2pP4/P3PBb1/2N2N2/1PP3PP/R2QKB1R w KQkq - 2 9',
-        coachText: 'Pinning the knight — classic Benoni pressure.',
-        eval: '0.0',
-      },
-    },
-    {
-      num: 9,
-      white: {
-        san: 'Be2',
-        piece: 'B',
-        classification: 'book',
-        fen: 'rn1qkb1r/1p3p1p/p2p1np1/2pP4/P3PBb1/2N2N2/1PP1B1PP/R2QK2R b KQkq - 3 9',
-        coachText: 'Breaking the pin while staying solid.',
-        eval: '+0.2',
-      },
-      black: {
-        san: 'Bg7',
-        piece: 'B',
-        classification: 'book',
-        fen: 'rn1qk2r/1p3pbp/p2p1np1/2pP4/P3PBb1/2N2N2/1PP1B1PP/R2QK2R w KQkq - 4 10',
-        coachText: 'The fianchettoed bishop dominates the long diagonal.',
-        eval: '0.0',
-      },
-    },
-    {
-      num: 10,
-      white: {
-        san: 'O-O',
-        classification: 'book',
-        fen: 'rn1qk2r/1p3pbp/p2p1np1/2pP4/P3PBb1/2N2N2/1PP1B1PP/R2Q1RK1 b kq - 5 10',
-        coachText: 'White castles — the king is safe; rooks connect.',
-        eval: '+0.2',
-      },
-      black: {
-        san: 'O-O',
-        classification: 'book',
-        fen: 'rn1q1rk1/1p3pbp/p2p1np1/2pP4/P3PBb1/2N2N2/1PP1B1PP/R2Q1RK1 w - - 6 11',
-        coachText: 'Black castles — both sides are fully developed.',
+        fen: 'rnbqkb1r/1p3p1p/3p1np1/p1pP4/P3PB2/2N5/1PP3PP/R2QKBNR w KQkq - 0 8',
+        coachText: '',
         eval: '0.0',
       },
     },

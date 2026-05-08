@@ -4017,15 +4017,25 @@ async function tryMoveTrainer3PlayMove(from, to) {
   advanceMoveTrainer3PlyFromGameplay()
   recordMoveTrainer3BlackLearnSuccess()
 
+  const completed = moveTrainer3BlackMovesCompleted.value
+  const cpJustGraded = getMoveTrainer3OpponentsMoveCheckpoint(completed)
+
   if (omStep && moveTrainer3CheckpointHasPostBlackAuthorNote(omCk)) {
     moveTrainer3OmAuthorNoteStep.value = omStep
     await nextTick()
     return true
   }
 
-  const step = moveTrainer3BlackMovesCompleted.value
+  /** Post–Black overlays initiated from `/play-move` (e.g. after **…a5** → checkpoint **6**). */
+  if (!omStep && moveTrainer3CheckpointHasPostBlackAuthorNote(cpJustGraded)) {
+    moveTrainer3OmAuthorNoteStep.value = completed
+    await router.replace(`/move-trainer/move-trainer-3/opponents-move-${completed}`)
+    await nextTick()
+    return true
+  }
+
   await nextTick()
-  await router.push(moveTrainer3LearnShellPathAfterBlackSuccessCount(step))
+  await router.push(moveTrainer3LearnShellPathAfterBlackSuccessCount(completed))
   return true
 }
 
@@ -4592,7 +4602,7 @@ watch(
   { flush: 'post' },
 )
 
-/** OM author **Continue** (checkpoint `afterAuthorContinue*`): scripted White half-move → `/play-move` for next Black try (e.g. **…a6**). */
+/** OM author **Continue** (checkpoint `afterAuthorContinue*`): scripted White half-move → `/play-move` or **`/opponents-move-{N}`** when `afterAuthorContinueNextOpponentsMoveStep` is set. */
 let moveTrainer3OmPostAuthorChainGen = 0
 watch(
   () => moveTrainer3OmPostAuthorChain.value,
@@ -4623,7 +4633,12 @@ watch(
 
       advanceMoveTrainer3PlyFromGameplay()
       moveTrainer3OmPostAuthorChain.value = null
-      await router.replace('/move-trainer/move-trainer-3/play-move')
+      const nextOm = chain.nextOpponentsMoveStep
+      if (typeof nextOm === 'number' && nextOm > 0) {
+        await router.replace(`/move-trainer/move-trainer-3/opponents-move-${nextOm}`)
+      } else {
+        await router.replace('/move-trainer/move-trainer-3/play-move')
+      }
     } finally {
       moveTrainer3SkipBoardSyncFromStore.value = false
       moveTrainer3SuppressLearnShellRouteAlign.value = false

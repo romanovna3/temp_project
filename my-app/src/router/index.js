@@ -41,7 +41,15 @@ const router = createRouter({
           name: 'move-trainer-3-play-move',
           component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3RouteStub.vue'),
         },
-        ...['opponents-move-1', 'opponents-move-2', 'opponents-move-3', 'opponents-move-4', 'opponents-move-5', 'opponents-move-6'].map(
+        ...[
+          'opponents-move-1',
+          'opponents-move-2',
+          'opponents-move-3',
+          'opponents-move-4',
+          'opponents-move-5',
+          'opponents-move-6',
+          'opponents-move-7',
+        ].map(
           (seg) => ({
             path: seg,
             name: `move-trainer-3-${seg}`,
