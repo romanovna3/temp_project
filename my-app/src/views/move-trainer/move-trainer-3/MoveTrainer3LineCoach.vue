@@ -237,7 +237,9 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 /** Bound OM column height so long informational bubbles scroll inside (fade dissolves + thumb rail). */
 const omIntroStackChapterScrollClamp = computed(
   () =>
-    (showOmVariant1.value && omVariant1UsesInformationalChapter.value)
+    (showOmVariant1.value
+      && omVariant1UsesInformationalChapter.value
+      && !omV1InstructionPhaseFill.value)
     || (showOmAuthorReading.value && omAuthorReadingChapterLongForm.value),
 )
 </script>
@@ -302,7 +304,7 @@ const omIntroStackChapterScrollClamp = computed(
       class="move-trainer-3-coach move-trainer-3-coach--om-v1"
       :class="{
         'move-trainer-3-coach--om-v1-live-chapter': omV1LiveChapterLayoutStretch,
-        'move-trainer-3-coach--om-v1-instruction-fill': omV1InstructionPhaseFill,
+        'move-trainer-3-coach--play-move-fill': omV1InstructionPhaseFill,
       }"
     >
       <CoachBubble
@@ -347,6 +349,7 @@ const omIntroStackChapterScrollClamp = computed(
       <CoachBubble
         v-if="showOmPlayStripOnOmV1"
         class="mt3-om-play-coach"
+        :class="{ 'mt3-om-play-coach--pm-parity': omV1InstructionPhaseFill }"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
         header-text=""
@@ -355,7 +358,7 @@ const omIntroStackChapterScrollClamp = computed(
         message=""
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
-        :show-tip="false"
+        :show-tip="omV1InstructionPhaseFill"
         :typewriter="false"
         :intro-coach-combined-bubble="true"
         :intro-combined-lead-bold="omVariant1PlayLeadBold"
@@ -650,52 +653,12 @@ const omIntroStackChapterScrollClamp = computed(
   );
 }
 
-/* Two-phase instruction step: only Play … bubble — fill panel height (avatar hidden on `.mt3-om-play-coach`). */
-.move-trainer-3-coach--om-v1-instruction-fill {
-  flex: 1 1 auto;
-  flex-shrink: 1;
-  min-height: 0;
-  max-height: 100%;
-  overflow: hidden;
-}
-
-.move-trainer-3-coach--om-v1-instruction-fill :deep(.coach-container.coach-container--fill-available.coach-container--informational-single) {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: 100%;
-  overflow: hidden;
-  align-items: stretch;
-}
-
-.move-trainer-3-coach--om-v1-instruction-fill :deep(.coach-container.mt3-om-play-coach) {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
-  flex: 1 1 auto;
-  min-height: 0;
-  align-self: stretch;
-}
-
-.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble.bubble--informational-single) {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble-scroll-panel.bubble-scroll-panel--informational) {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble-informational-inner) {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble-content.bubble-content--informational-message) {
-  flex: 1 1 auto;
-  min-height: 0;
+/*
+ * Two-phase OM instruction: match `/play-move` bubble inset (avatar visible — hide rule is `:not(.mt3-om-play-coach--pm-parity)` below).
+ */
+.mt3-om-play-coach.mt3-om-play-coach--pm-parity :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
+  margin-top: 16px;
+  margin-left: -6px;
 }
 
 .mt3-om-live-chapter-coach :deep(.coach-message),
@@ -770,7 +733,7 @@ const omIntroStackChapterScrollClamp = computed(
 }
 
 /* Second bubble: hide duplicate avatar; align wrapper with first bubble (wrapper uses margin-left -6px on avatar row). */
-.mt3-om-play-coach :deep(.coach-avatar) {
+.mt3-om-play-coach:not(.mt3-om-play-coach--pm-parity) :deep(.coach-avatar) {
   display: none;
 }
 
@@ -780,20 +743,41 @@ const omIntroStackChapterScrollClamp = computed(
 }
 
 /*
- * Play Move: hug bubble height to content when shorter than the panel; cap at panel height
- * and scroll inside when copy exceeds the window (CoachBubble fill-available + max-height chain).
+ * Play Move (+ OM two-phase instruction): coach column consumes panel height above footer;
+ * stretch bubble column — CoachBubble defaults use align-self:flex-start on the wrapper which leaves a gap.
  */
 .move-trainer-3-coach--play-move-fill {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+  flex-shrink: 1;
   min-height: 0;
   max-height: 100%;
   width: 100%;
 }
 
 .move-trainer-3-coach--play-move-fill :deep(.coach-container.coach-container--fill-available) {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   max-height: 100%;
+}
+
+.move-trainer-3-coach--play-move-fill :deep(.coach-container.coach-container--fill-available.coach-container--informational-single) {
+  align-items: stretch;
+}
+
+.move-trainer-3-coach--play-move-fill :deep(.coach-container--fill-available .bubble-wrapper--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-self: stretch;
+}
+
+.move-trainer-3-coach--play-move-fill :deep(.bubble.bubble--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.move-trainer-3-coach--play-move-fill :deep(.bubble-informational-inner) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .move-trainer-3-coach--play-move-fill :deep(.coach-avatar) {
