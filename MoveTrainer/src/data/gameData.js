@@ -304,8 +304,8 @@ export const INTRO_1_GAME = {
  * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a6 7.a4 g6 8.Nf3 Bg4 9.Be2 Bg7 10.O-O O-O
  *
  * **Coach narration:** Leave `coachText` empty — product copy lives in `MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS`
- * and OM author fields only; replay scrub shows notation unless a checkpoint defines `afterBlackMoveAuthorNote`
- * for that Black SAN.
+ * and OM author fields only; replay scrub shows notation plus optional body from `afterBlackMoveAuthorNote`
+ * (matching Black SAN) or `whiteCommentary` on checkpoints **3** / **4** for White **4.f4** / **5.Bxf4**.
  */
 export const MOVE_TRAINER_3_LINE_GAME = {
   initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',

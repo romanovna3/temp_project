@@ -600,8 +600,9 @@ export const coachSelectedPlyCommentary = computed(() => {
 
 /**
  * Replay scrub bubble body for the half-move at `currentPly - 1`:
- * **only** explicit checkpoint `afterBlackMoveAuthorNote` when this Black SAN matches that OM step’s expected reply.
- * No line JSON `coachText`, no OM `readingLead` / chapter (those stay in OM UI only). Heading-only chips (1.d4 / 1...c5) → ''.
+ * - **Black:** checkpoint **`afterBlackMoveAuthorNote`** when SAN matches that OM step’s **`Play …`** lead.
+ * - **White:** **`whiteCommentary`** from checkpoints **3** (**4.f4**) and **4** (**5.Bxf4**) — same copy as live OM variant 1 (no duplicate strings in line JSON).
+ * No generic line `coachText`, no OM **`readingLead`** in replay. Heading-only chips (1.d4 / 1...c5) → ''.
  */
 export const coachReplayHalfMoveBody = computed(() => {
   const idx = currentPly.value - 1
@@ -610,6 +611,19 @@ export const coachReplayHalfMoveBody = computed(() => {
   if (!ply?.san) return ''
   if (ply.color === 'white' && ply.moveNum === 1 && ply.san === 'd4') return ''
   if (ply.color === 'black' && ply.moveNum === 1 && ply.san === 'c5') return ''
+
+  if (ply.color === 'white') {
+    const cpF4 = MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[3]
+    const cpBxf4 = MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[4]
+    if (ply.moveNum === 4 && ply.san === 'f4') {
+      const t = typeof cpF4?.whiteCommentary === 'string' ? cpF4.whiteCommentary.trim() : ''
+      if (t) return t
+    }
+    if (ply.moveNum === 5 && ply.san === 'Bxf4') {
+      const t = typeof cpBxf4?.whiteCommentary === 'string' ? cpBxf4.whiteCommentary.trim() : ''
+      if (t) return t
+    }
+  }
 
   if (ply.color === 'black') {
     for (const cp of Object.values(MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS)) {

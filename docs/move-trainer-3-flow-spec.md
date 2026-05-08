@@ -22,7 +22,7 @@ Nested routes (all under **`MoveTrainer3Shell`** → single **`OpeningCoursesV3`
 - **`currentPly`** — Cursor for “which position we’re looking at.” `0` = start FEN before any half-move from the demo line; after half-move *k* has been *played on the board*, the cursor is `k` (see `currentFen` in the store). Footer chevrons and board highlights follow this value.
 - **`moveTrainer3FooterNavMaxPly`** — Furthest ply **unlocked by gameplay** (correct Black moves on Play Move, scripted advances on OM). Footer **forward** chevron cannot go past `min(lineLength, footerNavMaxPly)`. Does **not** move when only scrubbing.
 - **Live progression** — User is at the **frontier**: `currentPly === moveTrainer3FooterNavMaxPly` (after Start Learning). Coach copy reflects **what to do next** (“Play …”, OM checkpoint text, etc.).
-- **Replay scrub** — User stepped **behind** the frontier: `moveTrainer3StartLearningNonce > 0` and `currentPly < moveTrainer3FooterNavMaxPly`. Coach switches to **replay narration** (notation + optional **`afterBlackMoveAuthorNote`** when that ply is a graded Black SAN from an OM checkpoint); **URL stays tied to furthest progress**, not the scrub cursor (see OpeningCourses route watcher).
+- **Replay scrub** — User stepped **behind** the frontier: `moveTrainer3StartLearningNonce > 0` and `currentPly < moveTrainer3FooterNavMaxPly`. Coach switches to **replay narration** (notation + optional body: **`afterBlackMoveAuthorNote`** for matching Black OM replies; **`whiteCommentary`** from checkpoints **3** / **4** when scrub lands on White **4.f4** / **5.Bxf4**); **URL stays tied to furthest progress**, not the scrub cursor (see OpeningCourses route watcher).
 - **`moveTrainer3CoachReplayScrubbing`** — Store flag for replay scrub; drives coach bubble mode and Play Move heading/subtitle behavior.
 
 ---
@@ -47,7 +47,7 @@ These are the **distinct coach/footer presentations** users see. **`MoveTrainer3
 ### L3 — Play Move (replay scrub)
 
 - **Same route as L2**, but **`showMt3ReplayCoachPreview`** in `MoveTrainer3LineCoach`.
-- **Coach:** Separate **non-fill** combined bubble — **notation** for selected half-move (e.g. `1.d4`, `1... c5`, `2.d5`) + optional **author line** **only** from checkpoint **`afterBlackMoveAuthorNote`** when the selected half-move matches that OM Black reply; otherwise **heading-only**. At **`currentPly === 0`**, heading shows **first White move** (e.g. `1.d4`) with no body.
+- **Coach:** Separate **non-fill** combined bubble — **notation** for selected half-move + optional body: **`afterBlackMoveAuthorNote`** (matching Black OM reply), or **`whiteCommentary`** for **White `4.f4`** / **`5.Bxf4`** (checkpoints **3** / **4**, same copy as OM variant 1); otherwise **heading-only**. At **`currentPly === 0`**, heading shows **first White move** (e.g. `1.d4`) with no body.
 - **Footer:** Same shell as L2; movelist highlights **san** for `currentPly - 1` (no pill highlight at ply `0`); chevrons move **`currentPly`** within `[0, footerNavMaxPly]`.
 
 ### L4 — OM variant 1 (live)
@@ -77,7 +77,7 @@ These are the **distinct coach/footer presentations** users see. **`MoveTrainer3
 
 ## Flow A — Progressing forward (gameplay)
 
-Steps describe **typical** demo line behavior; **coach copy is product-authored** — `MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS` (**`whiteCommentary`**, **`readingLead`** / rails, **`afterBlackMoveAuthorNote`**) only. **`MOVE_TRAINER_3_LINE_GAME`** fields `coachText` stay **empty** (notation only in replay scrub).
+Steps describe **typical** demo line behavior; **coach copy is product-authored** — `MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS` (**`whiteCommentary`**, **`readingLead`** / rails, **`afterBlackMoveAuthorNote`**) only. **`MOVE_TRAINER_3_LINE_GAME`** fields `coachText` stay **empty**. **Replay scrub** may still show **`whiteCommentary`** for **White `4.f4`** and **`5.Bxf4`** (checkpoints **3** and **4** — same strings as live OM variant 1).
 
 ### A0 — Intro
 
@@ -184,7 +184,7 @@ Assumes **Start Learning has run** (`moveTrainer3StartLearningNonce > 0`) so Pla
 
 | Context | UI |
 |---------|-----|
-| **Play Move or OM route**, replay scrub | **L3 / L5** — single **replay preview** bubble: bold **half-move label** + **`afterBlackMoveAuthorNote`** when that OM checkpoint matches the Black SAN; otherwise **heading-only**; **ply 0** shows **1.d4** heading-only. |
+| **Play Move or OM route**, replay scrub | **L3 / L5** — single **replay preview** bubble: bold **half-move label** + body when defined: Black → matching **`afterBlackMoveAuthorNote`**; White **`4.f4`** / **`5.Bxf4`** → checkpoints **3** / **4** **`whiteCommentary`** (same as OM); otherwise **heading-only**; **ply 0** → **1.d4** heading-only. |
 | **At frontier** (`currentPly === footerNavMaxPly`) | Back to **live** coach for that route: **L2** or **L4** / **L6** per phase — **not** replay bubble. |
 
 ### B4 — Footer movelist during scrub
@@ -208,7 +208,7 @@ Assumes **Start Learning has run** (`moveTrainer3StartLearningNonce > 0`) so Pla
 |--|----------------------|--------------------------------------|
 | **Route** | Matches Black milestones / OM step from progress | **Same URL** as frontier (progress-anchored) |
 | **Board** | Frontier position | Position at **`currentPly`** (can be start FEN) |
-| **Play Move coach** | **Play …** + Black subtitle | **Unified replay bubble** — notation (+ OM **`afterBlackMoveAuthorNote`** only when matched — same strings as author-reading where defined) |
+| **Play Move coach** | **Play …** + Black subtitle | **Unified replay bubble** — notation + **`afterBlackMoveAuthorNote`** when matched, or **`whiteCommentary`** for replay on **4.f4** / **5.Bxf4** (checkpoints 3–4) |
 | **OM variant 1 coach** | Two bubbles (commentary + Play strip) | **Unified replay bubble** (two-bubble OM hidden) |
 | **Intro coach** | N/A after shell switch | N/A |
 | **Footer forward cap** | At `footerNavMaxPly` | Same cap |
@@ -220,6 +220,6 @@ Assumes **Start Learning has run** (`moveTrainer3StartLearningNonce > 0`) so Pla
 
 When adding a new OM checkpoint or coach branch:
 
-1. Decide whether it should appear **only live**, **only in replay**, or both — replay body copy uses checkpoint **`afterBlackMoveAuthorNote`** only (matching Black SAN); no line JSON narration.  
+1. Decide whether it should appear **only live**, **only in replay**, or both — replay body: Black uses **`afterBlackMoveAuthorNote`** when matched; White **4.f4** / **5.Bxf4** use checkpoints **3** / **4** **`whiteCommentary`**; no generic line JSON narration.  
 2. If replay should **not** override a phase (e.g. author reading), adjust template **`v-if`** order / conditions in **`MoveTrainer3LineCoach.vue`** explicitly — today replay wins first.  
 3. Keep **footer variant isolation** (see `.cursor/rules/footer-variants-isolation.mdc`) — do not reuse unrelated **`PanelFooterV10`** modifiers.
