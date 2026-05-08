@@ -7076,22 +7076,10 @@ onUnmounted(() => {
         <CcIcon :name="icons.settings" :size="20" />
       </div>
 
-      <!-- Right: Panel (Courses view) -->
+      <!-- Right: panel column — stack keeps MT3 Restart outside `.review-panel` chrome/content -->
+      <div class="opening-v3-panel-stack">
       <div class="review-panel">
         <div class="panel-main">
-          <!-- MT3 learn shell: compact ghost control above panel header (not a full-width bar). -->
-          <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-above-header">
-            <CcButton
-              variant="ghost"
-              size="x-small"
-              type="button"
-              class="move-trainer-3-restart-ghost-btn"
-              aria-label="Restart course from intro"
-              @click="onMoveTrainer3RestartToIntro"
-            >
-              Restart
-            </CcButton>
-          </div>
           <!-- SidebarHeader: left (back when Line view) | Title (book + Courses) | right placeholder -->
           <header ref="panelHeaderRef" class="panel-header sidebar-header">
             <div class="sidebar-header-left">
@@ -10070,6 +10058,20 @@ v-if="isVideoV6OrV7"
           <footer class="panel-footer" />
         </div>
         </div>
+        <!-- MT3: Restart sits below the panel card, not inside `.panel-main` / scroll surface -->
+        <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-below-panel">
+          <CcButton
+            variant="ghost"
+            size="x-small"
+            type="button"
+            class="move-trainer-3-restart-ghost-btn"
+            aria-label="Restart course from intro"
+            @click="onMoveTrainer3RestartToIntro"
+          >
+            Restart
+          </CcButton>
+        </div>
+      </div>
         <!-- V3 scroll-up button: wrapper hides instantly when opening a line (no transition delay) -->
         <div class="v3-scroll-up-wrap" :class="{ 'v3-scroll-up-wrap--instant-hide': v3ScrollUpInstantHide }">
           <Transition name="v3-scroll-up">
@@ -10394,10 +10396,21 @@ body {
   cursor: pointer;
 }
 
-/* Panel – Practice Filter (node 1-10063): design tokens */
-.review-panel {
+/* Right column: fixed width on `.opening-v3-panel-stack`; `.review-panel` is only the card (not layout sizing). */
+.opening-v3-panel-stack {
   flex: 0 0 460px;
   width: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  align-self: flex-start;
+}
+
+/* Panel – Practice Filter (node 1-10063): design tokens */
+.review-panel {
+  flex: none;
+  width: 100%;
   height: 700px;
   background: var(--color-bg-secondary);
   border-radius: var(--radius-l);
@@ -10408,7 +10421,7 @@ body {
 }
 
 /* Opening Courses V1: viewport preset – narrow panel 300px */
-.app.app--viewport-narrow .review-panel {
+.app.app--viewport-narrow .opening-v3-panel-stack {
   flex: 0 0 300px;
   width: 300px;
 }
@@ -10428,9 +10441,13 @@ body {
   min-width: 306px;
   height: 540px;
 }
-.app.app--viewport-mobile-a .review-panel, .app.app--viewport-mobile-b .review-panel{
+.app.app--viewport-mobile-a .opening-v3-panel-stack,
+.app.app--viewport-mobile-b .opening-v3-panel-stack {
   flex: 0 0 300px;
   width: 300px;
+}
+.app.app--viewport-mobile-a .opening-v3-panel-stack .review-panel,
+.app.app--viewport-mobile-b .opening-v3-panel-stack .review-panel {
   height: 540px;
   border-radius: 24px;
 }
@@ -11391,20 +11408,20 @@ body {
   width: 100%;
   box-sizing: border-box;
 }
-/* MT3 Restart — tiny row above `.panel-header`; pill-sized hit target only (#FFF @ 70%). */
-.move-trainer-3-restart-above-header {
+/* MT3 Restart — below panel card (outside `.review-panel`); right-aligned ghost pill (#FFF @ 70%). */
+.move-trainer-3-restart-below-panel {
   flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 4px 10px 2px;
+  padding: 2px 4px 0;
   box-sizing: border-box;
 }
-.panel-sm .move-trainer-3-restart-above-header {
-  padding-left: 8px;
-  padding-right: 8px;
+.panel-sm .move-trainer-3-restart-below-panel {
+  padding-left: 2px;
+  padding-right: 2px;
 }
-.move-trainer-3-restart-above-header :deep(.move-trainer-3-restart-ghost-btn) {
+.move-trainer-3-restart-below-panel :deep(.move-trainer-3-restart-ghost-btn) {
   min-height: 28px;
   padding-left: 10px;
   padding-right: 10px;
@@ -11412,7 +11429,7 @@ body {
   background: rgba(255, 255, 255, 0.7) !important;
   color: rgba(0, 0, 0, 0.78) !important;
 }
-.move-trainer-3-restart-above-header :deep(.move-trainer-3-restart-ghost-btn:hover) {
+.move-trainer-3-restart-below-panel :deep(.move-trainer-3-restart-ghost-btn:hover) {
   background: rgba(255, 255, 255, 0.82) !important;
   color: rgba(0, 0, 0, 0.9) !important;
 }
