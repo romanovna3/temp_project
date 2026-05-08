@@ -378,8 +378,9 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   margin: 0;
 }
 
+/* Anchor avatar top — never center vs bubble height (chip vs move+body shifts the portrait). */
 .move-trainer-3-coach--mt3-replay-preview :deep(.coach-avatar) {
-  align-self: center;
+  align-self: flex-start;
 }
 
 .move-trainer-3-coach--om-v1 {
