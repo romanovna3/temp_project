@@ -3121,10 +3121,16 @@ watch(isDragging, (dragging) => {
 
 // Opening Courses V1: auto-play White's 3rd move after showing position after 2 moves (with sound + slide animation)
 let openingAutoMoveTimeoutId = null
-const openingCardAnimatingMove = ref(null) // { from, to, pieceType } when sliding the piece
+/** Sliding piece overlay; optional **durationMs** overrides transition/settle timing (OM author **Continue** chain). */
+const openingCardAnimatingMove = ref(null)
 const openingCardAnimPhase = ref('from')   // 'from' | 'to' – for CSS transition
 const OPENING_AUTO_MOVE_DELAY_MS = 420
 const OPENING_AUTO_MOVE_DURATION_MS = 320
+/**
+ * Scripted White after OM author **Continue** (`afterAuthorContinue*`). Shorter than generic opening anim so
+ * coach + route advance feel immediate; still long enough for piece slide + sound.
+ */
+const MOVE_TRAINER_3_AUTHOR_CONTINUE_ANIM_MS = 220
 /** Move Trainer 3: brief pause after Black’s move + route change so White’s reply isn’t instant on top. */
 const MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS = 420
 function squareToPercent(square) {
@@ -3200,6 +3206,10 @@ function clearOpeningAutoMove() {
 
 function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite, moveSoundOpts = {}) {
   const forceSound = moveSoundOpts.forceSound === true
+  const animMs =
+    typeof moveSoundOpts.animMs === 'number' && moveSoundOpts.animMs >= 80
+      ? moveSoundOpts.animMs
+      : OPENING_AUTO_MOVE_DURATION_MS
   openingAutoMoveTimeoutId = null
   if (typeof fenAfterTwo !== 'string' || typeof thirdMoveWhite !== 'string') return
   try {
@@ -3233,7 +3243,7 @@ function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite, moveSoundOpts = {}) {
     lastMove.value = { from, to }
     selectedSquare.value = null
     checkmateHighlight.value = null
-    openingCardAnimatingMove.value = { from, to, pieceType }
+    openingCardAnimatingMove.value = { from, to, pieceType, durationMs: animMs }
     openingCardAnimPhase.value = 'from'
     nextTick(() => {
       openingCardAnimPhase.value = 'to'
@@ -3243,7 +3253,7 @@ function playOpeningThirdMove(fenAfterTwo, thirdMoveWhite, moveSoundOpts = {}) {
         pieces.value = parseFEN(chess.fen())
       } catch (_) {}
       openingCardAnimatingMove.value = null
-    }, OPENING_AUTO_MOVE_DURATION_MS)
+    }, animMs)
   } catch (_) {
     openingCardAnimatingMove.value = null
   }
@@ -3253,12 +3263,14 @@ const openingCardMovingPieceStyle = computed(() => {
   const anim = openingCardAnimatingMove.value
   if (!anim || typeof anim.from !== 'string' || typeof anim.to !== 'string') return { visibility: 'hidden' }
   const pos = openingCardAnimPhase.value === 'from' ? squareToPercent(anim.from) : squareToPercent(anim.to)
+  const ms =
+    typeof anim.durationMs === 'number' && anim.durationMs >= 80 ? anim.durationMs : OPENING_AUTO_MOVE_DURATION_MS
   return {
     left: pos.left,
     top: pos.top,
     width: '12.5%',
     height: '12.5%',
-    transition: `left ${OPENING_AUTO_MOVE_DURATION_MS}ms ease-out, top ${OPENING_AUTO_MOVE_DURATION_MS}ms ease-out`,
+    transition: `left ${ms}ms ease-out, top ${ms}ms ease-out`,
   }
 })
 
@@ -4639,20 +4651,21 @@ watch(
       if (runId !== moveTrainer3OmPostAuthorChainGen) return
 
       /**
-       * OM-4 **Continue** after **…Nf6**: author overlay clears → `/play-move` **before** scripted **Nc3** so OM
-       * **`whiteCommentary`** never flashes on the delay beat; Play Move shell stays minimal until Black’s turn.
+       * OM-4 **Continue** after **…Nf6**: `/play-move` **before** scripted **Nc3** (skip extra **nextTick** — fewer blank frames).
        */
       if (usePlayMoveShellBeforeWhiteMove) {
         await router.replace('/move-trainer/move-trainer-3/play-move')
-        await nextTick()
         if (runId !== moveTrainer3OmPostAuthorChainGen) return
       }
       /** **Nc3** jumps shell first; **a4** stays routed — no OM delay beat (avoids empty OM-6 shell / racing watchers). */
       if (moveTrainer3CoachReplayScrubbing.value) return
 
-      playOpeningThirdMove(moveTrainer3CurrentFen.value, chain.playWhiteSan, { forceSound: true })
+      playOpeningThirdMove(moveTrainer3CurrentFen.value, chain.playWhiteSan, {
+        forceSound: true,
+        animMs: MOVE_TRAINER_3_AUTHOR_CONTINUE_ANIM_MS,
+      })
       await new Promise((resolve) => {
-        setTimeout(resolve, OPENING_AUTO_MOVE_DURATION_MS)
+        setTimeout(resolve, MOVE_TRAINER_3_AUTHOR_CONTINUE_ANIM_MS)
       })
       if (runId !== moveTrainer3OmPostAuthorChainGen) return
 

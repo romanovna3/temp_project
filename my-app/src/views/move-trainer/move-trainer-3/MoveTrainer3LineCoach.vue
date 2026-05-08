@@ -917,6 +917,20 @@ const omIntroStackChapterScrollClamp = computed(
   align-self: flex-start;
 }
 
+/*
+ * Short OM author-reading copy (not `--om-reading-long`): **64px** min bubble band — coach-bubble-scrollable-variant-spec /
+ * matches instruction-strip chrome (avoids squat single-line bubbles + layout thrash during route transitions).
+ */
+.move-trainer-3-coach--om-reading-fill:not(.move-trainer-3-coach--om-reading-long) :deep(.bubble.bubble--informational-single) {
+  min-height: 64px;
+}
+
+.move-trainer-3-coach--om-reading-fill:not(.move-trainer-3-coach--om-reading-long)
+  :deep(.bubble-scroll-panel--informational .bubble-content.bubble-content--informational-message:not(.bubble-content--informational-heading-only)) {
+  min-height: 64px;
+  box-sizing: border-box;
+}
+
 /* Long OM chapter: coach column grows so scrollable bubble has room above footer */
 .move-trainer-3-coach--om-reading-long {
   flex: 1 1 auto;
