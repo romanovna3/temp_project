@@ -300,10 +300,11 @@ export function tryStartMoveTrainer3OmAuthorContinueChain() {
   const san = typeof raw === 'string' ? raw.trim() : ''
   if (!san || cp?.afterAuthorContinueToPlayMove !== true) return false
   const nextOm = cp?.afterAuthorContinueNextOpponentsMoveStep
-  resetMoveTrainer3OmAuthorNoteStep()
   moveTrainer3SuppressLearnShellRouteAlign.value = true
   moveTrainer3OmPostAuthorChain.value =
     typeof nextOm === 'number' && nextOm > 0 ? { playWhiteSan: san, nextOpponentsMoveStep: nextOm } : { playWhiteSan: san }
+  /** After chain ref — avoids one paint where author overlay cleared but chain not yet set (OM-6 placeholder flash). */
+  resetMoveTrainer3OmAuthorNoteStep()
   return true
 }
 

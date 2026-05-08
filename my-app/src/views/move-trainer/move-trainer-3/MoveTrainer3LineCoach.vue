@@ -387,6 +387,13 @@ const omIntroStackChapterScrollClamp = computed(
       />
     </div>
 
+    <!-- OM step 6 after author **Continue**: checkpoint has no OM-v1 shell — skip placeholder flash while **a4** chain runs. -->
+    <div
+      v-else-if="isOpponentsMoveLayout && suppressOmCoachDuringPostAuthorWhite"
+      class="move-trainer-3-coach move-trainer-3-coach--om-chain-blank"
+      aria-hidden="true"
+    />
+
     <div v-else-if="isOpponentsMoveLayout" class="move-trainer-3-coach move-trainer-3-coach--om-v1">
       <CoachBubble
         class="mt3-om-commentary-coach"
@@ -458,6 +465,14 @@ const omIntroStackChapterScrollClamp = computed(
   overflow: hidden;
   flex: 1 1 0;
   min-height: 0;
+}
+
+.move-trainer-3-coach--om-chain-blank {
+  visibility: hidden;
+  pointer-events: none;
+  flex-shrink: 0;
+  /* ~ one coach row so layout doesn’t jump when swapping OM-6 stub → OM-7 bubbles */
+  min-height: 108px;
 }
 
 .move-trainer-3-coach {
