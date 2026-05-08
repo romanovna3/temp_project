@@ -52,6 +52,7 @@ import {
   moveTrainer3CoachReplayScrubbing,
   moveTrainer3CheckpointHasAuthorReading,
   moveTrainer3OmReadingBoardOverride,
+  moveTrainer3OmBlackPlayUiActive,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -4419,16 +4420,18 @@ const moveTrainer3BlackInteractiveBoard = computed(() => {
   if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
   if (moveTrainer3OmAuthorNoteStep.value !== 0) return false
   const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
-  return !!(step && getMoveTrainer3OpponentsMoveCheckpoint(step)?.whiteCommentary)
+  const cp = step ? getMoveTrainer3OpponentsMoveCheckpoint(step) : null
+  return !!(step && moveTrainer3OmBlackPlayUiActive(cp))
 })
 
-/** OM variant 1: stacked commentary + “Play …” bubble — show hint arrow after scripted White (Black to move). */
+/** OM variant 1: hint arrow when Play … is actionable (incl. long-chapter instruction step; not during overflow read-only). */
 const moveTrainer3OmVariant1HintBoard = computed(() => {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return false
   if (moveTrainer3OmAuthorNoteStep.value !== 0) return false
   if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
   const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
-  return !!(step && getMoveTrainer3OpponentsMoveCheckpoint(step)?.whiteCommentary)
+  const cp = step ? getMoveTrainer3OpponentsMoveCheckpoint(step) : null
+  return !!(step && moveTrainer3OmBlackPlayUiActive(cp))
 })
 
 /** Hint arrow geometry in SVG viewBox 0–100 (matches marker userSpaceOnUse). */

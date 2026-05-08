@@ -273,6 +273,21 @@ export function retreatMoveTrainer3OmChapterFromInstructionToRead() {
   return false
 }
 
+/**
+ * OM live (`moveTrainer3OmAuthorNoteStep === 0`): Black hint arrow + draggable board when the Play … strip is actionable.
+ * Suppresses arrow/interaction during overflow **read** (chapter-only) and until overflow is measured (`overflows === null`).
+ */
+export function moveTrainer3OmBlackPlayUiActive(cp) {
+  if (!cp) return false
+  if (typeof cp.whiteCommentary === 'string' && cp.whiteCommentary.trim()) return true
+  const nb = typeof cp.nextBlackLeadBold === 'string' ? cp.nextBlackLeadBold.trim() : ''
+  if (!nb) return false
+  if (!cp.readingChapterLongForm) return true
+  if (moveTrainer3OmChapterOverflows.value === null) return false
+  if (moveTrainer3OmChapterOverflows.value === false) return true
+  return moveTrainer3OmChapterPhase.value !== 'read'
+}
+
 /** While OM reading shows clickable branch moves — overrides main-line `currentPly` FEN on the panel board. */
 export const moveTrainer3OmReadingBoardOverride = ref(null)
 
