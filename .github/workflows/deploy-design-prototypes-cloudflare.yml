@@ -19,6 +19,7 @@ on:
       - 'my-app/**'
       - 'MoveTrainer/**'
       - '.github/workflows/deploy-design-prototypes-cloudflare.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
