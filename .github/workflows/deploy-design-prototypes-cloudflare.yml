@@ -1,4 +1,4 @@
-# Deploy external/design-prototypes to Cloudflare Pages via Wrangler.
+# Deploy my-app to Cloudflare Pages (project default: anna-design-prototypes → anna-design-prototypes.chess-com.workers.dev).
 #
 # wrangler-action@v3 defaults command to "deploy" (Workers). A Vite app must use
 # "pages deploy …" or npx exits with code 1. See cloudflare/wrangler-action README.
@@ -16,7 +16,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'external/design-prototypes/**'
+      - 'my-app/**'
+      - 'MoveTrainer/**'
       - '.github/workflows/deploy-design-prototypes-cloudflare.yml'
 
 permissions:
@@ -31,7 +32,7 @@ jobs:
 
       # Submodule checkout does not include repo-local .npmrc; scope @chesscom to GitHub Packages for npm ci.
       - name: GitHub Packages registry for @chesscom
-        working-directory: external/design-prototypes
+        working-directory: my-app
         run: printf '%s\n' '@chesscom:registry=https://npm.pkg.github.com' > .npmrc
 
       - name: Check required secrets
@@ -55,22 +56,24 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@chesscom'
           cache: npm
-          cache-dependency-path: external/design-prototypes/package-lock.json
+          cache-dependency-path: my-app/package-lock.json
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Install dependencies
-        working-directory: external/design-prototypes
+        working-directory: my-app
         run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           GIT_TERMINAL_PROMPT: '0'
 
       - name: Build
-        working-directory: external/design-prototypes
+        working-directory: my-app
         run: npm run build
         env:
           CI: true
+          # Dedicated Pages hostname serves the app at `/`, not repo-name subpath (contrast: GitHub Pages deploy.yml).
+          VITE_BASE: /
 
       - name: Resolve Pages project name
         id: pages
@@ -84,7 +87,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: external/design-prototypes
+          workingDirectory: my-app
           wranglerVersion: '4'
           command: pages deploy dist --project-name=${{ steps.pages.outputs.project_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
