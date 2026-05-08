@@ -8,8 +8,8 @@
  * Flow after **Start Learning**: animate White’s first move → advance `currentPly` → route to Play Move →
  * **same** OpeningCoursesV3 instance keeps pieces on the board (see MoveTrainer3Shell nested routes).
  *
- * **`/play-move` reload**: store resets `currentPly` to 0; OpeningCoursesV3 bumps to ply **1** (after 1.d4)
- * so the coach shows Black’s reply (“Play …”) instead of an empty bubble + White-only silence.
+ * **Reload**: `sessionStorage` (`MOVE_TRAINER_3_SESSION_STORAGE_KEY`) restores ply/progress when Play Move /
+ * Opponents Move URLs reload after **Start Learning** has run.
  *
  * **Opponents Move** (`/opponents-move-N`): after Black’s Nth graded success on Play Move, route jumps here;
  * White’s scripted reply animates on entry; coach checkpoint copy keyed by **N** (see `MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS`).
@@ -24,6 +24,9 @@ import { ref, computed, watch } from 'vue'
 import { Chess } from 'chess.js'
 import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
 import { MOVE_TRAINER_3_LINE_GAME } from '@move-trainer/data/gameData.js'
+
+/** Persist ply/progress across reload while URL stays on Play Move / Opponents Move. */
+export const MOVE_TRAINER_3_SESSION_STORAGE_KEY = 'chesscom.moveTrainer3.learnSession.v1'
 
 /** Shown in OpeningCoursesV3 panel header (no icon beside title). */
 export const MOVE_TRAINER_3_COURSE_TITLE = 'Black is Back: Old Benoni'
@@ -741,4 +744,114 @@ export function getMoveTrainer3BoardSyncPayload() {
   }
   return { fen, lastMove }
 }
+
+function readMoveTrainer3LearnSessionFromStorage() {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(MOVE_TRAINER_3_SESSION_STORAGE_KEY)
+    if (!raw) return null
+    const o = JSON.parse(raw)
+    return o && typeof o === 'object' ? o : null
+  } catch {
+    return null
+  }
+}
+
+export function persistMoveTrainer3LearnSession() {
+  if (typeof sessionStorage === 'undefined') return
+  try {
+    if (moveTrainer3StartLearningNonce.value <= 0) {
+      sessionStorage.removeItem(MOVE_TRAINER_3_SESSION_STORAGE_KEY)
+      return
+    }
+    sessionStorage.setItem(
+      MOVE_TRAINER_3_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        v: 1,
+        nonce: moveTrainer3StartLearningNonce.value,
+        currentPly: currentPly.value,
+        footerNavMaxPly: moveTrainer3FooterNavMaxPly.value,
+        blackMovesCompleted: moveTrainer3BlackMovesCompleted.value,
+        omAuthorNoteStep: moveTrainer3OmAuthorNoteStep.value,
+        omChapterPhase: moveTrainer3OmChapterPhase.value,
+        omChapterOverflows: moveTrainer3OmChapterOverflows.value,
+        omChapterContinueUsed: moveTrainer3OmChapterContinueUsed.value,
+      }),
+    )
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+/**
+ * Restore lesson refs after reload when URL is Play Move / OM shell and memory nonce is still zero.
+ */
+export function hydrateMoveTrainer3LearnSessionFromStorage(routePath) {
+  if (typeof sessionStorage === 'undefined') return false
+  if (!routePath || typeof routePath !== 'string') return false
+  let p = routePath
+  try {
+    p = decodeURIComponent(routePath)
+  } catch {
+    /* keep raw */
+  }
+  const onLearnShell =
+    /\/move-trainer\/move-trainer-3\/play-move$/.test(p)
+    || /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(p)
+  if (!onLearnShell) return false
+  if (moveTrainer3StartLearningNonce.value > 0) return false
+
+  const data = readMoveTrainer3LearnSessionFromStorage()
+  if (!data || data.v !== 1) return false
+  const nonceNum = Number(data.nonce)
+  if (!Number.isFinite(nonceNum) || nonceNum <= 0) return false
+
+  const cap = allPlies.value.length
+  const bmCap = moveTrainer3BlackMovesTotal.value
+  const plyIn = Math.floor(Number(data.currentPly))
+  const ply = Number.isFinite(plyIn) ? Math.max(0, Math.min(cap, plyIn)) : 0
+  const maxIn = Math.floor(Number(data.footerNavMaxPly))
+  let maxPly = Number.isFinite(maxIn) ? Math.max(0, Math.min(cap, maxIn)) : 0
+  maxPly = Math.max(maxPly, ply)
+  const bmIn = Math.floor(Number(data.blackMovesCompleted))
+  const bm = Number.isFinite(bmIn) ? Math.max(0, Math.min(bmCap, bmIn)) : 0
+
+  moveTrainer3StartLearningNonce.value = Math.max(1, Math.floor(nonceNum))
+  currentPly.value = ply
+  moveTrainer3FooterNavMaxPly.value = maxPly
+  moveTrainer3BlackMovesCompleted.value = bm
+
+  const oans = Math.floor(Number(data.omAuthorNoteStep))
+  moveTrainer3OmAuthorNoteStep.value = Number.isFinite(oans) && oans >= 0 ? oans : 0
+
+  const ocp = typeof data.omChapterPhase === 'string' ? data.omChapterPhase : 'inactive'
+  moveTrainer3OmChapterPhase.value = ['inactive', 'read', 'instruction'].includes(ocp) ? ocp : 'inactive'
+
+  if (data.omChapterOverflows === true || data.omChapterOverflows === false)
+    moveTrainer3OmChapterOverflows.value = data.omChapterOverflows
+  else moveTrainer3OmChapterOverflows.value = null
+
+  moveTrainer3OmChapterContinueUsed.value = !!data.omChapterContinueUsed
+
+  clearMoveTrainer3OmReadingBoardBranch()
+  moveTrainer3SuppressLearnShellRouteAlign.value = false
+  moveTrainer3OmPostAuthorChain.value = null
+
+  return true
+}
+
+watch(
+  [
+    moveTrainer3StartLearningNonce,
+    currentPly,
+    moveTrainer3FooterNavMaxPly,
+    moveTrainer3BlackMovesCompleted,
+    moveTrainer3OmAuthorNoteStep,
+    moveTrainer3OmChapterPhase,
+    moveTrainer3OmChapterOverflows,
+    moveTrainer3OmChapterContinueUsed,
+  ],
+  () => persistMoveTrainer3LearnSession(),
+  { flush: 'post' },
+)
 

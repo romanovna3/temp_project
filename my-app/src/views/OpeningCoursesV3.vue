@@ -56,6 +56,7 @@ import {
   moveTrainer3OmPostAuthorChain,
   moveTrainer3LearnShellTargetFromFrontier,
   moveTrainer3LearnShellPathAfterBlackSuccessCount,
+  hydrateMoveTrainer3LearnSessionFromStorage,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -4318,6 +4319,16 @@ watch(
   () => {
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
     onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
+  },
+  { immediate: true },
+)
+
+/** Reload / restore tab: rehydrate ply + footer caps before Play Move ply snap + route alignment watches run. */
+watch(
+  () => [isMoveTrainer3.value, panelView.value, route.path],
+  () => {
+    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+    hydrateMoveTrainer3LearnSessionFromStorage(route.path)
   },
   { immediate: true },
 )
