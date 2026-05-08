@@ -517,8 +517,8 @@ const omIntroStackChapterScrollClamp = computed(
 }
 
 /*
- * Move line + coach body (e.g. 2.d5 + commentary) — hug height; tight gap heading→copy;
- * beat CoachBubble default 64px heading band + 96px body min-height + 16px pads.
+ * Replay preview: move-line heading + checkpoint body (White or Black half-move + OM / line copy) —
+ * hug height; tight gap heading→copy; beat CoachBubble default 64px heading band + 96px body min-height + 16px pads.
  */
 .move-trainer-3-coach--mt3-replay-preview
   :deep(

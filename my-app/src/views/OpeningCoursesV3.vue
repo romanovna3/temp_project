@@ -4556,9 +4556,10 @@ watch(
       return
     }
     /**
-     * Footer replay scrub: `currentPly` intentionally lands on positions where the next DB half-move is White’s.
-     * The scripted OM reply watcher must not re-fire — it would play **d5** (etc.) and `advanceMoveTrainer3PlyFromGameplay()`
-     * and snap the user forward away from **c5** (seen after stepping back past **d5**).
+     * Footer replay scrub: `currentPly` often sits *before* the next scripted White half-move on this OM step
+     * (`nextWhite` from the main line — e.g. **e4**, **f4**, **Bxf4**, **Nc3**, **a4**).
+     * Do not run this watcher — it would auto-play that SAN + `advanceMoveTrainer3PlyFromGameplay()` and jump away
+     * from the replay cursor position.
      */
     if (moveTrainer3CoachReplayScrubbing.value) {
       moveTrainer3OmWhiteReplyGen += 1

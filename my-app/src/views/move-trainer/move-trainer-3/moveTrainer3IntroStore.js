@@ -670,9 +670,15 @@ export const coachSelectedPlyCommentary = computed(() => {
  * Replay scrub bubble body for the half-move at `currentPly - 1` — **same strings as live course progression**
  * wherever OM defines them; otherwise line **`coachText`** (heading-only **1.d4** / **1...c5** stay empty in UI).
  *
- * - **White:** checkpoint **`whiteCommentary`** for **2.d5**, **4.f4**, **5.Bxf4** (steps **1** / **3** / **4**); step **2**
- *   **`readingLead`** for **3.e4** (chapter lead shown live above rails).
- * - **Black:** **`afterBlackMoveAuthorNote`** when SAN matches that step’s **`Play …`** lead (e.g. **…e5**, **…Nf6**).
+ * Mapping (main line `MOVE_TRAINER_3_LINE_GAME` half-move → OM checkpoint field):
+ * - **White `2.d5`** → `MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[1].whiteCommentary`
+ * - **White `3.e4`** → `[2].readingLead` (chapter lead)
+ * - **White `4.f4`** → `[3].whiteCommentary`
+ * - **White `5.Bxf4`** → `[4].whiteCommentary`
+ * - **White `7.a4`** → `[7].whiteCommentary`
+ * - **Black** → `afterBlackMoveAuthorNote` when SAN matches that checkpoint’s **`Play …`** lead (`nextBlackLeadBold`).
+ *
+ * Checkpoint **`6`** defines post–**…a5** author overlay + scripted **a4** routing only (no `whiteCommentary`).
  */
 export const coachReplayHalfMoveBody = computed(() => {
   const idx = currentPly.value - 1

@@ -304,8 +304,8 @@ export const INTRO_1_GAME = {
  * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a5 7.a4 g6 (short demo — quiz follows …g6).
  *
  * **`coachText`:** Fallback narration when a half-move has **no** matching OM checkpoint string in
- * `coachReplayHalfMoveBody` (live course copy always wins from checkpoints for **2.d5**, **3.e4** chapter lead,
- * **4.f4**, **5.Bxf4**, and Black **`afterBlackMoveAuthorNote`** where defined).
+ * `coachReplayHalfMoveBody` (live course copy wins from checkpoints for **2.d5**, **3.e4** chapter lead,
+ * **4.f4**, **5.Bxf4**, **7.a4**, and Black **`afterBlackMoveAuthorNote`** where defined).
  */
 export const MOVE_TRAINER_3_LINE_GAME = {
   initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
