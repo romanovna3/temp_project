@@ -88,20 +88,19 @@ const MOVE_TRAINER_3_OM_READING_RAIL_TRANSPOSE_TO_E4 = Object.freeze([
   { type: 'move', ply: 4, san: 'Be7' },
   { type: 'text', text: ' 5.' },
   { type: 'move', ply: 5, san: 'e4' },
-  { type: 'text', text: '\n\n' },
-  { type: 'text', text: 'transposes to the 3.e4 lines.' },
+  { type: 'text', text: ' transposes to the 3.e4 lines.' },
 ])
 
-/** Second subvariation: EP sideline only (**dxe6**); shared **Nc3 … e4** line lives in the first rail above. */
+/** Second subvariation: **3.dxe6** in prose; clickable **…fxe6** after White’s EP (`ply` 6 → position after **dxe6** + **fxe6**). */
 const MOVE_TRAINER_3_OM_READING_RAIL_DXE6_NOTE = Object.freeze([
   {
     type: 'text',
-    text: 'Some White players, especially at the club level, can also play 3. ',
+    text: 'Some White players, especially at the club level, can also play 3.dxe6. However, after 3... ',
   },
-  { type: 'move', ply: 6, san: 'dxe6' },
+  { type: 'move', ply: 6, san: 'fxe6', ariaLabel: 'Go to position after 3… fxe6' },
   {
     type: 'text',
-    text: '. However, after dxe6, Black wants to play ...d7-d5 and occupy the entire center, and it is easy for White to be worse in no time.',
+    text: ', Black wants to play ...d7-d5 and occupy the entire center, and it is easy for White to be worse in no time.',
   },
 ])
 
@@ -111,8 +110,11 @@ function mt3OmReadingStep2BranchPreviews() {
   const ep = []
   try {
     const chess = new Chess(start)
-    const mv = chess.move('dxe6')
-    if (mv) ep.push({ fen: chess.fen(), lastMove: { from: mv.from, to: mv.to } })
+    const w = chess.move('dxe6')
+    if (w) {
+      const b = chess.move('fxe6')
+      if (b) ep.push({ fen: chess.fen(), lastMove: { from: b.from, to: b.to } })
+    }
   } catch {
     /* ignore */
   }

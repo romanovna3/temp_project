@@ -2,6 +2,7 @@
 /**
  * Play Move + OM shell — inline PG notation for all plies unlocked so far (`footerNavMaxPly`).
  * `activePlyIndex` tracks the scrub cursor (`currentPly`), not how many pills are shown.
+ * Clicking a SAN jumps `currentPly` in the parent (main line); pass `-1` to suppress highlight (e.g. OM branch chips active).
  */
 import { computed } from 'vue'
 
@@ -10,7 +11,11 @@ const props = defineProps({
   plies: { type: Array, required: true },
   /** Index (0-based in `plies`) of the position being viewed; highlight that SAN pill. */
   activePlyIndex: { type: Number, default: -1 },
+  /** When false, SAN pills are not clickable (e.g. static previews). */
+  clickable: { type: Boolean, default: true },
 })
+
+const emit = defineEmits(['select-ply'])
 
 const PIECE_GLYPH_TO_SAN_LETTER = Object.freeze({
   k: 'K',
@@ -33,6 +38,11 @@ function sanDisplayForPieceIcon(san, pieceGlyph) {
 }
 
 const hasMoves = computed(() => props.plies.length > 0)
+
+function onSelectPly(idx) {
+  if (!props.clickable) return
+  emit('select-ply', idx)
+}
 </script>
 
 <template>
@@ -43,7 +53,20 @@ const hasMoves = computed(() => props.plies.length > 0)
   >
     <template v-for="(ply, idx) in plies" :key="idx">
       <span v-if="ply.color === 'white'" class="mt3-hml-move-num cc-paragraph-medium">{{ ply.moveNum }}.</span>
+      <button
+        v-if="clickable"
+        type="button"
+        class="mt3-hml-san"
+        :class="{ 'mt3-hml-san--selected': idx === activePlyIndex }"
+        :aria-current="idx === activePlyIndex ? 'true' : undefined"
+        :aria-label="`Go to position after ${ply.san}`"
+        @click="onSelectPly(idx)"
+      >
+        <span v-if="ply.piece" class="mt3-hml-piece">{{ ply.piece }}</span>
+        <span class="mt3-hml-san-text">{{ sanDisplayForPieceIcon(ply.san, ply.piece) }}</span>
+      </button>
       <span
+        v-else
         class="mt3-hml-san"
         :class="{ 'mt3-hml-san--selected': idx === activePlyIndex }"
       >
@@ -92,6 +115,19 @@ const hasMoves = computed(() => props.plies.length > 0)
   line-height: 16px;
   color: var(--color-text-subtle, rgba(255, 255, 255, 0.5));
   white-space: nowrap;
+}
+
+button.mt3-hml-san {
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+button.mt3-hml-san:focus-visible {
+  outline: 2px solid var(--color-icon-default, rgba(255, 255, 255, 0.5));
+  outline-offset: 2px;
 }
 
 .mt3-hml-san--selected {

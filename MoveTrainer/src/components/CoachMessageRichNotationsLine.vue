@@ -28,7 +28,7 @@ const emit = defineEmits(['selectPly'])
         class="coach-inline-move"
         :data-coach-move-ply="seg.ply"
         :class="{ 'coach-inline-move--active': activePly === seg.ply }"
-        :aria-label="`Go to move ${seg.san ?? seg.label}`"
+        :aria-label="seg.ariaLabel ?? `Go to move ${seg.san ?? seg.label}`"
         :disabled="readonly"
         :tabindex="readonly ? -1 : undefined"
         @click="emit('selectPly', seg.ply)"

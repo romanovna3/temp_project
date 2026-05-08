@@ -10,6 +10,7 @@ import {
   footerNavForwardDisabled,
   goBack,
   goForward,
+  goToPly,
   toggleVideoToolbar,
   requestMoveTrainer3StartLearning,
   moveTrainer3StartLearningNonce,
@@ -24,6 +25,8 @@ import {
   advanceMoveTrainer3OmChapterToInstruction,
   moveTrainer3LearnShellTargetFromFrontier,
   tryStartMoveTrainer3OmAuthorContinueChain,
+  moveTrainer3OmReadingSelectedChipPly,
+  clearMoveTrainer3OmReadingBoardBranch,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -60,11 +63,17 @@ const playMoveDisplayedPlies = computed(() => {
   return moveTrainer3AllPlies.value.slice(0, cap)
 })
 
-/** Highlights the ply for the current board position while scrubbing (footer matches `footerNavForwardDisabled` cap). */
-const playMoveMovelistActiveIndex = computed(() => {
+/** Highlights main-line scrub cursor; suppressed while an OM branch chip is selected (bubble vs movelist are mutually exclusive). */
+const playMoveMovelistHighlightIndex = computed(() => {
+  if (moveTrainer3OmReadingSelectedChipPly.value > 0) return -1
   const n = currentPly.value
   return n > 0 ? n - 1 : -1
 })
+
+function onMt3MovelistSelectPly(idx) {
+  clearMoveTrainer3OmReadingBoardBranch()
+  goToPly(idx + 1)
+}
 
 const isOmAuthorNoteFooter = computed(() => moveTrainer3OmAuthorNoteStep.value > 0)
 
@@ -112,7 +121,8 @@ function onHint() {
         <MoveTrainer3PlayMoveHorizontalMovelist
           v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveShellLayout"
           :plies="playMoveDisplayedPlies"
-          :active-ply-index="playMoveMovelistActiveIndex"
+          :active-ply-index="playMoveMovelistHighlightIndex"
+          @select-ply="onMt3MovelistSelectPly"
         />
         <div
           v-if="moveTrainer3StartLearningNonce > 0 && isPlayMoveShellLayout"
