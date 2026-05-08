@@ -359,7 +359,7 @@ export const MOVE_TRAINER_3_LINE_GAME = {
         san: 'd6',
         classification: 'book',
         fen: 'rnbqkbnr/pp3ppp/3p4/2pPp3/4P3/8/PPP2PPP/RNBQKBNR w KQkq - 0 4',
-        coachText: 'Black reinforces the center and prepares kingside development.',
+        coachText: '',
         eval: '0.0',
       },
     },
