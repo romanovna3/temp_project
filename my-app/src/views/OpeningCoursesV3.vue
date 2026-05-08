@@ -4034,7 +4034,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
     return true
   }
 
-  /** Post–Black overlays initiated from `/play-move` (e.g. after **…a5** → checkpoint **6**). */
+  /** Post–Black overlays initiated from `/play-move` (e.g. after **…a6** → checkpoint **6**). */
   if (!omStep && moveTrainer3CheckpointPostBlackAuthorApplies(cpJustGraded, gradedBlackSan)) {
     clearMoveTrainer3OmReadingBoardBranch()
     moveTrainer3OmAuthorNoteStep.value = completed
@@ -4626,15 +4626,27 @@ watch(
       return
     }
     const runId = ++moveTrainer3OmPostAuthorChainGen
+    const nextOmStep = chain.nextOpponentsMoveStep
+    const usePlayMoveShellBeforeWhiteMove = !(typeof nextOmStep === 'number' && nextOmStep > 0)
     moveTrainer3SkipBoardSyncFromStore.value = true
     try {
       await nextTick()
       if (runId !== moveTrainer3OmPostAuthorChainGen) return
 
-      await new Promise((resolve) => {
-        setTimeout(resolve, MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS)
-      })
-      if (runId !== moveTrainer3OmPostAuthorChainGen) return
+      /**
+       * OM-4 **Continue** after **…Nf6**: author overlay clears → `/play-move` **before** scripted **Nc3** so OM
+       * **`whiteCommentary`** never flashes on the delay beat; Play Move shell stays minimal until Black’s turn.
+       */
+      if (usePlayMoveShellBeforeWhiteMove) {
+        await router.replace('/move-trainer/move-trainer-3/play-move')
+        await nextTick()
+        if (runId !== moveTrainer3OmPostAuthorChainGen) return
+      } else {
+        await new Promise((resolve) => {
+          setTimeout(resolve, MOVE_TRAINER_3_OM_WHITE_REPLY_DELAY_MS)
+        })
+        if (runId !== moveTrainer3OmPostAuthorChainGen) return
+      }
       if (moveTrainer3CoachReplayScrubbing.value) return
 
       playOpeningThirdMove(moveTrainer3CurrentFen.value, chain.playWhiteSan, { forceSound: true })
@@ -4645,10 +4657,9 @@ watch(
 
       advanceMoveTrainer3PlyFromGameplay()
       moveTrainer3OmPostAuthorChain.value = null
-      const nextOm = chain.nextOpponentsMoveStep
-      if (typeof nextOm === 'number' && nextOm > 0) {
-        await router.replace(`/move-trainer/move-trainer-3/opponents-move-${nextOm}`)
-      } else {
+      if (typeof nextOmStep === 'number' && nextOmStep > 0) {
+        await router.replace(`/move-trainer/move-trainer-3/opponents-move-${nextOmStep}`)
+      } else if (!usePlayMoveShellBeforeWhiteMove) {
         await router.replace('/move-trainer/move-trainer-3/play-move')
       }
     } finally {

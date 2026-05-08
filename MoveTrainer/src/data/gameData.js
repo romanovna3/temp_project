@@ -301,7 +301,7 @@ export const INTRO_1_GAME = {
 
 /**
  * Main-line preview for Move Trainer 3 (Old Benoni) — course panel move list + board plies.
- * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a5 7.a4 g6 (short demo — quiz follows …g6).
+ * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a6 7.a4 g6 (short demo — quiz follows …g6).
  *
  * **`coachText`:** Fallback narration when a half-move has **no** matching OM checkpoint string in
  * `coachReplayHalfMoveBody` (live course copy wins from checkpoints for **2.d5**, **3.e4** chapter lead,
@@ -410,9 +410,9 @@ export const MOVE_TRAINER_3_LINE_GAME = {
         eval: '+0.2',
       },
       black: {
-        san: 'a5',
+        san: 'a6',
         classification: 'book',
-        fen: 'rnbqkb1r/1p3ppp/3p1n2/p1pP4/4PB2/2N5/PPP3PP/R2QKBNR w KQkq - 0 7',
+        fen: 'rnbqkb1r/1p3ppp/p2p1n2/2pP4/4PB2/2N5/PPP3PP/R2QKBNR w KQkq - 0 7',
         coachText: '',
         eval: '0.0',
       },

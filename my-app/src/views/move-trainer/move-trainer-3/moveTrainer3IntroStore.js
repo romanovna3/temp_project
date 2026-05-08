@@ -165,17 +165,17 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
       "Now, White's pieces seem to be coming out pretty rapidly. However, the e5-square becomes a great outpost for a black knight, and the e4-pawn could become rather weak as well.",
     nextBlackLeadBold: 'Play Nf6',
     nextBlackTurnStrip: 'Black to play',
-    /** Post–…Nf6: author overlay only (no OM instruction strip); Continue → scripted **Nc3** → `/play-move` (**…a5**). */
+    /** Post–…Nf6: author overlay only (no OM instruction strip); Continue → scripted **Nc3** → `/play-move` (**…a6**). */
     afterBlackMoveAuthorNote: 'For now, we just develop.',
     afterAuthorContinuePlayWhiteSan: 'Nc3',
     afterAuthorContinueToPlayMove: true,
   },
   /**
-   * Post–…a5 (graded on `/play-move`): author overlay + Continue → scripted **7.a4** → `/opponents-move-7`.
+   * Post–…a6 (graded on `/play-move`): author overlay + Continue → scripted **7.a4** → `/opponents-move-7`.
    * Indexed **6** — step **5** intentionally omitted so frontier routing returns `/play-move` after …Nc3.
    */
   6: {
-    nextBlackLeadBold: 'Play a5',
+    nextBlackLeadBold: 'Play a6',
     nextBlackTurnStrip: 'Black to play',
     afterBlackMoveAuthorNote: 'I like this move because it prepares ...b7-b5.',
     afterAuthorContinuePlayWhiteSan: 'a4',
@@ -696,7 +696,7 @@ export const coachSelectedPlyCommentary = computed(() => {
  * - **White `7.a4`** → `[7].whiteCommentary`
  * - **Black** → `afterBlackMoveAuthorNote` when SAN matches that checkpoint’s **`Play …`** lead (`nextBlackLeadBold`).
  *
- * Checkpoint **`6`** defines post–**…a5** author overlay + scripted **a4** routing only (no `whiteCommentary`).
+ * Checkpoint **`6`** defines post–**…a6** author overlay + scripted **a4** routing only (no `whiteCommentary`).
  */
 export const coachReplayHalfMoveBody = computed(() => {
   const idx = currentPly.value - 1

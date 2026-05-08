@@ -47,7 +47,7 @@ These are the **distinct coach/footer presentations** users see. **`MoveTrainer3
 ### L3 — Play Move (replay scrub)
 
 - **Same route as L2**, but **`showMt3ReplayCoachPreview`** in `MoveTrainer3LineCoach`.
-- **Coach:** Separate **non-fill** combined bubble — **notation** + body matching **live OM / chapter copy** when defined (**`whiteCommentary`** for **`2.d5`**, **`4.f4`**, **`5.Bxf4`**, **`7.a4`**; **`readingLead`** for **`3.e4`**; **`afterBlackMoveAuthorNote`** for matching Black replies such as **`…e5`** / **`…d6`** / **`…exf4`** / **`…Nf6`** / **`…a5`** / **`…g6`**), else **line `coachText`**; **1.d4** / **1...c5** remain **heading-only**. At **`currentPly === 0`**, heading shows **first White move** (e.g. `1.d4`) with no body.
+- **Coach:** Separate **non-fill** combined bubble — **notation** + body matching **live OM / chapter copy** when defined (**`whiteCommentary`** for **`2.d5`**, **`4.f4`**, **`5.Bxf4`**, **`7.a4`**; **`readingLead`** for **`3.e4`**; **`afterBlackMoveAuthorNote`** for matching Black replies such as **`…e5`** / **`…d6`** / **`…exf4`** / **`…Nf6`** / **`…a6`** / **`…g6`**), else **line `coachText`**; **1.d4** / **1...c5** remain **heading-only**. At **`currentPly === 0`**, heading shows **first White move** (e.g. `1.d4`) with no body.
 - **Footer:** Same shell as L2; movelist highlights **san** for `currentPly - 1` (no pill highlight at ply `0`); chevrons move **`currentPly`** within `[0, footerNavMaxPly]`.
 
 ### L4 — OM variant 1 (live)
@@ -146,7 +146,7 @@ Steps describe **typical** demo line behavior; **coach copy is product-authored*
 |--------|----------|
 | Trigger | Correct **…Nf6** on **`/opponents-move-4`**. |
 | Post-move | L6 — **`afterBlackMoveAuthorNote`** only (*For now, we just develop.*); **no** OM Play strip until **Continue**. Footer **Continue** (no Hint). |
-| Continue | Scripted **Nc3** from OpeningCourses (`afterAuthorContinuePlayWhiteSan` on checkpoint **4**), ply advances, then **`/play-move`**. |
+| Continue | **`/play-move`** shell **before** scripted **Nc3** (no OM **`whiteCommentary`** flash), then White half-move + ply advance (`afterAuthorContinuePlayWhiteSan` on checkpoint **4**). |
 | Next | L2 — **Play a6** (and Black strip only — empty Play Move body; no extra coach copy). |
 
 Learn-shell routing after Black milestones uses **`moveTrainer3LearnShellTargetFromFrontier`** / **`moveTrainer3LearnShellPathAfterBlackSuccessCount`**: **`/opponents-move-{N}`** only when checkpoint **N** exists; otherwise **`/play-move`** (so there is no empty **`opponents-move-5`** after this segment).

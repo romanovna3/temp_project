@@ -30,6 +30,7 @@ import {
   resetMoveTrainer3OmChapterPhase,
   applyMoveTrainer3OmChapterOverflowMeasure,
   clearMoveTrainer3OmReadingBoardBranch,
+  moveTrainer3OmPostAuthorChain,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -96,8 +97,15 @@ const playMoveCoachBubbleMessage = computed(() =>
   isPlayMoveLayout.value ? '' : introCoachBubbleMessage.value,
 )
 
+/** Scripted White after author **Continue** — OM shell briefly survives route swap; hide OM copy/strip (OpeningCourses jumps to `/play-move` first for **Nc3**). */
+const suppressOmCoachDuringPostAuthorWhite = computed(
+  () => !!moveTrainer3OmPostAuthorChain.value?.playWhiteSan && isOpponentsMoveLayout.value,
+)
+
 /** OM v1 live tip: short `whiteCommentary` only (long chapter uses informational bubble below). */
-const omVariant1TopBubbleMessage = computed(() => opponentsMoveCheckpoint.value?.whiteCommentary ?? '')
+const omVariant1TopBubbleMessage = computed(() =>
+  suppressOmCoachDuringPostAuthorWhite.value ? '' : (opponentsMoveCheckpoint.value?.whiteCommentary ?? ''),
+)
 
 /** Live OM **before** reading phase: full chapter + rails (`readingLead`, not legacy author-note fallback). */
 const omVariant1LiveChapterMessage = computed(() => {
@@ -132,6 +140,7 @@ const showOmLiveChapterBubble = computed(() => {
 /** Play strip: hidden until overflow measured when chapter checkpoint (avoid flash); instruction phase after Continue when overflowed; always when chapter fits one screen. */
 const showOmPlayStripOnOmV1 = computed(() => {
   if (!showOmVariant1.value) return false
+  if (suppressOmCoachDuringPostAuthorWhite.value) return false
   if (!omVariant1UsesInformationalChapter.value) return true
   if (moveTrainer3OmChapterOverflows.value === null) return false
   if (!omLiveChapterNeedsTwoPhase.value) return true
@@ -332,7 +341,7 @@ const omIntroStackChapterScrollClamp = computed(
         @informational-body-overflow="onOmChapterInformationalOverflow"
       />
       <CoachBubble
-        v-else-if="!omVariant1UsesInformationalChapter"
+        v-else-if="!omVariant1UsesInformationalChapter && omVariant1TopBubbleMessage"
         class="mt3-om-commentary-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
