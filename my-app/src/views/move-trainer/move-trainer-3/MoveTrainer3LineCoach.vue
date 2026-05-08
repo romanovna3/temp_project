@@ -145,6 +145,14 @@ const omV1LiveChapterLayoutStretch = computed(
     && (!omLiveChapterNeedsTwoPhase.value || moveTrainer3OmChapterPhase.value === 'read'),
 )
 
+/** After Continue on overflowed chapter: Play strip only — stretch shell so the bubble fills above footer (no stray commentary row). */
+const omV1InstructionPhaseFill = computed(
+  () =>
+    omVariant1UsesInformationalChapter.value
+    && omLiveChapterNeedsTwoPhase.value
+    && moveTrainer3OmChapterPhase.value === 'instruction',
+)
+
 function onSelectOmReadingChipPly(ply) {
   setMoveTrainer3OmReadingChipPly(ply, opponentsMoveStep.value)
 }
@@ -292,7 +300,10 @@ const omIntroStackChapterScrollClamp = computed(
     <div
       v-else-if="showOmVariant1"
       class="move-trainer-3-coach move-trainer-3-coach--om-v1"
-      :class="{ 'move-trainer-3-coach--om-v1-live-chapter': omV1LiveChapterLayoutStretch }"
+      :class="{
+        'move-trainer-3-coach--om-v1-live-chapter': omV1LiveChapterLayoutStretch,
+        'move-trainer-3-coach--om-v1-instruction-fill': omV1InstructionPhaseFill,
+      }"
     >
       <CoachBubble
         v-if="showOmLiveChapterBubble"
@@ -318,7 +329,7 @@ const omIntroStackChapterScrollClamp = computed(
         @informational-body-overflow="onOmChapterInformationalOverflow"
       />
       <CoachBubble
-        v-else
+        v-else-if="!omVariant1UsesInformationalChapter"
         class="mt3-om-commentary-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
         header-icon=""
@@ -349,7 +360,7 @@ const omIntroStackChapterScrollClamp = computed(
         :intro-coach-combined-bubble="true"
         :intro-combined-lead-bold="omVariant1PlayLeadBold"
         :intro-combined-turn-strip-regular="omVariant1PlayTurnStrip"
-        :fill-available-height="false"
+        :fill-available-height="omV1InstructionPhaseFill"
         :start-position="false"
       />
     </div>
@@ -637,6 +648,54 @@ const omIntroStackChapterScrollClamp = computed(
     rgba(255, 255, 255, 0.48) 46%,
     rgba(255, 255, 255, 0) 100%
   );
+}
+
+/* Two-phase instruction step: only Play … bubble — fill panel height (avatar hidden on `.mt3-om-play-coach`). */
+.move-trainer-3-coach--om-v1-instruction-fill {
+  flex: 1 1 auto;
+  flex-shrink: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.move-trainer-3-coach--om-v1-instruction-fill :deep(.coach-container.coach-container--fill-available.coach-container--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.move-trainer-3-coach--om-v1-instruction-fill :deep(.coach-container.mt3-om-play-coach) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble-wrapper.bubble-wrapper--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-self: stretch;
+}
+
+.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble.bubble--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble-scroll-panel.bubble-scroll-panel--informational) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble-informational-inner) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.move-trainer-3-coach--om-v1-instruction-fill .mt3-om-play-coach :deep(.bubble-content.bubble-content--informational-message) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .mt3-om-live-chapter-coach :deep(.coach-message),
