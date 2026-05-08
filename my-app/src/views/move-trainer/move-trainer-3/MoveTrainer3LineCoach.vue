@@ -184,10 +184,20 @@ const omAuthorReadingChapterLongForm = computed(
 )
 
 const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
+
+/** Bound OM column height so long informational bubbles scroll inside (fade dissolves + thumb rail). */
+const omIntroStackChapterScrollClamp = computed(
+  () =>
+    (showOmVariant1.value && omVariant1UsesInformationalChapter.value)
+    || (showOmAuthorReading.value && omAuthorReadingChapterLongForm.value),
+)
 </script>
 
 <template>
-  <div class="move-trainer-3-intro-stack">
+  <div
+    class="move-trainer-3-intro-stack"
+    :class="{ 'move-trainer-3-intro-stack--om-chapter-scroll-clamp': omIntroStackChapterScrollClamp }"
+  >
     <!-- Replay scrub (footer chevrons behind furthest ply): one stable coach; route stays progress-anchored. -->
     <div v-if="showMt3ReplayCoachPreview" class="move-trainer-3-coach move-trainer-3-coach--mt3-replay-preview">
       <CoachBubble
@@ -362,6 +372,16 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   width: 100%;
 }
 
+/*
+ * OM live chapter: clip panel spill so the chapter bubble gets a real height budget (flex min-height:0 chain).
+ * Inner informational bubble owns vertical scroll + CoachBubble top/bottom dissolve (::before / ::after).
+ */
+.move-trainer-3-intro-stack--om-chapter-scroll-clamp {
+  overflow: hidden;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
 .move-trainer-3-coach {
   display: flex;
   flex-direction: column;
@@ -497,22 +517,65 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
 /* Live OM e4 chapter: same fill + scroll + gradient dissolves as OM author-reading (`informational-single` shell). */
 .move-trainer-3-coach--om-v1-live-chapter {
-  flex: 1 1 0;
-  min-height: min(52vh, 22rem);
+  flex: 1 1 auto;
+  flex-shrink: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.move-trainer-3-coach--om-v1-live-chapter :deep(.coach-container.mt3-om-live-chapter-coach) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.move-trainer-3-coach--om-v1-live-chapter :deep(.coach-container.mt3-om-play-coach) {
+  flex-shrink: 0;
 }
 
 .move-trainer-3-coach--om-v1-live-chapter :deep(.coach-container.coach-container--fill-available) {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   max-height: 100%;
+  overflow: hidden;
+}
+
+.move-trainer-3-coach--om-v1-live-chapter .mt3-om-live-chapter-coach :deep(.bubble-wrapper--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.move-trainer-3-coach--om-v1-live-chapter .mt3-om-live-chapter-coach :deep(.bubble.bubble--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.move-trainer-3-coach--om-v1-live-chapter .mt3-om-live-chapter-coach :deep(.bubble-scroll-panel.bubble-scroll-panel--informational) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .move-trainer-3-coach--om-v1-live-chapter :deep(.coach-avatar) {
   align-self: flex-start;
 }
 
+.move-trainer-3-coach--om-v1-live-chapter :deep(.bubble--informational-single::before),
 .move-trainer-3-coach--om-v1-live-chapter :deep(.bubble--informational-single::after) {
   height: 3.25rem;
+}
+
+.move-trainer-3-coach--om-v1-live-chapter :deep(.bubble--informational-single::before) {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.48) 46%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.move-trainer-3-coach--om-v1-live-chapter :deep(.bubble--informational-single::after) {
   background: linear-gradient(
     to top,
     rgba(255, 255, 255, 0.97) 0%,
@@ -565,7 +628,11 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   min-height: 0;
 }
 
-.move-trainer-3-coach--om-v1 :deep(.bubble-content.bubble-content--informational-message) {
+/*
+ * Only the **Play …** strip uses informational-message without fill-available scroll port — keep hug behavior.
+ * Do NOT apply max-height:none to `.mt3-om-live-chapter-coach` or we break inner scroll + dissolve fades.
+ */
+.move-trainer-3-coach--om-v1 .mt3-om-play-coach :deep(.bubble-content.bubble-content--informational-message) {
   min-height: 0 !important;
   max-height: none;
 }
@@ -639,8 +706,35 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
 /* Long OM chapter: coach column grows so scrollable bubble has room above footer */
 .move-trainer-3-coach--om-reading-long {
-  flex: 1 1 0;
-  min-height: min(52vh, 22rem);
+  flex: 1 1 auto;
+  flex-shrink: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.move-trainer-3-coach--om-reading-long :deep(.coach-container.coach-container--fill-available) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.move-trainer-3-coach--om-reading-long :deep(.bubble-wrapper--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.move-trainer-3-coach--om-reading-long :deep(.bubble.bubble--informational-single) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.move-trainer-3-coach--om-reading-long :deep(.bubble-scroll-panel.bubble-scroll-panel--informational) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .mt3-om-reading-coach :deep(.coach-message),
@@ -648,8 +742,21 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
   white-space: pre-wrap;
 }
 
+.move-trainer-3-coach--om-reading-fill :deep(.bubble--informational-single::before),
 .move-trainer-3-coach--om-reading-fill :deep(.bubble--informational-single::after) {
   height: 3.25rem;
+}
+
+.move-trainer-3-coach--om-reading-fill.move-trainer-3-coach--om-reading-long :deep(.bubble--informational-single::before) {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.48) 46%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.move-trainer-3-coach--om-reading-fill :deep(.bubble--informational-single::after) {
   background: linear-gradient(
     to top,
     rgba(255, 255, 255, 0.97) 0%,
