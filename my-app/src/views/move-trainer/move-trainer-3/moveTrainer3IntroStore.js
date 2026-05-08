@@ -246,10 +246,13 @@ export const moveTrainer3OmAuthorNoteStep = ref(0)
  */
 export const moveTrainer3OmChapterOverflows = ref(null)
 export const moveTrainer3OmChapterPhase = ref('inactive')
+/** User clicked Continue on overflowed chapter once — footer forward can return to instruction after back-to-read without a second Continue. */
+export const moveTrainer3OmChapterContinueUsed = ref(false)
 
 export function resetMoveTrainer3OmChapterPhase() {
   moveTrainer3OmChapterOverflows.value = null
   moveTrainer3OmChapterPhase.value = 'inactive'
+  moveTrainer3OmChapterContinueUsed.value = false
 }
 
 export function applyMoveTrainer3OmChapterOverflowMeasure(overflows) {
@@ -259,6 +262,22 @@ export function applyMoveTrainer3OmChapterOverflowMeasure(overflows) {
 
 export function advanceMoveTrainer3OmChapterToInstruction() {
   moveTrainer3OmChapterPhase.value = 'instruction'
+  moveTrainer3OmChapterContinueUsed.value = true
+}
+
+/**
+ * Footer forward while on overflow **read** after back-from-instruction: reopen Play strip without ply scrub.
+ * Skipped when reviewing behind max ply or when Black’s expected move is already played (no hint).
+ */
+export function advanceOmChapterReadToInstructionViaFooterForward() {
+  if (moveTrainer3OmChapterPhase.value !== 'read') return false
+  if (moveTrainer3OmChapterOverflows.value !== true) return false
+  if (!moveTrainer3OmChapterContinueUsed.value) return false
+  if (moveTrainer3StartLearningNonce.value <= 0) return false
+  if (currentPly.value !== moveTrainer3FooterNavMaxPly.value) return false
+  if (!getMoveTrainer3BlackHintSquares()) return false
+  moveTrainer3OmChapterPhase.value = 'instruction'
+  return true
 }
 
 /** Footer back from overflow OM instruction step → chapter read UI without scrubbing `currentPly`. */
@@ -569,6 +588,9 @@ export function goBack() {
 }
 
 export function goForward() {
+  if (advanceOmChapterReadToInstructionViaFooterForward()) {
+    return
+  }
   if (moveTrainer3StartLearningNonce.value > 0) {
     const cap = Math.min(reviewMaxPly.value, moveTrainer3FooterNavMaxPly.value)
     const next = currentPly.value + 1
@@ -608,6 +630,15 @@ export const footerNavBackDisabled = computed(() => {
 export const footerNavForwardDisabled = computed(() => {
   if (moveTrainer3StartLearningNonce.value > 0) {
     const cap = Math.min(reviewMaxPly.value, moveTrainer3FooterNavMaxPly.value)
+    if (
+      moveTrainer3OmChapterPhase.value === 'read'
+      && moveTrainer3OmChapterOverflows.value === true
+      && moveTrainer3OmChapterContinueUsed.value
+      && currentPly.value === moveTrainer3FooterNavMaxPly.value
+      && getMoveTrainer3BlackHintSquares()
+    ) {
+      return false
+    }
     return currentPly.value >= cap
   }
   return atReviewLineEnd.value
