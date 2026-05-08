@@ -833,7 +833,9 @@ export function getMoveTrainer3BoardSyncPayload() {
   const replayScrub =
     moveTrainer3StartLearningNonce.value > 0 && currentPly.value < moveTrainer3FooterNavMaxPly.value
   const ov = moveTrainer3OmReadingBoardOverride.value
-  if (!replayScrub && ov?.fen) {
+  /** Author-reading overlay must show main-line FEN after the graded Black move — never a clicked rail preview. */
+  const authorReadingOpen = moveTrainer3OmAuthorNoteStep.value > 0
+  if (!replayScrub && !authorReadingOpen && ov?.fen) {
     return { fen: ov.fen, lastMove: ov.lastMove ?? null }
   }
   const fen = currentFen.value

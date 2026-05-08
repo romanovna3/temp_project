@@ -58,6 +58,7 @@ import {
   moveTrainer3LearnShellTargetFromFrontier,
   moveTrainer3LearnShellPathAfterBlackSuccessCount,
   hydrateMoveTrainer3LearnSessionFromStorage,
+  clearMoveTrainer3OmReadingBoardBranch,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -4012,6 +4013,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
     : 0
   const omCk = omStep ? getMoveTrainer3OpponentsMoveCheckpoint(omStep) : null
 
+  clearMoveTrainer3OmReadingBoardBranch()
   const isCapture = getPieceOnSquare(to) !== undefined
   makeMove(from, to)
   lastMove.value = { from, to }
@@ -4023,16 +4025,20 @@ async function tryMoveTrainer3PlayMove(from, to) {
   const cpJustGraded = getMoveTrainer3OpponentsMoveCheckpoint(completed)
 
   if (omStep && moveTrainer3CheckpointHasPostBlackAuthorNote(omCk)) {
+    clearMoveTrainer3OmReadingBoardBranch()
     moveTrainer3OmAuthorNoteStep.value = omStep
     await nextTick()
+    onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
     return true
   }
 
   /** Post–Black overlays initiated from `/play-move` (e.g. after **…a5** → checkpoint **6**). */
   if (!omStep && moveTrainer3CheckpointHasPostBlackAuthorNote(cpJustGraded)) {
+    clearMoveTrainer3OmReadingBoardBranch()
     moveTrainer3OmAuthorNoteStep.value = completed
     await router.replace(`/move-trainer/move-trainer-3/opponents-move-${completed}`)
     await nextTick()
+    onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
     return true
   }
 
@@ -4341,6 +4347,7 @@ watch(
     panelView.value,
     moveTrainer3CurrentFen.value,
     moveTrainer3OmReadingBoardOverride.value,
+    moveTrainer3OmAuthorNoteStep.value,
   ],
   () => {
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
