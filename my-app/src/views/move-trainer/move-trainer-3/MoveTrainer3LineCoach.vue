@@ -88,8 +88,7 @@ const mt3ReplayPreviewMessage = computed(() => {
   // Heading-only chips — must stay empty (do not fall through to “No coach note…”).
   if (ply.color === 'white' && ply.moveNum === 1 && ply.san === 'd4') return ''
   if (ply.color === 'black' && ply.moveNum === 1 && ply.san === 'c5') return ''
-  const t = coachReplayHalfMoveBody.value
-  return t || 'No coach note for this move.'
+  return coachReplayHalfMoveBody.value
 })
 
 /** Play Move live tip: heading-only “Play …” — replay narration lives in `showMt3ReplayCoachPreview`. */

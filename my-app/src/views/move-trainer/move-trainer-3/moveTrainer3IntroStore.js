@@ -599,9 +599,9 @@ export const coachSelectedPlyCommentary = computed(() => {
 })
 
 /**
- * Replay scrub bubble body for the half-move at `currentPly - 1`: matches live “author” copy when OM defines
- * `afterBlackMoveAuthorNote` for that Black SAN (`nextBlackLeadBold`), otherwise main-line `coachText`.
- * Heading-only chips (1.d4 / 1...c5) return ''.
+ * Replay scrub bubble body for the half-move at `currentPly - 1`:
+ * **only** explicit checkpoint `afterBlackMoveAuthorNote` when this Black SAN matches that OM step’s expected reply.
+ * No line JSON `coachText`, no OM `readingLead` / chapter (those stay in OM UI only). Heading-only chips (1.d4 / 1...c5) → ''.
  */
 export const coachReplayHalfMoveBody = computed(() => {
   const idx = currentPly.value - 1
@@ -618,14 +618,10 @@ export const coachReplayHalfMoveBody = computed(() => {
       if (typeof cp.afterBlackMoveAuthorNote === 'string' && cp.afterBlackMoveAuthorNote.trim()) {
         return cp.afterBlackMoveAuthorNote
       }
-      if (typeof cp.readingLead === 'string' && cp.readingLead.trim()) {
-        return cp.readingLead
-      }
     }
   }
 
-  const t = ply.coachText
-  return typeof t === 'string' ? t : ''
+  return ''
 })
 
 export function goBack() {
