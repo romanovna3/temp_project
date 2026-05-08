@@ -303,10 +303,9 @@ export const INTRO_1_GAME = {
  * Main-line preview for Move Trainer 3 (Old Benoni) — course panel move list + board plies.
  * Line: 1.d4 c5 2.d5 e5 3.e4 d6 4.f4 exf4 5.Bxf4 Nf6 6.Nc3 a6 7.a4 g6 8.Nf3 Bg4 9.Be2 Bg7 10.O-O O-O
  *
- * **`coachText`:** Replay-scrub fallback narration per half-move (same strings as the original main-line import in
- * git history — do **not** paste OM **`whiteCommentary`** here or replay will duplicate product copy). Replay prefers
- * **`afterBlackMoveAuthorNote`** / checkpoint **`whiteCommentary`** for **4.f4** / **5.Bxf4** when applicable, then
- * these lines.
+ * **`coachText`:** Fallback narration when a half-move has **no** matching OM checkpoint string in
+ * `coachReplayHalfMoveBody` (live course copy always wins from checkpoints for **2.d5**, **3.e4** chapter lead,
+ * **4.f4**, **5.Bxf4**, and Black **`afterBlackMoveAuthorNote`** where defined).
  */
 export const MOVE_TRAINER_3_LINE_GAME = {
   initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',

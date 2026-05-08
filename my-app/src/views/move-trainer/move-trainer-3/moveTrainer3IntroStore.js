@@ -130,7 +130,8 @@ const MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP = Object.freeze({
 
 /**
  * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
- * Live progression coach uses `whiteCommentary` + `nextBlack*`; replay uses line `coachText` / `readingLead` when tied to OM.
+ * Live progression coach uses `whiteCommentary` + `nextBlack*` (+ chapter `readingLead` on step **2**).
+ * Movelist replay scrub uses the **same** checkpoint strings via `coachReplayHalfMoveBody`, then line `coachText` fallback.
  * **Reading phase:** `readingLead` + optional `readingSegments` / `readingSegmentRails` + optional `readingChapterLongForm`.
  * **`afterBlackMoveAuthorNote`** alone gates the post–graded-move **Continue** author-reading overlay.
  * Live OM chapter fields (`readingLead`, rails, etc.) do **not** — they run **before** Black’s reply on that step.
@@ -599,11 +600,12 @@ export const coachSelectedPlyCommentary = computed(() => {
 })
 
 /**
- * Replay scrub bubble body for the half-move at `currentPly - 1`:
- * - **Black:** checkpoint **`afterBlackMoveAuthorNote`** when SAN matches that OM step’s **`Play …`** lead.
- * - **White:** **`whiteCommentary`** from checkpoints **3** (**4.f4**) and **4** (**5.Bxf4**) when set — same copy as live OM variant 1.
- * - **Fallback:** line JSON **`coachText`** for that half-move (heading-only **1.d4** / **1...c5** stay empty in UI).
- * No OM **`readingLead`** / chapter in replay.
+ * Replay scrub bubble body for the half-move at `currentPly - 1` — **same strings as live course progression**
+ * wherever OM defines them; otherwise line **`coachText`** (heading-only **1.d4** / **1...c5** stay empty in UI).
+ *
+ * - **White:** checkpoint **`whiteCommentary`** for **2.d5**, **4.f4**, **5.Bxf4** (steps **1** / **3** / **4**); step **2**
+ *   **`readingLead`** for **3.e4** (chapter lead shown live above rails).
+ * - **Black:** **`afterBlackMoveAuthorNote`** when SAN matches that step’s **`Play …`** lead (e.g. **…e5**, **…Nf6**).
  */
 export const coachReplayHalfMoveBody = computed(() => {
   const idx = currentPly.value - 1
@@ -613,15 +615,23 @@ export const coachReplayHalfMoveBody = computed(() => {
   if (ply.color === 'white' && ply.moveNum === 1 && ply.san === 'd4') return ''
   if (ply.color === 'black' && ply.moveNum === 1 && ply.san === 'c5') return ''
 
+  const cps = MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS
+
   if (ply.color === 'white') {
-    const cpF4 = MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[3]
-    const cpBxf4 = MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[4]
+    if (ply.moveNum === 2 && ply.san === 'd5') {
+      const t = typeof cps[1]?.whiteCommentary === 'string' ? cps[1].whiteCommentary.trim() : ''
+      if (t) return t
+    }
+    if (ply.moveNum === 3 && ply.san === 'e4') {
+      const lead = typeof cps[2]?.readingLead === 'string' ? cps[2].readingLead.trim() : ''
+      if (lead) return lead
+    }
     if (ply.moveNum === 4 && ply.san === 'f4') {
-      const t = typeof cpF4?.whiteCommentary === 'string' ? cpF4.whiteCommentary.trim() : ''
+      const t = typeof cps[3]?.whiteCommentary === 'string' ? cps[3].whiteCommentary.trim() : ''
       if (t) return t
     }
     if (ply.moveNum === 5 && ply.san === 'Bxf4') {
-      const t = typeof cpBxf4?.whiteCommentary === 'string' ? cpBxf4.whiteCommentary.trim() : ''
+      const t = typeof cps[4]?.whiteCommentary === 'string' ? cps[4].whiteCommentary.trim() : ''
       if (t) return t
     }
   }
