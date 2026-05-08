@@ -37,8 +37,14 @@ export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line togethe
 /** Play Move layout — body copy under pinned heading (optional); empty = heading only. */
 export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = ''
 
-/** FEN after main-line `2...e5` — OM reading side variation starts here (White to move). */
+/** FEN after main-line `2...e5` — branch previews for the clickable “Nc3 … e4” alt (OM reading step 2). */
 export const MOVE_TRAINER_3_AFTER_E5_FEN = MOVE_TRAINER_3_LINE_GAME.moves[1].black.fen
+
+/** Plain author-reading copy after Black plays …e5 (OM step 1). */
+const OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE =
+  'This move allows us to also fight for the center. Next, we will go ...d7-d6, creating a sturdy pawn center. Now, the White players reach a crossroads — they have many possible move orders as well as setups they can try.' +
+  '\n\n' +
+  'To my mind, the most dangerous one is when they go Nc3 and e2-e4, keeping the c-pawn in its original position. However, we will investigate all the other possibilities as well, such as playing with c2-c4, fianchettoing the bishop on g2, and so on.'
 
 const MOVE_TRAINER_3_OM_READING_SIDE_LINE_SANS = Object.freeze(['Nc3', 'd6', 'Nf3', 'Be7', 'e4'])
 
@@ -57,15 +63,16 @@ function mt3BuildBranchPreviewPayloads(startFen, sans) {
   return Object.freeze(out)
 }
 
-/** Intro paragraph above the clickable subvariation (OM reading phase). */
+/**
+ * Intro paragraph above the clickable subvariation — OM step **2** (after White’s **3.e4**, Black to …d6).
+ */
 export const MOVE_TRAINER_3_OM_READING_LEAD =
   "I will also suggest a few ways for us to tackle this principled setup, so you can choose, depending on your opponent and your mood. Let's go."
 
 /**
- * Rich coach segments after `readingLead`: chip `ply` 1…n indexes into branch previews for step `1`.
- * Shown inside left-rail subvariation (`CoachBubble`).
+ * Rich segments after `readingLead`: chip `ply` 1…n indexes into branch previews for **OM step 2**.
  */
-export const MOVE_TRAINER_3_OM_READING_AFTER_E5_SEGMENTS = Object.freeze([
+export const MOVE_TRAINER_3_OM_READING_E4_BRANCH_SEGMENTS = Object.freeze([
   { type: 'text', text: '3.' },
   { type: 'move', ply: 1, san: 'Nc3' },
   { type: 'text', text: ' ' },
@@ -81,7 +88,7 @@ export const MOVE_TRAINER_3_OM_READING_AFTER_E5_SEGMENTS = Object.freeze([
 ])
 
 const MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP = Object.freeze({
-  1: mt3BuildBranchPreviewPayloads(MOVE_TRAINER_3_AFTER_E5_FEN, MOVE_TRAINER_3_OM_READING_SIDE_LINE_SANS),
+  2: mt3BuildBranchPreviewPayloads(MOVE_TRAINER_3_AFTER_E5_FEN, MOVE_TRAINER_3_OM_READING_SIDE_LINE_SANS),
 })
 
 /**
@@ -95,8 +102,14 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
     whiteCommentary: 'White immediately locks up the center, grabbing space.',
     nextBlackLeadBold: 'Play e5',
     nextBlackTurnStrip: 'Black to play',
+    afterBlackMoveAuthorNote: OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE,
+  },
+  2: {
+    whiteCommentary: 'White expands in the center — space and tension.',
+    nextBlackLeadBold: 'Play d6',
+    nextBlackTurnStrip: 'Black to play',
     readingLead: MOVE_TRAINER_3_OM_READING_LEAD,
-    readingSegments: MOVE_TRAINER_3_OM_READING_AFTER_E5_SEGMENTS,
+    readingSegments: MOVE_TRAINER_3_OM_READING_E4_BRANCH_SEGMENTS,
   },
 })
 
