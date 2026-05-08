@@ -138,7 +138,8 @@ const MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP = Object.freeze({
  * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
  * Live progression coach uses `whiteCommentary` + `nextBlack*`; replay uses line `coachText` / `readingLead` when tied to OM.
  * **Reading phase:** `readingLead` + optional `readingSegments` / `readingSegmentRails` + optional `readingChapterLongForm`.
- * Legacy: `afterBlackMoveAuthorNote` (plain string only) still triggers reading + Continue if present without rich fields.
+ * **`afterBlackMoveAuthorNote`** alone gates the post–graded-move **Continue** author-reading overlay.
+ * Live OM chapter fields (`readingLead`, rails, etc.) do **not** — they run **before** Black’s reply on that step.
  */
 export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
   1: {
@@ -157,17 +158,18 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
       MOVE_TRAINER_3_OM_READING_RAIL_DXE6_NOTE,
     ]),
   },
+  /** After …d6 — no post-move linger; flow jumps here with scripted **4.f4** and variant-1 coach. */
+  3: {
+    whiteCommentary: 'Direct play like this does not threaten Black at all.',
+    nextBlackLeadBold: 'Play exf4',
+    nextBlackTurnStrip: 'Black to play',
+  },
 })
 
-/** Gate OM “author reading” footer + coach (`Continue`, rich segments, etc.). */
-export function moveTrainer3CheckpointHasAuthorReading(cp) {
+/** Post–graded-move author overlay: plain `afterBlackMoveAuthorNote` only (not live-chapter `readingLead`). */
+export function moveTrainer3CheckpointHasPostBlackAuthorNote(cp) {
   if (!cp) return false
-  if (typeof cp.afterBlackMoveAuthorNote === 'string' && cp.afterBlackMoveAuthorNote.trim()) return true
-  if (typeof cp.readingLead === 'string' && cp.readingLead.trim()) return true
-  if (Array.isArray(cp.readingSegments) && cp.readingSegments.length) return true
-  if (Array.isArray(cp.readingSegmentRails) && cp.readingSegmentRails.some((r) => Array.isArray(r) && r.length))
-    return true
-  return false
+  return typeof cp.afterBlackMoveAuthorNote === 'string' && cp.afterBlackMoveAuthorNote.trim().length > 0
 }
 
 export function moveTrainer3PathIsOpponentsMove(path) {

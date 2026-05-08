@@ -50,7 +50,7 @@ import {
   advanceMoveTrainer3PlyFromGameplay,
   moveTrainer3OmAuthorNoteStep,
   moveTrainer3CoachReplayScrubbing,
-  moveTrainer3CheckpointHasAuthorReading,
+  moveTrainer3CheckpointHasPostBlackAuthorNote,
   moveTrainer3OmReadingBoardOverride,
   moveTrainer3OmBlackPlayUiActive,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
@@ -3999,7 +3999,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
   advanceMoveTrainer3PlyFromGameplay()
   recordMoveTrainer3BlackLearnSuccess()
 
-  if (omStep && moveTrainer3CheckpointHasAuthorReading(omCk)) {
+  if (omStep && moveTrainer3CheckpointHasPostBlackAuthorNote(omCk)) {
     moveTrainer3OmAuthorNoteStep.value = omStep
     await nextTick()
     return true

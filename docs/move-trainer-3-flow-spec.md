@@ -64,7 +64,7 @@ These are the **distinct coach/footer presentations** users see. **`MoveTrainer3
 
 ### L6 — OM author reading
 
-- **Route:** Still `/opponents-move-{N}`; triggered after successful graded Black move when checkpoint defines **`afterBlackMoveAuthorNote`** (`moveTrainer3OmAuthorNoteStep` matches step).
+- **Route:** Still `/opponents-move-{N}`; triggered after successful graded Black move only when checkpoint defines non-empty **`afterBlackMoveAuthorNote`**. Live OM chapter fields (**`readingLead`**, rails, etc.) do **not** open this overlay — they run **before** Black plays on that OM step.
 - **Coach:** One **informational single** bubble, **fill height**, long author text; **Continue** in footer instead of Hint (same toolbar chevrons).
 - **Replay scrub:** If user scrubs behind frontier while this phase is active, **replay coach (L3/L5 style)** still takes **precedence** in `MoveTrainer3LineCoach` (template order). Product should be aware of this interaction.
 
@@ -120,6 +120,16 @@ Steps describe **typical** demo line behavior; exact copy comes from `MOVE_TRAIN
 | Board | Scripted White reply animates on entry; then Black may be on move per checkpoint. |
 | Coach | L4 — checkpoint **commentary** + **Play …** strip. |
 | Footer | Same shell as Play Move; frontier caps forward chevron. |
+
+### A4b — OM step 2 → step 3 after …d6
+
+| Surface | Behavior |
+|--------|----------|
+| Trigger | Correct **…d6** on **`/opponents-move-2`** (live chapter already consumed via **Continue**). |
+| Post-move | No Black “coach after move” linger — **`afterBlackMoveAuthorNote`** is absent on step 2; flow routes forward immediately. |
+| Route | **`/opponents-move-3`**. |
+| Board | **`advanceMoveTrainer3PlyFromGameplay`** after **d6**, then scripted **4.f4** (OpeningCourses OM White-reply watcher). |
+| Coach | L4 — **`whiteCommentary`**: *Direct play like this does not threaten Black at all.* + **Play exf4** / Black turn strip (main line). |
 
 ### A5 — OM author reading (optional checkpoint field)
 

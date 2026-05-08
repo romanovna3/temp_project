@@ -20,7 +20,7 @@ import {
   getMoveTrainer3OpponentsMoveCheckpoint,
   moveTrainer3CoachReplayScrubbing,
   moveTrainer3OmAuthorNoteStep,
-  moveTrainer3CheckpointHasAuthorReading,
+  moveTrainer3CheckpointHasPostBlackAuthorNote,
   moveTrainer3OmReadingSelectedChipPly,
   setMoveTrainer3OmReadingChipPly,
   moveTrainer3AllPlies,
@@ -202,7 +202,7 @@ const showOmAuthorReading = computed(() => {
   if (!isOpponentsMoveLayout.value) return false
   const step = opponentsMoveStep.value
   if (!step || moveTrainer3OmAuthorNoteStep.value !== step) return false
-  return moveTrainer3CheckpointHasAuthorReading(opponentsMoveCheckpoint.value)
+  return moveTrainer3CheckpointHasPostBlackAuthorNote(opponentsMoveCheckpoint.value)
 })
 
 /** Plain lead (`readingLead` or legacy `afterBlackMoveAuthorNote`). */
