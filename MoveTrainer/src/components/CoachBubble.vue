@@ -222,7 +222,9 @@ const useSingleBubbleHug = computed(
 const showTurnStrip = computed(() => useTwoBubbleLayout.value)
 
 const hasInformationalRichBody = computed(
-  () => useInformationalSingleBubble.value && props.informationalSegments?.length,
+  () =>
+    (useInformationalSingleBubble.value || useIntroCoachCombinedBubble.value)
+    && props.informationalSegments?.length,
 )
 
 /** Pinned Play Move heading with no rich segments / no body — skip placeholder + shrink scroll slot. */
@@ -423,14 +425,30 @@ const typewriterResult = props.typewriter
               }"
               @scroll="onBubbleContentScroll"
             >
-              <CoachMessageRichNotationsLine
-                v-if="hasInformationalRichBody"
-                :segments="informationalSegments"
-                :active-ply="informationalActivePly"
-                @select-ply="$emit('selectInformationalPly', $event)"
-              />
-              <p v-else-if="message?.trim()" class="coach-message cc-text-speech">{{ message }}</p>
-              <p v-else-if="!showIntroCombinedHeading" class="empty">No message</p>
+              <p
+                v-if="message?.trim() && !hasInformationalRichBody"
+                class="coach-message cc-text-speech"
+              >
+                {{ message }}
+              </p>
+              <template v-if="hasInformationalRichBody">
+                <p v-if="message?.trim()" class="coach-message cc-text-speech coach-informational-rich-lead">
+                  {{ message }}
+                </p>
+                <div class="coach-informational-subvariation-rail">
+                  <CoachMessageRichNotationsLine
+                    :segments="informationalSegments"
+                    :active-ply="informationalActivePly"
+                    @select-ply="$emit('selectInformationalPly', $event)"
+                  />
+                </div>
+              </template>
+              <p
+                v-else-if="!showIntroCombinedHeading && !message?.trim() && !hasInformationalRichBody"
+                class="empty"
+              >
+                No message
+              </p>
             </div>
           </div>
           <div v-show="contentScrollable" class="bubble-scroll-panel__rail" aria-hidden="true">
@@ -684,6 +702,21 @@ const typewriterResult = props.typewriter
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
+}
+
+/* Lead paragraph + left-rail subvariation (Move Trainer 3 OM reading, etc.) */
+.coach-informational-rich-lead {
+  margin: 0 0 var(--space-8, 8px);
+}
+
+.coach-informational-subvariation-rail {
+  margin: 0;
+  padding-left: var(--space-12, 12px);
+  border-left: 2px solid rgba(49, 46, 43, 0.18);
+}
+
+.coach-informational-subvariation-rail :deep(.coach-message--rich) {
+  margin: 0;
 }
 
 .coach-intro-combined-heading {

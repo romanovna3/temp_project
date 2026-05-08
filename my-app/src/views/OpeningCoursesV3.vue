@@ -50,6 +50,8 @@ import {
   advanceMoveTrainer3PlyFromGameplay,
   moveTrainer3OmAuthorNoteStep,
   moveTrainer3CoachReplayScrubbing,
+  moveTrainer3CheckpointHasAuthorReading,
+  moveTrainer3OmReadingBoardOverride,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -3996,7 +3998,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
   advanceMoveTrainer3PlyFromGameplay()
   recordMoveTrainer3BlackLearnSuccess()
 
-  if (omStep && omCk?.afterBlackMoveAuthorNote) {
+  if (omStep && moveTrainer3CheckpointHasAuthorReading(omCk)) {
     moveTrainer3OmAuthorNoteStep.value = omStep
     await nextTick()
     return true
@@ -4303,7 +4305,12 @@ const isMoveTrainer3 = computed(() => {
 // MT3: re-sync when FEN changes *and* when this OpeningCoursesV3 instance becomes eligible (route swap remount
 // used to skip sync until panelView settled — watch(currentFen) alone missed second subscribe tick).
 watch(
-  () => [isMoveTrainer3.value, panelView.value, moveTrainer3CurrentFen.value],
+  () => [
+    isMoveTrainer3.value,
+    panelView.value,
+    moveTrainer3CurrentFen.value,
+    moveTrainer3OmReadingBoardOverride.value,
+  ],
   () => {
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
     onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())

@@ -20,6 +20,9 @@ import {
   getMoveTrainer3OpponentsMoveCheckpoint,
   moveTrainer3CoachReplayScrubbing,
   moveTrainer3OmAuthorNoteStep,
+  moveTrainer3CheckpointHasAuthorReading,
+  moveTrainer3OmReadingSelectedChipPly,
+  setMoveTrainer3OmReadingChipPly,
   moveTrainer3AllPlies,
   currentPly,
 } from './moveTrainer3IntroStore.js'
@@ -117,7 +120,22 @@ const showOmAuthorReading = computed(() => {
   if (!isOpponentsMoveLayout.value) return false
   const step = opponentsMoveStep.value
   if (!step || moveTrainer3OmAuthorNoteStep.value !== step) return false
-  return !!(opponentsMoveCheckpoint.value?.afterBlackMoveAuthorNote)
+  return moveTrainer3CheckpointHasAuthorReading(opponentsMoveCheckpoint.value)
+})
+
+/** Plain lead (`readingLead` or legacy `afterBlackMoveAuthorNote`). */
+const omAuthorReadingLead = computed(() => {
+  const cp = opponentsMoveCheckpoint.value
+  if (!cp) return ''
+  const lead = typeof cp.readingLead === 'string' ? cp.readingLead.trim() : ''
+  if (lead) return lead
+  return typeof cp.afterBlackMoveAuthorNote === 'string' ? cp.afterBlackMoveAuthorNote.trim() : ''
+})
+
+/** Rich inline moves — null when checkpoint is legacy plain note only. */
+const omAuthorReadingSegments = computed(() => {
+  const segs = opponentsMoveCheckpoint.value?.readingSegments
+  return Array.isArray(segs) && segs.length ? segs : undefined
 })
 
 const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
@@ -155,13 +173,16 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         eval-text=""
         :white-advantage="true"
         :informational-single-bubble="true"
-        :message="opponentsMoveCheckpoint.afterBlackMoveAuthorNote"
+        :message="omAuthorReadingLead"
+        :informational-segments="omAuthorReadingSegments"
+        :informational-active-ply="moveTrainer3OmReadingSelectedChipPly"
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
         :show-tip="true"
         :typewriter="false"
         :fill-available-height="true"
         :start-position="false"
+        @select-informational-ply="setMoveTrainer3OmReadingChipPly"
       />
     </div>
 

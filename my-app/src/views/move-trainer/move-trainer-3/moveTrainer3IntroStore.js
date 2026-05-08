@@ -20,7 +20,7 @@
  * **Footer chevrons** (after Start Learning): scrub includes **ply 0** (starting board before 1.d4); prev disabled only at 0.
  * Forward stays capped at `moveTrainer3FooterNavMaxPly`; routes stay aligned via OpeningCoursesV3.
  */
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Chess } from 'chess.js'
 import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
 import { MOVE_TRAINER_3_LINE_GAME } from '@move-trainer/data/gameData.js'
@@ -37,25 +37,77 @@ export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line togethe
 /** Play Move layout — body copy under pinned heading (optional); empty = heading only. */
 export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = ''
 
-const OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE =
-  'This move allows us to also fight for the center. Next, we will go ...d7-d6, creating a sturdy pawn center. Now, the White players reach a crossroads — they have many possible move orders as well as setups they can try.' +
-  '\n\n' +
-  'To my mind, the most dangerous one is when they go Nc3 and e2-e4, keeping the c-pawn in its original position. However, we will investigate all the other possibilities as well, such as playing with c2-c4, fianchettoing the bishop on g2, and so on.'
+/** FEN after main-line `2...e5` — OM reading side variation starts here (White to move). */
+export const MOVE_TRAINER_3_AFTER_E5_FEN = MOVE_TRAINER_3_LINE_GAME.moves[1].black.fen
+
+const MOVE_TRAINER_3_OM_READING_SIDE_LINE_SANS = Object.freeze(['Nc3', 'd6', 'Nf3', 'Be7', 'e4'])
+
+function mt3BuildBranchPreviewPayloads(startFen, sans) {
+  const out = []
+  try {
+    const chess = new Chess(startFen)
+    for (const san of sans) {
+      const mv = chess.move(san)
+      if (!mv) break
+      out.push({ fen: chess.fen(), lastMove: { from: mv.from, to: mv.to } })
+    }
+  } catch {
+    /* invalid branch */
+  }
+  return Object.freeze(out)
+}
+
+/** Intro paragraph above the clickable subvariation (OM reading phase). */
+export const MOVE_TRAINER_3_OM_READING_LEAD =
+  "I will also suggest a few ways for us to tackle this principled setup, so you can choose, depending on your opponent and your mood. Let's go."
+
+/**
+ * Rich coach segments after `readingLead`: chip `ply` 1…n indexes into branch previews for step `1`.
+ * Shown inside left-rail subvariation (`CoachBubble`).
+ */
+export const MOVE_TRAINER_3_OM_READING_AFTER_E5_SEGMENTS = Object.freeze([
+  { type: 'text', text: '3.' },
+  { type: 'move', ply: 1, san: 'Nc3' },
+  { type: 'text', text: ' ' },
+  { type: 'move', ply: 2, san: 'd6' },
+  { type: 'text', text: ' 4.' },
+  { type: 'move', ply: 3, san: 'Nf3' },
+  { type: 'text', text: ' ' },
+  { type: 'move', ply: 4, san: 'Be7' },
+  { type: 'text', text: ' 5.' },
+  { type: 'move', ply: 5, san: 'e4' },
+  { type: 'text', text: '\n\n' },
+  { type: 'text', text: 'transposes to the 3.e4 lines.' },
+])
+
+const MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP = Object.freeze({
+  1: mt3BuildBranchPreviewPayloads(MOVE_TRAINER_3_AFTER_E5_FEN, MOVE_TRAINER_3_OM_READING_SIDE_LINE_SANS),
+})
 
 /**
  * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
- * Live progression coach uses `whiteCommentary` + `nextBlack*`; replay (footer scrub) uses line `coachText` + notation,
- * except Black plies tied to `afterBlackMoveAuthorNote` — replay body matches that author copy (same as post–Continue reading).
- * Optional `afterBlackMoveAuthorNote`: long author note after that Black reply → reading phase + Continue.
+ * Live progression coach uses `whiteCommentary` + `nextBlack*`; replay uses line `coachText` / `readingLead` when tied to OM.
+ * **Reading phase:** `readingLead` + optional `readingSegments` (inline clickable moves → board branch via store override).
+ * Legacy: `afterBlackMoveAuthorNote` (plain string only) still triggers reading + Continue if present without rich fields.
  */
 export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
   1: {
     whiteCommentary: 'White immediately locks up the center, grabbing space.',
     nextBlackLeadBold: 'Play e5',
     nextBlackTurnStrip: 'Black to play',
-    afterBlackMoveAuthorNote: OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE,
+    readingLead: MOVE_TRAINER_3_OM_READING_LEAD,
+    readingSegments: MOVE_TRAINER_3_OM_READING_AFTER_E5_SEGMENTS,
   },
 })
+
+/** Gate OM “author reading” footer + coach (`Continue`, rich segments, etc.). */
+export function moveTrainer3CheckpointHasAuthorReading(cp) {
+  if (!cp) return false
+  if (typeof cp.afterBlackMoveAuthorNote === 'string' && cp.afterBlackMoveAuthorNote.trim()) return true
+  if (typeof cp.readingLead === 'string' && cp.readingLead.trim()) return true
+  if (Array.isArray(cp.readingSegments) && cp.readingSegments.length) return true
+  return false
+}
 
 export function moveTrainer3PathIsOpponentsMove(path) {
   if (!path || typeof path !== 'string') return false
@@ -125,8 +177,47 @@ export const moveTrainer3StartLearningNonce = ref(0)
  */
 export const moveTrainer3OmAuthorNoteStep = ref(0)
 
+/** While OM reading shows clickable branch moves — overrides main-line `currentPly` FEN on the panel board. */
+export const moveTrainer3OmReadingBoardOverride = ref(null)
+
+/** Highlights matching move chip in `CoachMessageRichNotationsLine` (branch-local ply index 1…n). */
+export const moveTrainer3OmReadingSelectedChipPly = ref(0)
+
+export function clearMoveTrainer3OmReadingBoardBranch() {
+  moveTrainer3OmReadingBoardOverride.value = null
+  moveTrainer3OmReadingSelectedChipPly.value = 0
+}
+
+export function setMoveTrainer3OmReadingChipPly(ply) {
+  const n = Math.floor(Number(ply))
+  const step = moveTrainer3OmAuthorNoteStep.value
+  const previews = MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP[step]
+  if (!previews?.length || !Number.isFinite(n) || n < 1 || n > previews.length) return
+  moveTrainer3OmReadingSelectedChipPly.value = n
+  moveTrainer3OmReadingBoardOverride.value = previews[n - 1]
+}
+
+function armMoveTrainer3OmReadingBoardBranchDefault() {
+  const step = moveTrainer3OmAuthorNoteStep.value
+  const previews = MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP[step]
+  if (!previews?.length) return
+  moveTrainer3OmReadingSelectedChipPly.value = 1
+  moveTrainer3OmReadingBoardOverride.value = previews[0]
+}
+
+watch(moveTrainer3OmAuthorNoteStep, (step) => {
+  clearMoveTrainer3OmReadingBoardBranch()
+  if (step > 0) {
+    const cp = getMoveTrainer3OpponentsMoveCheckpoint(step)
+    if (cp?.readingSegments?.length) {
+      armMoveTrainer3OmReadingBoardBranchDefault()
+    }
+  }
+})
+
 export function resetMoveTrainer3OmAuthorNoteStep() {
   moveTrainer3OmAuthorNoteStep.value = 0
+  clearMoveTrainer3OmReadingBoardBranch()
 }
 
 /** While true, skip applying store FEN to the main board (Start Learning owns pieces during 1.d4 animation). */
@@ -338,13 +429,12 @@ export const coachReplayHalfMoveBody = computed(() => {
   if (ply.color === 'black') {
     for (const cp of Object.values(MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS)) {
       const expected = mt3SanFromOmPlayLeadBold(cp?.nextBlackLeadBold)
-      if (
-        expected
-        && ply.san === expected
-        && typeof cp.afterBlackMoveAuthorNote === 'string'
-        && cp.afterBlackMoveAuthorNote.trim()
-      ) {
+      if (!expected || ply.san !== expected) continue
+      if (typeof cp.afterBlackMoveAuthorNote === 'string' && cp.afterBlackMoveAuthorNote.trim()) {
         return cp.afterBlackMoveAuthorNote
+      }
+      if (typeof cp.readingLead === 'string' && cp.readingLead.trim()) {
+        return cp.readingLead
       }
     }
   }
@@ -435,6 +525,12 @@ function getMt3LastMoveSquaresAfterPly(plyIndex) {
 
 /** Snapshot for main board sync — reuse wherever OpeningCoursesV3 applies MT3 FEN + last-move highlight. */
 export function getMoveTrainer3BoardSyncPayload() {
+  const replayScrub =
+    moveTrainer3StartLearningNonce.value > 0 && currentPly.value < moveTrainer3FooterNavMaxPly.value
+  const ov = moveTrainer3OmReadingBoardOverride.value
+  if (!replayScrub && ov?.fen) {
+    return { fen: ov.fen, lastMove: ov.lastMove ?? null }
+  }
   const fen = currentFen.value
   let lastMove = null
   if (currentPly.value > 0) {
