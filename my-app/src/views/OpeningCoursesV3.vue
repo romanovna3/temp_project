@@ -49,6 +49,7 @@ import {
   moveTrainer3BlackMovesThroughPly,
   advanceMoveTrainer3PlyFromGameplay,
   moveTrainer3OmAuthorNoteStep,
+  moveTrainer3CoachReplayScrubbing,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -4506,6 +4507,15 @@ watch(
   async () => {
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
     if (!moveTrainer3PathIsOpponentsMove(route.path)) {
+      return
+    }
+    /**
+     * Footer replay scrub: `currentPly` intentionally lands on positions where the next DB half-move is White’s.
+     * The scripted OM reply watcher must not re-fire — it would play **d5** (etc.) and `advanceMoveTrainer3PlyFromGameplay()`
+     * and snap the user forward away from **c5** (seen after stepping back past **d5**).
+     */
+    if (moveTrainer3CoachReplayScrubbing.value) {
+      moveTrainer3OmWhiteReplyGen += 1
       return
     }
     const step = moveTrainer3OpponentsMoveStepFromPath(route.path)
