@@ -233,6 +233,14 @@ const informationalHeadingOnlyBody = computed(
     && !hasInformationalRichBody.value,
 )
 
+/** Move line + coach body (non-fill): shrink white bubble to content width; long copy still wraps at panel edge. */
+const introCombinedHugWidth = computed(
+  () =>
+    useSingleBubbleHug.value
+    && showIntroCombinedHeading.value
+    && !!props.message?.trim(),
+)
+
 /** Keep the active move chip near the vertical center of the scrollable coach area (footer chevrons / chips). */
 function scrollInformationalActiveMoveIntoView() {
   if (!hasInformationalRichBody.value) return
@@ -314,6 +322,7 @@ const typewriterResult = props.typewriter
       'coach-container--informational-single':
         useInformationalSingleBubble || useIntroCoachCombinedBubble,
       'coach-container--single-bubble-hug': useSingleBubbleHug,
+      'coach-container--intro-combined-hug-width': introCombinedHugWidth,
       'coach-container--secondary-fit-content':
         secondaryBubbleFitContent && useTwoBubbleLayout,
       'coach-container--secondary-expand':
@@ -552,6 +561,44 @@ const typewriterResult = props.typewriter
 
 .coach-container--single-bubble-hug .bubble-content.bubble-content--informational-message {
   min-height: 0;
+}
+
+/*
+ * Intro-combined: pinned move line + visible body — bubble width follows copy (replay notes, etc.).
+ * Column parents stretch flex items by default; align-self keeps intrinsic width. Heading→body gap unchanged.
+ */
+.coach-container--single-bubble-hug.coach-container--intro-combined-hug-width {
+  width: auto;
+  max-width: 100%;
+  align-self: flex-start;
+}
+
+.coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble-wrapper--informational-single {
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  align-self: flex-start;
+}
+
+.coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble.bubble--informational-single {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble-scroll-panel--informational {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble-informational-inner {
+  min-width: 0;
+}
+
+.coach-container--single-bubble-hug.coach-container--intro-combined-hug-width .bubble-content--informational-message .coach-message {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .bubble-wrapper--informational-single {
