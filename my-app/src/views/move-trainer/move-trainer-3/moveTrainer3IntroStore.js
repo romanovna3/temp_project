@@ -64,15 +64,20 @@ function mt3BuildBranchPreviewPayloads(startFen, sans) {
 }
 
 /**
- * Intro paragraph above the clickable subvariation — OM step **2** (after White’s **3.e4**, Black to …d6).
+ * Full chapter lead above subvariation rails — OM step **2** (after White’s **3.e4**, Black to …d6).
  */
-export const MOVE_TRAINER_3_OM_READING_LEAD =
-  "I will also suggest a few ways for us to tackle this principled setup, so you can choose, depending on your opponent and your mood. Let's go."
+export const MOVE_TRAINER_3_OM_READING_CHAPTER_E4_LEAD =
+  'In this chapter, we will be discussing the most dangerous setup available to White against our Old Benoni. Namely, our opponent will try to take advantage of the fact the move c2-c4 has not been played yet by foregoing it altogether. But wait, why is that advantageous? Doesn\'t almost every 1.d4 player try to place the pawn on c4 as soon as possible, to take more space? Well, the thing is that White already controls the center. By delaying the move c2-c4, White gets the following benefits:' +
+  '\n\n' +
+  'The c4-square is available for the knight. This is valuable because it can come there to put pressure on the d6-pawn.' +
+  '\n\n' +
+  'The f1-bishop is not nearly as restricted. For example, White can give a check on b5 in many positions, to disrupt our development a bit. We often like going ...Bg4 to eliminate the f3-knight, but blocking the check with ...Nbd7 or ...Bd7 makes that impossible.' +
+  '\n\n' +
+  'The bad news is that objectively speaking, White is better in this line. I do believe it is very interesting to play the Old Benoni, of course − that\'s why I am writing the course! But, to be fair, White is better. The good news is that at the club level, you won\'t have problems.\n' +
+  'For example, the setups with c2-c4 are 4 times(!) more popular in Lichess games of players rated 1600-2000 than the \'correct\' setup without c2-c4. And then, even within the most testing line, White played the best way in just about 1% of the games, or 50 games out of 5000! Of course, I will also suggest a few ways for us to tackle this principled setup, so you can choose, depending on your opponent and your mood. Let\'s go.'
 
-/**
- * Rich segments after `readingLead`: chip `ply` 1…n indexes into branch previews for **OM step 2**.
- */
-export const MOVE_TRAINER_3_OM_READING_E4_BRANCH_SEGMENTS = Object.freeze([
+/** First subvariation: main alt order → transposes to 3.e4 lines. Chip `ply` 1…5 → branch previews on step 2. */
+const MOVE_TRAINER_3_OM_READING_RAIL_TRANSPOSE_TO_E4 = Object.freeze([
   { type: 'text', text: '3.' },
   { type: 'move', ply: 1, san: 'Nc3' },
   { type: 'text', text: ' ' },
@@ -87,14 +92,52 @@ export const MOVE_TRAINER_3_OM_READING_E4_BRANCH_SEGMENTS = Object.freeze([
   { type: 'text', text: 'transposes to the 3.e4 lines.' },
 ])
 
+/** Second subvariation: same line + club-level **dxe6** EP note (`ply` 6). */
+const MOVE_TRAINER_3_OM_READING_RAIL_DXE6_NOTE = Object.freeze([
+  { type: 'text', text: '3.' },
+  { type: 'move', ply: 1, san: 'Nc3' },
+  { type: 'text', text: ' ' },
+  { type: 'move', ply: 2, san: 'd6' },
+  { type: 'text', text: ' 4.' },
+  { type: 'move', ply: 3, san: 'Nf3' },
+  { type: 'text', text: ' ' },
+  { type: 'move', ply: 4, san: 'Be7' },
+  { type: 'text', text: ' 5.' },
+  { type: 'move', ply: 5, san: 'e4' },
+  { type: 'text', text: '\n\n' },
+  {
+    type: 'text',
+    text: 'Some White players, especially at the club level, can also play 3. ',
+  },
+  { type: 'move', ply: 6, san: 'dxe6' },
+  {
+    type: 'text',
+    text: '. However, after dxe6, Black wants to play ...d7-d5 and occupy the entire center, and it is easy for White to be worse in no time.',
+  },
+])
+
+function mt3OmReadingStep2BranchPreviews() {
+  const start = MOVE_TRAINER_3_AFTER_E5_FEN
+  const alt = mt3BuildBranchPreviewPayloads(start, MOVE_TRAINER_3_OM_READING_SIDE_LINE_SANS)
+  const ep = []
+  try {
+    const chess = new Chess(start)
+    const mv = chess.move('dxe6')
+    if (mv) ep.push({ fen: chess.fen(), lastMove: { from: mv.from, to: mv.to } })
+  } catch {
+    /* ignore */
+  }
+  return Object.freeze([...alt, ...ep])
+}
+
 const MOVE_TRAINER_3_OM_READING_BRANCH_PREVIEWS_BY_STEP = Object.freeze({
-  2: mt3BuildBranchPreviewPayloads(MOVE_TRAINER_3_AFTER_E5_FEN, MOVE_TRAINER_3_OM_READING_SIDE_LINE_SANS),
+  2: mt3OmReadingStep2BranchPreviews(),
 })
 
 /**
  * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
  * Live progression coach uses `whiteCommentary` + `nextBlack*`; replay uses line `coachText` / `readingLead` when tied to OM.
- * **Reading phase:** `readingLead` + optional `readingSegments` (inline clickable moves → board branch via store override).
+ * **Reading phase:** `readingLead` + optional `readingSegments` / `readingSegmentRails` + optional `readingChapterLongForm`.
  * Legacy: `afterBlackMoveAuthorNote` (plain string only) still triggers reading + Continue if present without rich fields.
  */
 export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
@@ -108,8 +151,12 @@ export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
     whiteCommentary: 'White expands in the center — space and tension.',
     nextBlackLeadBold: 'Play d6',
     nextBlackTurnStrip: 'Black to play',
-    readingLead: MOVE_TRAINER_3_OM_READING_LEAD,
-    readingSegments: MOVE_TRAINER_3_OM_READING_E4_BRANCH_SEGMENTS,
+    readingLead: MOVE_TRAINER_3_OM_READING_CHAPTER_E4_LEAD,
+    readingChapterLongForm: true,
+    readingSegmentRails: Object.freeze([
+      MOVE_TRAINER_3_OM_READING_RAIL_TRANSPOSE_TO_E4,
+      MOVE_TRAINER_3_OM_READING_RAIL_DXE6_NOTE,
+    ]),
   },
 })
 
@@ -119,6 +166,8 @@ export function moveTrainer3CheckpointHasAuthorReading(cp) {
   if (typeof cp.afterBlackMoveAuthorNote === 'string' && cp.afterBlackMoveAuthorNote.trim()) return true
   if (typeof cp.readingLead === 'string' && cp.readingLead.trim()) return true
   if (Array.isArray(cp.readingSegments) && cp.readingSegments.length) return true
+  if (Array.isArray(cp.readingSegmentRails) && cp.readingSegmentRails.some((r) => Array.isArray(r) && r.length))
+    return true
   return false
 }
 

@@ -24,6 +24,13 @@ const props = defineProps({
   informationalSingleBubble: { type: Boolean, default: false },
   /** Rich body: alternating text and clickable move chips (light bubble); overrides plain `message` when set. */
   informationalSegments: { type: Array, default: null },
+  /**
+   * Multiple left-rail subvariation blocks (each array is one `CoachMessageRichNotationsLine` segments list).
+   * When set (non-empty), takes precedence over single `informationalSegments`; optional `<hr>` between rails.
+   */
+  informationalSegmentRails: { type: Array, default: null },
+  /** Long OM chapter: allocate more vertical space + stronger scroll affordance for lead + rails. */
+  informationalChapterLongForm: { type: Boolean, default: false },
   /** Highlights the move chip matching the current board ply (same index as MoveList). */
   informationalActivePly: { type: Number, default: 0 },
   /** Primary strip label in two-bubble review layout (e.g. quiz uses "White to play"). */
@@ -221,10 +228,15 @@ const useSingleBubbleHug = computed(
 /** Primary bubble: only the my-app "White to move" strip (white chip + label). */
 const showTurnStrip = computed(() => useTwoBubbleLayout.value)
 
+const hasInformationalRichRails = computed(() => {
+  const rails = props.informationalSegmentRails
+  return Array.isArray(rails) && rails.some((r) => Array.isArray(r) && r.length > 0)
+})
+
 const hasInformationalRichBody = computed(
   () =>
     (useInformationalSingleBubble.value || useIntroCoachCombinedBubble.value)
-    && props.informationalSegments?.length,
+    && (!!props.informationalSegments?.length || hasInformationalRichRails.value),
 )
 
 /** Pinned Play Move heading with no rich segments / no body — skip placeholder + shrink scroll slot. */
@@ -273,7 +285,11 @@ function scrollInformationalActiveMoveIntoView() {
  * Segment-only updates (same ply) do not trigger a scroll.
  */
 watch(
-  () => [props.informationalActivePly, props.informationalSegments?.length ?? 0],
+  () => [
+    props.informationalActivePly,
+    props.informationalSegments?.length ?? 0,
+    hasInformationalRichRails.value ? props.informationalSegmentRails?.length ?? 0 : 0,
+  ],
   async (newTuple, oldTuple) => {
     if (!hasInformationalRichBody.value) return
     await nextTick()
@@ -293,6 +309,8 @@ watch(
     () => props.startPosition,
     () => props.informationalSingleBubble,
     () => props.informationalSegments,
+    () => props.informationalSegmentRails,
+    () => props.informationalChapterLongForm,
     () => props.secondaryBubbleFitContent,
     () => props.secondaryBubbleExpandToFit,
     () => props.fillAvailableHeight,
@@ -332,6 +350,8 @@ const typewriterResult = props.typewriter
       'coach-container--fill-available':
         fillAvailableHeight
         && (useTwoBubbleLayout || useInformationalSingleBubble || useIntroCoachCombinedBubble),
+      'coach-container--informational-chapter-long':
+        informationalChapterLongForm && hasInformationalRichBody,
     }"
   >
     <div class="coach-avatar">
@@ -435,7 +455,25 @@ const typewriterResult = props.typewriter
                 <p v-if="message?.trim()" class="coach-message cc-text-speech coach-informational-rich-lead">
                   {{ message }}
                 </p>
-                <div class="coach-informational-subvariation-rail">
+                <template v-if="hasInformationalRichRails">
+                  <template v-for="(rail, ridx) in informationalSegmentRails" :key="ridx">
+                    <hr
+                      v-if="ridx > 0 && Array.isArray(rail) && rail.length"
+                      class="coach-informational-subvariation-divider"
+                    />
+                    <div
+                      v-if="Array.isArray(rail) && rail.length"
+                      class="coach-informational-subvariation-rail"
+                    >
+                      <CoachMessageRichNotationsLine
+                        :segments="rail"
+                        :active-ply="informationalActivePly"
+                        @select-ply="$emit('selectInformationalPly', $event)"
+                      />
+                    </div>
+                  </template>
+                </template>
+                <div v-else class="coach-informational-subvariation-rail">
                   <CoachMessageRichNotationsLine
                     :segments="informationalSegments"
                     :active-ply="informationalActivePly"
@@ -717,6 +755,23 @@ const typewriterResult = props.typewriter
 
 .coach-informational-subvariation-rail :deep(.coach-message--rich) {
   margin: 0;
+}
+
+.coach-informational-subvariation-divider {
+  border: none;
+  border-top: 1px solid rgba(49, 46, 43, 0.14);
+  margin: var(--space-12, 12px) 0 var(--space-12, 12px);
+  padding: 0;
+  align-self: stretch;
+}
+
+/* Long OM chapter: give the scroll panel a usable minimum height inside fill-available shells */
+.coach-container--informational-chapter-long.coach-container--fill-available .bubble--informational-single {
+  min-height: min(58vh, 28rem);
+}
+
+.coach-container--informational-chapter-long.coach-container--fill-available .bubble-scroll-panel--informational {
+  min-height: min(52vh, 24rem);
 }
 
 .coach-intro-combined-heading {

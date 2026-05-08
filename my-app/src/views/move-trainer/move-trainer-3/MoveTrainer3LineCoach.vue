@@ -132,11 +132,23 @@ const omAuthorReadingLead = computed(() => {
   return typeof cp.afterBlackMoveAuthorNote === 'string' ? cp.afterBlackMoveAuthorNote.trim() : ''
 })
 
-/** Rich inline moves — null when checkpoint is legacy plain note only. */
+/** Multiple left-rail blocks (long OM chapter); takes precedence over single `readingSegments`. */
+const omAuthorReadingSegmentRails = computed(() => {
+  const rails = opponentsMoveCheckpoint.value?.readingSegmentRails
+  if (!Array.isArray(rails)) return undefined
+  return rails.some((r) => Array.isArray(r) && r.length) ? rails : undefined
+})
+
+/** Rich inline moves — null when using segment rails or legacy plain note only. */
 const omAuthorReadingSegments = computed(() => {
+  if (omAuthorReadingSegmentRails.value) return undefined
   const segs = opponentsMoveCheckpoint.value?.readingSegments
   return Array.isArray(segs) && segs.length ? segs : undefined
 })
+
+const omAuthorReadingChapterLongForm = computed(
+  () => !!opponentsMoveCheckpoint.value?.readingChapterLongForm,
+)
 
 const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 </script>
@@ -164,7 +176,11 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
     </div>
 
     <!-- OM: author note after successful Black move (same route step; reading phase) -->
-    <div v-else-if="showOmAuthorReading" class="move-trainer-3-coach move-trainer-3-coach--om-reading-fill">
+    <div
+      v-else-if="showOmAuthorReading"
+      class="move-trainer-3-coach move-trainer-3-coach--om-reading-fill"
+      :class="{ 'move-trainer-3-coach--om-reading-long': omAuthorReadingChapterLongForm }"
+    >
       <CoachBubble
         class="mt3-om-reading-coach"
         :coach-avatar-src="davidCoachAvatarUrl"
@@ -175,6 +191,8 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
         :informational-single-bubble="true"
         :message="omAuthorReadingLead"
         :informational-segments="omAuthorReadingSegments"
+        :informational-segment-rails="omAuthorReadingSegmentRails"
+        :informational-chapter-long-form="omAuthorReadingChapterLongForm"
         :informational-active-ply="moveTrainer3OmReadingSelectedChipPly"
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
@@ -527,6 +545,12 @@ const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
 .move-trainer-3-coach--om-reading-fill :deep(.coach-avatar) {
   align-self: flex-start;
+}
+
+/* Long OM chapter: coach column grows so scrollable bubble has room above footer */
+.move-trainer-3-coach--om-reading-long {
+  flex: 1 1 0;
+  min-height: min(52vh, 22rem);
 }
 
 .mt3-om-reading-coach :deep(.coach-message),
