@@ -178,7 +178,7 @@ Assumes **Start Learning has run** (`moveTrainer3StartLearningNonce > 0`) so Pla
 |--|----------------------|--------------------------------------|
 | **Route** | Matches Black milestones / OM step from progress | **Same URL** as frontier (progress-anchored) |
 | **Board** | Frontier position | Position at **`currentPly`** (can be start FEN) |
-| **Play Move coach** | **Play …** + Black subtitle | **Unified replay bubble** — notation + optional `coachText` |
+| **Play Move coach** | **Play …** + Black subtitle | **Unified replay bubble** — notation + line `coachText` (or OM **`afterBlackMoveAuthorNote`** when that Black SAN matches checkpoint **`Play …`** — same body as author-reading after Continue) |
 | **OM variant 1 coach** | Two bubbles (commentary + Play strip) | **Unified replay bubble** (two-bubble OM hidden) |
 | **Intro coach** | N/A after shell switch | N/A |
 | **Footer forward cap** | At `footerNavMaxPly` | Same cap |

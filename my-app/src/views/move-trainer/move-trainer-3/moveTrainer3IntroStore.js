@@ -44,7 +44,8 @@ const OM_CHECKPOINT_1_AFTER_E5_AUTHOR_NOTE =
 
 /**
  * Opponents Move checkpoints (`/opponents-move-N` after Black’s Nth successful reply).
- * Live progression coach uses `whiteCommentary` + `nextBlack*`; replay (footer scrub) uses line `coachText` + notation in MoveTrainer3LineCoach.
+ * Live progression coach uses `whiteCommentary` + `nextBlack*`; replay (footer scrub) uses line `coachText` + notation,
+ * except Black plies tied to `afterBlackMoveAuthorNote` — replay body matches that author copy (same as post–Continue reading).
  * Optional `afterBlackMoveAuthorNote`: long author note after that Black reply → reading phase + Continue.
  */
 export const MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS = Object.freeze({
@@ -82,6 +83,13 @@ export function moveTrainer3OpponentsMoveStepFromPath(path) {
 export function getMoveTrainer3OpponentsMoveCheckpoint(step) {
   const n = typeof step === 'number' && step > 0 ? step : 0
   return MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS[n] ?? null
+}
+
+/** Parses SAN from OM `nextBlackLeadBold` (e.g. `Play e5` → `e5`). */
+function mt3SanFromOmPlayLeadBold(lead) {
+  if (typeof lead !== 'string') return ''
+  const m = /^Play\s+(.+)$/i.exec(lead.trim())
+  return m ? m[1].trim() : ''
 }
 
 /** Single-line coach chip when Black is on move, e.g. `2... e5` (replay scrub only). */
@@ -304,14 +312,44 @@ export const coachPlayMoveTurnLabel = computed(() => {
 })
 
 /**
- * Narration for the half-move selected via footer scrub (`currentPly - 1`) from main-line `coachText`.
- * MoveTrainer3LineCoach shows this only when `currentPly < footerNavMaxPly` so live-tip Play Move / OM checkpoint flow stays unchanged.
+ * Line `coachText` for the half-move at `currentPly - 1` (reference / tooling).
  */
 export const coachSelectedPlyCommentary = computed(() => {
   const idx = currentPly.value - 1
   if (idx < 0) return ''
   const ply = allPlies.value[idx]
   const t = ply?.coachText
+  return typeof t === 'string' ? t : ''
+})
+
+/**
+ * Replay scrub bubble body for the half-move at `currentPly - 1`: matches live “author” copy when OM defines
+ * `afterBlackMoveAuthorNote` for that Black SAN (`nextBlackLeadBold`), otherwise main-line `coachText`.
+ * Heading-only chips (1.d4 / 1...c5) return ''.
+ */
+export const coachReplayHalfMoveBody = computed(() => {
+  const idx = currentPly.value - 1
+  if (idx < 0) return ''
+  const ply = allPlies.value[idx]
+  if (!ply?.san) return ''
+  if (ply.color === 'white' && ply.moveNum === 1 && ply.san === 'd4') return ''
+  if (ply.color === 'black' && ply.moveNum === 1 && ply.san === 'c5') return ''
+
+  if (ply.color === 'black') {
+    for (const cp of Object.values(MOVE_TRAINER_3_OPPONENTS_MOVE_CHECKPOINTS)) {
+      const expected = mt3SanFromOmPlayLeadBold(cp?.nextBlackLeadBold)
+      if (
+        expected
+        && ply.san === expected
+        && typeof cp.afterBlackMoveAuthorNote === 'string'
+        && cp.afterBlackMoveAuthorNote.trim()
+      ) {
+        return cp.afterBlackMoveAuthorNote
+      }
+    }
+  }
+
+  const t = ply.coachText
   return typeof t === 'string' ? t : ''
 })
 

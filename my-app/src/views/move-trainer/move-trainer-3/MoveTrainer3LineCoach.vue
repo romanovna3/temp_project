@@ -12,7 +12,7 @@ import {
   coachTurnStripText,
   coachPlayMoveLeadBold,
   coachPlayMoveTurnLabel,
-  coachSelectedPlyCommentary,
+  coachReplayHalfMoveBody,
   bubbleStartPosition,
   coachAvatarIconPx,
   moveTrainer3PathIsOpponentsMove,
@@ -77,10 +77,10 @@ const mt3ReplayPreviewMessage = computed(() => {
   if (currentPly.value === 0) return ''
   const ply = mt3ReplayPreviewHalfMove.value
   if (!ply?.san) return ''
-  // Replay: notation-only chip — no body under 1.d4 / 1...c5
+  // Heading-only chips — must stay empty (do not fall through to “No coach note…”).
   if (ply.color === 'white' && ply.moveNum === 1 && ply.san === 'd4') return ''
   if (ply.color === 'black' && ply.moveNum === 1 && ply.san === 'c5') return ''
-  const t = coachSelectedPlyCommentary.value
+  const t = coachReplayHalfMoveBody.value
   return t || 'No coach note for this move.'
 })
 
