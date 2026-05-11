@@ -12,13 +12,11 @@
 # Optional repo variable: CLOUDFLARE_PAGES_PROJECT_NAME (defaults to anna-design-prototypes).
 name: Deploy design prototypes (Cloudflare Pages)
 
+# Deploy only from branch proto/anna (no automatic deploy from main).
+# No path filter: every push to proto/anna runs so deployments stay predictable.
 on:
   push:
-    branches: [main, proto/anna]
-    paths:
-      - 'my-app/**'
-      - 'MoveTrainer/**'
-      - '.github/workflows/deploy-design-prototypes-cloudflare.yml'
+    branches: [proto/anna]
   workflow_dispatch:
 
 permissions:
