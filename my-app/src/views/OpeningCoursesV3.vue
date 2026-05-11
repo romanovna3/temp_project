@@ -3125,7 +3125,7 @@ const lastMove = ref(null) // { from, to }
 
 /** Move Trainer 3: classification chip on Black’s **to** square after graded success (`public/icons/move-classifications/best.png`). */
 const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
-/** Great move chip (`great.png`) — squares in **`MT3_GREAT_MOVE_BADGE_SQUARES`**. Auto-hides after **`MT3_BEST_BADGE_VISIBLE_MS`** (same as Best). */
+/** Great move chip (`great.png`) — squares in **`MT3_GREAT_MOVE_BADGE_SQUARES`**. Visibility timing follows **`MT3_CLASSIFICATION_BADGES_AUTO_HIDE`**. */
 const moveTrainer3BlackGreatMoveBadge = ref(null) // { square: string } | null
 /** Black destination squares that show **great** instead of **best** (OM graded). */
 const MT3_GREAT_MOVE_BADGE_SQUARES = ['a6', 'g6']
@@ -3202,20 +3202,23 @@ function mt3InsetPxToSquareMin(px) {
 }
 
 /**
- * Best + Great chip size from **`mt3BestBadgeDevSize`** (reference-board px), with **`min(px, %)`** for smaller squares.
- * Uses `height: auto` + `aspect-ratio: 1` so `%` height quirks do not shrink the painted icon.
+ * Chip size from reference-board px (**`min(px, %)`** vs square). Best and Great can differ (**`mt3BestBadgeDevSize`** vs **`mt3GreatBadgeDevSize`**).
  */
-function mt3ClassificationBadgeSizeStyle() {
-  const size = mt3BestBadgeDevSize.value
-  const wPct = (size / MT3_BADGE_REF_SQUARE_PX) * 100
+function mt3ClassificationBadgeSizeStyle(sizePx) {
+  const size = Number(sizePx)
+  const s = Number.isFinite(size) ? Math.min(96, Math.max(8, size)) : MT3_BEST_BADGE_SIZE_FALLBACK_PX
+  const wPct = (s / MT3_BADGE_REF_SQUARE_PX) * 100
   return {
-    width: `min(${size}px, ${wPct}%)`,
+    width: `min(${s}px, ${wPct}%)`,
     height: 'auto',
     aspectRatio: '1',
   }
 }
 
-/** How long the Best badge stays visible after a graded Black move (ms). */
+/** When `true`, best/great chips clear after **`MT3_BEST_BADGE_VISIBLE_MS`**. Set **`false`** while tuning badges so they stay visible. */
+const MT3_CLASSIFICATION_BADGES_AUTO_HIDE = false
+
+/** How long badges stay visible after a graded Black move when auto-hide is on (ms). */
 const MT3_BEST_BADGE_VISIBLE_MS = 2000
 
 let mt3BestBadgeHideTimeoutId = null
@@ -3237,7 +3240,7 @@ function clearMt3GreatBadgeHideTimer() {
 }
 
 const mt3BestBadgeImgStyle = computed(() => ({
-  ...mt3ClassificationBadgeSizeStyle(),
+  ...mt3ClassificationBadgeSizeStyle(mt3BestBadgeDevSize.value),
   top: mt3InsetPxToSquareMin(mt3BestBadgeDevY.value),
   right: mt3InsetPxToSquareMin(mt3BestBadgeDevX.value),
 }))
@@ -3261,6 +3264,7 @@ const MT3_GREAT_BADGE_R_FALLBACK_PX = 2
 const MT3_GREAT_BADGE_T_FALLBACK_PX = 2
 const MT3_GREAT_BADGE_EDGE_LEFT_FALLBACK_PX = 2
 const MT3_GREAT_BADGE_EDGE_TOP_FALLBACK_PX = 2
+const MT3_GREAT_BADGE_SIZE_FALLBACK_PX = MT3_BEST_BADGE_SIZE_FALLBACK_PX
 
 function loadMt3GreatBadgeDevSettings() {
   const fb = {
@@ -3268,17 +3272,20 @@ function loadMt3GreatBadgeDevSettings() {
     t: MT3_GREAT_BADGE_T_FALLBACK_PX,
     el: MT3_GREAT_BADGE_EDGE_LEFT_FALLBACK_PX,
     et: MT3_GREAT_BADGE_EDGE_TOP_FALLBACK_PX,
+    size: MT3_GREAT_BADGE_SIZE_FALLBACK_PX,
   }
   if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return fb
   try {
     const raw = sessionStorage.getItem(MT3_GREAT_BADGE_DEV_STORAGE_KEY)
     if (!raw) return fb
     const j = JSON.parse(raw)
+    const size = Number(j.size)
     return {
       r: Number.isFinite(Number(j.r)) ? Number(j.r) : fb.r,
       t: Number.isFinite(Number(j.t)) ? Number(j.t) : fb.t,
       el: Number.isFinite(Number(j.el)) ? Number(j.el) : fb.el,
       et: Number.isFinite(Number(j.et)) ? Number(j.et) : fb.et,
+      size: Number.isFinite(size) && size >= 8 && size <= 96 ? size : fb.size,
     }
   } catch {
     return fb
@@ -3289,6 +3296,7 @@ const mt3GreatBadgeDevR = ref(_mt3GreatDevInit.r)
 const mt3GreatBadgeDevT = ref(_mt3GreatDevInit.t)
 const mt3GreatBadgeDevEdgeLeft = ref(_mt3GreatDevInit.el)
 const mt3GreatBadgeDevEdgeTop = ref(_mt3GreatDevInit.et)
+const mt3GreatBadgeDevSize = ref(_mt3GreatDevInit.size)
 const mt3GreatBadgeSettingsOpen = ref(false)
 
 function persistMt3GreatBadgeDevSettings() {
@@ -3300,13 +3308,14 @@ function persistMt3GreatBadgeDevSettings() {
         t: mt3GreatBadgeDevT.value,
         el: mt3GreatBadgeDevEdgeLeft.value,
         et: mt3GreatBadgeDevEdgeTop.value,
+        size: mt3GreatBadgeDevSize.value,
       }),
     )
   } catch {
     /* ignore */
   }
 }
-watch([mt3GreatBadgeDevR, mt3GreatBadgeDevT, mt3GreatBadgeDevEdgeLeft, mt3GreatBadgeDevEdgeTop], persistMt3GreatBadgeDevSettings)
+watch([mt3GreatBadgeDevR, mt3GreatBadgeDevT, mt3GreatBadgeDevEdgeLeft, mt3GreatBadgeDevEdgeTop, mt3GreatBadgeDevSize], persistMt3GreatBadgeDevSettings)
 
 /** Viewer’s **right** edge of the board: **a-file** when Black at bottom, **h-file** when White at bottom. */
 function isMt3BoardRightEdgeFileSquare(square) {
@@ -3317,10 +3326,10 @@ function isMt3BoardRightEdgeFileSquare(square) {
 
 function getMt3GreatBadgeImgStyle(square) {
   const edge = isMt3BoardRightEdgeFileSquare(square)
-  const baseSize = mt3ClassificationBadgeSizeStyle()
+  const baseSize = mt3ClassificationBadgeSizeStyle(mt3GreatBadgeDevSize.value)
 
   if (_mt3GreatBadgeUsesPxGeometry) {
-    const base = mt3ClassificationBadgeSizeStyle()
+    const base = mt3ClassificationBadgeSizeStyle(mt3GreatBadgeDevSize.value)
     if (edge) {
       return {
         ...base,
@@ -3955,7 +3964,7 @@ function hasMoveTrainer3GreatMoveBadge(square) {
   return !!g && g.square === square && isMoveTrainerPanel.value && panelView.value === 'courses'
 }
 
-/** Best **or** great chip after graded Black (`MT3_GREAT_MOVE_BADGE_SQUARES` → great). Both auto-hide after **`MT3_BEST_BADGE_VISIBLE_MS`**. */
+/** Best **or** great chip after graded Black (`MT3_GREAT_MOVE_BADGE_SQUARES` → great). Hide timing: **`MT3_CLASSIFICATION_BADGES_AUTO_HIDE`**. */
 function applyMoveTrainer3BlackClassificationBadgeAfterGraded(toSquare) {
   if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
@@ -3964,16 +3973,18 @@ function applyMoveTrainer3BlackClassificationBadgeAfterGraded(toSquare) {
     moveTrainer3BlackMoveClassificationBadge.value = null
     clearMt3GreatBadgeHideTimer()
     moveTrainer3BlackGreatMoveBadge.value = { square: toSquare }
-    mt3GreatBadgeHideTimeoutId = setTimeout(() => {
-      moveTrainer3BlackGreatMoveBadge.value = null
-      mt3GreatBadgeHideTimeoutId = null
-    }, MT3_BEST_BADGE_VISIBLE_MS)
+    if (MT3_CLASSIFICATION_BADGES_AUTO_HIDE) {
+      mt3GreatBadgeHideTimeoutId = setTimeout(() => {
+        moveTrainer3BlackGreatMoveBadge.value = null
+        mt3GreatBadgeHideTimeoutId = null
+      }, MT3_BEST_BADGE_VISIBLE_MS)
+    }
     return
   }
   applyMoveTrainer3BlackBestClassificationBadge(toSquare)
 }
 
-/** Best-move chip on Black’s destination (Play Move + OM graded Black). Auto-hides after **`MT3_BEST_BADGE_VISIBLE_MS`**. Cleared on **Start Learning** restart. */
+/** Best-move chip on Black’s destination (Play Move + OM graded Black). Cleared on **Start Learning** restart; optional timed hide via **`MT3_CLASSIFICATION_BADGES_AUTO_HIDE`**. */
 function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
   if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
@@ -3981,10 +3992,12 @@ function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
   moveTrainer3BlackGreatMoveBadge.value = null
   clearMt3BestBadgeHideTimer()
   moveTrainer3BlackMoveClassificationBadge.value = { square: toSquare }
-  mt3BestBadgeHideTimeoutId = setTimeout(() => {
-    moveTrainer3BlackMoveClassificationBadge.value = null
-    mt3BestBadgeHideTimeoutId = null
-  }, MT3_BEST_BADGE_VISIBLE_MS)
+  if (MT3_CLASSIFICATION_BADGES_AUTO_HIDE) {
+    mt3BestBadgeHideTimeoutId = setTimeout(() => {
+      moveTrainer3BlackMoveClassificationBadge.value = null
+      mt3BestBadgeHideTimeoutId = null
+    }, MT3_BEST_BADGE_VISIBLE_MS)
+  }
 }
 
 const isLastMove = (square) => {
@@ -10526,7 +10539,7 @@ v-if="isVideoV6OrV7"
             aria-label="Best move badge position (dev)"
           >
             <p class="move-trainer-3-great-badge-dev-panel__hint">
-              Reference <strong>700px</strong> board — <strong>X/Y/size</strong> save to session and scale down on narrow boards.
+              Reference <strong>700px</strong> board — <strong>X / Y / Size</strong> for <strong>best.png</strong> (persists in session; scales on narrow boards).
             </p>
             <label class="move-trainer-3-great-badge-dev-panel__field">
               <span>X — inset from right (px)</span>
@@ -10549,7 +10562,7 @@ v-if="isVideoV6OrV7"
             aria-label="Great move badge position (dev)"
           >
             <p class="move-trainer-3-great-badge-dev-panel__hint">
-              Default files: <strong>right + top</strong>. Edge (Black: <strong>a</strong>‑file, White: <strong>h</strong>‑file): <strong>left + top</strong> so the icon is not cut off.
+              <strong>great.png</strong> — position + <strong>size</strong> (independent from Best). Default files: <strong>right + top</strong>. Edge (Black: <strong>a</strong>‑file, White: <strong>h</strong>‑file): <strong>left + top</strong>.
             </p>
             <label class="move-trainer-3-great-badge-dev-panel__field">
               <span>Right inset (px)</span>
@@ -10566,6 +10579,10 @@ v-if="isVideoV6OrV7"
             <label class="move-trainer-3-great-badge-dev-panel__field">
               <span>Edge file — top offset (px)</span>
               <input v-model.number="mt3GreatBadgeDevEdgeTop" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
+            </label>
+            <label class="move-trainer-3-great-badge-dev-panel__field">
+              <span>Size (px) — great chip</span>
+              <input v-model.number="mt3GreatBadgeDevSize" type="number" step="1" min="8" max="96" class="move-trainer-3-great-badge-dev-panel__input" />
             </label>
           </div>
           <div class="move-trainer-3-restart-float__buttons">
