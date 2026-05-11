@@ -61,6 +61,7 @@ import {
   clearMoveTrainer3OmReadingBoardBranch,
   moveTrainer3PathIsAssistedQuiz,
   moveTrainer3AssistedQuizPhase,
+  moveTrainer3AssistedQuizActive,
   MOVE_TRAINER_3_QUIZ_DEV_LANDING,
   MOVE_TRAINER_3_PLY_AFTER_BLACK_G6,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
@@ -4661,12 +4662,15 @@ watch(
     moveTrainer3WhiteOpeningAnimationActive.value,
     moveTrainer3SkipBoardSyncFromStore.value,
     moveTrainer3OmAuthorNoteStep.value,
+    moveTrainer3AssistedQuizActive.value,
   ],
   async () => {
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
     if (moveTrainer3StartLearningNonce.value === 0) return
     if (!moveTrainer3LearnShellPath(route.path)) return
     if (moveTrainer3PathIsAssistedQuiz(route.path)) return
+    /** Transitioning to assisted quiz: URL may still be OM while frontier implies `/play-move` — do not replace. */
+    if (moveTrainer3AssistedQuizActive.value) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
     if (moveTrainer3SkipBoardSyncFromStore.value) return
     if (moveTrainer3SuppressLearnShellRouteAlign.value) return

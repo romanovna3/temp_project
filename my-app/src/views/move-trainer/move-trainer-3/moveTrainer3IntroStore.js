@@ -375,13 +375,14 @@ export const moveTrainer3AssistedQuizActive = ref(false)
 export const moveTrainer3AssistedQuizPhase = ref('instruction')
 
 export function startMoveTrainer3AssistedQuiz() {
+  /** Set first so learn-shell route alignment skips `/play-move` while URL is still OM before `router.replace` runs. */
+  moveTrainer3AssistedQuizActive.value = true
+  moveTrainer3AssistedQuizPhase.value = 'instruction'
   resetMoveTrainer3OmAuthorNoteStep()
   resetMoveTrainer3OmChapterPhase()
   moveTrainer3SuppressLearnShellRouteAlign.value = false
   moveTrainer3OmPostAuthorChain.value = null
   clearMoveTrainer3OmReadingBoardBranch()
-  moveTrainer3AssistedQuizActive.value = true
-  moveTrainer3AssistedQuizPhase.value = 'instruction'
   moveTrainer3BlackMovesCompleted.value = 0
   currentPly.value = 1
   moveTrainer3FooterNavMaxPly.value = 1
