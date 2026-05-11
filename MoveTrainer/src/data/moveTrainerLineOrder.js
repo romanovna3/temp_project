@@ -35,6 +35,9 @@ export const MOVE_TRAINER_2_PATH = '/move-trainer/move-trainer-2'
 /** Move Trainer 3 — shell matches Opening Courses V3 (layout, board, panel chrome); content TBD. */
 export const MOVE_TRAINER_3_PATH = '/move-trainer/move-trainer-3'
 
+/** Move Trainer 4 — assisted quiz shell (same OpeningCoursesV3 chrome); Start Quiz landing as entry. */
+export const MOVE_TRAINER_4_PATH = '/move-trainer/move-trainer-4'
+
 const MOVE_TRAINER_2_EQUIVALENT_PATH =
   MOVE_TRAINER_LINE_ORDER.find((e) => e.name === 'move-trainer-intro-1')?.path
   ?? '/move-trainer/page-5/intro-1'

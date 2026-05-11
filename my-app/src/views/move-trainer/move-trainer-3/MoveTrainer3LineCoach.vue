@@ -5,8 +5,8 @@ import CoachBubble from '@move-trainer/components/CoachBubble.vue'
 import davidCoachAvatarUrl from '@move-trainer/assets/coaches/coach-david.png?url'
 import {
   MOVE_TRAINER_3_INTRO_COACH_MESSAGE,
-  MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_LEAD_BOLD,
-  MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_TURN_STRIP,
+  MOVE_TRAINER_ASSISTED_QUIZ_INSTRUCTION_LEAD_BOLD,
+  MOVE_TRAINER_ASSISTED_QUIZ_INSTRUCTION_TURN_STRIP,
   coachHeaderIcon,
   coachHeaderText,
   coachEvalText,
@@ -18,7 +18,8 @@ import {
   bubbleStartPosition,
   coachAvatarIconPx,
   moveTrainer3PathIsOpponentsMove,
-  moveTrainer3PathIsAssistedQuiz,
+  moveTrainer4PathIsAssistedQuiz,
+  moveTrainer4PathIsLanding,
   moveTrainer3OpponentsMoveStepFromPath,
   getMoveTrainer3OpponentsMoveCheckpoint,
   moveTrainer3CoachReplayScrubbing,
@@ -34,7 +35,7 @@ import {
   applyMoveTrainer3OmChapterOverflowMeasure,
   clearMoveTrainer3OmReadingBoardBranch,
   moveTrainer3OmPostAuthorChain,
-  moveTrainer3AssistedQuizPhase,
+  moveTrainer4AssistedQuizPhase,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -51,7 +52,9 @@ const isPlayMoveLayout = computed(() => {
 
 const isOpponentsMoveLayout = computed(() => moveTrainer3PathIsOpponentsMove(route.path))
 
-const isAssistedQuizLayout = computed(() => moveTrainer3PathIsAssistedQuiz(route.path))
+const moveTrainer4AssistedQuizLayout = computed(() => moveTrainer4PathIsAssistedQuiz(route.path))
+
+const isMoveTrainer4LandingLayout = computed(() => moveTrainer4PathIsLanding(route.path))
 
 const opponentsMoveStep = computed(() => moveTrainer3OpponentsMoveStepFromPath(route.path))
 
@@ -59,13 +62,16 @@ const opponentsMoveCheckpoint = computed(() =>
   opponentsMoveStep.value ? getMoveTrainer3OpponentsMoveCheckpoint(opponentsMoveStep.value) : null,
 )
 
+/** OM-7 post-…g6 copy — also used when MT4 landing shows the same Start Quiz chrome without an OM URL. */
+const om7DualBubbleCp = computed(() => getMoveTrainer3OpponentsMoveCheckpoint(7))
+
 const introCoachBubbleMessage = computed(() => MOVE_TRAINER_3_INTRO_COACH_MESSAGE)
 
 /** Unified replay coach — footer scrub before unlocked tip only (live progression unchanged). */
 const showMt3ReplayCoachPreview = computed(
   () =>
     moveTrainer3CoachReplayScrubbing.value &&
-    (isPlayMoveLayout.value || isOpponentsMoveLayout.value || isAssistedQuizLayout.value),
+    (isPlayMoveLayout.value || isOpponentsMoveLayout.value || moveTrainer4AssistedQuizLayout.value),
 )
 
 const mt3ReplayPreviewHalfMove = computed(() => {
@@ -100,12 +106,12 @@ const mt3ReplayPreviewMessage = computed(() => {
 
 /** Play Move live tip: heading-only “Play …” — replay narration lives in `showMt3ReplayCoachPreview`. */
 const playMoveCoachBubbleMessage = computed(() =>
-  isPlayMoveLayout.value || isAssistedQuizInstructionUi.value ? '' : introCoachBubbleMessage.value,
+  isPlayMoveLayout.value || moveTrainer4AssistedQuizInstructionUi.value ? '' : introCoachBubbleMessage.value,
 )
 
-/** Assisted quiz instruction — PM-style combined bubble (fixed lead + **Black to play**). */
-const isAssistedQuizInstructionUi = computed(
-  () => isAssistedQuizLayout.value && moveTrainer3AssistedQuizPhase.value === 'instruction',
+/** Move Trainer 4 assisted quiz instruction — PM-style combined bubble (fixed lead + **Black to play**). */
+const moveTrainer4AssistedQuizInstructionUi = computed(
+  () => moveTrainer4AssistedQuizLayout.value && moveTrainer4AssistedQuizPhase.value === 'instruction',
 )
 
 /** Scripted White after author **Continue** — OM shell briefly survives route swap; hide OM copy/strip (OpeningCourses jumps to `/play-move` first for **Nc3**). */
@@ -115,7 +121,7 @@ const suppressOmCoachDuringPostAuthorWhite = computed(
 
 /** Play Move: avoid “No message” during White-to-move beats (scripted **Nc3** / similar). */
 const mt3PlayMoveSuppressEmptyCombinedPlaceholder = computed(() => {
-  if (isAssistedQuizInstructionUi.value) return false
+  if (moveTrainer4AssistedQuizInstructionUi.value) return false
   return (
     isPlayMoveLayout.value
     && !coachPlayMoveLeadBold.value?.trim()
@@ -266,14 +272,24 @@ const omAuthorReadingChapterLongForm = computed(
 
 const omPlaceholderMessage = 'This opponent-move step is not configured yet.'
 
-/** OM-7 after **…g6**: author note + second row — same two-line strip as Play Move / OM (**Play …** + **Black to play**). */
-const showOm7PlayMoveUnderAuthorReading = computed(
-  () => showOmAuthorReading.value && opponentsMoveStep.value === 7,
+/** OM-7 after **…g6** or MT4 landing — author note + secondary strip (Start Quiz entry). */
+const showOm7DualAuthorReadingRow = computed(
+  () =>
+    (showOmAuthorReading.value && opponentsMoveStep.value === 7)
+    || (isMoveTrainer4LandingLayout.value && moveTrainer3OmAuthorNoteStep.value === 7),
 )
 
+const om7DualAuthorLead = computed(() => {
+  const cp = om7DualBubbleCp.value
+  if (!cp) return ''
+  const lead = typeof cp.readingLead === 'string' ? cp.readingLead.trim() : ''
+  if (lead) return lead
+  return typeof cp.afterBlackMoveAuthorNote === 'string' ? cp.afterBlackMoveAuthorNote.trim() : ''
+})
+
 const om7AuthorReadingPlayStripLead = computed(() => {
-  if (!showOm7PlayMoveUnderAuthorReading.value) return ''
-  const cp = opponentsMoveCheckpoint.value
+  if (!showOm7DualAuthorReadingRow.value) return ''
+  const cp = om7DualBubbleCp.value
   if (!cp) return ''
   const sec = typeof cp.authorReadingSecondaryPlayLeadBold === 'string' ? cp.authorReadingSecondaryPlayLeadBold.trim() : ''
   if (sec) return sec
@@ -281,12 +297,28 @@ const om7AuthorReadingPlayStripLead = computed(() => {
 })
 
 /** Bound OM column height so long informational bubbles scroll inside (fade dissolves + thumb rail). */
+const om7DualInformationalSegmentRails = computed(() => {
+  if (!showOm7DualAuthorReadingRow.value) return undefined
+  const rails = om7DualBubbleCp.value?.readingSegmentRails
+  if (!Array.isArray(rails)) return undefined
+  return rails.some((r) => Array.isArray(r) && r.length) ? rails : undefined
+})
+
+const om7DualInformationalSegments = computed(() => {
+  if (!showOm7DualAuthorReadingRow.value || om7DualInformationalSegmentRails.value) return undefined
+  const segs = om7DualBubbleCp.value?.readingSegments
+  return Array.isArray(segs) && segs.length ? segs : undefined
+})
+
+const om7DualInformationalChapterLongForm = computed(() => !!om7DualBubbleCp.value?.readingChapterLongForm)
+
 const omIntroStackChapterScrollClamp = computed(
   () =>
     (showOmVariant1.value
       && omVariant1UsesInformationalChapter.value
       && !omV1InstructionPhaseFill.value)
-    || (showOmAuthorReading.value && omAuthorReadingChapterLongForm.value),
+    || (showOmAuthorReading.value && omAuthorReadingChapterLongForm.value)
+    || (showOm7DualAuthorReadingRow.value && om7DualInformationalChapterLongForm.value),
 )
 </script>
 
@@ -315,11 +347,11 @@ const omIntroStackChapterScrollClamp = computed(
       />
     </div>
 
-    <!-- OM: author note + instruction strip — **same shell as `showOmVariant1`** (`.om-v1` + commentary + `mt3-om-play-coach`). -->
+    <!-- OM-7 post-…g6 or MT4 landing — author note + secondary strip (**Start Quiz**). -->
     <div
-      v-else-if="showOmAuthorReading && showOm7PlayMoveUnderAuthorReading"
+      v-else-if="showOm7DualAuthorReadingRow"
       class="move-trainer-3-coach move-trainer-3-coach--om-v1 move-trainer-3-coach--om-reading-fill"
-      :class="{ 'move-trainer-3-coach--om-reading-long': omAuthorReadingChapterLongForm }"
+      :class="{ 'move-trainer-3-coach--om-reading-long': om7DualInformationalChapterLongForm }"
     >
       <CoachBubble
         class="mt3-om-reading-coach mt3-om-commentary-coach"
@@ -329,10 +361,10 @@ const omIntroStackChapterScrollClamp = computed(
         eval-text=""
         :white-advantage="true"
         :informational-single-bubble="true"
-        :message="omAuthorReadingLead"
-        :informational-segments="omAuthorReadingSegments"
-        :informational-segment-rails="omAuthorReadingSegmentRails"
-        :informational-chapter-long-form="omAuthorReadingChapterLongForm"
+        :message="om7DualAuthorLead"
+        :informational-segments="om7DualInformationalSegments"
+        :informational-segment-rails="om7DualInformationalSegmentRails"
+        :informational-chapter-long-form="om7DualInformationalChapterLongForm"
         :informational-active-ply="moveTrainer3OmReadingSelectedChipPly"
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
@@ -484,7 +516,7 @@ const omIntroStackChapterScrollClamp = computed(
     </div>
 
     <div
-      v-else-if="isAssistedQuizInstructionUi"
+      v-else-if="moveTrainer4AssistedQuizInstructionUi"
       class="move-trainer-3-coach"
       :class="{ 'move-trainer-3-coach--play-move-fill': true }"
     >
@@ -497,8 +529,8 @@ const omIntroStackChapterScrollClamp = computed(
         message=""
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
-        :intro-combined-lead-bold="MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_LEAD_BOLD"
-        :intro-combined-turn-strip-regular="MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_TURN_STRIP"
+        :intro-combined-lead-bold="MOVE_TRAINER_ASSISTED_QUIZ_INSTRUCTION_LEAD_BOLD"
+        :intro-combined-turn-strip-regular="MOVE_TRAINER_ASSISTED_QUIZ_INSTRUCTION_TURN_STRIP"
         :suppress-intro-combined-no-message-placeholder="false"
         :show-tip="true"
         :typewriter="false"
@@ -535,7 +567,7 @@ const omIntroStackChapterScrollClamp = computed(
 
     <!-- Intro: default slot (move list) scrolls below the coach -->
     <div
-      v-if="!isPlayMoveLayout && !isOpponentsMoveLayout && !isAssistedQuizLayout"
+      v-if="!isPlayMoveLayout && !isOpponentsMoveLayout && !moveTrainer4AssistedQuizLayout && !isMoveTrainer4LandingLayout"
       class="move-trainer-3-below-coach-scroll"
     >
       <slot />

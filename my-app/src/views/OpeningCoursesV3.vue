@@ -59,11 +59,14 @@ import {
   moveTrainer3LearnShellPathAfterBlackSuccessCount,
   hydrateMoveTrainer3LearnSessionFromStorage,
   clearMoveTrainer3OmReadingBoardBranch,
-  moveTrainer3PathIsAssistedQuiz,
-  moveTrainer3AssistedQuizPhase,
-  moveTrainer3AssistedQuizActive,
-  MOVE_TRAINER_3_QUIZ_DEV_LANDING,
-  MOVE_TRAINER_3_PLY_AFTER_BLACK_G6,
+  resetMoveTrainer3OmAuthorNoteStep,
+  moveTrainer4PathIsAssistedQuiz,
+  moveTrainer4PathIsLanding,
+  moveTrainer4AssistedQuizPhase,
+  moveTrainer4AssistedQuizActive,
+  bootstrapMoveTrainer4StartQuizLanding,
+  restartMoveTrainer4Session,
+  MOVE_TRAINER_4_BASE_PATH,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -96,15 +99,21 @@ function moveTrainer3PathIsIntro(path) {
   return p === '/move-trainer/move-trainer-3'
 }
 
-/** Learn shell only — small Restart control returns to intro + resets lesson state (hidden on intro route). */
+/** Learn shell — Restart (MT3: hidden on intro; MT4: shown including Start Quiz landing). */
 const showMoveTrainer3RestartLink = computed(
-  () => isMoveTrainer3.value && !moveTrainer3PathIsIntro(route.path),
+  () =>
+    (isMoveTrainer3.value && !moveTrainer3PathIsIntro(route.path)) || isMoveTrainer4.value,
 )
 
 async function onMoveTrainer3RestartToIntro() {
   moveTrainer3OmPostAuthorChainGen += 1
   moveTrainer3StartLearningBusy = false
   clearOpeningAutoMove()
+  if (isMoveTrainer4.value) {
+    restartMoveTrainer4Session()
+    await router.replace(MOVE_TRAINER_4_BASE_PATH)
+    return
+  }
   restartMoveTrainer3ToIntro()
   await router.replace('/move-trainer/move-trainer-3')
 }
@@ -119,11 +128,12 @@ function moveTrainer3PathIsPlayMove(path) {
   }
 }
 
-function moveTrainer3LearnShellPath(path) {
+function moveTrainerLearnShellPath(path) {
   return (
     moveTrainer3PathIsPlayMove(path)
     || moveTrainer3PathIsOpponentsMove(path)
-    || moveTrainer3PathIsAssistedQuiz(path)
+    || moveTrainer4PathIsAssistedQuiz(path)
+    || moveTrainer4PathIsLanding(path)
   )
 }
 
@@ -3720,7 +3730,7 @@ function setBoardToDefault() {
 
 /** Move Trainer 3: intro-1 panel drives the main board (sync with move list ply). */
 function onMoveTrainer3BoardSync(payload) {
-  if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+  if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return
   if (moveTrainer3SkipBoardSyncFromStore.value) return
   if (!payload?.fen) return
   /** Do **not** clear **`moveTrainer3BlackMoveClassificationBadge`** here — this runs on every **currentFen**
@@ -3741,7 +3751,7 @@ function onMoveTrainer3BoardSync(payload) {
 // Wrapped in try/catch so a reactive error here cannot break the app or leave global listeners dangling.
 watchEffect(() => {
   try {
-    if (isMoveTrainer3.value && panelView.value === 'courses') {
+    if (isMoveTrainerPanel.value && panelView.value === 'courses') {
       return
     }
     if (panelView.value === 'line') {
@@ -3864,17 +3874,17 @@ const isSelected = (square) => selectedSquare.value === square
 // Check if square is part of last move (for correct moves)
 function hasMoveTrainer3BlackClassificationBadge(square) {
   const b = moveTrainer3BlackMoveClassificationBadge.value
-  return !!b && b.square === square && isMoveTrainer3.value && panelView.value === 'courses'
+  return !!b && b.square === square && isMoveTrainerPanel.value && panelView.value === 'courses'
 }
 
 function hasMoveTrainer3GreatMoveBadge(square) {
   const g = moveTrainer3BlackGreatMoveBadge.value
-  return !!g && g.square === square && isMoveTrainer3.value && panelView.value === 'courses'
+  return !!g && g.square === square && isMoveTrainerPanel.value && panelView.value === 'courses'
 }
 
 /** Best **or** great chip after graded Black (`MT3_GREAT_MOVE_BADGE_SQUARES` → great). Both auto-hide after **`MT3_BEST_BADGE_VISIBLE_MS`**. */
 function applyMoveTrainer3BlackClassificationBadgeAfterGraded(toSquare) {
-  if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+  if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
   if (isMt3GreatMoveBadgeSquare(toSquare)) {
     clearMt3BestBadgeHideTimer()
@@ -3892,7 +3902,7 @@ function applyMoveTrainer3BlackClassificationBadgeAfterGraded(toSquare) {
 
 /** Best-move chip on Black’s destination (Play Move + OM graded Black). Auto-hides after **`MT3_BEST_BADGE_VISIBLE_MS`**. Cleared on **Start Learning** restart. */
 function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
-  if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+  if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
   clearMt3GreatBadgeHideTimer()
   moveTrainer3BlackGreatMoveBadge.value = null
@@ -3923,7 +3933,7 @@ const isWrongMove = (square) => {
 const handleSquareClick = async (square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
   const mt3BlackBoard = moveTrainer3BlackInteractiveBoard.value
-  if (isMoveTrainer3.value && panelView.value === 'courses' && !mt3BlackBoard) return
+  if (isMoveTrainerPanel.value && panelView.value === 'courses' && !mt3BlackBoard) return
 
   const piece = getPieceOnSquare(square)
   const isOpeningV1FreePlay = panelView.value === 'courses' && isOpeningCoursesV3.value && currentQuestionIndex.value < 0
@@ -4233,8 +4243,8 @@ async function tryMoveTrainer3PlayMove(from, to) {
     return false
   }
 
-  /** Assisted quiz — grade main-line Black moves only; stay on `/assisted-quiz` (no OM overlays / frontier routing). */
-  if (moveTrainer3PathIsAssistedQuiz(route.path)) {
+  /** Move Trainer 4 assisted quiz — grade main-line Black moves only; stay on MT4 `/assisted-quiz`. */
+  if (moveTrainer4PathIsAssistedQuiz(route.path)) {
     clearMoveTrainer3OmReadingBoardBranch()
     const isCapture = getPieceOnSquare(to) !== undefined
     makeMove(from, to)
@@ -4426,7 +4436,7 @@ const tryMove = async (from, to) => {
 const handleDragStart = (event, square) => {
   if (questionState.value === 'solution' && currentQuestionIndex.value >= 0) return
   const mt3BlackBoard = moveTrainer3BlackInteractiveBoard.value
-  if (isMoveTrainer3.value && panelView.value === 'courses' && !mt3BlackBoard) return
+  if (isMoveTrainerPanel.value && panelView.value === 'courses' && !mt3BlackBoard) return
 
   const piece = getPieceOnSquare(square)
   if (!piece) return
@@ -4585,18 +4595,40 @@ const isMoveTrainer3 = computed(() => {
   }
 })
 
+/** Move Trainer 4: Start Quiz landing + assisted quiz — same OpeningCoursesV3 chrome. */
+const isMoveTrainer4 = computed(() => {
+  if (!route?.path) return false
+  const p = route.path
+  if (p.startsWith('/move-trainer/move-trainer-4')) return true
+  try {
+    return decodeURIComponent(p).startsWith('/move-trainer/move-trainer-4')
+  } catch {
+    return false
+  }
+})
+
+const isMoveTrainerPanel = computed(() => isMoveTrainer3.value || isMoveTrainer4.value)
+
+/** Leaving Move Trainer 4 — drop OM/author overlay flags so Move Trainer 3 routes don’t inherit MT4 landing state. */
+watch(isMoveTrainer4, (on, was) => {
+  if (on || was !== true) return
+  resetMoveTrainer3OmAuthorNoteStep()
+  moveTrainer4AssistedQuizActive.value = false
+  moveTrainer4AssistedQuizPhase.value = 'instruction'
+})
+
 // MT3: re-sync when FEN changes *and* when this OpeningCoursesV3 instance becomes eligible (route swap remount
 // used to skip sync until panelView settled — watch(currentFen) alone missed second subscribe tick).
 watch(
   () => [
-    isMoveTrainer3.value,
+    isMoveTrainerPanel.value,
     panelView.value,
     moveTrainer3CurrentFen.value,
     moveTrainer3OmReadingBoardOverride.value,
     moveTrainer3OmAuthorNoteStep.value,
   ],
   () => {
-    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+    if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return
     onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
   },
   { immediate: true },
@@ -4604,9 +4636,9 @@ watch(
 
 /** Reload / restore tab: rehydrate ply + footer caps before Play Move ply snap + route alignment watches run. */
 watch(
-  () => [isMoveTrainer3.value, panelView.value, route.path],
+  () => [isMoveTrainerPanel.value, panelView.value, route.path],
   () => {
-    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+    if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return
     hydrateMoveTrainer3LearnSessionFromStorage(route.path)
   },
   { immediate: true },
@@ -4617,9 +4649,20 @@ watch(
   () => (isMoveTrainer3.value ? route.path : ''),
   (p) => {
     if (!isMoveTrainer3.value || !moveTrainer3PathIsIntro(p)) return
-    if (MOVE_TRAINER_3_QUIZ_DEV_LANDING) return
     goToPly(0)
     resetMoveTrainer3FooterNavMaxPly()
+    resetMoveTrainer3OmAuthorNoteStep()
+  },
+  { immediate: true },
+)
+
+/** MT4 default URL — Start Quiz landing (board after …g6 + OM-7 author overlay state). */
+watch(
+  () => [isMoveTrainer4.value, panelView.value, route.path],
+  () => {
+    if (!isMoveTrainer4.value || panelView.value !== 'courses') return
+    if (!moveTrainer4PathIsLanding(route.path)) return
+    bootstrapMoveTrainer4StartQuizLanding()
   },
   { immediate: true },
 )
@@ -4629,9 +4672,9 @@ watch(
  * for White’s turn → empty bubble (“No message”). Snap to ply 1 so board + “Play c5” coach match.
  */
 watch(
-  () => [isMoveTrainer3.value, route.path, moveTrainer3CurrentPly.value, moveTrainer3WhiteOpeningAnimationActive.value],
+  () => [isMoveTrainerPanel.value, route.path, moveTrainer3CurrentPly.value, moveTrainer3WhiteOpeningAnimationActive.value],
   () => {
-    if (!isMoveTrainer3.value || (!moveTrainer3PathIsPlayMove(route.path) && !moveTrainer3PathIsAssistedQuiz(route.path))) return
+    if (!isMoveTrainerPanel.value || (!moveTrainer3PathIsPlayMove(route.path) && !moveTrainer4PathIsAssistedQuiz(route.path))) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
     /** Footer replay scrub — never snap ply 0→1 or bump max (was fighting chevrons + jumping UI). */
     const replayScrub =
@@ -4654,7 +4697,7 @@ watch(
  */
 watch(
   () => [
-    isMoveTrainer3.value,
+    isMoveTrainerPanel.value,
     panelView.value,
     route.path,
     moveTrainer3FooterNavMaxPly.value,
@@ -4662,15 +4705,16 @@ watch(
     moveTrainer3WhiteOpeningAnimationActive.value,
     moveTrainer3SkipBoardSyncFromStore.value,
     moveTrainer3OmAuthorNoteStep.value,
-    moveTrainer3AssistedQuizActive.value,
+    moveTrainer4AssistedQuizActive.value,
   ],
   async () => {
-    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+    if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return
     if (moveTrainer3StartLearningNonce.value === 0) return
-    if (!moveTrainer3LearnShellPath(route.path)) return
-    if (moveTrainer3PathIsAssistedQuiz(route.path)) return
+    if (!moveTrainerLearnShellPath(route.path)) return
+    if (moveTrainer4PathIsAssistedQuiz(route.path)) return
+    if (moveTrainer4PathIsLanding(route.path)) return
     /** Transitioning to assisted quiz: URL may still be OM while frontier implies `/play-move` — do not replace. */
-    if (moveTrainer3AssistedQuizActive.value) return
+    if (moveTrainer4AssistedQuizActive.value) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
     if (moveTrainer3SkipBoardSyncFromStore.value) return
     if (moveTrainer3SuppressLearnShellRouteAlign.value) return
@@ -4709,9 +4753,9 @@ const isMoveTrainer3PlayMoveBoard = computed(
 
 /** Play Move or OM variant 1 “Play …” phase — graded Black moves; excludes OM author-reading overlay. */
 const moveTrainer3BlackInteractiveBoard = computed(() => {
-  if (!isMoveTrainer3.value || panelView.value !== 'courses') return false
-  if (moveTrainer3PathIsAssistedQuiz(route.path)) {
-    return moveTrainer3AssistedQuizPhase.value === 'instruction'
+  if (!isMoveTrainerPanel.value || panelView.value !== 'courses') return false
+  if (moveTrainer4PathIsAssistedQuiz(route.path)) {
+    return moveTrainer4AssistedQuizPhase.value === 'instruction'
   }
   if (moveTrainer3PathIsPlayMove(route.path)) return true
   if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
@@ -4740,7 +4784,7 @@ const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 * 0.8 // 20% narrower than prior 
 const MT3_HINT_ARROW_TAIL_OVERLAP_MORE_VB = (5 / BOARD_SIZE) * 100
 
 const moveTrainer3HintArrowLine = computed(() => {
-  if (moveTrainer3PathIsAssistedQuiz(route.path)) return null
+  if (moveTrainer4PathIsAssistedQuiz(route.path)) return null
   const hintBoard = isMoveTrainer3PlayMoveBoard.value || moveTrainer3OmVariant1HintBoard.value
   if (!hintBoard || isDragging.value) return null
   moveTrainer3CurrentFen.value
@@ -4803,35 +4847,6 @@ let moveTrainer3StartLearningBusy = false
  * (delays + advance) aborts if the user scrubs with footer chevrons — avoids jumping past a White ply.
  */
 let moveTrainer3OmWhiteReplyGen = 0
-
-/** One-shot dev shortcut — jump to OM-7 **Start Quiz** overlay without replaying the learn shell. */
-let moveTrainer3QuizDevLandingApplied = false
-
-watch(
-  () => [isMoveTrainer3.value, panelView.value, route.path],
-  async () => {
-    if (!MOVE_TRAINER_3_QUIZ_DEV_LANDING) return
-    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
-    if (moveTrainer3QuizDevLandingApplied) return
-    let p = route.path
-    try {
-      p = decodeURIComponent(p)
-    } catch {
-      /* keep raw */
-    }
-    if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1)
-    if (p !== '/move-trainer/move-trainer-3') return
-
-    moveTrainer3QuizDevLandingApplied = true
-    moveTrainer3StartLearningNonce.value = Math.max(1, moveTrainer3StartLearningNonce.value)
-    goToPly(MOVE_TRAINER_3_PLY_AFTER_BLACK_G6)
-    moveTrainer3FooterNavMaxPly.value = MOVE_TRAINER_3_PLY_AFTER_BLACK_G6
-    moveTrainer3BlackMovesCompleted.value = 7
-    moveTrainer3OmAuthorNoteStep.value = 7
-    await router.replace('/move-trainer/move-trainer-3/opponents-move-7')
-  },
-  { immediate: true },
-)
 
 watch(
   () => [
@@ -4987,10 +5002,10 @@ watch(moveTrainer3StartLearningNonce, async (nonce) => {
 })
 
 /** Preset bar + app-body + Opening-style mobile board placement. */
-const usesOpeningV3Shell = computed(() => isOpeningCoursesV3.value || isMoveTrainer3.value)
+const usesOpeningV3Shell = computed(() => isOpeningCoursesV3.value || isMoveTrainerPanel.value)
 /** Move Trainer 3: no viewport/scenario bar (full layout below the bar area). */
-const showOpeningV3PresetBar = computed(() => usesOpeningV3Shell.value && !isMoveTrainer3.value)
-const isVideoV2_2 = computed(() => route.path === '/courses/v2.2' || isOpeningCoursesV3.value || isMoveTrainer3.value)
+const showOpeningV3PresetBar = computed(() => usesOpeningV3Shell.value && !isMoveTrainerPanel.value)
+const isVideoV2_2 = computed(() => route.path === '/courses/v2.2' || isOpeningCoursesV3.value || isMoveTrainerPanel.value)
 /** Defer opening-courses-v3 layout until after first paint to avoid Error -102 (renderer crash). */
 const openingV3Ready = ref(false)
 let openingV3ReadyTimer = null
@@ -5066,7 +5081,7 @@ const isOpeningMobileBLayout = computed(
   () => usesOpeningV3Shell.value && panelView.value === 'courses' && effectiveViewportPreset.value === 'mobile-b',
 )
 /** Mobile B: in-panel board above scroll — not for Move Trainer 3 (line header must sit directly under panel header). */
-const isOpeningMobileBoardInPanel = computed(() => isOpeningMobileBLayout.value && !isMoveTrainer3.value)
+const isOpeningMobileBoardInPanel = computed(() => isOpeningMobileBLayout.value && !isMoveTrainerPanel.value)
 const openingV3ScenarioPreset = ref(_initialOpeningV1Preset.scenarioPreset)
 /** RUB only: active tab 'my-openings' | 'all' */
 const openingV3RubActiveTab = ref('my-openings')
@@ -5297,7 +5312,7 @@ watch(openingFilterColor, (val) => {
  * **h8** bottom-left **dark**, matching standard algebraic coloring — see `squares` computed comment).
  */
 watch(
-  () => [isOpeningCoursesV3.value, isMoveTrainer3.value, openingFilterColor.value, selectedOpeningCardId.value],
+  () => [isOpeningCoursesV3.value, isMoveTrainerPanel.value, openingFilterColor.value, selectedOpeningCardId.value],
   (newVal, oldVal) => {
     const onOpeningV3 = newVal[0]
     const onMt3 = newVal[1]
@@ -5790,7 +5805,7 @@ function clearBoardPosition() {
 function onOpeningContentScroll() {
   try {
     const el = openingV3ScrollWrapRef.value
-    if (!el || !(isOpeningCoursesV3.value || isMoveTrainer3.value)) return
+    if (!el || !(isOpeningCoursesV3.value || isMoveTrainerPanel.value)) return
     const st = typeof el.scrollTop === 'number' ? el.scrollTop : 0
     if (effectiveViewportPreset.value === 'mobile-b') {
       lastOpeningScrollTop = st
@@ -7423,14 +7438,14 @@ onUnmounted(() => {
             </div>
             <div class="sidebar-header-title" :class="{ 'sidebar-header-title--line': panelView === 'line' || panelView === 'opening-course' }">
               <CcIcon
-                v-if="!isMoveTrainer3 && (panelView === 'courses' || panelView === 'opening-course')"
+                v-if="!isMoveTrainerPanel && (panelView === 'courses' || panelView === 'opening-course')"
                 name="book-stack-pawn"
                 variant="color"
                 :size="24"
                 class="sidebar-header-icon"
                 aria-hidden="true"
               />
-              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' || panelView === 'opening-course' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : (panelView === 'opening-course' ? (selectedOpeningCard?.title ?? 'Course') : (isMoveTrainer3 ? MOVE_TRAINER_3_COURSE_TITLE : (isOpeningCoursesV3 ? 'Openings' : 'Courses'))) }}</span>
+              <span class="sidebar-header-text" :class="{ 'sidebar-header-text--truncate': panelView === 'line' || panelView === 'opening-course' }">{{ panelView === 'line' ? (isVideoV2_3OrV24 ? (selectedLine?.section?.name ?? 'Chapter') : (selectedLine?.move?.text ?? 'Line')) : (panelView === 'opening-course' ? (selectedOpeningCard?.title ?? 'Course') : (isMoveTrainerPanel ? MOVE_TRAINER_3_COURSE_TITLE : (isOpeningCoursesV3 ? 'Openings' : 'Courses'))) }}</span>
             </div>
             <div class="sidebar-header-right" aria-hidden="true" />
           </header>
@@ -8511,7 +8526,7 @@ onUnmounted(() => {
           </div>
           <div v-else class="opening-v1-placeholder" aria-hidden="true" />
           </template>
-          <template v-else-if="isMoveTrainer3">
+          <template v-else-if="isMoveTrainerPanel">
             <div v-if="openingV3Ready" class="move-trainer-3-panel-shell">
               <div class="move-trainer-3-column panel-content" data-move-trainer-3-main>
                 <MoveTrainer3LineCoach>
@@ -10134,7 +10149,7 @@ v-if="isVideoV6OrV7"
         </div>
         <!-- Footer frame: fixed to panel bottom; hidden on OC V3 courses list when mobile (in-scroll footer). Move Trainer 3 keeps this footer (Video / Start Learning). -->
         <div
-          v-if="!(isOpeningCoursesV3 && !isMoveTrainer3 && panelView === 'courses' && isMobileViewport)"
+          v-if="!(isOpeningCoursesV3 && !isMoveTrainerPanel && panelView === 'courses' && isMobileViewport)"
           class="panel-footer-frame"
         >
         <div
@@ -10146,14 +10161,16 @@ v-if="isVideoV6OrV7"
             'panel-footer-container--move-trainer-3-intro':
               isMoveTrainer3 && panelView === 'courses' && moveTrainer3PathIsIntro(route.path),
             'panel-footer-container--move-trainer-3-play-move':
-              isMoveTrainer3 &&
-              panelView === 'courses' &&
-              (moveTrainer3PathIsPlayMove(route.path)
-                || moveTrainer3PathIsOpponentsMove(route.path)
-                || moveTrainer3PathIsAssistedQuiz(route.path)),
+              (isMoveTrainer3 &&
+                panelView === 'courses' &&
+                (moveTrainer3PathIsPlayMove(route.path)
+                  || moveTrainer3PathIsOpponentsMove(route.path)))
+              || (isMoveTrainer4 &&
+                panelView === 'courses' &&
+                (moveTrainer4PathIsAssistedQuiz(route.path) || moveTrainer4PathIsLanding(route.path))),
           }"
         >
-          <template v-if="isMoveTrainer3 && panelView === 'courses'">
+          <template v-if="isMoveTrainerPanel && panelView === 'courses'">
             <MoveTrainer3PanelFooter />
           </template>
           <template v-else>

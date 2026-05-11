@@ -28,8 +28,10 @@ import {
   moveTrainer3OmReadingSelectedChipPly,
   clearMoveTrainer3OmReadingBoardBranch,
   getMoveTrainer3AuthorReadingPrimaryLabel,
-  moveTrainer3AuthorReadingNavigateIntro,
-  startMoveTrainer3AssistedQuiz,
+  getMoveTrainer3OpponentsMoveCheckpoint,
+  moveTrainer4PathIsLanding,
+  startMoveTrainer4AssistedQuiz,
+  MOVE_TRAINER_4_BASE_PATH,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -45,7 +47,7 @@ const isPlayMoveLayout = computed(() => {
   }
 })
 
-/** Shared footer chrome: Play Move + Opponents Move + assisted quiz (not intro landing). */
+/** Shared footer chrome: Play Move + Opponents Move + MT4 quiz (not intro landing). */
 const isPlayMoveShellLayout = computed(() => {
   const p = route.path
   if (isPlayMoveLayout.value) return true
@@ -53,12 +55,14 @@ const isPlayMoveShellLayout = computed(() => {
     const d = decodeURIComponent(p)
     return (
       /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(d)
-      || d === '/move-trainer/move-trainer-3/assisted-quiz'
+      || d === MOVE_TRAINER_4_BASE_PATH
+      || d === `${MOVE_TRAINER_4_BASE_PATH}/assisted-quiz`
     )
   } catch {
     return (
       /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(p)
-      || p === '/move-trainer/move-trainer-3/assisted-quiz'
+      || p === MOVE_TRAINER_4_BASE_PATH
+      || p === `${MOVE_TRAINER_4_BASE_PATH}/assisted-quiz`
     )
   }
 })
@@ -90,6 +94,16 @@ const omAuthorReadingPrimaryLabel = computed(() =>
   getMoveTrainer3AuthorReadingPrimaryLabel(moveTrainer3OmAuthorNoteStep.value),
 )
 
+/** MT3 OM-7 **Start Quiz** is a stub — MT4 owns the flow (`MOVE_TRAINER_4_BASE_PATH`). */
+const isOmPrimaryDisabledStartQuizStub = computed(() => {
+  const step = moveTrainer3OmAuthorNoteStep.value
+  if (step !== 7) return false
+  if (moveTrainer4PathIsLanding(route.path)) return false
+  const cp = getMoveTrainer3OpponentsMoveCheckpoint(7)
+  const label = typeof cp?.authorReadingPrimaryLabel === 'string' ? cp.authorReadingPrimaryLabel.trim() : ''
+  return label === 'Start Quiz'
+})
+
 /** Long OM chapter overflow — read phase only (Video + Continue before Play strip). */
 const isOmChapterReadFooter = computed(
   () =>
@@ -104,9 +118,9 @@ function onOmChapterReadContinue() {
 
 async function onOmContinue() {
   const authorStep = moveTrainer3OmAuthorNoteStep.value
-  if (moveTrainer3AuthorReadingNavigateIntro(authorStep)) {
-    startMoveTrainer3AssistedQuiz()
-    await router.replace('/move-trainer/move-trainer-3/assisted-quiz')
+  if (moveTrainer4PathIsLanding(route.path) && authorStep === 7) {
+    startMoveTrainer4AssistedQuiz()
+    await router.replace(`${MOVE_TRAINER_4_BASE_PATH}/assisted-quiz`)
     return
   }
   /* Scripted White chain runs in OpeningCourses watch — avoid awaiting nextTick here (extra frame before the watcher runs). */
@@ -174,6 +188,8 @@ function onHint() {
               variant="primary"
               size="large"
               class="footer-btn-equal"
+              :disabled="isOmPrimaryDisabledStartQuizStub"
+              :aria-disabled="isOmPrimaryDisabledStartQuizStub"
               @click="onOmContinue"
             >
               {{ omAuthorReadingPrimaryLabel }}

@@ -9,7 +9,12 @@ import {
   getPasswordProjectById,
   clearProjectUnlock,
 } from '../lib/protectedProjects.js'
-import { MOVE_TRAINER_2_PATH, MOVE_TRAINER_3_PATH, MOVE_TRAINER_LINE_ORDER } from '@move-trainer/data/moveTrainerLineOrder.js'
+import {
+  MOVE_TRAINER_2_PATH,
+  MOVE_TRAINER_3_PATH,
+  MOVE_TRAINER_4_PATH,
+  MOVE_TRAINER_LINE_ORDER,
+} from '@move-trainer/data/moveTrainerLineOrder.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -36,6 +41,7 @@ const moveTrainerFolderItems = [
   { path: MOVE_TRAINER_LINE_ORDER[0].path, title: 'Move Trainer', versionKey: 'moveTrainerGr' },
   { path: MOVE_TRAINER_2_PATH, title: 'Move Trainer 2', versionKey: 'moveTrainer2' },
   { path: MOVE_TRAINER_3_PATH, title: 'Move Trainer 3', versionKey: 'moveTrainer3' },
+  { path: MOVE_TRAINER_4_PATH, title: 'Move Trainer 4', versionKey: 'moveTrainer4' },
 ]
 
 /** Same archive list as before, plus Empty page (password-gated folder) */

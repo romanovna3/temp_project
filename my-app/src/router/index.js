@@ -56,10 +56,21 @@ const router = createRouter({
             component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3RouteStub.vue'),
           }),
         ),
+      ],
+    },
+    {
+      path: '/move-trainer/move-trainer-4',
+      component: () => import('../views/move-trainer/move-trainer-4/MoveTrainer4Shell.vue'),
+      children: [
+        {
+          path: '',
+          name: 'move-trainer-4-landing',
+          component: () => import('../views/move-trainer/move-trainer-4/MoveTrainer4RouteStub.vue'),
+        },
         {
           path: 'assisted-quiz',
-          name: 'move-trainer-3-assisted-quiz',
-          component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3RouteStub.vue'),
+          name: 'move-trainer-4-assisted-quiz',
+          component: () => import('../views/move-trainer/move-trainer-4/MoveTrainer4RouteStub.vue'),
         },
       ],
     },
