@@ -14,7 +14,7 @@ name: Deploy design prototypes (Cloudflare Pages)
 
 on:
   push:
-    branches: [main]
+    branches: [main, proto/anna]
     paths:
       - 'my-app/**'
       - 'MoveTrainer/**'
