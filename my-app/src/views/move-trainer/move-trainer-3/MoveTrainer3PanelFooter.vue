@@ -94,16 +94,6 @@ const omAuthorReadingPrimaryLabel = computed(() =>
   getMoveTrainer3AuthorReadingPrimaryLabel(moveTrainer3OmAuthorNoteStep.value),
 )
 
-/** MT3 OM-7 **Start Quiz** is a stub — MT4 owns the flow (`MOVE_TRAINER_4_BASE_PATH`). */
-const isOmPrimaryDisabledStartQuizStub = computed(() => {
-  const step = moveTrainer3OmAuthorNoteStep.value
-  if (step !== 7) return false
-  if (moveTrainer4PathIsLanding(route.path)) return false
-  const cp = getMoveTrainer3OpponentsMoveCheckpoint(7)
-  const label = typeof cp?.authorReadingPrimaryLabel === 'string' ? cp.authorReadingPrimaryLabel.trim() : ''
-  return label === 'Start Quiz'
-})
-
 /** Long OM chapter overflow — read phase only (Video + Continue before Play strip). */
 const isOmChapterReadFooter = computed(
   () =>
@@ -118,6 +108,12 @@ function onOmChapterReadContinue() {
 
 async function onOmContinue() {
   const authorStep = moveTrainer3OmAuthorNoteStep.value
+  /** MT3 OM-7: primary **Start Quiz** is clickable but does not navigate (product stub). MT4 landing uses the branch below. */
+  if (authorStep === 7 && !moveTrainer4PathIsLanding(route.path)) {
+    const cp = getMoveTrainer3OpponentsMoveCheckpoint(7)
+    const label = typeof cp?.authorReadingPrimaryLabel === 'string' ? cp.authorReadingPrimaryLabel.trim() : ''
+    if (label === 'Start Quiz') return
+  }
   if (moveTrainer4PathIsLanding(route.path) && authorStep === 7) {
     startMoveTrainer4AssistedQuiz()
     await router.replace(`${MOVE_TRAINER_4_BASE_PATH}/assisted-quiz`)
@@ -188,8 +184,6 @@ function onHint() {
               variant="primary"
               size="large"
               class="footer-btn-equal"
-              :disabled="isOmPrimaryDisabledStartQuizStub"
-              :aria-disabled="isOmPrimaryDisabledStartQuizStub"
               @click="onOmContinue"
             >
               {{ omAuthorReadingPrimaryLabel }}

@@ -227,6 +227,12 @@ Assumes **Start Learning has run** (`moveTrainer3StartLearningNonce > 0`) so Pla
 
 ---
 
+## See also
+
+- **[Classification badges (best / great)](move-trainer-3-classification-badges-spec.md)** — chip geometry, scaling, session keys.
+
+---
+
 ## Maintenance
 
 When adding a new OM checkpoint or coach branch:

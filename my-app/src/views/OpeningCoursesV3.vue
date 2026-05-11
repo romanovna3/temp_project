@@ -3137,7 +3137,7 @@ function isMt3GreatMoveBadgeSquare(square) {
 /**
  * Best-badge geometry on every **to** square (top-right of square). Same for all destinations (e.g. c5, e5).
  * - **`chesscom.mt3.bestBadgeDev.v1`** holds `{ x, y, size }` (right inset, top offset, side length in px at the 700px reference board).
- * - Reactive **`mt3BestBadgeDev*`** refs load/persist that JSON so tuning applies live (restores the old **Best Δ** workflow; baked fallbacks only seed first visit).
+ * - Reactive **`mt3BestBadgeDev*`** refs load/persist session JSON; baked fallbacks seed first visit (see **`docs/move-trainer-3-classification-badges-spec.md`**).
  * - Layout uses **`min(tunedPx, %)`** vs **`MT3_BADGE_REF_SQUARE_PX`** so the same tuned numbers scale on narrow boards (e.g. Mobile B).
  */
 const MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY = 'chesscom.mt3.bestBadgeDev.v1'
@@ -3176,7 +3176,6 @@ const _mt3BestBadgeDevInit = loadMt3BestBadgeDevSettings()
 const mt3BestBadgeDevX = ref(_mt3BestBadgeDevInit.x)
 const mt3BestBadgeDevY = ref(_mt3BestBadgeDevInit.y)
 const mt3BestBadgeDevSize = ref(_mt3BestBadgeDevInit.size)
-const mt3BestBadgeSettingsOpen = ref(false)
 
 function persistMt3BestBadgeDevSettings() {
   try {
@@ -3305,7 +3304,6 @@ const mt3GreatBadgeDevT = ref(_mt3GreatDevInit.t)
 const mt3GreatBadgeDevEdgeLeft = ref(_mt3GreatDevInit.el)
 const mt3GreatBadgeDevEdgeTop = ref(_mt3GreatDevInit.et)
 const mt3GreatBadgeDevSize = ref(_mt3GreatDevInit.size)
-const mt3GreatBadgeSettingsOpen = ref(false)
 
 function persistMt3GreatBadgeDevSettings() {
   try {
@@ -10537,85 +10535,9 @@ v-if="isVideoV6OrV7"
             </button>
           </Transition>
         </div>
-        <!-- MT3: floating Best Δ + Great position (dev) + Restart -->
+        <!-- MT3: floating Restart (badge geometry: docs/move-trainer-3-classification-badges-spec.md) -->
         <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-float">
-          <div
-            v-if="mt3BestBadgeSettingsOpen"
-            id="mt3-best-badge-dev-panel"
-            class="move-trainer-3-great-badge-dev-panel"
-            role="region"
-            aria-label="Best move badge position (dev)"
-          >
-            <p class="move-trainer-3-great-badge-dev-panel__hint">
-              Reference <strong>700px</strong> board — <strong>X / Y / Size</strong> for <strong>best.png</strong> (persists in session; scales on narrow boards).
-            </p>
-            <label class="move-trainer-3-great-badge-dev-panel__field">
-              <span>X — inset from right (px)</span>
-              <input v-model.number="mt3BestBadgeDevX" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
-            </label>
-            <label class="move-trainer-3-great-badge-dev-panel__field">
-              <span>Y — offset from top (px)</span>
-              <input v-model.number="mt3BestBadgeDevY" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
-            </label>
-            <label class="move-trainer-3-great-badge-dev-panel__field">
-              <span>Size (px)</span>
-              <input v-model.number="mt3BestBadgeDevSize" type="number" step="1" min="8" max="96" class="move-trainer-3-great-badge-dev-panel__input" />
-            </label>
-          </div>
-          <div
-            v-if="mt3GreatBadgeSettingsOpen"
-            id="mt3-great-badge-dev-panel"
-            class="move-trainer-3-great-badge-dev-panel"
-            role="region"
-            aria-label="Great move badge position (dev)"
-          >
-            <p class="move-trainer-3-great-badge-dev-panel__hint">
-              <strong>great.png</strong> — position + <strong>size</strong> (independent from Best). Default files: <strong>right + top</strong>. Edge (Black: <strong>a</strong>‑file, White: <strong>h</strong>‑file): <strong>left + top</strong>.
-            </p>
-            <label class="move-trainer-3-great-badge-dev-panel__field">
-              <span>Right inset (px)</span>
-              <input v-model.number="mt3GreatBadgeDevR" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
-            </label>
-            <label class="move-trainer-3-great-badge-dev-panel__field">
-              <span>Top offset (px)</span>
-              <input v-model.number="mt3GreatBadgeDevT" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
-            </label>
-            <label class="move-trainer-3-great-badge-dev-panel__field">
-              <span>Edge file — left inset (px)</span>
-              <input v-model.number="mt3GreatBadgeDevEdgeLeft" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
-            </label>
-            <label class="move-trainer-3-great-badge-dev-panel__field">
-              <span>Edge file — top offset (px)</span>
-              <input v-model.number="mt3GreatBadgeDevEdgeTop" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
-            </label>
-            <label class="move-trainer-3-great-badge-dev-panel__field">
-              <span>Size (px) — great chip</span>
-              <input v-model.number="mt3GreatBadgeDevSize" type="number" step="1" min="8" max="96" class="move-trainer-3-great-badge-dev-panel__input" />
-            </label>
-          </div>
           <div class="move-trainer-3-restart-float__buttons">
-            <CcButton
-              variant="ghost"
-              size="x-small"
-              type="button"
-              class="move-trainer-3-restart-ghost-btn move-trainer-3-best-badge-dev-toggle"
-              :aria-expanded="mt3BestBadgeSettingsOpen"
-              aria-controls="mt3-best-badge-dev-panel"
-              @click="mt3BestBadgeSettingsOpen = !mt3BestBadgeSettingsOpen"
-            >
-              Best Δ
-            </CcButton>
-            <CcButton
-              variant="ghost"
-              size="x-small"
-              type="button"
-              class="move-trainer-3-restart-ghost-btn move-trainer-3-great-badge-dev-toggle"
-              :aria-expanded="mt3GreatBadgeSettingsOpen"
-              aria-controls="mt3-great-badge-dev-panel"
-              @click="mt3GreatBadgeSettingsOpen = !mt3GreatBadgeSettingsOpen"
-            >
-              Great pos
-            </CcButton>
             <CcButton
               variant="ghost"
               size="x-small"
