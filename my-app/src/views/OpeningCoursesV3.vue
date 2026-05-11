@@ -3106,7 +3106,7 @@ const lastMove = ref(null) // { from, to }
 
 /** Move Trainer 3: classification chip on Black’s **to** square after graded success (`public/icons/move-classifications/best.png`). */
 const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
-/** Great move chip (`great.png`) — e.g. **`MT3_GREAT_MOVE_BADGE_SQUARE`**. No auto-hide (persists for layout tuning). */
+/** Great move chip (`great.png`) — e.g. **`MT3_GREAT_MOVE_BADGE_SQUARE`**. Auto-hides after **`MT3_BEST_BADGE_VISIBLE_MS`** (same as Best). */
 const moveTrainer3BlackGreatMoveBadge = ref(null) // { square: string } | null
 /** Black destination square that shows **great** instead of **best** (OM graded). */
 const MT3_GREAT_MOVE_BADGE_SQUARE = 'a6'
@@ -3157,6 +3157,15 @@ function clearMt3BestBadgeHideTimer() {
   }
 }
 
+let mt3GreatBadgeHideTimeoutId = null
+
+function clearMt3GreatBadgeHideTimer() {
+  if (mt3GreatBadgeHideTimeoutId != null) {
+    clearTimeout(mt3GreatBadgeHideTimeoutId)
+    mt3GreatBadgeHideTimeoutId = null
+  }
+}
+
 const mt3BestBadgeImgStyle = computed(() => ({
   width: `${MT3_BEST_BADGE_SIZE_PX}px`,
   height: `${MT3_BEST_BADGE_SIZE_PX}px`,
@@ -3166,19 +3175,32 @@ const mt3BestBadgeImgStyle = computed(() => ({
 
 /** Great-badge position tuning (sessionStorage). Edge file = **a** when `boardViewBlack`, **h** when White POV — avoids clipping on board edge. */
 const MT3_GREAT_BADGE_DEV_STORAGE_KEY = 'chesscom.mt3.greatBadgeDev.v1'
+/** Repo defaults when session has no tune — paste numbers from DevTools: `JSON.parse(sessionStorage.getItem('chesscom.mt3.greatBadgeDev.v1'))`. */
+const MT3_GREAT_BADGE_R_FALLBACK_PX = 2
+const MT3_GREAT_BADGE_T_FALLBACK_PX = 2
+const MT3_GREAT_BADGE_EDGE_LEFT_FALLBACK_PX = 2
+const MT3_GREAT_BADGE_EDGE_TOP_FALLBACK_PX = 2
+
 function loadMt3GreatBadgeDevSettings() {
+  const fb = {
+    r: MT3_GREAT_BADGE_R_FALLBACK_PX,
+    t: MT3_GREAT_BADGE_T_FALLBACK_PX,
+    el: MT3_GREAT_BADGE_EDGE_LEFT_FALLBACK_PX,
+    et: MT3_GREAT_BADGE_EDGE_TOP_FALLBACK_PX,
+  }
+  if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return fb
   try {
     const raw = sessionStorage.getItem(MT3_GREAT_BADGE_DEV_STORAGE_KEY)
-    if (!raw) return { r: 2, t: 2, el: 2, et: 2 }
+    if (!raw) return fb
     const j = JSON.parse(raw)
     return {
-      r: Number.isFinite(Number(j.r)) ? Number(j.r) : 2,
-      t: Number.isFinite(Number(j.t)) ? Number(j.t) : 2,
-      el: Number.isFinite(Number(j.el)) ? Number(j.el) : 2,
-      et: Number.isFinite(Number(j.et)) ? Number(j.et) : 2,
+      r: Number.isFinite(Number(j.r)) ? Number(j.r) : fb.r,
+      t: Number.isFinite(Number(j.t)) ? Number(j.t) : fb.t,
+      el: Number.isFinite(Number(j.el)) ? Number(j.el) : fb.el,
+      et: Number.isFinite(Number(j.et)) ? Number(j.et) : fb.et,
     }
   } catch {
-    return { r: 2, t: 2, el: 2, et: 2 }
+    return fb
   }
 }
 const _mt3GreatDevInit = loadMt3GreatBadgeDevSettings()
@@ -3837,14 +3859,19 @@ function hasMoveTrainer3GreatMoveBadge(square) {
   return !!g && g.square === square && isMoveTrainer3.value && panelView.value === 'courses'
 }
 
-/** Best **or** great chip after graded Black (`MT3_GREAT_MOVE_BADGE_SQUARE` → great, persistent). */
+/** Best **or** great chip after graded Black (`MT3_GREAT_MOVE_BADGE_SQUARE` → great). Both auto-hide after **`MT3_BEST_BADGE_VISIBLE_MS`**. */
 function applyMoveTrainer3BlackClassificationBadgeAfterGraded(toSquare) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
   if (toSquare === MT3_GREAT_MOVE_BADGE_SQUARE) {
     clearMt3BestBadgeHideTimer()
     moveTrainer3BlackMoveClassificationBadge.value = null
+    clearMt3GreatBadgeHideTimer()
     moveTrainer3BlackGreatMoveBadge.value = { square: toSquare }
+    mt3GreatBadgeHideTimeoutId = setTimeout(() => {
+      moveTrainer3BlackGreatMoveBadge.value = null
+      mt3GreatBadgeHideTimeoutId = null
+    }, MT3_BEST_BADGE_VISIBLE_MS)
     return
   }
   applyMoveTrainer3BlackBestClassificationBadge(toSquare)
@@ -3854,6 +3881,8 @@ function applyMoveTrainer3BlackClassificationBadgeAfterGraded(toSquare) {
 function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
+  clearMt3GreatBadgeHideTimer()
+  moveTrainer3BlackGreatMoveBadge.value = null
   clearMt3BestBadgeHideTimer()
   moveTrainer3BlackMoveClassificationBadge.value = { square: toSquare }
   mt3BestBadgeHideTimeoutId = setTimeout(() => {
@@ -4864,6 +4893,7 @@ watch(moveTrainer3StartLearningNonce, async (nonce) => {
   try {
     resetMoveTrainer3LearnProgress()
     clearMt3BestBadgeHideTimer()
+    clearMt3GreatBadgeHideTimer()
     moveTrainer3BlackMoveClassificationBadge.value = null
     moveTrainer3BlackGreatMoveBadge.value = null
     clearOpeningAutoMove()
@@ -7061,6 +7091,7 @@ onUnmounted(() => {
   }
   clearOpeningAutoMove()
   clearMt3BestBadgeHideTimer()
+  clearMt3GreatBadgeHideTimer()
   v23ScrollCleanup?.()
   v3ScrollCleanup?.()
   courseTabsScrollCleanup?.()
