@@ -698,6 +698,14 @@ const omIntroStackChapterScrollClamp = computed(
   flex-shrink: 0;
 }
 
+/* OM-7 one-line strip: no scroll-dissolve overlays (CoachBubble **::before** / **::after** + OM-reading-fill gradients). */
+.move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill
+  :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble.bubble--informational-single::before),
+.move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill
+  :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble.bubble--informational-single::after) {
+  display: none;
+}
+
 /* Live OM e4 chapter: same fill + scroll + gradient dissolves as OM author-reading (`informational-single` shell). */
 .move-trainer-3-coach--om-v1-live-chapter {
   flex: 1 1 auto;
