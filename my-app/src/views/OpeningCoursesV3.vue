@@ -3135,10 +3135,11 @@ function isMt3GreatMoveBadgeSquare(square) {
 }
 
 /**
- * Best-badge geometry on every **to** square (px, top-right of square). Same for all destinations (e.g. c5, e5).
+ * Best-badge geometry on every **to** square (top-right of square). Same for all destinations (e.g. c5, e5).
  * 1) On load, applies **`sessionStorage`** key **`chesscom.mt3.bestBadgeDev.v1`** if present (`{ x, y, size }` =
  *    inset from right, offset from top, side length in px) — same as the old Best Δ panel.
- * 2) If missing, uses **`MT3_BEST_BADGE_*_FALLBACK_PX`** below — edit those to bake values into git.
+ * 2) If missing, **`MT3_BEST_BADGE_*_FALLBACK_PX`** are converted to **% of square** via **`MT3_BADGE_REF_SQUARE_PX`**
+ *    so size/position stay correct when the board is scaled (e.g. Mobile B max-width 276px).
  */
 const MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY = 'chesscom.mt3.bestBadgeDev.v1'
 
@@ -3165,9 +3166,29 @@ const MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX = 2
 const MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX = 2
 const MT3_BEST_BADGE_SIZE_FALLBACK_PX = 26
 
+/** Matches default `.chessboard` width (700) / 8 — converts tuned px to `% of .square` so badges scale on narrow boards (e.g. Mobile B max-width 276px). */
+const MT3_BADGE_REF_SQUARE_PX = 700 / 8
+
 const MT3_BEST_BADGE_RIGHT_INSET_PX = _mt3BestBadgeGeomSession?.rightInsetPx ?? MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX
 const MT3_BEST_BADGE_TOP_OFFSET_PX = _mt3BestBadgeGeomSession?.topOffsetPx ?? MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX
 const MT3_BEST_BADGE_SIZE_PX = _mt3BestBadgeGeomSession?.sizePx ?? MT3_BEST_BADGE_SIZE_FALLBACK_PX
+
+function mt3InsetPxToSquarePct(px) {
+  return `${(px / MT3_BADGE_REF_SQUARE_PX) * 100}%`
+}
+
+/** Size for Best/Great chips: px when `chesscom.mt3.bestBadgeDev.v1` is set; otherwise % of square so layout matches at any board scale. */
+function mt3ClassificationBadgeSizeStyle() {
+  if (_mt3BestBadgeGeomSession != null) {
+    return {
+      width: `${MT3_BEST_BADGE_SIZE_PX}px`,
+      height: `${MT3_BEST_BADGE_SIZE_PX}px`,
+    }
+  }
+  const p = (MT3_BEST_BADGE_SIZE_PX / MT3_BADGE_REF_SQUARE_PX) * 100
+  return { width: `${p}%`, height: `${p}%` }
+}
+
 /** How long the Best badge stays visible after a graded Black move (ms). */
 const MT3_BEST_BADGE_VISIBLE_MS = 2000
 
@@ -3190,14 +3211,32 @@ function clearMt3GreatBadgeHideTimer() {
 }
 
 const mt3BestBadgeImgStyle = computed(() => ({
-  width: `${MT3_BEST_BADGE_SIZE_PX}px`,
-  height: `${MT3_BEST_BADGE_SIZE_PX}px`,
-  top: `${MT3_BEST_BADGE_TOP_OFFSET_PX}px`,
-  right: `${MT3_BEST_BADGE_RIGHT_INSET_PX}px`,
+  ...mt3ClassificationBadgeSizeStyle(),
+  ...(_mt3BestBadgeGeomSession != null
+    ? {
+        top: `${MT3_BEST_BADGE_TOP_OFFSET_PX}px`,
+        right: `${MT3_BEST_BADGE_RIGHT_INSET_PX}px`,
+      }
+    : {
+        top: mt3InsetPxToSquarePct(MT3_BEST_BADGE_TOP_OFFSET_PX),
+        right: mt3InsetPxToSquarePct(MT3_BEST_BADGE_RIGHT_INSET_PX),
+      }),
 }))
 
 /** Great-badge position tuning (sessionStorage). Edge file = **a** when `boardViewBlack`, **h** when White POV — avoids clipping on board edge. */
 const MT3_GREAT_BADGE_DEV_STORAGE_KEY = 'chesscom.mt3.greatBadgeDev.v1'
+
+/** True when great-badge dev tuning was persisted — keeps px positioning for dev overrides; otherwise % of square (same as Best defaults). */
+function readMt3GreatBadgeHadRawSession() {
+  if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return false
+  try {
+    return Boolean(sessionStorage.getItem(MT3_GREAT_BADGE_DEV_STORAGE_KEY))
+  } catch {
+    return false
+  }
+}
+
+const _mt3GreatBadgeUsesPxGeometry = readMt3GreatBadgeHadRawSession()
 /** Repo defaults when session has no tune — paste numbers from DevTools: `JSON.parse(sessionStorage.getItem('chesscom.mt3.greatBadgeDev.v1'))`. */
 const MT3_GREAT_BADGE_R_FALLBACK_PX = 2
 const MT3_GREAT_BADGE_T_FALLBACK_PX = 2
@@ -3258,24 +3297,39 @@ function isMt3BoardRightEdgeFileSquare(square) {
 }
 
 function getMt3GreatBadgeImgStyle(square) {
-  const size = MT3_BEST_BADGE_SIZE_PX
   const edge = isMt3BoardRightEdgeFileSquare(square)
-  const base = {
-    width: `${size}px`,
-    height: `${size}px`,
-  }
-  if (edge) {
+  const baseSize = mt3ClassificationBadgeSizeStyle()
+
+  if (_mt3GreatBadgeUsesPxGeometry) {
+    const base = mt3ClassificationBadgeSizeStyle()
+    if (edge) {
+      return {
+        ...base,
+        left: `${mt3GreatBadgeDevEdgeLeft.value}px`,
+        top: `${mt3GreatBadgeDevEdgeTop.value}px`,
+        right: 'auto',
+      }
+    }
     return {
       ...base,
-      left: `${mt3GreatBadgeDevEdgeLeft.value}px`,
-      top: `${mt3GreatBadgeDevEdgeTop.value}px`,
+      right: `${mt3GreatBadgeDevR.value}px`,
+      top: `${mt3GreatBadgeDevT.value}px`,
+      left: 'auto',
+    }
+  }
+
+  if (edge) {
+    return {
+      ...baseSize,
+      left: mt3InsetPxToSquarePct(mt3GreatBadgeDevEdgeLeft.value),
+      top: mt3InsetPxToSquarePct(mt3GreatBadgeDevEdgeTop.value),
       right: 'auto',
     }
   }
   return {
-    ...base,
-    right: `${mt3GreatBadgeDevR.value}px`,
-    top: `${mt3GreatBadgeDevT.value}px`,
+    ...baseSize,
+    right: mt3InsetPxToSquarePct(mt3GreatBadgeDevR.value),
+    top: mt3InsetPxToSquarePct(mt3GreatBadgeDevT.value),
     left: 'auto',
   }
 }
@@ -16265,7 +16319,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Move Trainer 3: Best move PNG — position/size from session-tuned or **`MT3_BEST_BADGE_*_FALLBACK_PX`** via **`mt3BestBadgeImgStyle`**. */
+/* Move Trainer 3: Best move PNG — session px (`bestBadgeDev.v1`) or fallback as % of square via **`mt3BestBadgeImgStyle`**. */
 .mt3-black-move-classification-badge {
   position: absolute;
   left: auto;
