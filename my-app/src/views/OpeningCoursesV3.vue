@@ -71,7 +71,7 @@ provide('design-system-key', {
   },
   trans: (key) => key,
 })
-import { playSound } from '../lib/playSound.js'
+import { playSound, playTrainCorrect } from '../lib/playSound.js'
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
 
@@ -4107,6 +4107,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
   makeMove(from, to)
   lastMove.value = { from, to }
   playSound(isCapture ? 'capture' : 'move')
+  playTrainCorrect()
   advanceMoveTrainer3PlyFromGameplay()
   recordMoveTrainer3BlackLearnSuccess()
 
@@ -4222,7 +4223,7 @@ const tryMove = async (from, to) => {
     questionState.value = 'solution'
     lastMove.value = { from, to }
     
-    // Play appropriate sound
+    // Play appropriate sound (+ local train-correct layer)
     if (isCheckmate) {
       playSound('check')
     } else if (isCapture) {
@@ -4230,7 +4231,8 @@ const tryMove = async (from, to) => {
     } else {
       playSound('move')
     }
-    
+    playTrainCorrect()
+
     // Trigger animations based on whether it's a checkmate
     if (isCheckmate) {
       // Determine king color based on side to move (FEN has 'w' = white to move, so black king is checkmated)

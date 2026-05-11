@@ -22,3 +22,12 @@ export function playSound(type, volume = 0.7) {
   audio.volume = volume
   audio.play().catch(() => {})
 }
+
+/** Local feedback clip (`public/audio/train-correct.mp3`). Play together with **`playSound`** on correct moves. */
+const trainCorrectUrl = `${import.meta.env.BASE_URL}audio/train-correct.mp3`
+
+export function playTrainCorrect(volume = 0.55) {
+  const audio = new Audio(trainCorrectUrl)
+  audio.volume = volume
+  audio.play().catch(() => {})
+}
