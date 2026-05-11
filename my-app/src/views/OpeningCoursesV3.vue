@@ -3138,8 +3138,8 @@ function isMt3GreatMoveBadgeSquare(square) {
  * Best-badge geometry on every **to** square (top-right of square). Same for all destinations (e.g. c5, e5).
  * 1) On load, applies **`sessionStorage`** key **`chesscom.mt3.bestBadgeDev.v1`** if present (`{ x, y, size }` =
  *    inset from right, offset from top, side length in px) — same as the old Best Δ panel.
- * 2) If missing, **`MT3_BEST_BADGE_*_FALLBACK_PX`** are converted to **% of square** via **`MT3_BADGE_REF_SQUARE_PX`**
- *    so size/position stay correct when the board is scaled (e.g. Mobile B max-width 276px).
+ * 2) If missing, uses **`min(px, %)`** from those fallbacks vs **`MT3_BADGE_REF_SQUARE_PX`** — **26px** on the 700px board,
+ *    smaller on scaled boards (e.g. Mobile B max-width 276px).
  */
 const MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY = 'chesscom.mt3.bestBadgeDev.v1'
 
@@ -3173,11 +3173,17 @@ const MT3_BEST_BADGE_RIGHT_INSET_PX = _mt3BestBadgeGeomSession?.rightInsetPx ?? 
 const MT3_BEST_BADGE_TOP_OFFSET_PX = _mt3BestBadgeGeomSession?.topOffsetPx ?? MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX
 const MT3_BEST_BADGE_SIZE_PX = _mt3BestBadgeGeomSession?.sizePx ?? MT3_BEST_BADGE_SIZE_FALLBACK_PX
 
-function mt3InsetPxToSquarePct(px) {
-  return `${(px / MT3_BADGE_REF_SQUARE_PX) * 100}%`
+/** Inset from square edge: caps at tuned px on the 700px reference board, scales down on smaller squares (uses CSS `min()`). */
+function mt3InsetPxToSquareMin(px) {
+  const pct = (px / MT3_BADGE_REF_SQUARE_PX) * 100
+  return `min(${px}px, ${pct}%)`
 }
 
-/** Size for Best/Great chips: px when `chesscom.mt3.bestBadgeDev.v1` is set; otherwise % of square so layout matches at any board scale. */
+/**
+ * Size for Best/Great chips: px when `chesscom.mt3.bestBadgeDev.v1` is set.
+ * Otherwise `min(26px, N%)` so the chip is **exactly 26px** on the default 700×700 board (87.5px squares) while still shrinking on narrow boards.
+ * Uses `height: auto` + `aspect-ratio: 1` (not `%` height) so `%` height quirks + `object-fit: contain` do not shrink the painted icon below the layout width.
+ */
 function mt3ClassificationBadgeSizeStyle() {
   if (_mt3BestBadgeGeomSession != null) {
     return {
@@ -3185,8 +3191,12 @@ function mt3ClassificationBadgeSizeStyle() {
       height: `${MT3_BEST_BADGE_SIZE_PX}px`,
     }
   }
-  const p = (MT3_BEST_BADGE_SIZE_PX / MT3_BADGE_REF_SQUARE_PX) * 100
-  return { width: `${p}%`, height: `${p}%` }
+  const wPct = (MT3_BEST_BADGE_SIZE_FALLBACK_PX / MT3_BADGE_REF_SQUARE_PX) * 100
+  return {
+    width: `min(${MT3_BEST_BADGE_SIZE_FALLBACK_PX}px, ${wPct}%)`,
+    height: 'auto',
+    aspectRatio: '1',
+  }
 }
 
 /** How long the Best badge stays visible after a graded Black move (ms). */
@@ -3218,8 +3228,8 @@ const mt3BestBadgeImgStyle = computed(() => ({
         right: `${MT3_BEST_BADGE_RIGHT_INSET_PX}px`,
       }
     : {
-        top: mt3InsetPxToSquarePct(MT3_BEST_BADGE_TOP_OFFSET_PX),
-        right: mt3InsetPxToSquarePct(MT3_BEST_BADGE_RIGHT_INSET_PX),
+        top: mt3InsetPxToSquareMin(MT3_BEST_BADGE_TOP_OFFSET_PX),
+        right: mt3InsetPxToSquareMin(MT3_BEST_BADGE_RIGHT_INSET_PX),
       }),
 }))
 
@@ -3321,15 +3331,15 @@ function getMt3GreatBadgeImgStyle(square) {
   if (edge) {
     return {
       ...baseSize,
-      left: mt3InsetPxToSquarePct(mt3GreatBadgeDevEdgeLeft.value),
-      top: mt3InsetPxToSquarePct(mt3GreatBadgeDevEdgeTop.value),
+      left: mt3InsetPxToSquareMin(mt3GreatBadgeDevEdgeLeft.value),
+      top: mt3InsetPxToSquareMin(mt3GreatBadgeDevEdgeTop.value),
       right: 'auto',
     }
   }
   return {
     ...baseSize,
-    right: mt3InsetPxToSquarePct(mt3GreatBadgeDevR.value),
-    top: mt3InsetPxToSquarePct(mt3GreatBadgeDevT.value),
+    right: mt3InsetPxToSquareMin(mt3GreatBadgeDevR.value),
+    top: mt3InsetPxToSquareMin(mt3GreatBadgeDevT.value),
     left: 'auto',
   }
 }
@@ -16319,13 +16329,14 @@ body {
   100% { opacity: 0; }
 }
 
-/* Move Trainer 3: Best move PNG — session px (`bestBadgeDev.v1`) or fallback as % of square via **`mt3BestBadgeImgStyle`**. */
+/* Move Trainer 3: Best move PNG — session px (`bestBadgeDev.v1`) or fallback `min(26px, %)` via **`mt3BestBadgeImgStyle`**. */
 .mt3-black-move-classification-badge {
   position: absolute;
   left: auto;
   z-index: 6;
   pointer-events: none;
-  object-fit: contain;
+  /* Fill the laid-out box so the bitmap matches width (contain letterboxed inside %-sized boxes and looked smaller than 26px). */
+  object-fit: cover;
   display: block;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
 }
