@@ -267,15 +267,6 @@ const om7AuthorReadingPlayStripLead = computed(() => {
   return typeof cp.nextBlackLeadBold === 'string' ? cp.nextBlackLeadBold.trim() : ''
 })
 
-const om7AuthorReadingPlayStripTurn = computed(() => {
-  if (!showOm7PlayMoveUnderAuthorReading.value) return ''
-  const cp = opponentsMoveCheckpoint.value
-  if (!cp) return ''
-  const sec = typeof cp.authorReadingSecondaryPlayTurnStrip === 'string' ? cp.authorReadingSecondaryPlayTurnStrip.trim() : ''
-  if (sec) return sec
-  return typeof cp.nextBlackTurnStrip === 'string' ? cp.nextBlackTurnStrip.trim() : 'Black to play'
-})
-
 /** Bound OM column height so long informational bubbles scroll inside (fade dissolves + thumb rail). */
 const omIntroStackChapterScrollClamp = computed(
   () =>
@@ -345,14 +336,12 @@ const omIntroStackChapterScrollClamp = computed(
         header-text=""
         eval-text=""
         :white-advantage="true"
-        message=""
+        :informational-single-bubble="true"
+        :message="om7AuthorReadingPlayStripLead"
         :coach-avatar-icon-px="coachAvatarIconPx"
         turn-strip-text=""
         :show-tip="false"
         :typewriter="false"
-        :intro-coach-combined-bubble="true"
-        :intro-combined-lead-bold="om7AuthorReadingPlayStripLead"
-        :intro-combined-turn-strip-regular="om7AuthorReadingPlayStripTurn"
         :fill-available-height="false"
         :start-position="false"
       />
@@ -698,7 +687,8 @@ const omIntroStackChapterScrollClamp = computed(
   max-height: 64px;
 }
 
-.move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill :deep(.coach-container.mt3-om-play-coach--om7-secondary .coach-intro-combined-heading) {
+.move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill
+  :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble-content--informational-message:not(.bubble-content--informational-below-heading)) {
   min-height: 64px;
   box-sizing: border-box;
   justify-content: center;
