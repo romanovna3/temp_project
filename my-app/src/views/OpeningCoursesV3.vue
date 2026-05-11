@@ -3127,8 +3127,11 @@ const lastMove = ref(null) // { from, to }
 const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
 /** Great move chip (`great.png`) — squares in **`MT3_GREAT_MOVE_BADGE_SQUARES`**. Visibility timing follows **`MT3_CLASSIFICATION_BADGES_AUTO_HIDE`**. */
 const moveTrainer3BlackGreatMoveBadge = ref(null) // { square: string } | null
-/** Black destination squares that show **great** instead of **best** (OM graded). */
-const MT3_GREAT_MOVE_BADGE_SQUARES = ['a6', 'g6']
+/**
+ * Black **to** squares that show **`great.png`** with **great-badge** geometry (edge **a**‑file when Black at bottom uses left/top offsets).
+ * **`…g6`** uses **`best.png`** + **best** geometry like any other interior reply (e.g. **…c5**) — only **`…a6`** keeps the edge‑tuned great chip here.
+ */
+const MT3_GREAT_MOVE_BADGE_SQUARES = ['a6']
 
 function isMt3GreatMoveBadgeSquare(square) {
   return typeof square === 'string' && MT3_GREAT_MOVE_BADGE_SQUARES.includes(square)

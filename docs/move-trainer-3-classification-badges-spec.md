@@ -1,6 +1,6 @@
 # Move Trainer 3 — classification badges (best / great)
 
-Visual chips on Black’s **destination square** after a graded success: **`best.png`** (default) or **`great.png`** on squares listed in code (`MT3_GREAT_MOVE_BADGE_SQUARES`). Implemented in **`OpeningCoursesV3.vue`** (same board markup for desktop + Mobile B).
+Visual chips on Black’s **destination square** after a graded success: **`best.png`** (default) or **`great.png`** only on squares listed in **`MT3_GREAT_MOVE_BADGE_SQUARES`** (currently **`a6`** — viewer edge **a**‑file when Black is at the bottom; uses **great-badge** edge offsets). **`…g6`** and all other replies use **`best.png`** with the **same best-badge geometry** as e.g. **…c5**. Implemented in **`OpeningCoursesV3.vue`** (same board markup for desktop + Mobile B).
 
 ## Canonical geometry (700×700 reference board, px)
 
