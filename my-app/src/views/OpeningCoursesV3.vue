@@ -3106,10 +3106,14 @@ const lastMove = ref(null) // { from, to }
 
 /** Move Trainer 3: classification chip on Black’s **to** square after graded success (`public/icons/move-classifications/best.png`). */
 const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
-/** Great move chip (`great.png`) — e.g. **`MT3_GREAT_MOVE_BADGE_SQUARE`**. Auto-hides after **`MT3_BEST_BADGE_VISIBLE_MS`** (same as Best). */
+/** Great move chip (`great.png`) — squares in **`MT3_GREAT_MOVE_BADGE_SQUARES`**. Auto-hides after **`MT3_BEST_BADGE_VISIBLE_MS`** (same as Best). */
 const moveTrainer3BlackGreatMoveBadge = ref(null) // { square: string } | null
-/** Black destination square that shows **great** instead of **best** (OM graded). */
-const MT3_GREAT_MOVE_BADGE_SQUARE = 'a6'
+/** Black destination squares that show **great** instead of **best** (OM graded). */
+const MT3_GREAT_MOVE_BADGE_SQUARES = ['a6', 'g6']
+
+function isMt3GreatMoveBadgeSquare(square) {
+  return typeof square === 'string' && MT3_GREAT_MOVE_BADGE_SQUARES.includes(square)
+}
 
 /**
  * Best-badge geometry on every **to** square (px, top-right of square). Same for all destinations (e.g. c5, e5).
@@ -3859,11 +3863,11 @@ function hasMoveTrainer3GreatMoveBadge(square) {
   return !!g && g.square === square && isMoveTrainer3.value && panelView.value === 'courses'
 }
 
-/** Best **or** great chip after graded Black (`MT3_GREAT_MOVE_BADGE_SQUARE` → great). Both auto-hide after **`MT3_BEST_BADGE_VISIBLE_MS`**. */
+/** Best **or** great chip after graded Black (`MT3_GREAT_MOVE_BADGE_SQUARES` → great). Both auto-hide after **`MT3_BEST_BADGE_VISIBLE_MS`**. */
 function applyMoveTrainer3BlackClassificationBadgeAfterGraded(toSquare) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
-  if (toSquare === MT3_GREAT_MOVE_BADGE_SQUARE) {
+  if (isMt3GreatMoveBadgeSquare(toSquare)) {
     clearMt3BestBadgeHideTimer()
     moveTrainer3BlackMoveClassificationBadge.value = null
     clearMt3GreatBadgeHideTimer()
@@ -7195,7 +7199,7 @@ onUnmounted(() => {
                 draggable="false"
               />
 
-              <!-- Move Trainer 3: Great move (`great.png`) — **`MT3_GREAT_MOVE_BADGE_SQUARE`**, edge‑file alignment -->
+              <!-- Move Trainer 3: Great move (`great.png`) — **`MT3_GREAT_MOVE_BADGE_SQUARES`**, edge‑file alignment -->
               <img
                 v-if="hasMoveTrainer3GreatMoveBadge(square)"
                 class="mt3-black-move-classification-badge mt3-black-move-classification-badge--great"
@@ -7532,7 +7536,7 @@ onUnmounted(() => {
                 draggable="false"
               />
 
-              <!-- Move Trainer 3: Great move (`great.png`) — **`MT3_GREAT_MOVE_BADGE_SQUARE`**, edge‑file alignment -->
+              <!-- Move Trainer 3: Great move (`great.png`) — **`MT3_GREAT_MOVE_BADGE_SQUARES`**, edge‑file alignment -->
               <img
                 v-if="hasMoveTrainer3GreatMoveBadge(square)"
                 class="mt3-black-move-classification-badge mt3-black-move-classification-badge--great"
