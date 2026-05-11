@@ -3106,6 +3106,10 @@ const lastMove = ref(null) // { from, to }
 
 /** Move Trainer 3: classification chip on Black’s **to** square after graded success (`public/icons/move-classifications/best.png`). */
 const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
+/** Great move chip (`great.png`) — e.g. **`MT3_GREAT_MOVE_BADGE_SQUARE`**. No auto-hide (persists for layout tuning). */
+const moveTrainer3BlackGreatMoveBadge = ref(null) // { square: string } | null
+/** Black destination square that shows **great** instead of **best** (OM graded). */
+const MT3_GREAT_MOVE_BADGE_SQUARE = 'a6'
 
 /**
  * Best-badge geometry on every **to** square (px, top-right of square). Same for all destinations (e.g. c5, e5).
@@ -3159,6 +3163,77 @@ const mt3BestBadgeImgStyle = computed(() => ({
   top: `${MT3_BEST_BADGE_TOP_OFFSET_PX}px`,
   right: `${MT3_BEST_BADGE_RIGHT_INSET_PX}px`,
 }))
+
+/** Great-badge position tuning (sessionStorage). Edge file = **a** when `boardViewBlack`, **h** when White POV — avoids clipping on board edge. */
+const MT3_GREAT_BADGE_DEV_STORAGE_KEY = 'chesscom.mt3.greatBadgeDev.v1'
+function loadMt3GreatBadgeDevSettings() {
+  try {
+    const raw = sessionStorage.getItem(MT3_GREAT_BADGE_DEV_STORAGE_KEY)
+    if (!raw) return { r: 2, t: 2, el: 2, et: 2 }
+    const j = JSON.parse(raw)
+    return {
+      r: Number.isFinite(Number(j.r)) ? Number(j.r) : 2,
+      t: Number.isFinite(Number(j.t)) ? Number(j.t) : 2,
+      el: Number.isFinite(Number(j.el)) ? Number(j.el) : 2,
+      et: Number.isFinite(Number(j.et)) ? Number(j.et) : 2,
+    }
+  } catch {
+    return { r: 2, t: 2, el: 2, et: 2 }
+  }
+}
+const _mt3GreatDevInit = loadMt3GreatBadgeDevSettings()
+const mt3GreatBadgeDevR = ref(_mt3GreatDevInit.r)
+const mt3GreatBadgeDevT = ref(_mt3GreatDevInit.t)
+const mt3GreatBadgeDevEdgeLeft = ref(_mt3GreatDevInit.el)
+const mt3GreatBadgeDevEdgeTop = ref(_mt3GreatDevInit.et)
+const mt3GreatBadgeSettingsOpen = ref(false)
+
+function persistMt3GreatBadgeDevSettings() {
+  try {
+    sessionStorage.setItem(
+      MT3_GREAT_BADGE_DEV_STORAGE_KEY,
+      JSON.stringify({
+        r: mt3GreatBadgeDevR.value,
+        t: mt3GreatBadgeDevT.value,
+        el: mt3GreatBadgeDevEdgeLeft.value,
+        et: mt3GreatBadgeDevEdgeTop.value,
+      }),
+    )
+  } catch {
+    /* ignore */
+  }
+}
+watch([mt3GreatBadgeDevR, mt3GreatBadgeDevT, mt3GreatBadgeDevEdgeLeft, mt3GreatBadgeDevEdgeTop], persistMt3GreatBadgeDevSettings)
+
+/** Viewer’s **right** edge of the board: **a-file** when Black at bottom, **h-file** when White at bottom. */
+function isMt3BoardRightEdgeFileSquare(square) {
+  if (!square || typeof square !== 'string' || square.length < 1) return false
+  const f = square[0].toLowerCase()
+  return boardViewBlack.value ? f === 'a' : f === 'h'
+}
+
+function getMt3GreatBadgeImgStyle(square) {
+  const size = MT3_BEST_BADGE_SIZE_PX
+  const edge = isMt3BoardRightEdgeFileSquare(square)
+  const base = {
+    width: `${size}px`,
+    height: `${size}px`,
+  }
+  if (edge) {
+    return {
+      ...base,
+      left: `${mt3GreatBadgeDevEdgeLeft.value}px`,
+      top: `${mt3GreatBadgeDevEdgeTop.value}px`,
+      right: 'auto',
+    }
+  }
+  return {
+    ...base,
+    right: `${mt3GreatBadgeDevR.value}px`,
+    top: `${mt3GreatBadgeDevT.value}px`,
+    left: 'auto',
+  }
+}
 
 // Drag state
 const isDragging = ref(false)
@@ -3757,6 +3832,24 @@ function hasMoveTrainer3BlackClassificationBadge(square) {
   return !!b && b.square === square && isMoveTrainer3.value && panelView.value === 'courses'
 }
 
+function hasMoveTrainer3GreatMoveBadge(square) {
+  const g = moveTrainer3BlackGreatMoveBadge.value
+  return !!g && g.square === square && isMoveTrainer3.value && panelView.value === 'courses'
+}
+
+/** Best **or** great chip after graded Black (`MT3_GREAT_MOVE_BADGE_SQUARE` → great, persistent). */
+function applyMoveTrainer3BlackClassificationBadgeAfterGraded(toSquare) {
+  if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+  if (!toSquare || typeof toSquare !== 'string') return
+  if (toSquare === MT3_GREAT_MOVE_BADGE_SQUARE) {
+    clearMt3BestBadgeHideTimer()
+    moveTrainer3BlackMoveClassificationBadge.value = null
+    moveTrainer3BlackGreatMoveBadge.value = { square: toSquare }
+    return
+  }
+  applyMoveTrainer3BlackBestClassificationBadge(toSquare)
+}
+
 /** Best-move chip on Black’s destination (Play Move + OM graded Black). Auto-hides after **`MT3_BEST_BADGE_VISIBLE_MS`**. Cleared on **Start Learning** restart. */
 function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
@@ -4119,7 +4212,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
     moveTrainer3OmAuthorNoteStep.value = omStep
     await nextTick()
     onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
-    applyMoveTrainer3BlackBestClassificationBadge(to)
+    applyMoveTrainer3BlackClassificationBadgeAfterGraded(to)
     return true
   }
 
@@ -4130,13 +4223,13 @@ async function tryMoveTrainer3PlayMove(from, to) {
     await router.replace(`/move-trainer/move-trainer-3/opponents-move-${completed}`)
     await nextTick()
     onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
-    applyMoveTrainer3BlackBestClassificationBadge(to)
+    applyMoveTrainer3BlackClassificationBadgeAfterGraded(to)
     return true
   }
 
   await nextTick()
   await router.push(moveTrainer3LearnShellPathAfterBlackSuccessCount(completed))
-  applyMoveTrainer3BlackBestClassificationBadge(to)
+  applyMoveTrainer3BlackClassificationBadgeAfterGraded(to)
   return true
 }
 
@@ -4772,6 +4865,7 @@ watch(moveTrainer3StartLearningNonce, async (nonce) => {
     resetMoveTrainer3LearnProgress()
     clearMt3BestBadgeHideTimer()
     moveTrainer3BlackMoveClassificationBadge.value = null
+    moveTrainer3BlackGreatMoveBadge.value = null
     clearOpeningAutoMove()
     goToPly(0)
     await nextTick()
@@ -7070,6 +7164,16 @@ onUnmounted(() => {
                 draggable="false"
               />
 
+              <!-- Move Trainer 3: Great move (`great.png`) — **`MT3_GREAT_MOVE_BADGE_SQUARE`**, edge‑file alignment -->
+              <img
+                v-if="hasMoveTrainer3GreatMoveBadge(square)"
+                class="mt3-black-move-classification-badge mt3-black-move-classification-badge--great"
+                :src="`${baseUrl}icons/move-classifications/great.png`"
+                :style="getMt3GreatBadgeImgStyle(square)"
+                alt=""
+                draggable="false"
+              />
+
               <!-- Checkmate Highlight Overlay (red at 80% opacity) -->
               <div 
                 v-if="hasCheckmateHighlight(square)" 
@@ -7393,6 +7497,16 @@ onUnmounted(() => {
                 class="mt3-black-move-classification-badge"
                 :src="`${baseUrl}icons/move-classifications/best.png`"
                 :style="mt3BestBadgeImgStyle"
+                alt=""
+                draggable="false"
+              />
+
+              <!-- Move Trainer 3: Great move (`great.png`) — **`MT3_GREAT_MOVE_BADGE_SQUARE`**, edge‑file alignment -->
+              <img
+                v-if="hasMoveTrainer3GreatMoveBadge(square)"
+                class="mt3-black-move-classification-badge mt3-black-move-classification-badge--great"
+                :src="`${baseUrl}icons/move-classifications/great.png`"
+                :style="getMt3GreatBadgeImgStyle(square)"
                 alt=""
                 draggable="false"
               />
@@ -10211,18 +10325,58 @@ v-if="isVideoV6OrV7"
             </button>
           </Transition>
         </div>
-        <!-- MT3: floating Restart -->
+        <!-- MT3: floating Great position (dev) + Restart -->
         <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-float">
-          <CcButton
-            variant="ghost"
-            size="x-small"
-            type="button"
-            class="move-trainer-3-restart-ghost-btn"
-            aria-label="Restart course from intro"
-            @click="onMoveTrainer3RestartToIntro"
+          <div
+            v-if="mt3GreatBadgeSettingsOpen"
+            id="mt3-great-badge-dev-panel"
+            class="move-trainer-3-great-badge-dev-panel"
+            role="region"
+            aria-label="Great move badge position (dev)"
           >
-            Restart
-          </CcButton>
+            <p class="move-trainer-3-great-badge-dev-panel__hint">
+              Default files: <strong>right + top</strong>. Edge (Black: <strong>a</strong>‑file, White: <strong>h</strong>‑file): <strong>left + top</strong> so the icon is not cut off.
+            </p>
+            <label class="move-trainer-3-great-badge-dev-panel__field">
+              <span>Right inset (px)</span>
+              <input v-model.number="mt3GreatBadgeDevR" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
+            </label>
+            <label class="move-trainer-3-great-badge-dev-panel__field">
+              <span>Top offset (px)</span>
+              <input v-model.number="mt3GreatBadgeDevT" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
+            </label>
+            <label class="move-trainer-3-great-badge-dev-panel__field">
+              <span>Edge file — left inset (px)</span>
+              <input v-model.number="mt3GreatBadgeDevEdgeLeft" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
+            </label>
+            <label class="move-trainer-3-great-badge-dev-panel__field">
+              <span>Edge file — top offset (px)</span>
+              <input v-model.number="mt3GreatBadgeDevEdgeTop" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
+            </label>
+          </div>
+          <div class="move-trainer-3-restart-float__buttons">
+            <CcButton
+              variant="ghost"
+              size="x-small"
+              type="button"
+              class="move-trainer-3-restart-ghost-btn move-trainer-3-great-badge-dev-toggle"
+              :aria-expanded="mt3GreatBadgeSettingsOpen"
+              aria-controls="mt3-great-badge-dev-panel"
+              @click="mt3GreatBadgeSettingsOpen = !mt3GreatBadgeSettingsOpen"
+            >
+              Great pos
+            </CcButton>
+            <CcButton
+              variant="ghost"
+              size="x-small"
+              type="button"
+              class="move-trainer-3-restart-ghost-btn"
+              aria-label="Restart course from intro"
+              @click="onMoveTrainer3RestartToIntro"
+            >
+              Restart
+            </CcButton>
+          </div>
         </div>
       </div>
     </div>
@@ -11544,6 +11698,52 @@ body {
   gap: 8px;
   pointer-events: auto;
   z-index: 200;
+  box-sizing: border-box;
+}
+.move-trainer-3-restart-float__buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.move-trainer-3-great-badge-dev-panel {
+  background: rgba(22, 20, 18, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 220px;
+  max-width: min(92vw, 300px);
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.move-trainer-3-great-badge-dev-panel__hint {
+  margin: 0 0 2px;
+  opacity: 0.92;
+}
+.move-trainer-3-great-badge-dev-panel__hint strong {
+  font-weight: 700;
+}
+.move-trainer-3-great-badge-dev-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.move-trainer-3-great-badge-dev-panel__field span {
+  opacity: 0.85;
+}
+.move-trainer-3-great-badge-dev-panel__input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 13px;
   box-sizing: border-box;
 }
 .panel-sm .move-trainer-3-restart-float {
@@ -15956,6 +16156,9 @@ body {
   object-fit: contain;
   display: block;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+}
+.mt3-black-move-classification-badge--great {
+  z-index: 7;
 }
 
 /* ========== BRILLIANT HIGHLIGHT ANIMATIONS ========== */
