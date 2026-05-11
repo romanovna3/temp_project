@@ -685,13 +685,46 @@ const omIntroStackChapterScrollClamp = computed(
 .move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble.bubble--informational-single) {
   min-height: 64px;
   max-height: 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill
-  :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble-content--informational-message:not(.bubble-content--informational-below-heading)) {
-  min-height: 64px;
-  box-sizing: border-box;
+  :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble-scroll-panel.bubble-scroll-panel--informational) {
+  flex: 1 1 auto;
+  align-items: center;
+  min-height: 0;
+}
+
+.move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill
+  :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble-informational-inner) {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
+  min-height: 0;
+  min-width: 0;
+}
+
+.move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill
+  :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble-content.bubble-content--informational-message:not(.bubble-content--informational-below-heading)) {
+  min-height: 0;
+  max-height: none;
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: var(--space-16, 16px);
+  padding-right: var(--space-16, 16px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill
+  :deep(.coach-container.mt3-om-play-coach--om7-secondary .bubble-content--informational-message .coach-message) {
+  margin: 0;
 }
 
 .move-trainer-3-coach--om-v1.move-trainer-3-coach--om-reading-fill :deep(.coach-container.mt3-om-play-coach--om7-secondary) {
