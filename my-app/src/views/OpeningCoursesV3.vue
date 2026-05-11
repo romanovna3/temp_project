@@ -3107,51 +3107,28 @@ const lastMove = ref(null) // { from, to }
 /** Move Trainer 3: classification chip on Black’s **to** square after graded success (`public/icons/move-classifications/best.png`). */
 const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
 
-/** Temporary dev UI: Best-badge offset/size on square (sessionStorage — remove when design final). */
-const MT3_BEST_BADGE_DEV_STORAGE_KEY = 'chesscom.mt3.bestBadgeDev.v1'
-function loadMt3BestBadgeDevSettings() {
-  try {
-    const raw = sessionStorage.getItem(MT3_BEST_BADGE_DEV_STORAGE_KEY)
-    if (!raw) return { x: 2, y: 2, size: 26 }
-    const j = JSON.parse(raw)
-    return {
-      x: Number.isFinite(Number(j.x)) ? Number(j.x) : 2,
-      y: Number.isFinite(Number(j.y)) ? Number(j.y) : 2,
-      size: Number.isFinite(Number(j.size)) ? Number(j.size) : 26,
-    }
-  } catch {
-    return { x: 2, y: 2, size: 26 }
+/** Best-badge geometry on every **to** square (px, top-right of square). Same for all destinations (e.g. c5, e5). */
+const MT3_BEST_BADGE_RIGHT_INSET_PX = 2
+const MT3_BEST_BADGE_TOP_OFFSET_PX = 2
+const MT3_BEST_BADGE_SIZE_PX = 26
+/** How long the Best badge stays visible after a graded Black move (ms). */
+const MT3_BEST_BADGE_VISIBLE_MS = 2000
+
+let mt3BestBadgeHideTimeoutId = null
+
+function clearMt3BestBadgeHideTimer() {
+  if (mt3BestBadgeHideTimeoutId != null) {
+    clearTimeout(mt3BestBadgeHideTimeoutId)
+    mt3BestBadgeHideTimeoutId = null
   }
 }
-const _mt3BadgeDevInit = loadMt3BestBadgeDevSettings()
-const mt3BestBadgeDevX = ref(_mt3BadgeDevInit.x)
-const mt3BestBadgeDevY = ref(_mt3BadgeDevInit.y)
-const mt3BestBadgeDevSize = ref(_mt3BadgeDevInit.size)
-const mt3BestBadgeSettingsOpen = ref(false)
 
 const mt3BestBadgeImgStyle = computed(() => ({
-  width: `${mt3BestBadgeDevSize.value}px`,
-  height: `${mt3BestBadgeDevSize.value}px`,
-  top: `${mt3BestBadgeDevY.value}px`,
-  right: `${mt3BestBadgeDevX.value}px`,
+  width: `${MT3_BEST_BADGE_SIZE_PX}px`,
+  height: `${MT3_BEST_BADGE_SIZE_PX}px`,
+  top: `${MT3_BEST_BADGE_TOP_OFFSET_PX}px`,
+  right: `${MT3_BEST_BADGE_RIGHT_INSET_PX}px`,
 }))
-
-function persistMt3BestBadgeDevSettings() {
-  try {
-    sessionStorage.setItem(
-      MT3_BEST_BADGE_DEV_STORAGE_KEY,
-      JSON.stringify({
-        x: mt3BestBadgeDevX.value,
-        y: mt3BestBadgeDevY.value,
-        size: mt3BestBadgeDevSize.value,
-      }),
-    )
-  } catch {
-    /* ignore */
-  }
-}
-
-watch([mt3BestBadgeDevX, mt3BestBadgeDevY, mt3BestBadgeDevSize], persistMt3BestBadgeDevSettings)
 
 // Drag state
 const isDragging = ref(false)
@@ -3750,11 +3727,16 @@ function hasMoveTrainer3BlackClassificationBadge(square) {
   return !!b && b.square === square && isMoveTrainer3.value && panelView.value === 'courses'
 }
 
-/** Best-move chip on Black’s destination (Play Move + OM graded Black). Cleared on **Start Learning** restart. */
+/** Best-move chip on Black’s destination (Play Move + OM graded Black). Auto-hides after **`MT3_BEST_BADGE_VISIBLE_MS`**. Cleared on **Start Learning** restart. */
 function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
+  clearMt3BestBadgeHideTimer()
   moveTrainer3BlackMoveClassificationBadge.value = { square: toSquare }
+  mt3BestBadgeHideTimeoutId = setTimeout(() => {
+    moveTrainer3BlackMoveClassificationBadge.value = null
+    mt3BestBadgeHideTimeoutId = null
+  }, MT3_BEST_BADGE_VISIBLE_MS)
 }
 
 const isLastMove = (square) => {
@@ -4756,6 +4738,7 @@ watch(moveTrainer3StartLearningNonce, async (nonce) => {
   setMoveTrainer3CoachPendingBlackSan(getMoveTrainer3FirstBlackReplySan())
   try {
     resetMoveTrainer3LearnProgress()
+    clearMt3BestBadgeHideTimer()
     moveTrainer3BlackMoveClassificationBadge.value = null
     clearOpeningAutoMove()
     goToPly(0)
@@ -6951,6 +6934,7 @@ onUnmounted(() => {
     practiceTabMaskTimer = null
   }
   clearOpeningAutoMove()
+  clearMt3BestBadgeHideTimer()
   v23ScrollCleanup?.()
   v3ScrollCleanup?.()
   courseTabsScrollCleanup?.()
@@ -10195,51 +10179,18 @@ v-if="isVideoV6OrV7"
             </button>
           </Transition>
         </div>
-        <!-- MT3: floating Restart + temporary Best-badge dev controls -->
+        <!-- MT3: floating Restart -->
         <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-float">
-          <div
-            v-if="mt3BestBadgeSettingsOpen"
-            id="mt3-badge-dev-panel"
-            class="move-trainer-3-badge-dev-panel"
-            role="region"
-            aria-label="Best badge layout (dev)"
+          <CcButton
+            variant="ghost"
+            size="x-small"
+            type="button"
+            class="move-trainer-3-restart-ghost-btn"
+            aria-label="Restart course from intro"
+            @click="onMoveTrainer3RestartToIntro"
           >
-            <label class="move-trainer-3-badge-dev-panel__field">
-              <span>X — inset from right (px)</span>
-              <input v-model.number="mt3BestBadgeDevX" type="number" step="1" class="move-trainer-3-badge-dev-panel__input" />
-            </label>
-            <label class="move-trainer-3-badge-dev-panel__field">
-              <span>Y — offset from top (px)</span>
-              <input v-model.number="mt3BestBadgeDevY" type="number" step="1" class="move-trainer-3-badge-dev-panel__input" />
-            </label>
-            <label class="move-trainer-3-badge-dev-panel__field">
-              <span>Size (px)</span>
-              <input v-model.number="mt3BestBadgeDevSize" type="number" step="1" min="8" max="96" class="move-trainer-3-badge-dev-panel__input" />
-            </label>
-          </div>
-          <div class="move-trainer-3-restart-float__buttons">
-            <CcButton
-              variant="ghost"
-              size="x-small"
-              type="button"
-              class="move-trainer-3-restart-ghost-btn move-trainer-3-badge-dev-toggle"
-              :aria-expanded="mt3BestBadgeSettingsOpen"
-              aria-controls="mt3-badge-dev-panel"
-              @click="mt3BestBadgeSettingsOpen = !mt3BestBadgeSettingsOpen"
-            >
-              Best Δ
-            </CcButton>
-            <CcButton
-              variant="ghost"
-              size="x-small"
-              type="button"
-              class="move-trainer-3-restart-ghost-btn"
-              aria-label="Restart course from intro"
-              @click="onMoveTrainer3RestartToIntro"
-            >
-              Restart
-            </CcButton>
-          </div>
+            Restart
+          </CcButton>
         </div>
       </div>
     </div>
@@ -11561,45 +11512,6 @@ body {
   gap: 8px;
   pointer-events: auto;
   z-index: 200;
-  box-sizing: border-box;
-}
-.move-trainer-3-restart-float__buttons {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-.move-trainer-3-badge-dev-panel {
-  background: rgba(22, 20, 18, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 210px;
-  max-width: min(92vw, 280px);
-  font-size: 11px;
-  line-height: 1.3;
-  color: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-}
-.move-trainer-3-badge-dev-panel__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.move-trainer-3-badge-dev-panel__field span {
-  opacity: 0.85;
-}
-.move-trainer-3-badge-dev-panel__input {
-  width: 100%;
-  padding: 6px 8px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.35);
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 13px;
   box-sizing: border-box;
 }
 .panel-sm .move-trainer-3-restart-float {
@@ -16003,7 +15915,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Move Trainer 3: Best move PNG — position/size via **`mt3BestBadgeImgStyle`** (dev panel). */
+/* Move Trainer 3: Best move PNG — position/size from **`MT3_BEST_BADGE_*`** via **`mt3BestBadgeImgStyle`**. */
 .mt3-black-move-classification-badge {
   position: absolute;
   left: auto;
