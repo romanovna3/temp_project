@@ -3561,7 +3561,8 @@ function onMoveTrainer3BoardSync(payload) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   if (moveTrainer3SkipBoardSyncFromStore.value) return
   if (!payload?.fen) return
-  moveTrainer3BlackMoveClassificationBadge.value = null
+  /** Do **not** clear **`moveTrainer3BlackMoveClassificationBadge`** here — this runs on every **currentFen**
+   *  tick (watch below); clearing wiped the chip immediately after graded Black moves (**…c5**, etc.). */
   try {
     pieces.value = parseFEN(payload.fen)
     lastMove.value = payload.lastMove ?? null
@@ -3704,7 +3705,7 @@ function hasMoveTrainer3BlackClassificationBadge(square) {
   return !!b && b.square === square && isMoveTrainer3.value && panelView.value === 'courses'
 }
 
-/** Best-move chip on Black’s destination (Play Move + OM graded Black); cleared on **`onMoveTrainer3BoardSync`**. */
+/** Best-move chip on Black’s destination (Play Move + OM graded Black). Cleared on **Start Learning** restart. */
 function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
@@ -4713,6 +4714,7 @@ watch(moveTrainer3StartLearningNonce, async (nonce) => {
   setMoveTrainer3CoachPendingBlackSan(getMoveTrainer3FirstBlackReplySan())
   try {
     resetMoveTrainer3LearnProgress()
+    moveTrainer3BlackMoveClassificationBadge.value = null
     clearOpeningAutoMove()
     goToPly(0)
     await nextTick()
