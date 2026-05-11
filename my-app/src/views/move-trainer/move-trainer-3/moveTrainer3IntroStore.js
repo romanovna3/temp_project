@@ -35,7 +35,7 @@ export const MOVE_TRAINER_3_COURSE_TITLE = 'Black is Back: Old Benoni'
 export const MOVE_TRAINER_3_LINE_HEADER_TITLE = 'Main Line — 7 moves (…g6)'
 
 /** Intro screen coach bubble — short copy only (don’t couple Play Move body here). */
-export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line together"
+export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line together!"
 
 /** Play Move layout — body copy under pinned heading (optional); empty = heading only. */
 export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = ''
