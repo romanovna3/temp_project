@@ -72,7 +72,6 @@ provide('design-system-key', {
   trans: (key) => key,
 })
 import { playSound } from '../lib/playSound.js'
-import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
 
@@ -3105,8 +3104,8 @@ const streak = ref(0)
 const selectedSquare = ref(null)
 const lastMove = ref(null) // { from, to }
 
-/** Move Trainer 3: DS classification glyph on Black’s **to** square after a graded success (e.g. Best on …**c5**). */
-const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string, icon: string } | null
+/** Move Trainer 3: classification chip on Black’s **to** square after graded success (`public/icons/move-classifications/best.png`). */
+const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
 
 // Drag state
 const isDragging = ref(false)
@@ -3709,10 +3708,7 @@ function hasMoveTrainer3BlackClassificationBadge(square) {
 function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   if (!toSquare || typeof toSquare !== 'string') return
-  moveTrainer3BlackMoveClassificationBadge.value = {
-    square: toSquare,
-    icon: MOVE_CLASSIFICATIONS.best.icon,
-  }
+  moveTrainer3BlackMoveClassificationBadge.value = { square: toSquare }
 }
 
 const isLastMove = (square) => {
@@ -7002,18 +6998,16 @@ onUnmounted(() => {
                 <span class="brilliant-label-text">Brilliant!</span>
               </div>
 
-              <!-- Move Trainer 3: classification (Best, …) on Black’s destination after graded reply -->
-              <div
+              <!-- Move Trainer 3: Best move chip (`public/icons/move-classifications/best.png`) on Black’s **to** square -->
+              <img
                 v-if="hasMoveTrainer3BlackClassificationBadge(square)"
                 class="mt3-black-move-classification-badge"
-                aria-hidden="true"
-              >
-                <CcIcon
-                  :name="moveTrainer3BlackMoveClassificationBadge.icon"
-                  :custom-size="26"
-                  class="mt3-black-move-classification-badge__icon"
-                />
-              </div>
+                :src="`${baseUrl}icons/move-classifications/best.png`"
+                width="26"
+                height="26"
+                alt=""
+                draggable="false"
+              />
 
               <!-- Checkmate Highlight Overlay (red at 80% opacity) -->
               <div 
@@ -7332,18 +7326,16 @@ onUnmounted(() => {
                 <span class="brilliant-label-text">Brilliant!</span>
               </div>
 
-              <!-- Move Trainer 3: classification (Best, …) on Black’s destination after graded reply -->
-              <div
+              <!-- Move Trainer 3: Best move chip (`public/icons/move-classifications/best.png`) on Black’s **to** square -->
+              <img
                 v-if="hasMoveTrainer3BlackClassificationBadge(square)"
                 class="mt3-black-move-classification-badge"
-                aria-hidden="true"
-              >
-                <CcIcon
-                  :name="moveTrainer3BlackMoveClassificationBadge.icon"
-                  :custom-size="26"
-                  class="mt3-black-move-classification-badge__icon"
-                />
-              </div>
+                :src="`${baseUrl}icons/move-classifications/best.png`"
+                width="26"
+                height="26"
+                alt=""
+                draggable="false"
+              />
 
               <!-- Checkmate Highlight Overlay (red at 80% opacity) -->
               <div 
@@ -15894,7 +15886,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Move Trainer 3: Best / classification chip — top-right of Black’s **to** square (matches product “coin” placement). */
+/* Move Trainer 3: Best move PNG — top-right of Black’s **to** square */
 .mt3-black-move-classification-badge {
   position: absolute;
   top: 2px;
@@ -15904,22 +15896,9 @@ body {
   height: 26px;
   z-index: 6;
   pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: contain;
+  display: block;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
-}
-
-.mt3-black-move-classification-badge__icon {
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-}
-
-.mt3-black-move-classification-badge__icon :deep(svg) {
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
 }
 
 /* ========== BRILLIANT HIGHLIGHT ANIMATIONS ========== */
