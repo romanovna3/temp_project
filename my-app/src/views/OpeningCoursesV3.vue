@@ -72,6 +72,7 @@ provide('design-system-key', {
   trans: (key) => key,
 })
 import { playSound } from '../lib/playSound.js'
+import { MOVE_CLASSIFICATIONS } from '@move-trainer/data/classifications.js'
 // Base URL with trailing slash so public assets load on GitHub Pages (e.g. /temp_project/)
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/*$/, '') + '/'
 
@@ -3104,6 +3105,9 @@ const streak = ref(0)
 const selectedSquare = ref(null)
 const lastMove = ref(null) // { from, to }
 
+/** Move Trainer 3: DS classification glyph on Black’s **to** square after a graded success (e.g. Best on …**c5**). */
+const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string, icon: string } | null
+
 // Drag state
 const isDragging = ref(false)
 const draggedPiece = ref(null) // { type, square }
@@ -3557,6 +3561,7 @@ function onMoveTrainer3BoardSync(payload) {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return
   if (moveTrainer3SkipBoardSyncFromStore.value) return
   if (!payload?.fen) return
+  moveTrainer3BlackMoveClassificationBadge.value = null
   try {
     pieces.value = parseFEN(payload.fen)
     lastMove.value = payload.lastMove ?? null
@@ -3694,6 +3699,21 @@ function getDisplayWhiteNotation(pair, idx) {
 const isSelected = (square) => selectedSquare.value === square
 
 // Check if square is part of last move (for correct moves)
+function hasMoveTrainer3BlackClassificationBadge(square) {
+  const b = moveTrainer3BlackMoveClassificationBadge.value
+  return !!b && b.square === square && isMoveTrainer3.value && panelView.value === 'courses'
+}
+
+/** Best-move chip on Black’s destination (Play Move + OM graded Black); cleared on **`onMoveTrainer3BoardSync`**. */
+function applyMoveTrainer3BlackBestClassificationBadge(toSquare) {
+  if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+  if (!toSquare || typeof toSquare !== 'string') return
+  moveTrainer3BlackMoveClassificationBadge.value = {
+    square: toSquare,
+    icon: MOVE_CLASSIFICATIONS.best.icon,
+  }
+}
+
 const isLastMove = (square) => {
   if (!lastMove.value) return false
   if (questionState.value === 'wrong') return false // Don't show yellow for wrong moves
@@ -4043,6 +4063,7 @@ async function tryMoveTrainer3PlayMove(from, to) {
     moveTrainer3OmAuthorNoteStep.value = omStep
     await nextTick()
     onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
+    applyMoveTrainer3BlackBestClassificationBadge(to)
     return true
   }
 
@@ -4053,11 +4074,13 @@ async function tryMoveTrainer3PlayMove(from, to) {
     await router.replace(`/move-trainer/move-trainer-3/opponents-move-${completed}`)
     await nextTick()
     onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
+    applyMoveTrainer3BlackBestClassificationBadge(to)
     return true
   }
 
   await nextTick()
   await router.push(moveTrainer3LearnShellPathAfterBlackSuccessCount(completed))
+  applyMoveTrainer3BlackBestClassificationBadge(to)
   return true
 }
 
@@ -6977,6 +7000,19 @@ onUnmounted(() => {
                 <span class="brilliant-label-text">Brilliant!</span>
               </div>
 
+              <!-- Move Trainer 3: classification (Best, …) on Black’s destination after graded reply -->
+              <div
+                v-if="hasMoveTrainer3BlackClassificationBadge(square)"
+                class="mt3-black-move-classification-badge"
+                aria-hidden="true"
+              >
+                <CcIcon
+                  :name="moveTrainer3BlackMoveClassificationBadge.icon"
+                  :custom-size="26"
+                  class="mt3-black-move-classification-badge__icon"
+                />
+              </div>
+
               <!-- Checkmate Highlight Overlay (red at 80% opacity) -->
               <div 
                 v-if="hasCheckmateHighlight(square)" 
@@ -7292,6 +7328,19 @@ onUnmounted(() => {
                 class="brilliant-label-bubble"
               >
                 <span class="brilliant-label-text">Brilliant!</span>
+              </div>
+
+              <!-- Move Trainer 3: classification (Best, …) on Black’s destination after graded reply -->
+              <div
+                v-if="hasMoveTrainer3BlackClassificationBadge(square)"
+                class="mt3-black-move-classification-badge"
+                aria-hidden="true"
+              >
+                <CcIcon
+                  :name="moveTrainer3BlackMoveClassificationBadge.icon"
+                  :custom-size="26"
+                  class="mt3-black-move-classification-badge__icon"
+                />
               </div>
 
               <!-- Checkmate Highlight Overlay (red at 80% opacity) -->
@@ -15841,6 +15890,34 @@ body {
   37.5% { opacity: 1; }
   62.5% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+/* Move Trainer 3: Best / classification chip — top-right of Black’s **to** square (matches product “coin” placement). */
+.mt3-black-move-classification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  left: auto;
+  width: 26px;
+  height: 26px;
+  z-index: 6;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+}
+
+.mt3-black-move-classification-badge__icon {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.mt3-black-move-classification-badge__icon :deep(svg) {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 /* ========== BRILLIANT HIGHLIGHT ANIMATIONS ========== */
