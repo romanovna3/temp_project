@@ -3107,6 +3107,52 @@ const lastMove = ref(null) // { from, to }
 /** Move Trainer 3: classification chip on Black’s **to** square after graded success (`public/icons/move-classifications/best.png`). */
 const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
 
+/** Temporary dev UI: Best-badge offset/size on square (sessionStorage — remove when design final). */
+const MT3_BEST_BADGE_DEV_STORAGE_KEY = 'chesscom.mt3.bestBadgeDev.v1'
+function loadMt3BestBadgeDevSettings() {
+  try {
+    const raw = sessionStorage.getItem(MT3_BEST_BADGE_DEV_STORAGE_KEY)
+    if (!raw) return { x: 2, y: 2, size: 26 }
+    const j = JSON.parse(raw)
+    return {
+      x: Number.isFinite(Number(j.x)) ? Number(j.x) : 2,
+      y: Number.isFinite(Number(j.y)) ? Number(j.y) : 2,
+      size: Number.isFinite(Number(j.size)) ? Number(j.size) : 26,
+    }
+  } catch {
+    return { x: 2, y: 2, size: 26 }
+  }
+}
+const _mt3BadgeDevInit = loadMt3BestBadgeDevSettings()
+const mt3BestBadgeDevX = ref(_mt3BadgeDevInit.x)
+const mt3BestBadgeDevY = ref(_mt3BadgeDevInit.y)
+const mt3BestBadgeDevSize = ref(_mt3BadgeDevInit.size)
+const mt3BestBadgeSettingsOpen = ref(false)
+
+const mt3BestBadgeImgStyle = computed(() => ({
+  width: `${mt3BestBadgeDevSize.value}px`,
+  height: `${mt3BestBadgeDevSize.value}px`,
+  top: `${mt3BestBadgeDevY.value}px`,
+  right: `${mt3BestBadgeDevX.value}px`,
+}))
+
+function persistMt3BestBadgeDevSettings() {
+  try {
+    sessionStorage.setItem(
+      MT3_BEST_BADGE_DEV_STORAGE_KEY,
+      JSON.stringify({
+        x: mt3BestBadgeDevX.value,
+        y: mt3BestBadgeDevY.value,
+        size: mt3BestBadgeDevSize.value,
+      }),
+    )
+  } catch {
+    /* ignore */
+  }
+}
+
+watch([mt3BestBadgeDevX, mt3BestBadgeDevY, mt3BestBadgeDevSize], persistMt3BestBadgeDevSettings)
+
 // Drag state
 const isDragging = ref(false)
 const draggedPiece = ref(null) // { type, square }
@@ -7003,8 +7049,7 @@ onUnmounted(() => {
                 v-if="hasMoveTrainer3BlackClassificationBadge(square)"
                 class="mt3-black-move-classification-badge"
                 :src="`${baseUrl}icons/move-classifications/best.png`"
-                width="26"
-                height="26"
+                :style="mt3BestBadgeImgStyle"
                 alt=""
                 draggable="false"
               />
@@ -7331,8 +7376,7 @@ onUnmounted(() => {
                 v-if="hasMoveTrainer3BlackClassificationBadge(square)"
                 class="mt3-black-move-classification-badge"
                 :src="`${baseUrl}icons/move-classifications/best.png`"
-                width="26"
-                height="26"
+                :style="mt3BestBadgeImgStyle"
                 alt=""
                 draggable="false"
               />
@@ -10151,18 +10195,51 @@ v-if="isVideoV6OrV7"
             </button>
           </Transition>
         </div>
-        <!-- MT3: floating Restart — outside `.review-panel`, does not participate in flex layout -->
+        <!-- MT3: floating Restart + temporary Best-badge dev controls -->
         <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-float">
-          <CcButton
-            variant="ghost"
-            size="x-small"
-            type="button"
-            class="move-trainer-3-restart-ghost-btn"
-            aria-label="Restart course from intro"
-            @click="onMoveTrainer3RestartToIntro"
+          <div
+            v-if="mt3BestBadgeSettingsOpen"
+            id="mt3-badge-dev-panel"
+            class="move-trainer-3-badge-dev-panel"
+            role="region"
+            aria-label="Best badge layout (dev)"
           >
-            Restart
-          </CcButton>
+            <label class="move-trainer-3-badge-dev-panel__field">
+              <span>X — inset from right (px)</span>
+              <input v-model.number="mt3BestBadgeDevX" type="number" step="1" class="move-trainer-3-badge-dev-panel__input" />
+            </label>
+            <label class="move-trainer-3-badge-dev-panel__field">
+              <span>Y — offset from top (px)</span>
+              <input v-model.number="mt3BestBadgeDevY" type="number" step="1" class="move-trainer-3-badge-dev-panel__input" />
+            </label>
+            <label class="move-trainer-3-badge-dev-panel__field">
+              <span>Size (px)</span>
+              <input v-model.number="mt3BestBadgeDevSize" type="number" step="1" min="8" max="96" class="move-trainer-3-badge-dev-panel__input" />
+            </label>
+          </div>
+          <div class="move-trainer-3-restart-float__buttons">
+            <CcButton
+              variant="ghost"
+              size="x-small"
+              type="button"
+              class="move-trainer-3-restart-ghost-btn move-trainer-3-badge-dev-toggle"
+              :aria-expanded="mt3BestBadgeSettingsOpen"
+              aria-controls="mt3-badge-dev-panel"
+              @click="mt3BestBadgeSettingsOpen = !mt3BestBadgeSettingsOpen"
+            >
+              Best Δ
+            </CcButton>
+            <CcButton
+              variant="ghost"
+              size="x-small"
+              type="button"
+              class="move-trainer-3-restart-ghost-btn"
+              aria-label="Restart course from intro"
+              @click="onMoveTrainer3RestartToIntro"
+            >
+              Restart
+            </CcButton>
+          </div>
         </div>
       </div>
     </div>
@@ -11479,10 +11556,50 @@ body {
   right: max(2.4rem, env(safe-area-inset-right, 0px));
   bottom: max(2.4rem, env(safe-area-inset-bottom, 0px));
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
   pointer-events: auto;
   z-index: 200;
+  box-sizing: border-box;
+}
+.move-trainer-3-restart-float__buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.move-trainer-3-badge-dev-panel {
+  background: rgba(22, 20, 18, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 210px;
+  max-width: min(92vw, 280px);
+  font-size: 11px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.move-trainer-3-badge-dev-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.move-trainer-3-badge-dev-panel__field span {
+  opacity: 0.85;
+}
+.move-trainer-3-badge-dev-panel__input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 13px;
   box-sizing: border-box;
 }
 .panel-sm .move-trainer-3-restart-float {
@@ -15886,14 +16003,10 @@ body {
   100% { opacity: 0; }
 }
 
-/* Move Trainer 3: Best move PNG — top-right of Black’s **to** square */
+/* Move Trainer 3: Best move PNG — position/size via **`mt3BestBadgeImgStyle`** (dev panel). */
 .mt3-black-move-classification-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
   left: auto;
-  width: 26px;
-  height: 26px;
   z-index: 6;
   pointer-events: none;
   object-fit: contain;
