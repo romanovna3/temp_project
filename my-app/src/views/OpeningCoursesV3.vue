@@ -3107,10 +3107,40 @@ const lastMove = ref(null) // { from, to }
 /** Move Trainer 3: classification chip on Black’s **to** square after graded success (`public/icons/move-classifications/best.png`). */
 const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string } | null
 
-/** Best-badge geometry on every **to** square (px, top-right of square). Same for all destinations (e.g. c5, e5). */
-const MT3_BEST_BADGE_RIGHT_INSET_PX = 2
-const MT3_BEST_BADGE_TOP_OFFSET_PX = 2
-const MT3_BEST_BADGE_SIZE_PX = 26
+/**
+ * Best-badge geometry on every **to** square (px, top-right of square). Same for all destinations (e.g. c5, e5).
+ * 1) On load, applies **`sessionStorage`** key **`chesscom.mt3.bestBadgeDev.v1`** if present (`{ x, y, size }` =
+ *    inset from right, offset from top, side length in px) — same as the old Best Δ panel.
+ * 2) If missing, uses **`MT3_BEST_BADGE_*_FALLBACK_PX`** below — edit those to bake values into git.
+ */
+const MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY = 'chesscom.mt3.bestBadgeDev.v1'
+
+function readMt3BestBadgeGeometryFromSession() {
+  if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY)
+    if (!raw) return null
+    const j = JSON.parse(raw)
+    const rightInsetPx = Number(j.x)
+    const topOffsetPx = Number(j.y)
+    const sizePx = Number(j.size)
+    if (!Number.isFinite(rightInsetPx) || !Number.isFinite(topOffsetPx) || !Number.isFinite(sizePx)) return null
+    if (sizePx < 8 || sizePx > 96) return null
+    return { rightInsetPx, topOffsetPx, sizePx }
+  } catch {
+    return null
+  }
+}
+
+const _mt3BestBadgeGeomSession = readMt3BestBadgeGeometryFromSession()
+/** Repo defaults when session has no tune (set these to your final numbers). */
+const MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX = 2
+const MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX = 2
+const MT3_BEST_BADGE_SIZE_FALLBACK_PX = 26
+
+const MT3_BEST_BADGE_RIGHT_INSET_PX = _mt3BestBadgeGeomSession?.rightInsetPx ?? MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX
+const MT3_BEST_BADGE_TOP_OFFSET_PX = _mt3BestBadgeGeomSession?.topOffsetPx ?? MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX
+const MT3_BEST_BADGE_SIZE_PX = _mt3BestBadgeGeomSession?.sizePx ?? MT3_BEST_BADGE_SIZE_FALLBACK_PX
 /** How long the Best badge stays visible after a graded Black move (ms). */
 const MT3_BEST_BADGE_VISIBLE_MS = 2000
 
@@ -15915,7 +15945,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Move Trainer 3: Best move PNG — position/size from **`MT3_BEST_BADGE_*`** via **`mt3BestBadgeImgStyle`**. */
+/* Move Trainer 3: Best move PNG — position/size from session-tuned or **`MT3_BEST_BADGE_*_FALLBACK_PX`** via **`mt3BestBadgeImgStyle`**. */
 .mt3-black-move-classification-badge {
   position: absolute;
   left: auto;
