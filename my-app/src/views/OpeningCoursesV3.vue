@@ -3136,32 +3136,13 @@ function isMt3GreatMoveBadgeSquare(square) {
 
 /**
  * Best-badge geometry on every **to** square (top-right of square). Same for all destinations (e.g. c5, e5).
- * 1) On load, applies **`sessionStorage`** key **`chesscom.mt3.bestBadgeDev.v1`** if present (`{ x, y, size }` =
- *    inset from right, offset from top, side length in px) — same as the old Best Δ panel.
- * 2) If missing, uses **`min(px, %)`** from those fallbacks vs **`MT3_BADGE_REF_SQUARE_PX`** — **26px** on the 700px board,
- *    smaller on scaled boards (e.g. Mobile B max-width 276px).
+ * - **`chesscom.mt3.bestBadgeDev.v1`** holds `{ x, y, size }` (right inset, top offset, side length in px at the 700px reference board).
+ * - Reactive **`mt3BestBadgeDev*`** refs load/persist that JSON so tuning applies live (restores the old **Best Δ** workflow; baked fallbacks only seed first visit).
+ * - Layout uses **`min(tunedPx, %)`** vs **`MT3_BADGE_REF_SQUARE_PX`** so the same tuned numbers scale on narrow boards (e.g. Mobile B).
  */
 const MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY = 'chesscom.mt3.bestBadgeDev.v1'
 
-function readMt3BestBadgeGeometryFromSession() {
-  if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return null
-  try {
-    const raw = sessionStorage.getItem(MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY)
-    if (!raw) return null
-    const j = JSON.parse(raw)
-    const rightInsetPx = Number(j.x)
-    const topOffsetPx = Number(j.y)
-    const sizePx = Number(j.size)
-    if (!Number.isFinite(rightInsetPx) || !Number.isFinite(topOffsetPx) || !Number.isFinite(sizePx)) return null
-    if (sizePx < 8 || sizePx > 96) return null
-    return { rightInsetPx, topOffsetPx, sizePx }
-  } catch {
-    return null
-  }
-}
-
-const _mt3BestBadgeGeomSession = readMt3BestBadgeGeometryFromSession()
-/** Repo defaults when session has no tune (set these to your final numbers). */
+/** Repo defaults when `sessionStorage` has no key yet — edit here to ship canonical geometry in git. */
 const MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX = 2
 const MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX = 2
 const MT3_BEST_BADGE_SIZE_FALLBACK_PX = 26
@@ -3169,9 +3150,50 @@ const MT3_BEST_BADGE_SIZE_FALLBACK_PX = 26
 /** Matches default `.chessboard` width (700) / 8 — converts tuned px to `% of .square` so badges scale on narrow boards (e.g. Mobile B max-width 276px). */
 const MT3_BADGE_REF_SQUARE_PX = 700 / 8
 
-const MT3_BEST_BADGE_RIGHT_INSET_PX = _mt3BestBadgeGeomSession?.rightInsetPx ?? MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX
-const MT3_BEST_BADGE_TOP_OFFSET_PX = _mt3BestBadgeGeomSession?.topOffsetPx ?? MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX
-const MT3_BEST_BADGE_SIZE_PX = _mt3BestBadgeGeomSession?.sizePx ?? MT3_BEST_BADGE_SIZE_FALLBACK_PX
+function loadMt3BestBadgeDevSettings() {
+  const fb = {
+    x: MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX,
+    y: MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX,
+    size: MT3_BEST_BADGE_SIZE_FALLBACK_PX,
+  }
+  if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return fb
+  try {
+    const raw = sessionStorage.getItem(MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY)
+    if (!raw) return fb
+    const j = JSON.parse(raw)
+    const x = Number(j.x)
+    const y = Number(j.y)
+    const size = Number(j.size)
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(size)) return fb
+    if (size < 8 || size > 96) return fb
+    return { x, y, size }
+  } catch {
+    return fb
+  }
+}
+
+const _mt3BestBadgeDevInit = loadMt3BestBadgeDevSettings()
+const mt3BestBadgeDevX = ref(_mt3BestBadgeDevInit.x)
+const mt3BestBadgeDevY = ref(_mt3BestBadgeDevInit.y)
+const mt3BestBadgeDevSize = ref(_mt3BestBadgeDevInit.size)
+const mt3BestBadgeSettingsOpen = ref(false)
+
+function persistMt3BestBadgeDevSettings() {
+  try {
+    sessionStorage.setItem(
+      MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY,
+      JSON.stringify({
+        x: mt3BestBadgeDevX.value,
+        y: mt3BestBadgeDevY.value,
+        size: mt3BestBadgeDevSize.value,
+      }),
+    )
+  } catch {
+    /* ignore */
+  }
+}
+
+watch([mt3BestBadgeDevX, mt3BestBadgeDevY, mt3BestBadgeDevSize], persistMt3BestBadgeDevSettings)
 
 /** Inset from square edge: caps at tuned px on the 700px reference board, scales down on smaller squares (uses CSS `min()`). */
 function mt3InsetPxToSquareMin(px) {
@@ -3180,20 +3202,14 @@ function mt3InsetPxToSquareMin(px) {
 }
 
 /**
- * Size for Best/Great chips: px when `chesscom.mt3.bestBadgeDev.v1` is set.
- * Otherwise `min(26px, N%)` so the chip is **exactly 26px** on the default 700×700 board (87.5px squares) while still shrinking on narrow boards.
- * Uses `height: auto` + `aspect-ratio: 1` (not `%` height) so `%` height quirks + `object-fit: contain` do not shrink the painted icon below the layout width.
+ * Best + Great chip size from **`mt3BestBadgeDevSize`** (reference-board px), with **`min(px, %)`** for smaller squares.
+ * Uses `height: auto` + `aspect-ratio: 1` so `%` height quirks do not shrink the painted icon.
  */
 function mt3ClassificationBadgeSizeStyle() {
-  if (_mt3BestBadgeGeomSession != null) {
-    return {
-      width: `${MT3_BEST_BADGE_SIZE_PX}px`,
-      height: `${MT3_BEST_BADGE_SIZE_PX}px`,
-    }
-  }
-  const wPct = (MT3_BEST_BADGE_SIZE_FALLBACK_PX / MT3_BADGE_REF_SQUARE_PX) * 100
+  const size = mt3BestBadgeDevSize.value
+  const wPct = (size / MT3_BADGE_REF_SQUARE_PX) * 100
   return {
-    width: `min(${MT3_BEST_BADGE_SIZE_FALLBACK_PX}px, ${wPct}%)`,
+    width: `min(${size}px, ${wPct}%)`,
     height: 'auto',
     aspectRatio: '1',
   }
@@ -3222,15 +3238,8 @@ function clearMt3GreatBadgeHideTimer() {
 
 const mt3BestBadgeImgStyle = computed(() => ({
   ...mt3ClassificationBadgeSizeStyle(),
-  ...(_mt3BestBadgeGeomSession != null
-    ? {
-        top: `${MT3_BEST_BADGE_TOP_OFFSET_PX}px`,
-        right: `${MT3_BEST_BADGE_RIGHT_INSET_PX}px`,
-      }
-    : {
-        top: mt3InsetPxToSquareMin(MT3_BEST_BADGE_TOP_OFFSET_PX),
-        right: mt3InsetPxToSquareMin(MT3_BEST_BADGE_RIGHT_INSET_PX),
-      }),
+  top: mt3InsetPxToSquareMin(mt3BestBadgeDevY.value),
+  right: mt3InsetPxToSquareMin(mt3BestBadgeDevX.value),
 }))
 
 /** Great-badge position tuning (sessionStorage). Edge file = **a** when `boardViewBlack`, **h** when White POV — avoids clipping on board edge. */
@@ -10507,8 +10516,31 @@ v-if="isVideoV6OrV7"
             </button>
           </Transition>
         </div>
-        <!-- MT3: floating Great position (dev) + Restart -->
+        <!-- MT3: floating Best Δ + Great position (dev) + Restart -->
         <div v-if="showMoveTrainer3RestartLink" class="move-trainer-3-restart-float">
+          <div
+            v-if="mt3BestBadgeSettingsOpen"
+            id="mt3-best-badge-dev-panel"
+            class="move-trainer-3-great-badge-dev-panel"
+            role="region"
+            aria-label="Best move badge position (dev)"
+          >
+            <p class="move-trainer-3-great-badge-dev-panel__hint">
+              Reference <strong>700px</strong> board — <strong>X/Y/size</strong> save to session and scale down on narrow boards.
+            </p>
+            <label class="move-trainer-3-great-badge-dev-panel__field">
+              <span>X — inset from right (px)</span>
+              <input v-model.number="mt3BestBadgeDevX" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
+            </label>
+            <label class="move-trainer-3-great-badge-dev-panel__field">
+              <span>Y — offset from top (px)</span>
+              <input v-model.number="mt3BestBadgeDevY" type="number" step="1" class="move-trainer-3-great-badge-dev-panel__input" />
+            </label>
+            <label class="move-trainer-3-great-badge-dev-panel__field">
+              <span>Size (px)</span>
+              <input v-model.number="mt3BestBadgeDevSize" type="number" step="1" min="8" max="96" class="move-trainer-3-great-badge-dev-panel__input" />
+            </label>
+          </div>
           <div
             v-if="mt3GreatBadgeSettingsOpen"
             id="mt3-great-badge-dev-panel"
@@ -10537,6 +10569,17 @@ v-if="isVideoV6OrV7"
             </label>
           </div>
           <div class="move-trainer-3-restart-float__buttons">
+            <CcButton
+              variant="ghost"
+              size="x-small"
+              type="button"
+              class="move-trainer-3-restart-ghost-btn move-trainer-3-best-badge-dev-toggle"
+              :aria-expanded="mt3BestBadgeSettingsOpen"
+              aria-controls="mt3-best-badge-dev-panel"
+              @click="mt3BestBadgeSettingsOpen = !mt3BestBadgeSettingsOpen"
+            >
+              Best Δ
+            </CcButton>
             <CcButton
               variant="ghost"
               size="x-small"
@@ -16329,7 +16372,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Move Trainer 3: Best move PNG — session px (`bestBadgeDev.v1`) or fallback `min(26px, %)` via **`mt3BestBadgeImgStyle`**. */
+/* Move Trainer 3: Best move PNG — reactive **`mt3BestBadgeImgStyle`** (`min(tunedPx, %)` vs reference square). */
 .mt3-black-move-classification-badge {
   position: absolute;
   left: auto;
