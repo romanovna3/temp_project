@@ -1,49 +1,76 @@
 # Move Trainer 3 — classification badges (best / great)
 
-Visual chips on Black’s **destination square** after a graded success: **`best.png`** (default) or **`great.png`** only on squares listed in **`MT3_GREAT_MOVE_BADGE_SQUARES`** (currently **`a6`** — viewer edge **a**‑file when Black is at the bottom; uses **great-badge** edge offsets). **`…g6`** and all other replies use **`best.png`** with the **same best-badge geometry** as e.g. **…c5**. Implemented in **`OpeningCoursesV3.vue`** (same board markup for desktop + Mobile B).
+After a graded Black move, the UI shows a small chip on the **destination square**. There are two **assets**: **`best.png`** and **`great.png`**. Placement uses either **best-badge geometry** or **great-badge geometry** (constants + optional `sessionStorage`), independent of which PNG is shown.
+
+Implemented in **`OpeningCoursesV3.vue`** (desktop + Mobile B boards).
+
+---
+
+## Which asset on which square?
+
+| Black reply (demo line) | Asset | Placement source |
+|-------------------------|-------|-------------------|
+| Most replies (e.g. **…c5**) | **`best.png`** | **Best-badge** (`MT3_BEST_BADGE_*`, `mt3BestBadgeDev*`) |
+| **`…g6`** | **`great.png`** | **Best-badge** placement — same X/Y/size as **`best.png`** (great icon, best position). Listed in **`MT3_GREAT_BADGE_USE_BEST_GEOMETRY_SQUARES`**. |
+| **`…a6`** (viewer **a**‑file when Black at bottom — edge row) | **`great.png`** | **Great-badge** placement — edge left/top vs default right/top (`MT3_GREAT_BADGE_*`, `mt3GreatBadgeDev*`). Listed in **`MT3_GREAT_MOVE_BADGE_SQUARES`** but **not** in **`MT3_GREAT_BADGE_USE_BEST_GEOMETRY_SQUARES`**. |
+
+Constants in code:
+
+- **`MT3_GREAT_MOVE_BADGE_SQUARES`** — destinations that show **`great.png`** (`a6`, `g6` for this product).
+- **`MT3_GREAT_BADGE_USE_BEST_GEOMETRY_SQUARES`** — subset of the above that reuse **`buildMt3BestBadgePlacementStyle()`** (currently **`g6`** only).
+
+---
 
 ## Canonical geometry (700×700 reference board, px)
 
-Values ship as fallbacks in source when `sessionStorage` has no dev keys yet.
+Values ship as fallbacks when `sessionStorage` has no dev keys.
 
-### Best (`best.png`)
+### Best placement (`best.png`, and **`great.png` on `g6`**)
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX` | **-13** | CSS `right` on the chip (negative shifts outward past the square corner). |
+| `MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX` | **-13** | CSS `right` (negative shifts outward). |
 | `MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX` | **-9** | CSS `top`. |
-| `MT3_BEST_BADGE_SIZE_FALLBACK_PX` | **33** | Square chip side length. |
+| `MT3_BEST_BADGE_SIZE_FALLBACK_PX` | **33** | Chip side length. |
 
-### Great (`great.png`)
+### Great placement (`great.png` on **edge `a6`** — not `g6`)
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `MT3_GREAT_BADGE_R_FALLBACK_PX` | **2** | Default files: `right` inset. |
-| `MT3_GREAT_BADGE_T_FALLBACK_PX` | **2** | Default files: `top` offset. |
-| `MT3_GREAT_BADGE_EDGE_LEFT_FALLBACK_PX` | **55** | Viewer **edge file** (Black POV: **a**; White POV: **h**): `left` inset so the asset is not clipped. |
-| `MT3_GREAT_BADGE_EDGE_TOP_FALLBACK_PX` | **-12** | Edge file: `top` offset. |
-| `MT3_GREAT_BADGE_SIZE_FALLBACK_PX` | **33** | Independent from best size. |
+| `MT3_GREAT_BADGE_R_FALLBACK_PX` | **2** | Non-edge: `right` inset. |
+| `MT3_GREAT_BADGE_T_FALLBACK_PX` | **2** | Non-edge: `top`. |
+| `MT3_GREAT_BADGE_EDGE_LEFT_FALLBACK_PX` | **55** | Edge file: `left` inset. |
+| `MT3_GREAT_BADGE_EDGE_TOP_FALLBACK_PX` | **-12** | Edge file: `top`. |
+| `MT3_GREAT_BADGE_SIZE_FALLBACK_PX` | **33** | Used for **`great.png`** when **great-badge** placement applies (`a6`). |
+
+---
 
 ## Scaling on smaller boards
 
-Chip layout uses **`min`/`max` with percentages of `.square`** derived from **`MT3_BADGE_REF_SQUARE_PX` (= 700 ÷ 8)** so geometry stays proportional on narrow layouts (e.g. Mobile B in-panel board). Non-positive offsets use **`max(px, %)`**; positive insets use **`min(px, %)`**.
+Chip layout uses **`min`/`max` with percentages of `.square`** vs **`MT3_BADGE_REF_SQUARE_PX` (= 700 ÷ 8)**. Non-positive offsets use **`max(px, %)`**; positive use **`min(px, %)`**.
+
+---
 
 ## Persistence (optional overrides)
 
-- Best: `sessionStorage` key **`chesscom.mt3.bestBadgeDev.v1`** — JSON `{ x, y, size }` (same semantics as fallbacks).
-- Great: **`chesscom.mt3.greatBadgeDev.v1`** — JSON `{ r, t, el, et, size }`.
+- Best (and **g6** great placement): **`chesscom.mt3.bestBadgeDev.v1`** — `{ x, y, size }`.
+- Great edge/interior **`a6`**: **`chesscom.mt3.greatBadgeDev.v1`** — `{ r, t, el, et, size }`.
 
-Reactive refs load these at startup; fallbacks apply when keys are missing.
+---
 
 ## Visibility timing
 
-- **`MT3_CLASSIFICATION_BADGES_AUTO_HIDE`** — when `true`, chips clear after **`MT3_BEST_BADGE_VISIBLE_MS`** (ms). When `false`, chips stay until the next graded move or shell restart (useful while iterating).
+- **`MT3_CLASSIFICATION_BADGES_AUTO_HIDE`** — when `true`, chips clear after **`MT3_BEST_BADGE_VISIBLE_MS`**.
+
+---
 
 ## Dev UI
 
-Floating **Best Δ** / **Great pos** tuning panels are **not** shipped in product UI; geometry is edited via constants above (and optional session overrides during development).
+Floating tuning panels are **not** shipped; edit fallbacks / session during development.
+
+---
 
 ## Related code
 
-- Styles: `.mt3-black-move-classification-badge` (scoped in `OpeningCoursesV3.vue`).
-- Footer **Start Quiz** (OM-7): **`MoveTrainer3PanelFooter.vue`** — MT3 route uses enabled primary with **no navigation** until Move Trainer 4 flow is wired; MT4 landing keeps quiz navigation.
+- **`buildMt3BestBadgePlacementStyle()`** / **`getMt3GreatBadgeImgStyle(square)`** in **`OpeningCoursesV3.vue`**.
+- Footer **Start Quiz** (OM-7): **`MoveTrainer3PanelFooter.vue`**.

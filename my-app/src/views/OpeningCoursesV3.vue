@@ -3128,13 +3128,20 @@ const moveTrainer3BlackMoveClassificationBadge = ref(null) // { square: string }
 /** Great move chip (`great.png`) — squares in **`MT3_GREAT_MOVE_BADGE_SQUARES`**. Visibility timing follows **`MT3_CLASSIFICATION_BADGES_AUTO_HIDE`**. */
 const moveTrainer3BlackGreatMoveBadge = ref(null) // { square: string } | null
 /**
- * Black **to** squares that show **`great.png`** with **great-badge** geometry (edge **a**‑file when Black at bottom uses left/top offsets).
- * **`…g6`** uses **`best.png`** + **best** geometry like any other interior reply (e.g. **…c5**) — only **`…a6`** keeps the edge‑tuned great chip here.
+ * Black **to** squares that show **`great.png`** (great-move classification), not **`best.png`**.
+ * Placement: **`MT3_GREAT_BADGE_USE_BEST_GEOMETRY_SQUARES`** use **best-badge** X/Y/size; others (e.g. **`…a6`** on the viewer **a**‑file edge) use **great-badge** edge/default offsets.
  */
-const MT3_GREAT_MOVE_BADGE_SQUARES = ['a6']
+const MT3_GREAT_MOVE_BADGE_SQUARES = ['a6', 'g6']
+
+/** Great **asset** with **best** chip placement (same **`mt3BestBadgeDev*`** as **`best.png`**). Currently **`…g6`**. */
+const MT3_GREAT_BADGE_USE_BEST_GEOMETRY_SQUARES = ['g6']
 
 function isMt3GreatMoveBadgeSquare(square) {
   return typeof square === 'string' && MT3_GREAT_MOVE_BADGE_SQUARES.includes(square)
+}
+
+function isMt3GreatBadgeBestPlacementSquare(square) {
+  return typeof square === 'string' && MT3_GREAT_BADGE_USE_BEST_GEOMETRY_SQUARES.includes(square)
 }
 
 /**
@@ -3249,11 +3256,15 @@ function clearMt3GreatBadgeHideTimer() {
   }
 }
 
-const mt3BestBadgeImgStyle = computed(() => ({
-  ...mt3ClassificationBadgeSizeStyle(mt3BestBadgeDevSize.value),
-  top: mt3InsetPxToSquareMin(mt3BestBadgeDevY.value),
-  right: mt3InsetPxToSquareMin(mt3BestBadgeDevX.value),
-}))
+function buildMt3BestBadgePlacementStyle() {
+  return {
+    ...mt3ClassificationBadgeSizeStyle(mt3BestBadgeDevSize.value),
+    top: mt3InsetPxToSquareMin(mt3BestBadgeDevY.value),
+    right: mt3InsetPxToSquareMin(mt3BestBadgeDevX.value),
+  }
+}
+
+const mt3BestBadgeImgStyle = computed(() => buildMt3BestBadgePlacementStyle())
 
 /** Great-badge position tuning (sessionStorage). Edge file = **a** when `boardViewBlack`, **h** when White POV — avoids clipping on board edge. */
 const MT3_GREAT_BADGE_DEV_STORAGE_KEY = 'chesscom.mt3.greatBadgeDev.v1'
@@ -3334,6 +3345,11 @@ function isMt3BoardRightEdgeFileSquare(square) {
 }
 
 function getMt3GreatBadgeImgStyle(square) {
+  /** **`great.png`** on **`g6`**: same **position + size** as best chip; **`a6`** (edge) uses great-badge tuning. */
+  if (isMt3GreatBadgeBestPlacementSquare(square)) {
+    return buildMt3BestBadgePlacementStyle()
+  }
+
   const edge = isMt3BoardRightEdgeFileSquare(square)
   const baseSize = mt3ClassificationBadgeSizeStyle(mt3GreatBadgeDevSize.value)
 
