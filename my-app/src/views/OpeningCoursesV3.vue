@@ -3142,10 +3142,10 @@ function isMt3GreatMoveBadgeSquare(square) {
  */
 const MT3_BEST_BADGE_GEOMETRY_STORAGE_KEY = 'chesscom.mt3.bestBadgeDev.v1'
 
-/** Repo defaults when `sessionStorage` has no key yet — edit here to ship canonical geometry in git. */
-const MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX = 2
-const MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX = 2
-const MT3_BEST_BADGE_SIZE_FALLBACK_PX = 26
+/** Repo defaults when `sessionStorage` has no key yet — canonical tuned values (700px reference board). */
+const MT3_BEST_BADGE_RIGHT_INSET_FALLBACK_PX = -13
+const MT3_BEST_BADGE_TOP_OFFSET_FALLBACK_PX = -9
+const MT3_BEST_BADGE_SIZE_FALLBACK_PX = 33
 
 /** Matches default `.chessboard` width (700) / 8 — converts tuned px to `% of .square` so badges scale on narrow boards (e.g. Mobile B max-width 276px). */
 const MT3_BADGE_REF_SQUARE_PX = 700 / 8
@@ -3195,10 +3195,18 @@ function persistMt3BestBadgeDevSettings() {
 
 watch([mt3BestBadgeDevX, mt3BestBadgeDevY, mt3BestBadgeDevSize], persistMt3BestBadgeDevSettings)
 
-/** Inset from square edge: caps at tuned px on the 700px reference board, scales down on smaller squares (uses CSS `min()`). */
+/**
+ * Inset/offset vs square: scaled % matches reference-board px on a 700px board.
+ * Non-positive tuned px (negative inset) uses **`max(px, %)`** so offsets ease toward 0 on smaller squares; positive uses **`min(px, %)`**.
+ */
 function mt3InsetPxToSquareMin(px) {
-  const pct = (px / MT3_BADGE_REF_SQUARE_PX) * 100
-  return `min(${px}px, ${pct}%)`
+  const n = Number(px)
+  if (!Number.isFinite(n)) return '0'
+  const pct = (n / MT3_BADGE_REF_SQUARE_PX) * 100
+  if (n <= 0) {
+    return `max(${n}px, ${pct}%)`
+  }
+  return `min(${n}px, ${pct}%)`
 }
 
 /**
@@ -3262,9 +3270,9 @@ const _mt3GreatBadgeUsesPxGeometry = readMt3GreatBadgeHadRawSession()
 /** Repo defaults when session has no tune — paste numbers from DevTools: `JSON.parse(sessionStorage.getItem('chesscom.mt3.greatBadgeDev.v1'))`. */
 const MT3_GREAT_BADGE_R_FALLBACK_PX = 2
 const MT3_GREAT_BADGE_T_FALLBACK_PX = 2
-const MT3_GREAT_BADGE_EDGE_LEFT_FALLBACK_PX = 2
-const MT3_GREAT_BADGE_EDGE_TOP_FALLBACK_PX = 2
-const MT3_GREAT_BADGE_SIZE_FALLBACK_PX = MT3_BEST_BADGE_SIZE_FALLBACK_PX
+const MT3_GREAT_BADGE_EDGE_LEFT_FALLBACK_PX = 55
+const MT3_GREAT_BADGE_EDGE_TOP_FALLBACK_PX = -12
+const MT3_GREAT_BADGE_SIZE_FALLBACK_PX = 33
 
 function loadMt3GreatBadgeDevSettings() {
   const fb = {
