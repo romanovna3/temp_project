@@ -29,7 +29,7 @@ import {
   clearMoveTrainer3OmReadingBoardBranch,
   getMoveTrainer3AuthorReadingPrimaryLabel,
   moveTrainer3AuthorReadingNavigateIntro,
-  restartMoveTrainer3ToIntro,
+  startMoveTrainer3AssistedQuiz,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -45,15 +45,21 @@ const isPlayMoveLayout = computed(() => {
   }
 })
 
-/** Shared footer chrome: Play Move + Opponents Move (not intro landing). */
+/** Shared footer chrome: Play Move + Opponents Move + assisted quiz (not intro landing). */
 const isPlayMoveShellLayout = computed(() => {
   const p = route.path
   if (isPlayMoveLayout.value) return true
   try {
     const d = decodeURIComponent(p)
-    return /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(d)
+    return (
+      /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(d)
+      || d === '/move-trainer/move-trainer-3/assisted-quiz'
+    )
   } catch {
-    return /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(p)
+    return (
+      /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(p)
+      || p === '/move-trainer/move-trainer-3/assisted-quiz'
+    )
   }
 })
 
@@ -99,9 +105,8 @@ function onOmChapterReadContinue() {
 async function onOmContinue() {
   const authorStep = moveTrainer3OmAuthorNoteStep.value
   if (moveTrainer3AuthorReadingNavigateIntro(authorStep)) {
-    resetMoveTrainer3OmAuthorNoteStep()
-    restartMoveTrainer3ToIntro()
-    await router.replace('/move-trainer/move-trainer-3')
+    startMoveTrainer3AssistedQuiz()
+    await router.replace('/move-trainer/move-trainer-3/assisted-quiz')
     return
   }
   /* Scripted White chain runs in OpeningCourses watch — avoid awaiting nextTick here (extra frame before the watcher runs). */

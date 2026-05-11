@@ -56,6 +56,11 @@ const router = createRouter({
             component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3RouteStub.vue'),
           }),
         ),
+        {
+          path: 'assisted-quiz',
+          name: 'move-trainer-3-assisted-quiz',
+          component: () => import('../views/move-trainer/move-trainer-3/MoveTrainer3RouteStub.vue'),
+        },
       ],
     },
     ...introAssistedRoutes,

@@ -5,6 +5,8 @@ import CoachBubble from '@move-trainer/components/CoachBubble.vue'
 import davidCoachAvatarUrl from '@move-trainer/assets/coaches/coach-david.png?url'
 import {
   MOVE_TRAINER_3_INTRO_COACH_MESSAGE,
+  MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_LEAD_BOLD,
+  MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_TURN_STRIP,
   coachHeaderIcon,
   coachHeaderText,
   coachEvalText,
@@ -16,6 +18,7 @@ import {
   bubbleStartPosition,
   coachAvatarIconPx,
   moveTrainer3PathIsOpponentsMove,
+  moveTrainer3PathIsAssistedQuiz,
   moveTrainer3OpponentsMoveStepFromPath,
   getMoveTrainer3OpponentsMoveCheckpoint,
   moveTrainer3CoachReplayScrubbing,
@@ -31,6 +34,7 @@ import {
   applyMoveTrainer3OmChapterOverflowMeasure,
   clearMoveTrainer3OmReadingBoardBranch,
   moveTrainer3OmPostAuthorChain,
+  moveTrainer3AssistedQuizPhase,
 } from './moveTrainer3IntroStore.js'
 
 const route = useRoute()
@@ -47,6 +51,8 @@ const isPlayMoveLayout = computed(() => {
 
 const isOpponentsMoveLayout = computed(() => moveTrainer3PathIsOpponentsMove(route.path))
 
+const isAssistedQuizLayout = computed(() => moveTrainer3PathIsAssistedQuiz(route.path))
+
 const opponentsMoveStep = computed(() => moveTrainer3OpponentsMoveStepFromPath(route.path))
 
 const opponentsMoveCheckpoint = computed(() =>
@@ -59,7 +65,7 @@ const introCoachBubbleMessage = computed(() => MOVE_TRAINER_3_INTRO_COACH_MESSAG
 const showMt3ReplayCoachPreview = computed(
   () =>
     moveTrainer3CoachReplayScrubbing.value &&
-    (isPlayMoveLayout.value || isOpponentsMoveLayout.value),
+    (isPlayMoveLayout.value || isOpponentsMoveLayout.value || isAssistedQuizLayout.value),
 )
 
 const mt3ReplayPreviewHalfMove = computed(() => {
@@ -94,7 +100,12 @@ const mt3ReplayPreviewMessage = computed(() => {
 
 /** Play Move live tip: heading-only “Play …” — replay narration lives in `showMt3ReplayCoachPreview`. */
 const playMoveCoachBubbleMessage = computed(() =>
-  isPlayMoveLayout.value ? '' : introCoachBubbleMessage.value,
+  isPlayMoveLayout.value || isAssistedQuizInstructionUi.value ? '' : introCoachBubbleMessage.value,
+)
+
+/** Assisted quiz instruction — PM-style combined bubble (fixed lead + **Black to play**). */
+const isAssistedQuizInstructionUi = computed(
+  () => isAssistedQuizLayout.value && moveTrainer3AssistedQuizPhase.value === 'instruction',
 )
 
 /** Scripted White after author **Continue** — OM shell briefly survives route swap; hide OM copy/strip (OpeningCourses jumps to `/play-move` first for **Nc3**). */
@@ -103,13 +114,15 @@ const suppressOmCoachDuringPostAuthorWhite = computed(
 )
 
 /** Play Move: avoid “No message” during White-to-move beats (scripted **Nc3** / similar). */
-const mt3PlayMoveSuppressEmptyCombinedPlaceholder = computed(
-  () =>
+const mt3PlayMoveSuppressEmptyCombinedPlaceholder = computed(() => {
+  if (isAssistedQuizInstructionUi.value) return false
+  return (
     isPlayMoveLayout.value
     && !coachPlayMoveLeadBold.value?.trim()
     && !coachPlayMoveTurnLabel.value?.trim()
-    && !playMoveCoachBubbleMessage.value?.trim(),
-)
+    && !playMoveCoachBubbleMessage.value?.trim()
+  )
+})
 
 /** OM v1 live tip: short `whiteCommentary` only (long chapter uses informational bubble below). */
 const omVariant1TopBubbleMessage = computed(() =>
@@ -471,6 +484,31 @@ const omIntroStackChapterScrollClamp = computed(
     </div>
 
     <div
+      v-else-if="isAssistedQuizInstructionUi"
+      class="move-trainer-3-coach"
+      :class="{ 'move-trainer-3-coach--play-move-fill': true }"
+    >
+      <CoachBubble
+        :coach-avatar-src="davidCoachAvatarUrl"
+        :header-icon="coachHeaderIcon"
+        :header-text="coachHeaderText"
+        :eval-text="coachEvalText"
+        :white-advantage="coachWhiteAdvantage"
+        message=""
+        :coach-avatar-icon-px="coachAvatarIconPx"
+        turn-strip-text=""
+        :intro-combined-lead-bold="MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_LEAD_BOLD"
+        :intro-combined-turn-strip-regular="MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_TURN_STRIP"
+        :suppress-intro-combined-no-message-placeholder="false"
+        :show-tip="true"
+        :typewriter="false"
+        :intro-coach-combined-bubble="true"
+        :fill-available-height="true"
+        :start-position="bubbleStartPosition"
+      />
+    </div>
+
+    <div
       v-else
       class="move-trainer-3-coach"
       :class="{ 'move-trainer-3-coach--play-move-fill': isPlayMoveLayout }"
@@ -497,7 +535,7 @@ const omIntroStackChapterScrollClamp = computed(
 
     <!-- Intro: default slot (move list) scrolls below the coach -->
     <div
-      v-if="!isPlayMoveLayout && !isOpponentsMoveLayout"
+      v-if="!isPlayMoveLayout && !isOpponentsMoveLayout && !isAssistedQuizLayout"
       class="move-trainer-3-below-coach-scroll"
     >
       <slot />

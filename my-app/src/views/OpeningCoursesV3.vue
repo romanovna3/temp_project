@@ -59,6 +59,10 @@ import {
   moveTrainer3LearnShellPathAfterBlackSuccessCount,
   hydrateMoveTrainer3LearnSessionFromStorage,
   clearMoveTrainer3OmReadingBoardBranch,
+  moveTrainer3PathIsAssistedQuiz,
+  moveTrainer3AssistedQuizPhase,
+  MOVE_TRAINER_3_QUIZ_DEV_LANDING,
+  MOVE_TRAINER_3_PLY_AFTER_BLACK_G6,
 } from './move-trainer/move-trainer-3/moveTrainer3IntroStore.js'
 
 // Design system context (WEB-DS-PACKAGE-SETUP – required for cc-avatar etc.)
@@ -115,7 +119,11 @@ function moveTrainer3PathIsPlayMove(path) {
 }
 
 function moveTrainer3LearnShellPath(path) {
-  return moveTrainer3PathIsPlayMove(path) || moveTrainer3PathIsOpponentsMove(path)
+  return (
+    moveTrainer3PathIsPlayMove(path)
+    || moveTrainer3PathIsOpponentsMove(path)
+    || moveTrainer3PathIsAssistedQuiz(path)
+  )
 }
 
 const isVideoV2_4 = computed(() => route.path === '/courses/v4')
@@ -4223,6 +4231,23 @@ async function tryMoveTrainer3PlayMove(from, to) {
   } catch {
     return false
   }
+
+  /** Assisted quiz — grade main-line Black moves only; stay on `/assisted-quiz` (no OM overlays / frontier routing). */
+  if (moveTrainer3PathIsAssistedQuiz(route.path)) {
+    clearMoveTrainer3OmReadingBoardBranch()
+    const isCapture = getPieceOnSquare(to) !== undefined
+    makeMove(from, to)
+    lastMove.value = { from, to }
+    playSound(isCapture ? 'capture' : 'move')
+    playTrainCorrect()
+    advanceMoveTrainer3PlyFromGameplay()
+    recordMoveTrainer3BlackLearnSuccess()
+    await nextTick()
+    onMoveTrainer3BoardSync(getMoveTrainer3BoardSyncPayload())
+    applyMoveTrainer3BlackClassificationBadgeAfterGraded(to)
+    return true
+  }
+
   const omStep = moveTrainer3PathIsOpponentsMove(route.path)
     ? moveTrainer3OpponentsMoveStepFromPath(route.path)
     : 0
@@ -4591,6 +4616,7 @@ watch(
   () => (isMoveTrainer3.value ? route.path : ''),
   (p) => {
     if (!isMoveTrainer3.value || !moveTrainer3PathIsIntro(p)) return
+    if (MOVE_TRAINER_3_QUIZ_DEV_LANDING) return
     goToPly(0)
     resetMoveTrainer3FooterNavMaxPly()
   },
@@ -4604,7 +4630,7 @@ watch(
 watch(
   () => [isMoveTrainer3.value, route.path, moveTrainer3CurrentPly.value, moveTrainer3WhiteOpeningAnimationActive.value],
   () => {
-    if (!isMoveTrainer3.value || !moveTrainer3PathIsPlayMove(route.path)) return
+    if (!isMoveTrainer3.value || (!moveTrainer3PathIsPlayMove(route.path) && !moveTrainer3PathIsAssistedQuiz(route.path))) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
     /** Footer replay scrub — never snap ply 0→1 or bump max (was fighting chevrons + jumping UI). */
     const replayScrub =
@@ -4640,6 +4666,7 @@ watch(
     if (!isMoveTrainer3.value || panelView.value !== 'courses') return
     if (moveTrainer3StartLearningNonce.value === 0) return
     if (!moveTrainer3LearnShellPath(route.path)) return
+    if (moveTrainer3PathIsAssistedQuiz(route.path)) return
     if (moveTrainer3WhiteOpeningAnimationActive.value) return
     if (moveTrainer3SkipBoardSyncFromStore.value) return
     if (moveTrainer3SuppressLearnShellRouteAlign.value) return
@@ -4679,6 +4706,9 @@ const isMoveTrainer3PlayMoveBoard = computed(
 /** Play Move or OM variant 1 “Play …” phase — graded Black moves; excludes OM author-reading overlay. */
 const moveTrainer3BlackInteractiveBoard = computed(() => {
   if (!isMoveTrainer3.value || panelView.value !== 'courses') return false
+  if (moveTrainer3PathIsAssistedQuiz(route.path)) {
+    return moveTrainer3AssistedQuizPhase.value === 'instruction'
+  }
   if (moveTrainer3PathIsPlayMove(route.path)) return true
   if (!moveTrainer3PathIsOpponentsMove(route.path)) return false
   if (moveTrainer3OmAuthorNoteStep.value !== 0) return false
@@ -4706,6 +4736,7 @@ const MT3_HINT_ARROW_STROKE_WIDTH = 5.4 * 0.85 * 0.8 // 20% narrower than prior 
 const MT3_HINT_ARROW_TAIL_OVERLAP_MORE_VB = (5 / BOARD_SIZE) * 100
 
 const moveTrainer3HintArrowLine = computed(() => {
+  if (moveTrainer3PathIsAssistedQuiz(route.path)) return null
   const hintBoard = isMoveTrainer3PlayMoveBoard.value || moveTrainer3OmVariant1HintBoard.value
   if (!hintBoard || isDragging.value) return null
   moveTrainer3CurrentFen.value
@@ -4768,6 +4799,35 @@ let moveTrainer3StartLearningBusy = false
  * (delays + advance) aborts if the user scrubs with footer chevrons — avoids jumping past a White ply.
  */
 let moveTrainer3OmWhiteReplyGen = 0
+
+/** One-shot dev shortcut — jump to OM-7 **Start Quiz** overlay without replaying the learn shell. */
+let moveTrainer3QuizDevLandingApplied = false
+
+watch(
+  () => [isMoveTrainer3.value, panelView.value, route.path],
+  async () => {
+    if (!MOVE_TRAINER_3_QUIZ_DEV_LANDING) return
+    if (!isMoveTrainer3.value || panelView.value !== 'courses') return
+    if (moveTrainer3QuizDevLandingApplied) return
+    let p = route.path
+    try {
+      p = decodeURIComponent(p)
+    } catch {
+      /* keep raw */
+    }
+    if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1)
+    if (p !== '/move-trainer/move-trainer-3') return
+
+    moveTrainer3QuizDevLandingApplied = true
+    moveTrainer3StartLearningNonce.value = Math.max(1, moveTrainer3StartLearningNonce.value)
+    goToPly(MOVE_TRAINER_3_PLY_AFTER_BLACK_G6)
+    moveTrainer3FooterNavMaxPly.value = MOVE_TRAINER_3_PLY_AFTER_BLACK_G6
+    moveTrainer3BlackMovesCompleted.value = 7
+    moveTrainer3OmAuthorNoteStep.value = 7
+    await router.replace('/move-trainer/move-trainer-3/opponents-move-7')
+  },
+  { immediate: true },
+)
 
 watch(
   () => [
@@ -10084,7 +10144,9 @@ v-if="isVideoV6OrV7"
             'panel-footer-container--move-trainer-3-play-move':
               isMoveTrainer3 &&
               panelView === 'courses' &&
-              (moveTrainer3PathIsPlayMove(route.path) || moveTrainer3PathIsOpponentsMove(route.path)),
+              (moveTrainer3PathIsPlayMove(route.path)
+                || moveTrainer3PathIsOpponentsMove(route.path)
+                || moveTrainer3PathIsAssistedQuiz(route.path)),
           }"
         >
           <template v-if="isMoveTrainer3 && panelView === 'courses'">

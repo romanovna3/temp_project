@@ -40,6 +40,19 @@ export const MOVE_TRAINER_3_INTRO_COACH_MESSAGE = "Let's learn this line togethe
 /** Play Move layout — body copy under pinned heading (optional); empty = heading only. */
 export const MOVE_TRAINER_3_PLAY_MOVE_COACH_MESSAGE = ''
 
+/** Assisted quiz — instruction phase (PM shell, no hint arrows). */
+export const MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_LEAD_BOLD = 'Play the correct move'
+export const MOVE_TRAINER_3_ASSISTED_QUIZ_INSTRUCTION_TURN_STRIP = 'Black to play'
+
+/**
+ * Dev-only: land on OM-7 post-…g6 author overlay (**Start Quiz**) without walking the full learn shell.
+ * Disable before shipping a stable OM flow.
+ */
+export const MOVE_TRAINER_3_QUIZ_DEV_LANDING = import.meta.env?.DEV === true
+
+/** Ply cursor after main-line **…g6** (all 14 half-moves played). */
+export const MOVE_TRAINER_3_PLY_AFTER_BLACK_G6 = 14
+
 /** FEN after main-line `2...e5` — branch previews for the clickable “Nc3 … e4” alt (OM reading step 2). */
 export const MOVE_TRAINER_3_AFTER_E5_FEN = MOVE_TRAINER_3_LINE_GAME.moves[1].black.fen
 
@@ -235,6 +248,15 @@ export function moveTrainer3PathIsOpponentsMove(path) {
   }
 }
 
+export function moveTrainer3PathIsAssistedQuiz(path) {
+  if (!path || typeof path !== 'string') return false
+  try {
+    return decodeURIComponent(path) === '/move-trainer/move-trainer-3/assisted-quiz'
+  } catch {
+    return path === '/move-trainer/move-trainer-3/assisted-quiz'
+  }
+}
+
 /** Parses trailing `-N` from `/move-trainer/move-trainer-3/opponents-move-N`. */
 export function moveTrainer3OpponentsMoveStepFromPath(path) {
   if (!path || typeof path !== 'string') return 0
@@ -345,6 +367,26 @@ export const currentPly = ref(0)
 
 /** Incremented by footer Start Learning — OpeningCoursesV3 plays 1.d4 + routes to Play Move. */
 export const moveTrainer3StartLearningNonce = ref(0)
+
+/** Assisted quiz flow — replay main line from Black’s first reply (after **1.d4**). */
+export const moveTrainer3AssistedQuizActive = ref(false)
+
+/** `'instruction'` first; later: correct / incorrect overlays. */
+export const moveTrainer3AssistedQuizPhase = ref('instruction')
+
+export function startMoveTrainer3AssistedQuiz() {
+  resetMoveTrainer3OmAuthorNoteStep()
+  resetMoveTrainer3OmChapterPhase()
+  moveTrainer3SuppressLearnShellRouteAlign.value = false
+  moveTrainer3OmPostAuthorChain.value = null
+  clearMoveTrainer3OmReadingBoardBranch()
+  moveTrainer3AssistedQuizActive.value = true
+  moveTrainer3AssistedQuizPhase.value = 'instruction'
+  moveTrainer3BlackMovesCompleted.value = 0
+  currentPly.value = 1
+  moveTrainer3FooterNavMaxPly.value = 1
+  clearMoveTrainer3CoachPendingBlackSan()
+}
 
 /**
  * OM reading phase: user finished Black reply at `/opponents-move-{step}`; show author note + Continue.
@@ -567,6 +609,8 @@ export function resetMoveTrainer3LearnProgress() {
   resetMoveTrainer3OmChapterPhase()
   moveTrainer3SuppressLearnShellRouteAlign.value = false
   moveTrainer3OmPostAuthorChain.value = null
+  moveTrainer3AssistedQuizActive.value = false
+  moveTrainer3AssistedQuizPhase.value = 'instruction'
 }
 
 /**
@@ -575,6 +619,8 @@ export function resetMoveTrainer3LearnProgress() {
  */
 export function restartMoveTrainer3ToIntro() {
   resetMoveTrainer3LearnProgress()
+  moveTrainer3AssistedQuizActive.value = false
+  moveTrainer3AssistedQuizPhase.value = 'instruction'
   moveTrainer3StartLearningNonce.value = 0
   currentPly.value = 0
   clearMoveTrainer3CoachPendingBlackSan()
@@ -922,6 +968,7 @@ export function hydrateMoveTrainer3LearnSessionFromStorage(routePath) {
   const onLearnShell =
     /\/move-trainer\/move-trainer-3\/play-move$/.test(p)
     || /\/move-trainer\/move-trainer-3\/opponents-move-\d+$/.test(p)
+    || /\/move-trainer\/move-trainer-3\/assisted-quiz$/.test(p)
   if (!onLearnShell) return false
   if (moveTrainer3StartLearningNonce.value > 0) return false
 
